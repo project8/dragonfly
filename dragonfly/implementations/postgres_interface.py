@@ -18,8 +18,8 @@ except ImportError:
     print('warning sqlalchmy not found, database support will not be available')
 
 # local imports
-from ..core import Provider, Endpoint, fancy_doc
-from ..core.exceptions import *
+from dripline.core import Provider, Endpoint, fancy_doc
+from dripline.core.exceptions import *
 
 import logging
 logger = logging.getLogger(__name__)

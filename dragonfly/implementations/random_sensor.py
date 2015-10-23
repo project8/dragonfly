@@ -2,7 +2,7 @@ from __future__ import absolute_import
 
 from random import random
 
-from ..core import Endpoint
+from dripline.core import Endpoint
 
 __all__ = ['random_sensor']
 

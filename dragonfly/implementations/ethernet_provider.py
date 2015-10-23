@@ -5,8 +5,8 @@ import socket
 import threading
 import types
 
-from ..core import Provider, Endpoint
-from ..core.utilities import fancy_doc
+from dripline.core import Provider, Endpoint
+from dripline.core.utilities import fancy_doc
 
 import logging
 logger = logging.getLogger(__name__)

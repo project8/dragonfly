@@ -1,7 +1,7 @@
 from __future__ import absolute_import
 
 import socket
-from ..core import Provider, Endpoint#, AutoReply
+from dripline.core import Provider, Endpoint#, AutoReply
 
 __all__ = ['simple_scpi_instrument', 'simple_scpi_sensor']
 

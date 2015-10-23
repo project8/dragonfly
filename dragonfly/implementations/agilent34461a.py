@@ -5,7 +5,7 @@ Implementation for the agilent 34461 DMM
 from __future__ import absolute_import
 import socket
 
-from ..core import Provider, Endpoint
+from dripline.core import Provider, Endpoint
 
 __all__ = ['agilent34461a', 'agilent34461a_voltage_input']
 

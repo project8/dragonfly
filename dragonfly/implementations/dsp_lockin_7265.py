@@ -1,6 +1,6 @@
 from __future__ import absolute_import
 
-from ..core import Endpoint
+from dripline.core import Endpoint
 from .prologix import GPIBInstrument
 
 import logging

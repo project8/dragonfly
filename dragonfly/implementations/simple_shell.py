@@ -3,7 +3,7 @@ from __future__ import absolute_import
 from subprocess import check_output
 import logging
 
-from ..core import Provider, Endpoint, Spime
+from dripline.core import Provider, Endpoint, Spime
 
 __all__ = ['simple_shell_instrument', 'simple_shell_command',
            'sensors_command_temp']

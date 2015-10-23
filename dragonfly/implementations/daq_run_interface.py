@@ -8,7 +8,7 @@ import logging
 import uuid
 
 # internal imports
-from .. import core
+from dripline import core
 from .ethernet_provider import EthernetProvider
 
 __all__ = []
