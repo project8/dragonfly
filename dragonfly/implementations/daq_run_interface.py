@@ -150,8 +150,20 @@ class DAQProvider(core.Provider):
         '''
         '''
         logger.error('metadata should broadcast')
-        alert_msg = core.AlertMessage(payload=self._run_meta)
-        self.portal.send_alert(alert=alert_msg, severity=self._metadata_target+'.{}'.format(self.run_id))
+        filename = '{directory}/{runN:09d}/{prefix}{runN:09d}_meta.json'.format(
+                                                        directory=self.directory_path,
+                                                        prefix=self.filename_prefix,
+                                                        runN=self.run_id,
+                                                        acqN=self._acquisition_count
+                                                                               )
+        this_payload = {'metadata': self._run_meta,
+                        'filename': filename,
+                        'rid': self.run_id,
+                       }
+        request_msg = core.RequestMessage(payload=self._run_meta)
+        req_result = self.portal.send_request(reqeust=request_msg, target=self._metadata_target)
+        if not req_result.retcode == 0:
+            raise core.exceptions.DriplineValueError('writing meta-data did not return success')
 
     def start_timed_run(self, run_name, run_time):
         '''
