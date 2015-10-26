@@ -31,8 +31,8 @@ setup(
     name='dragonfly',
     version=verstr,
     packages=['dragonfly','dragonfly/implementations'],
-    install_requires=['pika>=0.9.8', 'PyYAML', 'msgpack-python'],
+    scripts=['bin/dragonfly'],
+    install_requires=['dripline'],
     extras_require=extras_require,
-    url='http://www.github.com/project8/dripline',
-    tests_require=['pytest'],
+    url='http://www.github.com/project8/dragonfly',
 )
