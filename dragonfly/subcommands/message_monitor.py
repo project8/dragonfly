@@ -10,7 +10,10 @@ import logging
 
 from dripline.core import DriplineParser, Message, Service, exceptions
 
-logger = logging.getLogger("monitor_service")
+logger = logging.getLogger(__name__)
+
+__all__ = []
+
 
 class Monitor(Service):
     def __init__(self, payload_only, **kwargs):
@@ -31,52 +34,42 @@ class Monitor(Service):
                         decoded or body,
                        )
                   )
-        
 
+__all__.append('MessageMonitor')
+class MessageMonitor(object):
+    name = 'monitor'
+    def __call__(self, kwargs):
+        monitor = Monitor(
+                          payload_only=kwargs.payload_only,
+                          amqp_url = kwargs.broker,
+                          exchange = kwargs.exchange,
+                          keys = kwargs.keys,
+                         )
+        logger.info('starting to monitor')
+        try:
+            monitor.run()
+        except KeyboardInterrupt:
+            logger.warning('received <Ctrl+c>... exiting')
 
-def start_monitoring(**kwargs):
-    monitor = Monitor(
-                      payload_only=kwargs['payload_only'],
-                      amqp_url = kwargs['broker'],
-                      exchange = kwargs['exchange'],
-                      keys = kwargs['keys'],
-                     )
-    monitor.run()
-
-if __name__ == '__main__':
-    monitor_doc = '''
-                  a more DRY version of message_monitor
-                  '''
-    parser = DriplineParser(description=monitor_doc,
-                            amqp_broker=True,
-                            config_file=True,
-                            tmux_support=True,
-                            extra_logger=logger,
+    def update_parser(self, parser):
+        parser.add_argument('-e',
+                            '--exchange',
+                            metavar='exchange name',
+                            help='amqp name of the exchange to monitor',
+                            default='alerts',
                            )
-    parser.add_argument('-e',
-                        '--exchange',
-                        metavar='exchange name',
-                        help='amqp name of the exchange to monitor',
-                        default='alerts',
-                       )
-    parser.add_argument('-k',
-                        '--keys',
-                        metavar='keys',
-                        help='amqp binding keys to follow',
-                        default='#',
-                        nargs='*',
-                       )
-    parser.add_argument('-po',
-                        '--payload-only',
-                        metavar='payload_only',
-                        help='Print only the message.payload',
-                        default=False, #value if not present
-                        action='store_const',
-                        const=True, #value if present w/o value
-                       )
-    kwargs = parser.parse_args()
-    
-    try:
-        start_monitoring(**vars(kwargs))
-    except KeyboardInterrupt:
-        logger.info('exiting')
+        parser.add_argument('-k',
+                            '--keys',
+                            metavar='keys',
+                            help='amqp binding keys to follow',
+                            default='#',
+                            nargs='*',
+                           )
+        parser.add_argument('-po',
+                            '--payload-only',
+                            metavar='payload_only',
+                            help='Print only the message.payload',
+                            default=False, #value if not present
+                            action='store_const',
+                            const=True, #value if present w/o value
+                           )

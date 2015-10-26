@@ -9,8 +9,9 @@ import uuid
 
 from dripline.core import message, constants, DriplineParser, Service, Message, exceptions
 
+__all__ = []
 import logging
-logger = logging.getLogger('dripline_agent')
+logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 def verb_list():
@@ -41,9 +42,47 @@ def cast_arg(value):
                 pass
     return temp_val
 
+class GenericAgent(object):
+    name = None
 
-def main(args):
-    request_verb = args.verb
+    def __call__(self, kwargs):
+        try:
+            agent_action(request_verb=self.name, args=kwargs)
+        except KeyboardInterrupt:
+            logger.warning('aborting due to <Ctrl+c>')
+
+    def update_parser(self, parser):
+        parser.add_argument('target')
+        parser.add_argument('values', nargs='*')
+        parser.add_argument('--timeout',
+                            default=10,
+                            type=float,
+                           )
+        parser.add_argument('--lockout-key',
+                            metavar='lockout_key',
+                            default=None,
+                            type=str,
+                            help='string to provide in the RequestMessage.lockout_key, for locking endpoints or using locked endpoints',
+                           )
+
+class Get(GenericAgent):
+    name = 'get'
+class Set(GenericAgent):
+    name = 'set'
+class Config(GenericAgent):
+    name = 'config'
+    def __call__(self, kwargs):
+        logger.warning("OP_CONFG is going to be deprecated, consider other usage")
+        super(Config, self).__call__(kwargs)
+class Run(GenericAgent):
+    name = 'run'
+class Cmd(GenericAgent):
+    name = 'cmd'
+__all__ += ['Get', 'Set', 'Config', 'Run', 'Cmd']
+
+def agent_action(request_verb=None, args=None):
+    if request_verb is None:
+        raise exceptions.DriplineValueError('verb cannot be None')
     msgop = getattr(constants, 'OP_'+request_verb.upper())
     conn = Service(amqp_url = args.broker,
                    exchange = 'requests',
