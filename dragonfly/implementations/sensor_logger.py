@@ -9,7 +9,7 @@ import logging
 import re
 
 # internal imports
-from ..core import Gogol, exceptions
+from dripline.core import Gogol, exceptions
 from .postgres_interface import PostgreSQLInterface
 
 __all__ = []

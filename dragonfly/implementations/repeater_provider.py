@@ -4,7 +4,7 @@ from __future__ import absolute_import
 
 import types
 
-from ..core import Provider, message, constants, exceptions, exception_map
+from dripline.core import Provider, message, constants, exceptions, exception_map
 
 
 import logging

@@ -11,7 +11,7 @@ import socket
 import time
 import types
 
-from ..core import Spime, Provider, SimpleSCPIGetSpime, calibrate
+from dripline.core import Spime, Provider, SimpleSCPIGetSpime, calibrate
 
 import logging
 logger = logging.getLogger(__name__)

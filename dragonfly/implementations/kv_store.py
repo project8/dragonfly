@@ -27,7 +27,7 @@ fully qualified hierarchical address e.g. somenode.kv.foo.
 from __future__ import absolute_import
 import logging
 
-from ..core import Provider, Spime, calibrate
+from dripline.core import Provider, Spime, calibrate
 
 __all__ = ['kv_store', 'kv_store_key']
 
