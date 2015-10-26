@@ -1,0 +1,17 @@
+#!/usr/bin/python
+'''dragonfly
+General purpose commandline utility for interacting with dripline services
+'''
+
+
+import argparse
+
+
+if __name__ == '__main__'
+    parser = argparse.ArgumentParser()
+    subparsers = parser.add_subparsers()
+
+    for cmd in [getattr(subcmds, command)() for command in subcmds.__all__]:
+        subparser = subparsers.add_parser(cmd.name)
+        subparser.set_defaults(func=cmd)
+        cmd.update_parser(sub_parser
