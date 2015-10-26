@@ -8,3 +8,4 @@ __version__ = pkg_resources.require("dragonfly")[0].version.split('-')[0]
 __commit__ = pkg_resources.require("dragonfly")[0].version.split('-')[-1]
 
 from . import implementations
+from . import subcommands
