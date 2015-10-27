@@ -5,6 +5,7 @@ General purpose commandline utility for interacting with dripline services
 from __future__ import absolute_import
 
 import argparse
+import json
 import os
 import subprocess
 import sys
@@ -24,6 +25,9 @@ dripline_logger.setLevel(logging.DEBUG)
 class DotAccess(object):
     def __init__(self, adict):
         self.__dict__.update(adict)
+
+    def __str__(self):
+        return str(self.__dict__)
 
 
 class DriplineParser(argparse.ArgumentParser):
@@ -49,64 +53,61 @@ class DriplineParser(argparse.ArgumentParser):
             slack_support (bool): enable a '-S' option to send log messages to slack channels
 
         '''
+        self.base_parser = argparse.ArgumentParser(add_help=False)
         self.extra_logger = extra_logger
         argparse.ArgumentParser.__init__(self, formatter_class=argparse.ArgumentDefaultsHelpFormatter, **kwargs)
-        self.add_argument('-v',
-                          '--verbose',
-                          default=0,
-                          action='count',
-                          help='increases terminal output verbosity',
-                        )
-        self.add_argument('-l',
-                          '--logfile',
-                          help='file to save logged output',
-                         )
-        self.add_argument('-V',
-                          '--version',
-                          action='version',
-                          version=dragonfly.__version__,
-                          help='display dripline version',
-                         )
+        self.base_parser.add_argument('-v',
+                                      '--verbose',
+                                      default=0,
+                                      action='count',
+                                      help='increases terminal output verbosity',
+                                     )
+        self.base_parser.add_argument('-V',
+                                      '--version',
+                                      action='version',
+                                      version=dragonfly.__version__,
+                                      help='display dripline version',
+                                     )
         self._handlers = []
         self._handlers.append(logging.StreamHandler())
         self.__set_format()
         if amqp_broker:
-            self.add_argument('-b',
-                              '--broker',
-                              help='network path for the AMQP broker, if not provided (and if a config file is provided) use the value from the config file; if the option is present with no argument then "localhost" is used',
-                              default=None,
-                              nargs='?',
-                              const='localhost',
-                             )
+            self.base_parser.add_argument('-b',
+                                          '--broker',
+                                          help='network path for the AMQP broker, if not provided (and if a config file is provided) use the value from the config file; if the option is present with no argument then "localhost" is used',
+                                          default=None,
+                                          nargs='?',
+                                          const='localhost',
+                                         )
         if config_file:
-            self.add_argument('-c',
-                              '--config',
-                              help='path (absolute or relative) to configuration file',
-                             )
+            self.base_parser.add_argument('-c',
+                                          '--config',
+                                          help='path (absolute or relative) to configuration file',
+                                         )
         if tmux_support:
-            self.add_argument('-t',
-                              '--tmux',
-                              help='enable running in, and optionally naming, a tmux session',
-                              nargs='?',
-                              default=None, # value if option not given
-                              const=False, # value if option given with no argument
-                             )
+            self.base_parser.add_argument('-t',
+                                          '--tmux',
+                                          help='enable running in, and optionally naming, a tmux session',
+                                          nargs='?',
+                                          default=None, # value if option not given
+                                          const=False, # value if option given with no argument
+                                         )
         if twitter_support:
-            self.add_argument('-T',
-                              '--twitter',
-                              help='enable sending critical messages as tweets',
-                              nargs='?',
-                              default=False, # value if option not given
-                              const=True, # value if option given with no argument
-                             )
+            self.base_parser.add_argument('-T',
+                                          '--twitter',
+                                          help='enable sending critical messages as tweets',
+                                          nargs='?',
+                                          default=False, # value if option not given
+                                          const=True, # value if option given with no argument
+                                         )
         if slack_support:
-            self.add_argument('-S',
-                              '--slack',
-                              help='enable sending critical messages as slack messages to #p8_alerts',
-                              nargs='?',
-                              default=False, # value if option not given
-                              const=True, # value if option given with no argument
-                             )
+            self.base_parser.add_argument('-S',
+                                          '--slack',
+                                          help='enable sending critical messages as slack messages to #p8_alerts',
+                                          nargs='?',
+                                          default=False, # value if option not given
+                                          const=True, # value if option given with no argument
+                                         )
 
     def __set_format(self):
         base_format = '%(asctime)s{}[%(levelname)-8s] %(name)s(%(lineno)d) -> {}%(message)s'
@@ -179,6 +180,7 @@ class DriplineParser(argparse.ArgumentParser):
     def __add_critical_handler(self, a_handler):
         a_handler.setLevel(logging.CRITICAL)
         logger.addHandler(a_handler)
+        dripline_logger.addHandler(a_handler)
         if hasattr(self, 'extra_logger'):
             self.extra_logger.addHandler(a_handler)
         self._handlers.append(a_handler)
@@ -188,6 +190,7 @@ class DriplineParser(argparse.ArgumentParser):
         '''
         # first, parse the args
         these_args = argparse.ArgumentParser.parse_args(self)
+        logger.error('these aregs are:\n{}'.format(these_args))
         args_dict = vars(these_args)
 
         # add args specified in a config file if there is one
@@ -210,12 +213,9 @@ class DriplineParser(argparse.ArgumentParser):
         # setup loggers and handlers
         log_level = max(0, 25-these_args.verbose*10)
         self._handlers[0].setLevel(log_level)
-        if not these_args.logfile is None:
-            _file_handler = logging.FileHandler(these_args.logfile)
-            _file_handler.setFormatter(self.fmt)
-            self._handlers.append(_file_handler)
         for handler in self._handlers:
             logger.addHandler(handler)
+            dripline_logger.addHandler(handler)
             handler.setLevel(log_level)
             if self.extra_logger:
                 self.extra_logger.addHandler(handler)
@@ -239,9 +239,7 @@ class DriplineParser(argparse.ArgumentParser):
 
 
 if __name__ == '__main__':
-    #parser = argparse.ArgumentParser(description='broad access to dripline/dragonfly processes')
-    parser = DriplineParser(extra_logger=dripline_logger,
-                            amqp_broker=True,
+    parser = DriplineParser(amqp_broker=True,
                             config_file=True,
                             tmux_support=True,
                            )
@@ -254,7 +252,7 @@ if __name__ == '__main__':
             names = names.union(set(cmd.aliases))
         for a_name in names:
             try:
-                subparser = subparsers.add_parser(a_name)
+                subparser = subparsers.add_parser(a_name, parents=[parser.base_parser])
                 subparser.set_defaults(func=cmd)
                 cmd.update_parser(subparser)
 
