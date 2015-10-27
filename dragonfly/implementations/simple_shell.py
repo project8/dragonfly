@@ -3,7 +3,7 @@ from __future__ import absolute_import
 from subprocess import check_output
 import logging
 
-from dripline.core import Provider, Endpoint, Spime
+from dripline.core import Provider, Endpoint, Spime, calibrate
 
 __all__ = ['simple_shell_instrument', 'simple_shell_command',
            'sensors_command_temp']
@@ -24,7 +24,10 @@ class simple_shell_instrument(Provider):
         raw_result = None
         if to_send:
             logger.debug('going to execute:\n{}'.format(to_send))
-            raw_result = check_output(to_send)
+            try:
+                raw_result = check_output(to_send)
+            except OSError:
+                raise exceptions.DriplineHardwareError('this server does not support <{}>\nconsider installing it'.format(to_send))
             logger.debug('raw is: {}'.format(raw_result))
         return raw_result
 
@@ -52,23 +55,17 @@ class sensors_command_temp(simple_shell_command):
     
     This assumes that the "sensors" command is installed, which it probably isn't.
     '''
-    def __init__(self, core=0, **kwargs):  # , on_get='sensors', on_set=None):
-        # Scheduler stuff
+    def __init__(self, core=0, **kwargs):
         super(sensors_command_temp, self).__init__(get_cmd_str='sensors', **kwargs)
-        self.get_value = self.on_get
-
-        # local stuff
         self._core = core
 
+    @calibrate()
     def on_get(self):
         logger.info('hey! I am here')
         result = None
         res_lines = super(sensors_command_temp, self).on_get()
-        logger.info('did super')
         for line in res_lines.split('\n'):
             logger.info('looking at line:\n{}'.format(line))
             if line.startswith('Core {}:'.format(self._core)):
-                logger.debug('found the line:\n{}'.format(line))
                 result = line.split()[2].replace('\xc2\xb0', ' ')
-                logger.debug('result is:\n{}'.format(result))
         return result
