@@ -18,6 +18,9 @@ __all__ = []
 
 __all__.append('Serve')
 class Serve(object):
+    '''
+    start a long-running dripline service based on a provided config file (formerly open_spimescape_portal)
+    '''
     name = 'serve'
 
     def __call__(self, kwargs):
