@@ -88,6 +88,7 @@ class GenericAgent(object):
         parser.add_argument('--timeout',
                             default=10,
                             type=float,
+                            help='maximum time, in seconds, to wait for a Reply',
                            )
         parser.add_argument('--lockout-key',
                             metavar='lockout_key',
