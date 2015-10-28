@@ -61,7 +61,6 @@ class sensors_command_temp(simple_shell_command):
 
     @calibrate()
     def on_get(self):
-        logger.info('hey! I am here')
         result = None
         res_lines = super(sensors_command_temp, self).on_get()
         for line in res_lines.split('\n'):
