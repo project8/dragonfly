@@ -11,7 +11,6 @@ import subprocess
 import sys
 
 from dripline.core.constants import TIME_FORMAT
-from dripline.core.status_logger import SlackHandler, TwitterHandler
 
 import dragonfly
 
@@ -40,8 +39,6 @@ class DriplineParser(argparse.ArgumentParser):
                  amqp_broker=False,
                  config_file=False,
                  tmux_support=False,
-                 twitter_support=False,
-                 slack_support=False,
                  **kwargs):
         '''
         Keyword Args:
@@ -68,8 +65,8 @@ class DriplineParser(argparse.ArgumentParser):
                                       version=dragonfly.__version__,
                                       help='display dripline version',
                                      )
-        self._handlers = []
-        self._handlers.append(logging.StreamHandler())
+        self._handlers = {}
+        self._handlers['default'] = logging.StreamHandler()
         self.__set_format()
         if amqp_broker:
             self.base_parser.add_argument('-b',
@@ -92,22 +89,32 @@ class DriplineParser(argparse.ArgumentParser):
                                           default=None, # value if option not given
                                           const=False, # value if option given with no argument
                                          )
-        if twitter_support:
-            self.base_parser.add_argument('-T',
-                                          '--twitter',
-                                          help='enable sending critical messages as tweets',
-                                          nargs='?',
-                                          default=False, # value if option not given
-                                          const=True, # value if option given with no argument
-                                         )
-        if slack_support:
-            self.base_parser.add_argument('-S',
-                                          '--slack',
-                                          help='enable sending critical messages as slack messages to #p8_alerts',
-                                          nargs='?',
-                                          default=False, # value if option not given
-                                          const=True, # value if option given with no argument
-                                         )
+        self.add_dragonfly_handlers()
+        self.add_dragonfly_subcommands()
+
+    def add_dragonfly_handlers(self):
+        for a_handler in [getattr(dragonfly.status_log_handlers, h)() for h in dragonfly.status_log_handlers.__all__]:
+            a_handler.update_parser(self.base_parser)
+            self._handlers[a_handler.argparse_flag_str] = a_handler
+    
+    def add_dragonfly_subcommands(self):
+        # add the subcommands
+        subparsers = self.add_subparsers(description='detailed help is available for each subcommand',
+                                         parser_class=argparse.ArgumentParser
+                                        )
+        for cmd in [getattr(dragonfly.subcommands, command)() for command in dragonfly.subcommands.__all__]:
+            names = {cmd.name}
+            if hasattr(cmd, 'aliases'):
+                names = names.union(set(cmd.aliases))
+            for a_name in names:
+                try:
+                    subparser = subparsers.add_parser(a_name, parents=[self.base_parser], help=cmd.__doc__)
+                    subparser.set_defaults(func=cmd)
+                    cmd.update_parser(subparser)
+                # if adding a subcommand fails
+                except:
+                    print('unable to deal with command:\n{}'.format(cmd))
+                    raise
 
     def __set_format(self):
         base_format = '%(asctime)s{}[%(levelname)-8s] %(name)s(%(lineno)d) -> {}%(message)s'
@@ -123,7 +130,7 @@ class DriplineParser(argparse.ArgumentParser):
                     base_format.format(' ', ''),
                     TIME_FORMAT[:-1]
                     )
-        self._handlers[0].setFormatter(self.fmt)
+        self._handlers['default'].setFormatter(self.fmt)
 
     def __process_tmux(self, args):
         new_argv = list(sys.argv)
@@ -169,28 +176,11 @@ class DriplineParser(argparse.ArgumentParser):
             print('tmux session {} created'.format(session_name))
             sys.exit()
 
-    def __process_twitter(self):
-        twitter_handler = TwitterHandler()
-        self.__add_critical_handler(twitter_handler)
-
-    def __process_slack(self):
-        slack_handler = SlackHandler()
-        self.__add_critical_handler(slack_handler)
-
-    def __add_critical_handler(self, a_handler):
-        a_handler.setLevel(logging.CRITICAL)
-        logger.addHandler(a_handler)
-        dripline_logger.addHandler(a_handler)
-        if hasattr(self, 'extra_logger'):
-            self.extra_logger.addHandler(a_handler)
-        self._handlers.append(a_handler)
-
     def parse_args(self):
         '''
         '''
         # first, parse the args
         these_args = argparse.ArgumentParser.parse_args(self)
-        logger.error('these aregs are:\n{}'.format(these_args))
         args_dict = vars(these_args)
 
         # add args specified in a config file if there is one
@@ -212,29 +202,19 @@ class DriplineParser(argparse.ArgumentParser):
 
         # setup loggers and handlers
         log_level = max(0, 25-these_args.verbose*10)
-        self._handlers[0].setLevel(log_level)
         for handler in self._handlers:
-            logger.addHandler(handler)
-            dripline_logger.addHandler(handler)
-            handler.setLevel(log_level)
+            logger.addHandler(self._handlers[handler])
+            dripline_logger.addHandler(self._handlers[handler])
+            if not handler is 'slack':
+                self._handlers[handler].setLevel(log_level)
             if self.extra_logger:
-                self.extra_logger.addHandler(handler)
+                self.extra_logger.addHandler(self._handlers[handler])
 
         # take care of tmux if needed
         if hasattr(these_args, 'tmux'):
             if not these_args.tmux is None:
                 self.__process_tmux(these_args)
 
-        # and add twitter to the log handling if enabled
-        if hasattr(these_args, 'twitter'):
-            if these_args.twitter:
-                self.__process_twitter()
-
-        # and add slack to the log handling if enabled
-        if hasattr(these_args, 'slack'):
-            if these_args.slack:
-                self.__process_slack()
-        
         return these_args
 
 
@@ -243,23 +223,5 @@ if __name__ == '__main__':
                             config_file=True,
                             tmux_support=True,
                            )
-
-    # add the subparsers
-    subparsers = parser.add_subparsers()
-    for cmd in [getattr(dragonfly.subcommands, command)() for command in dragonfly.subcommands.__all__]:
-        names = {cmd.name}
-        if hasattr(cmd, 'aliases'):
-            names = names.union(set(cmd.aliases))
-        for a_name in names:
-            try:
-                subparser = subparsers.add_parser(a_name, parents=[parser.base_parser])
-                subparser.set_defaults(func=cmd)
-                cmd.update_parser(subparser)
-
-        # if adding a subcommand fails
-            except:
-                print('unable to deal with command:\n{}'.format(cmd))
-                raise
-
     args = parser.parse_args()
     args.func(args)
