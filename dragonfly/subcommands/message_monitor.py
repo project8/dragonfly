@@ -37,6 +37,9 @@ class Monitor(Service):
 
 __all__.append('MessageMonitor')
 class MessageMonitor(object):
+    '''
+    utility for listening in on AMQP messages (does not prevent delivery but may prevent undeliverable errors if there is no other valid target)
+    '''
     name = 'monitor'
     def __call__(self, kwargs):
         monitor = Monitor(
