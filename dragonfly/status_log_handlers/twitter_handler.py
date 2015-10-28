@@ -16,6 +16,8 @@ class TwitterHandler(logging.Handler):
     '''
     A custom message handler for redirecting text to twitter
     '''
+    argparse_flag_str = 'twitter'
+
     def emit(self, record):
         try:
             import TwitterAPI, yaml, os
@@ -27,3 +29,10 @@ class TwitterHandler(logging.Handler):
             raise
         except:
             self.handleError(record)
+
+    def update_parser(self, parser):
+        parser.add_argument('--'+self.argparse_flag_str,
+                            action='store_true',
+                            help='enable a status log handler to post messages to twitter',
+                           )
+
