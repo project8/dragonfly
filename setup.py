@@ -32,7 +32,7 @@ setup(
     version=verstr,
     packages=['dragonfly','dragonfly/implementations'],
     scripts=['bin/dragonfly'],
-    install_requires=['dripline'],
+    install_requires=['dripline>=v3.0.0'],
     extras_require=extras_require,
     url='http://www.github.com/project8/dragonfly',
 )
