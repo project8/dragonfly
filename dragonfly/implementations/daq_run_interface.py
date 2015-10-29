@@ -323,6 +323,11 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
                  )
         # Set the maximum number of events (note that the default is 10k)
         self.send(['SENS:ACQ:FSAV:FILE:MAX {:d};*OPC?'.format(self.max_nb_files)])
+        # try to force external reference
+        self.send(['SENS:ROSC:SOUR EXT;*OPC?'])
+        ext_ref_source = self.send(['SENS:ROSC:SOUR?'])
+        if not ext_ref_source == 'EXT':
+            raise dripline.core.exceptions.DriplineHardwareConnectionError('Unable to switch RSA to external reference')
         # ensure in triggered mode
         self.send(['TRIG:SEQ:STAT 1;*OPC?'])
         # actually start to FastSave

@@ -12,7 +12,7 @@ rel/dripline
 *.pyc
 *__pycache__
 *.egg-info/*
-python/build/*
+build/*
 python/doc/_build/*
 *.egg
 python/dripline.sublime-workspace
