@@ -8,7 +8,7 @@ from __future__ import absolute_import
 import json
 import logging
 
-from dripline.core import DriplineParser, Message, Service, exceptions
+from dripline.core import Message, Service, exceptions
 
 logger = logging.getLogger(__name__)
 
