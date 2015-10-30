@@ -99,13 +99,13 @@ class DAQProvider(core.Provider):
         self.run_name = run_name
         self._do_prerun_sets()
         actually_locked = self._do_prerun_lockout()
-        logger.warning('will need to unlock: {}'.format(actually_locked))
+        logger.debug('will need to unlock: {}'.format(actually_locked))
         self._run_meta = {'DAQ': self.daq_name,
                          }
         self._do_prerun_gets()
         self._send_metadata()
-        logger.warning('these meta will be {}'.format(self._run_meta))
-        logger.error('start_run finished')
+        logger.debug('these meta will be {}'.format(self._run_meta))
+        logger.info('start_run finished')
 
     def _do_prerun_sets(self):
         logger.info('doing prerun sets')
@@ -118,6 +118,7 @@ class DAQProvider(core.Provider):
             result = self.portal.send_request(request=m, target=endpoint)
             if result.retcode != 0:
                 raise core.exception_map[result.retcode](result.return_msg)
+        logger.debug('prerun sets complete')
     
     def _do_prerun_lockout(self):
         logger.info('doing prerun lockout')
@@ -127,10 +128,11 @@ class DAQProvider(core.Provider):
         lock_query = core.RequestMessage(msgop=core.OP_GET)
         lock_cmd = core.RequestMessage(msgop=core.OP_CMD, lockout_key=this_lockout_key)
         for endpoint in self._ensure_locked:
-            logger.warning('ensuring lockout of {}'.format(endpoint))
+            logger.debug('ensuring lockout of {}'.format(endpoint))
             if not self.portal.send_request(request=lock_query, target=endpoint+'.is-locked').payload['values'][0]:
                 self.portal.send_request(request=lock_cmd, target=endpoint+'.lock')
                 to_unlock.append(endpoint)
+        logger.debug('prerun lockout complete')
         return to_unlock
 
     def _do_prerun_gets(self):
@@ -149,7 +151,7 @@ class DAQProvider(core.Provider):
     def _send_metadata(self):
         '''
         '''
-        logger.error('metadata should broadcast')
+        logger.info('metadata should broadcast')
         filename = '{directory}/{runN:09d}/{prefix}{runN:09d}_meta.json'.format(
                                                         directory=self.directory_path,
                                                         prefix=self.filename_prefix,
@@ -158,12 +160,13 @@ class DAQProvider(core.Provider):
                                                                                )
         this_payload = {'metadata': self._run_meta,
                         'filename': filename,
-                        'rid': self.run_id,
                        }
-        request_msg = core.RequestMessage(payload=self._run_meta)
-        req_result = self.portal.send_request(reqeust=request_msg, target=self._metadata_target)
+        this_payload['metadata']['run_id'] = self.run_id
+        request_msg = core.RequestMessage(payload=this_payload, msgop=core.OP_CMD)
+        req_result = self.portal.send_request(request=request_msg, target=self._metadata_target)
         if not req_result.retcode == 0:
             raise core.exceptions.DriplineValueError('writing meta-data did not return success')
+        logger.debug('meta sent')
 
     def start_timed_run(self, run_name, run_time):
         '''
@@ -236,16 +239,15 @@ class MantisAcquisitionInterface(DAQProvider, core.Spime):
             self.portal.send_request(request=core.RequestMessage(msgop=core.OP_SET, payload={'values':[self.acquisition_time*1000]}), target=self.mantis_queue+'.duration')
 
     def determine_RF_ROI(self):
-        logger.warning('trying to get roi')
+        logger.info('trying to get roi')
         if not self._lf_lo_endpoint_name in self._run_meta:
             logger.error('meta are:\n{}'.format(self._run_meta))
             raise core.exceptions.DriplineInternalError('the lf_lo_endpoint_name must be configured in the metadata_gets field')
         lf_lo_freq = self._run_meta.pop(self._lf_lo_endpoint_name)
         self._run_meta['RF_ROI_MIN'] = lf_lo_freq + self._hf_lo_freq
-        logger.warning('RF Min: {}'.format(self._run_meta['RF_ROI_MIN']))
+        logger.debug('RF Min: {}'.format(self._run_meta['RF_ROI_MIN']))
         self._run_meta['RF_ROI_MAX'] = self._analysis_bandwidth + lf_lo_freq + self._hf_lo_freq
-        logger.warning('RF Max: {}'.format(self._run_meta['RF_ROI_MAX']))
-        logger.warning('got roi')
+        logger.debug('RF Max: {}'.format(self._run_meta['RF_ROI_MAX']))
 
     def on_get(self):
         '''
@@ -324,10 +326,11 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
         # Set the maximum number of events (note that the default is 10k)
         self.send(['SENS:ACQ:FSAV:FILE:MAX {:d};*OPC?'.format(self.max_nb_files)])
         # try to force external reference
-        self.send(['SENS:ROSC:SOUR EXT;*OPC?'])
-        ext_ref_source = self.send(['SENS:ROSC:SOUR?'])
-        if not ext_ref_source == 'EXT':
-            raise dripline.core.exceptions.DriplineHardwareConnectionError('Unable to switch RSA to external reference')
+        ext_ref_error = self.send(['SENS:ROSC:SOUR EXT;*OPC?'])
+        if int(ext_ref_error) == 2028:
+            raise dripline.core.exceptions.DriplineHardwareConnectionError('External frequency reference signal is not valid.')
+        elif int(ext_ref_error) == 2029:
+            raise dripline.core.exceptions.DriplineHardwareConnectionError('Unable to lock to external frequency reference.')
         # ensure in triggered mode
         self.send(['TRIG:SEQ:STAT 1;*OPC?'])
         # actually start to FastSave

@@ -7,7 +7,7 @@ from __future__ import absolute_import
 import types
 import uuid
 
-from dripline.core import message, constants, DriplineParser, Service, Message, exceptions
+from dripline.core import message, constants, Service, Message, exceptions
 
 __all__ = []
 import logging
@@ -28,10 +28,10 @@ class GenericAgent(object):
         values = []
         payload = {}
         for val in args.values:
-            temp_val = cast_arg(val)
+            temp_val = self.cast_arg(val)
             if isinstance(temp_val, types.StringType):
                 if len(temp_val.split('=')) > 1:
-                    value = cast_arg('='.join(temp_val.split('=')[1:]))
+                    value = self.cast_arg('='.join(temp_val.split('=')[1:]))
                     payload.update({temp_val.split('=')[0]:value})
                 else:
                     values.append(temp_val)
