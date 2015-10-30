@@ -160,9 +160,9 @@ class DAQProvider(core.Provider):
                                                                                )
         this_payload = {'metadata': self._run_meta,
                         'filename': filename,
-                        'rid': self.run_id,
                        }
-        request_msg = core.RequestMessage(payload=self._run_meta, msgop=core.OP_CMD)
+        this_payload['metadata']['run_id'] = self.run_id
+        request_msg = core.RequestMessage(payload=this_payload, msgop=core.OP_CMD)
         req_result = self.portal.send_request(request=request_msg, target=self._metadata_target)
         if not req_result.retcode == 0:
             raise core.exceptions.DriplineValueError('writing meta-data did not return success')
