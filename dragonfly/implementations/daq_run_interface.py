@@ -29,6 +29,7 @@ class DAQProvider(core.Provider):
                  metadata_gets={},
                  metadata_target=None,
                  debug_mode_without_database=False,
+                 debug_mode_without_metadata_broadcast=False,
                  **kwargs):
         '''
         daq_name (str): name of the DAQ (used with the run table and in metadata)
@@ -56,6 +57,7 @@ class DAQProvider(core.Provider):
         self._metadata_gets = metadata_gets
         self._metadata_target = metadata_target
         self._debug_without_db = debug_mode_without_database
+        self._debug_without_meta_broadcast = debug_mode_without_metadata_broadcast
 
         self._stop_handle = None
         self._run_name = None
@@ -103,7 +105,8 @@ class DAQProvider(core.Provider):
         self._run_meta = {'DAQ': self.daq_name,
                          }
         self._do_prerun_gets()
-        self._send_metadata()
+        if not self._debug_without_meta_broadcast:
+            self._send_metadata()
         logger.debug('these meta will be {}'.format(self._run_meta))
         logger.info('start_run finished')
 
