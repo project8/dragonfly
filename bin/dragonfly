@@ -224,4 +224,5 @@ if __name__ == '__main__':
                             tmux_support=True,
                            )
     args = parser.parse_args()
+    logger.debug('calling {} with args:\n'.format(args.func, vars(args)))
     args.func(args)
