@@ -19,8 +19,9 @@ class GenericAgent(object):
     name = None
 
     def __call__(self, args):
+        logger.debug('in agent, got args:\n{}'.format(args))
         msgop = getattr(constants, 'OP_'+self.name.upper())
-        conn = Service(amqp_url = args.broker,
+        conn = Service(broker = args.broker,
                        exchange = 'requests',
                        keys = '#'
                       )
