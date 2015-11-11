@@ -30,7 +30,7 @@ extras_require['all'] = everything
 setup(
     name='dragonfly',
     version=verstr,
-    packages=['dragonfly','dragonfly/implementations'],
+    packages=['dragonfly','dragonfly/implementations','dragonfly/status_log_handlers','dragonfly/subcommands'],
     scripts=['bin/dragonfly'],
     install_requires=['dripline>=v3.0.0'],
     extras_require=extras_require,

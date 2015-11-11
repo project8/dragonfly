@@ -19,8 +19,9 @@ class GenericAgent(object):
     name = None
 
     def __call__(self, args):
+        logger.debug('in agent, got args:\n{}'.format(args))
         msgop = getattr(constants, 'OP_'+self.name.upper())
-        conn = Service(amqp_url = args.broker,
+        conn = Service(broker = args.broker,
                        exchange = 'requests',
                        keys = '#'
                       )
@@ -102,11 +103,15 @@ class Get(GenericAgent):
     return the value of an endpoint or a property of an endpoint if specified
     '''
     name = 'get'
+
+
 class Set(GenericAgent):
     '''
     set the value of an endpoint, or a property of an endpoint if specified
     '''
     name = 'set'
+
+
 class Config(GenericAgent): 
     '''
     <deprecated> query or set the value of a property of an endpoint
@@ -115,15 +120,20 @@ class Config(GenericAgent):
     def __call__(self, kwargs):
         logger.warning("OP_CONFG is going to be deprecated, consider other usage")
         super(Config, self).__call__(kwargs)
+
+
 class Run(GenericAgent):
     '''
     send an OP_RUN, further details are endpoint specific
     '''
     name = 'run'
+
+
 class Cmd(GenericAgent):
     '''
     have an endpoint execute an internal function
     '''
     name = 'cmd'
+
 
 __all__ += ['Get', 'Set', 'Config', 'Run', 'Cmd']
