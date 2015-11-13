@@ -24,6 +24,9 @@ class DAQProvider(core.Provider):
                  daq_name=None,
                  run_table_endpoint=None,
                  directory_path=None,
+                 data_directory_path=None,
+                 meta_data_directory_path=None,
+                 filename_prefix='',
                  ensure_sets={},
                  ensure_locked=[],
                  metadata_gets={},
@@ -36,6 +39,7 @@ class DAQProvider(core.Provider):
         run_table_endpoint (str): name of the endpoint providing an interface to the run table
         directory_path (str): absolute path to "hot" storage (as seen from the DAQ software, not a network path)
         ensure_sets (dict): a dictionary of endpoint names as keys, with values to set them to. These will all be set prior to each run and should 
+        filename_prefix (str): string which will prefix unique filenames
         '''
         core.Provider.__init__(self, **kwargs)
 
@@ -47,15 +51,23 @@ class DAQProvider(core.Provider):
             raise core.exceptions.DriplineValueError('<{}> instance <{}> requires a value for "{}" to initialize'.format(self.__class__.__name__, self.name, 'run_table_endpoint'))
         else:
             self.run_table_endpoint = run_table_endpoint
-        if directory_path is None:
-            raise core.exceptions.DriplineValueError('<{}> instance <{}> requires a value for "{}" to initialize'.format(self.__class__.__name__, self.name, 'directory_path'))
-        else:
-            self.directory_path = directory_path
+        
+        # deal with directory structures
+        if (directory_path is None) and (data_directory_path is None) and (meta_data_directory_path is None):
+            raise core.exceptions.DriplineValueError('<{}> instance <{}> requires a value for "{}" to initialize'.format(self.__class__.__name__, self.name, '[meta_[data_]]directory_path'))
+        if (data_directory_path is None) and (directory_path is not None):
+            data_directory_path = directory_path
+        if (meta_data_directory_path is None) and (directory_path is not None):
+            meta_data_directory_path = directory_path
+        #self.directory_path = directory_path
+        self.data_directory_path = data_directory_path
+        self.meta_data_directory_path = meta_data_directory_path
         
         self._ensure_sets = ensure_sets
         self._ensure_locked = ensure_locked
         self._metadata_gets = metadata_gets
         self._metadata_target = metadata_target
+        self.filename_prefix = filename_prefix
         self._debug_without_db = debug_mode_without_database
         self._debug_without_meta_broadcast = debug_mode_without_metadata_broadcast
 
@@ -149,18 +161,19 @@ class DAQProvider(core.Provider):
         self.determine_RF_ROI()
 
     def determine_RF_ROI(self):
-        raise core.exceptions.DriplineNotImplementedError('subclass must implement RF ROI determination')
+        raise core.exceptions.DriplineMethodNotSupportedError('subclass must implement RF ROI determination')
 
     def _send_metadata(self):
         '''
         '''
         logger.info('metadata should broadcast')
         filename = '{directory}/{runN:09d}/{prefix}{runN:09d}_meta.json'.format(
-                                                        directory=self.directory_path,
+                                                        directory=self.meta_data_directory_path,
                                                         prefix=self.filename_prefix,
                                                         runN=self.run_id,
                                                         acqN=self._acquisition_count
                                                                                )
+        logger.warning('should request metadatafile: {}'.format(filename))
         this_payload = {'metadata': self._run_meta,
                         'filename': filename,
                        }
@@ -188,7 +201,7 @@ class MantisAcquisitionInterface(DAQProvider, core.Spime):
                  lf_lo_endpoint_name=None,
                  hf_lo_freq=24.2e9,
                  analysis_bandwidth=50e6,
-                 filename_prefix='',
+                 #filename_prefix='',
                  **kwargs
                 ):
         '''
@@ -196,13 +209,12 @@ class MantisAcquisitionInterface(DAQProvider, core.Spime):
         lf_lo_endpoint_name (str): endpoint name for the 2nd stage LO
         hf_lo_freq (float): local oscillator frequency [Hz] for the 1st stage (default should be correct)
         analysis_bandwidth (float): total receiver bandwidth [Hz]
-        filename_prefix (str): string which will prefix unique filenames
         '''
         DAQProvider.__init__(self, **kwargs)
         core.Spime.__init__(self, **kwargs)
         self.alert_routing_key = 'daq_requests'
         self.mantis_queue = mantis_queue
-        self.filename_prefix = filename_prefix
+        #self.filename_prefix = filename_prefix
         if lf_lo_endpoint_name is None:
             raise core.exceptions.DriplineValueError('the mantis interface requires a "lf_lo_endpoint_name"')
         self._lf_lo_endpoint_name = lf_lo_endpoint_name
@@ -260,7 +272,7 @@ class MantisAcquisitionInterface(DAQProvider, core.Spime):
         if self.run_id is None:
             raise core.DriplineInternalError('run number is None, must request a run_id assignment prior to starting acquisition')
         filepath = '{directory}/{runN:09d}/{prefix}{runN:09d}_{acqN:09d}.egg'.format(
-                                        directory=self.directory_path,
+                                        directory=self.data_directory_path,
                                         prefix=self.filename_prefix,
                                         runN=self.run_id,
                                         acqN=self._acquisition_count
@@ -319,8 +331,8 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
         # ensure the output format is set to mat
         self.send(["SENS:ACQ:FSAV:FORM MAT;*OPC?"])
         # build strings for output directory and file prefix, then set those
-        file_directory = "\\".join([self.directory_path, '{:09d}'.format(self.run_id)])
-        file_base = "rid{:09d}".format(self.run_id)
+        file_directory = "\\".join([self.data_directory_path, '{:09d}'.format(self.run_id)])
+        file_base = "{}{:09d}".format(self.filename_prefix, self.run_id)
         self.send(['SENS:ACQ:FSAV:LOC "{}"'.format(file_directory),
                    'SENS:ACQ:FSAV:NAME:BASE "{}"'.format(file_base),
                    "*OPC?"
@@ -344,3 +356,7 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
         self.send(['SENS:ACQ:FSAV:ENAB 0'])
         self.send(['TRIG:SEQ:STAT 0;*OPC?'])
         super(RSAAcquisitionInterface, self).end_run()
+
+    def determine_RF_ROI(self):
+        logger.info('trying to determine roi')
+        logger.warning('RSA does not support proper determination of RF ROI yet')
