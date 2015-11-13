@@ -156,7 +156,10 @@ class DAQProvider(core.Provider):
         these_metadata = {}
         for endpoint,element in self._metadata_gets.items():
             result = self.portal.send_request(request=query_msg, target=endpoint)
-            these_metadata[endpoint] = result.payload[element]
+            try:
+                these_metadata[endpoint] = result.payload[element]
+            except:
+                raise core.exceptions.DriplineValueError('unable to get a value for <{}>'.format(endpoint))
         self._run_meta.update(these_metadata)
         self.determine_RF_ROI()
 
