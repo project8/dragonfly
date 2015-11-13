@@ -24,6 +24,8 @@ class DAQProvider(core.Provider):
                  daq_name=None,
                  run_table_endpoint=None,
                  directory_path=None,
+                 data_directory_path=None,
+                 meta_data_directory_path=None,
                  filename_prefix='',
                  ensure_sets={},
                  ensure_locked=[],
@@ -49,10 +51,17 @@ class DAQProvider(core.Provider):
             raise core.exceptions.DriplineValueError('<{}> instance <{}> requires a value for "{}" to initialize'.format(self.__class__.__name__, self.name, 'run_table_endpoint'))
         else:
             self.run_table_endpoint = run_table_endpoint
-        if directory_path is None:
-            raise core.exceptions.DriplineValueError('<{}> instance <{}> requires a value for "{}" to initialize'.format(self.__class__.__name__, self.name, 'directory_path'))
-        else:
-            self.directory_path = directory_path
+        
+        # deal with directory structures
+        if (directory_path is None) and (data_directory_path is None) and (meta_data_directory_path is None):
+            raise core.exceptions.DriplineValueError('<{}> instance <{}> requires a value for "{}" to initialize'.format(self.__class__.__name__, self.name, '[meta_[data_]]directory_path'))
+        if (data_directory_path is None) and (directory_path is not None):
+            data_directory_path = directory_path
+        if (meta_data_directory_path is None) and (directory_path is not None):
+            meta_data_directory_path = directory_path
+        #self.directory_path = directory_path
+        self.data_directory_path = data_directory_path
+        self.meta_data_directory_path = meta_data_directory_path
         
         self._ensure_sets = ensure_sets
         self._ensure_locked = ensure_locked
@@ -159,11 +168,12 @@ class DAQProvider(core.Provider):
         '''
         logger.info('metadata should broadcast')
         filename = '{directory}/{runN:09d}/{prefix}{runN:09d}_meta.json'.format(
-                                                        directory=self.directory_path,
+                                                        directory=self.meta_data_directory_path,
                                                         prefix=self.filename_prefix,
                                                         runN=self.run_id,
                                                         acqN=self._acquisition_count
                                                                                )
+        logger.warning('should request metadatafile: {}'.format(filename))
         this_payload = {'metadata': self._run_meta,
                         'filename': filename,
                        }
@@ -262,7 +272,7 @@ class MantisAcquisitionInterface(DAQProvider, core.Spime):
         if self.run_id is None:
             raise core.DriplineInternalError('run number is None, must request a run_id assignment prior to starting acquisition')
         filepath = '{directory}/{runN:09d}/{prefix}{runN:09d}_{acqN:09d}.egg'.format(
-                                        directory=self.directory_path,
+                                        directory=self.data_directory_path,
                                         prefix=self.filename_prefix,
                                         runN=self.run_id,
                                         acqN=self._acquisition_count
@@ -321,7 +331,7 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
         # ensure the output format is set to mat
         self.send(["SENS:ACQ:FSAV:FORM MAT;*OPC?"])
         # build strings for output directory and file prefix, then set those
-        file_directory = "\\".join([self.directory_path, '{:09d}'.format(self.run_id)])
+        file_directory = "\\".join([self.data_directory_path, '{:09d}'.format(self.run_id)])
         file_base = "{}{:09d}".format(self.filename_prefix, self.run_id)
         self.send(['SENS:ACQ:FSAV:LOC "{}"'.format(file_directory),
                    'SENS:ACQ:FSAV:NAME:BASE "{}"'.format(file_base),
