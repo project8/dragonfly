@@ -153,9 +153,12 @@ class DAQProvider(core.Provider):
     def _do_prerun_gets(self):
         logger.info('doing prerun meta-data gets')
         query_msg = core.RequestMessage(msgop=core.OP_GET)
+        #### the following line should go away once everything is upgraded to dragonfly
+        query_msg['payload'] = {}
         these_metadata = {}
         for endpoint,element in self._metadata_gets.items():
             result = self.portal.send_request(request=query_msg, target=endpoint)
+            logger.debug('endpoint get is:\n'.format(str(result)))
             try:
                 these_metadata[endpoint] = result.payload[element]
             except:
@@ -176,7 +179,7 @@ class DAQProvider(core.Provider):
                                                         runN=self.run_id,
                                                         acqN=self._acquisition_count
                                                                                )
-        logger.warning('should request metadatafile: {}'.format(filename))
+        logger.debug('should request metadatafile: {}'.format(filename))
         this_payload = {'metadata': self._run_meta,
                         'filename': filename,
                        }
@@ -262,9 +265,9 @@ class MantisAcquisitionInterface(DAQProvider, core.Spime):
             logger.error('meta are:\n{}'.format(self._run_meta))
             raise core.exceptions.DriplineInternalError('the lf_lo_endpoint_name must be configured in the metadata_gets field')
         lf_lo_freq = self._run_meta.pop(self._lf_lo_endpoint_name)
-        self._run_meta['RF_ROI_MIN'] = lf_lo_freq + self._hf_lo_freq
+        self._run_meta['RF_ROI_MIN'] = float(lf_lo_freq) + float(self._hf_lo_freq)
         logger.debug('RF Min: {}'.format(self._run_meta['RF_ROI_MIN']))
-        self._run_meta['RF_ROI_MAX'] = self._analysis_bandwidth + lf_lo_freq + self._hf_lo_freq
+        self._run_meta['RF_ROI_MAX'] = float(self._analysis_bandwidth) + float(lf_lo_freq) + float(self._hf_lo_freq)
         logger.debug('RF Max: {}'.format(self._run_meta['RF_ROI_MAX']))
 
     def on_get(self):

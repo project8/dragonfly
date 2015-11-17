@@ -44,7 +44,7 @@ class MessageMonitor(object):
     def __call__(self, kwargs):
         monitor = Monitor(
                           payload_only=kwargs.payload_only,
-                          amqp_url = kwargs.broker,
+                          broker = kwargs.broker,
                           exchange = kwargs.exchange,
                           keys = kwargs.keys,
                          )
