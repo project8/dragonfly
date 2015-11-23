@@ -24,6 +24,7 @@ pika==0.9.14
 psycopg2==2.6.1
 ptyprocess==0.5
 pytz==2015.7
+requests==2.8.1
 simplegeneric==0.8.1
 six==1.10.0
 slackclient==0.16
