@@ -76,7 +76,9 @@ class EthernetProvider(Provider):
                 all_data.append(data)
         finally:
             self.alock.release()
-        return ';'.join(all_data)
+        to_return = ';'.join(all_data)
+        logger.debug('should return:\n{}'.format(to_return))
+        return to_return
 
     def get(self):
         data = ""
