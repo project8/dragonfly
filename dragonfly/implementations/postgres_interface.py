@@ -5,6 +5,7 @@ Note: services using this module will require sqlalchemy (and assuming we're sti
 '''
 
 from __future__ import absolute_import
+__all__ = []
 
 # std libraries
 import json
@@ -27,7 +28,6 @@ import logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
-__all__ = []
 
 @fancy_doc
 class PostgreSQLInterface(Provider):

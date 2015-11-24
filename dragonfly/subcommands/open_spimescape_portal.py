@@ -5,6 +5,8 @@ Script to replace start_node using the spimescape abstraction upgrades
 
 from __future__ import print_function
 
+import imp
+
 import dripline
 
 from .. import implementations
@@ -34,7 +36,16 @@ class Serve(object):
             module = dripline.core.Service
         else:
             module = this_config.pop('module')
-            if hasattr(implementations, module):
+            module_path = this_config.pop('module_path', False)
+            extra_namespace = object()
+            if module_path:
+                try:
+                    extra_namespace = imp.load_source('extra_namespace', module_path)
+                except IOError:
+                    logger.warning('unable to load source from: {}'.format(module_path))
+            if hasattr(extra_namespace, module):
+                this_child = getattr(extra_namespace, module)(**conf_dict)
+            elif hasattr(implementations, module):
                 module = getattr(implementations, module)
             elif hasattr(dripline.core, module):
                 module = getattr(dripline.core, module)
@@ -61,8 +72,17 @@ class Serve(object):
     def create_child(self, service, conf_dict):
         module = conf_dict.pop('module')
         child_confs = conf_dict.pop('endpoints', [])
+        module_path = conf_dict.pop('module_path', False)
+        extra_namespace = object()
+        if module_path:
+            try:
+                extra_namespace = imp.load_source('extra_namespace', module_path)
+            except IOError:
+                logger.warning('unable to load source from: {}'.format(module_path))
         logger.info('creating a <{}> with args:\n{}'.format(module, conf_dict))
-        if hasattr(implementations, module):
+        if hasattr(extra_namespace, module):
+            this_child = getattr(extra_namespace, module)(**conf_dict)
+        elif hasattr(implementations, module):
             this_child = getattr(implementations, module)(**conf_dict)
         elif hasattr(dripline.core, module):
             this_child = getattr(dripline.core, module)(**conf_dict)
