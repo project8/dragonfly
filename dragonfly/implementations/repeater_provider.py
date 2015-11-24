@@ -18,13 +18,15 @@ class RepeaterProvider(Provider):
     def __init__(self,
                  repeat_target,
                  broker,
+                 timeout=10,
                  **kwargs):
         Provider.__init__(self, **kwargs)
+        self._timeout = timeout
         self._repeat_target = repeat_target
         self._broker_info = broker
 
     def send_request(self, target, request):
-        result = self.portal.send_request(self._repeat_target, request)
+        result = self.portal.send_request(self._repeat_target, request, timeout=self._timeout)
         if not 'retcode' in result:
             raise core.exceptions.DriplineInternalError('no return code in reply')
         if not result.retcode == 0:
