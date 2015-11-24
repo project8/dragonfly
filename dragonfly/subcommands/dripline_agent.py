@@ -45,6 +45,9 @@ class GenericAgent(object):
         request = message.RequestMessage(msgop=msgop, payload=payload, lockout_key=args.lockout_key)
         try:
             reply = conn.send_request(args.target, request, timeout=args.timeout)
+        except exceptions.DriplineAMQPConnectionError as dripline_error:
+            logger.warning('{}; did you pass in a broker with "-b" or "--broker"?'.format(dripline_error.message))
+            return
         except exceptions.DriplineException as dripline_error:
             logger.warning(dripline_error.message)
             return
