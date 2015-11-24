@@ -14,8 +14,10 @@ import types
 # 3rd party libraries
 try:
     import sqlalchemy
+    __all__.append('PostgreSQLInterface')
+    __all__.append("SQLTable")
 except ImportError:
-    print('warning sqlalchmy not found, database support will not be available')
+    pass
 
 # local imports
 from dripline.core import Provider, Endpoint, fancy_doc
@@ -27,7 +29,6 @@ logger.setLevel(logging.DEBUG)
 
 __all__ = []
 
-__all__.append('PostgreSQLInterface')
 @fancy_doc
 class PostgreSQLInterface(Provider):
     '''
@@ -60,7 +61,6 @@ class PostgreSQLInterface(Provider):
             endpoint.table = sqlalchemy.Table(endpoint.table_name, self.meta, autoload=True, schema=endpoint.schema)
 
 
-__all__.append("SQLTable")
 @fancy_doc
 class SQLTable(Endpoint):
     '''

@@ -14,9 +14,9 @@ import types
 # 3rd party libraries
 try:
     import sqlalchemy
+    __all__.append('RunDBInterface')
 except ImportError:
-    print('warning sqlalchmy not found, database support will not be available')
-####### the above import really does go here, there should probably be some plugin infrastructure or something to deal with this as an optional feature, for now I'll import elsewhere
+    pass
 
 # local imports
 from dripline.core import Provider, Endpoint#, fancy_init_doc
@@ -28,7 +28,6 @@ logger.setLevel(logging.DEBUG)
 
 __all__ = []
 
-__all__.append('RunDBInterface')
 class RunDBInterface(Provider):
     '''
     A not-so-flexible provider for getting run_id values.
