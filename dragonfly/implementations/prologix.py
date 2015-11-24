@@ -61,7 +61,7 @@ class GPIBInstrument(Provider):
         to_send = ['++addr {}\r'.format(self.addr)] + cmd
         result = self.provider.send(to_send)
         logger.debug('raw result:\n{}'.format(result))
-        result = ';'.join(result.split(';')[1:])
+        result = ';'.join(result[0].split(';')[1:])
         logger.debug("instr got back: {}".format(result))
         return result
 
