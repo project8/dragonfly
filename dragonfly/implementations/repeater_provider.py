@@ -35,6 +35,8 @@ class RepeaterProvider(Provider):
         return result.payload
 
     def send(self, to_send):
+        if isinstance(to_send, str):
+            to_send = [to_send]
         to_send = {'values':to_send}
         logger.debug('trying to send: {}'.format(to_send))
         request = message.RequestMessage(msgop=constants.OP_SEND,
