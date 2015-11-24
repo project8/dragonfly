@@ -58,7 +58,7 @@ class GenericAgent(object):
         if not result.retcode == 0:
             color = '\033[91m'
         print('{color}{}(ret:{}): {}\033[0m'.format(print_prefix, result.retcode, result.payload, color=color))
-        if result.return_msg is not '':
+        if result.return_msg:
             logger.log(25, 'return message: {}'.format(result.return_msg))
     
     @staticmethod
@@ -135,5 +135,11 @@ class Cmd(GenericAgent):
     '''
     name = 'cmd'
 
+class Send(GenericAgent):
+    '''
+    have an endpoint (which is probably also a provider) execute a send
+    '''
+    name = 'send'
 
-__all__ += ['Get', 'Set', 'Config', 'Run', 'Cmd']
+
+__all__ += ['Get', 'Set', 'Config', 'Run', 'Cmd', 'Send']
