@@ -60,6 +60,7 @@ class EthernetProvider(Provider):
         '''
         this issues commands
         '''
+        logger.warning('cmds are:\n{}'.format(commands))
         if isinstance(commands, types.StringType):
             commands = [commands]
         all_data = []
