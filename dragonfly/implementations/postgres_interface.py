@@ -11,6 +11,7 @@ __all__ = []
 import json
 import os
 import types
+import traceback
 
 # 3rd party libraries
 try:
@@ -34,7 +35,7 @@ class PostgreSQLInterface(Provider):
     '''
     A not-so-flexible provider for getting run_id values.
     '''
-    
+
     def __init__(self, database_name, database_server, **kwargs):
         '''
         database_name (str): name of the database to connect to
@@ -130,8 +131,9 @@ class SQLTable(Endpoint):
             if str(err).startswith('(psycopg2.IntegrityError)'):
                 raise DriplineDatabaseError(str(err))
             else:
-                logger.warning('unknown error while working with sql')
-                raise
+                logger.critical('received an unexpected SQL error while trying to insert:\n{}'.format(str(ins) % insert_kv_dict))
+                logger.info('traceback is:\n{}'.format(traceback.format_exc()))
+                return
         return dict(zip(return_col_names_list, return_values))
 
     def do_insert(self, *args, **kwargs):
