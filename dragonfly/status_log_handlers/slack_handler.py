@@ -25,21 +25,23 @@ class SlackHandler(logging.Handler):
     def __init__(self, *args, **kwargs):
         logging.Handler.__init__(self, *args, **kwargs)
         self.setLevel(logging.CRITICAL)
+        this_home = os.path.expanduser('~')
+        slack = {}
         try:
-            this_home = os.path.expanduser('~')
-            try:
-                slack = json.loads(open(this_home+'/.project8_authentications.json').read())['slack']
-            except:
-                logger.warning('unable to parse authentication file')
-            if 'dripline' in slack:
-                token = slack['dripline']
-            else:
-                token = slack['token']
+            slack = json.loads(open(this_home+'/.project8_authentications.json').read())['slack']
+        except: 
+            print('either unable to read ~/.project8_authentications.json or no slack field configured')
+            #logger.warning('unable to parse authentication file')
+        token = None
+        if 'dripline' in slack:
+            token = slack['dripline']
+        elif 'token' in slack:
+            token = slack['token']
+        if token:
             self.slackclient = slackclient.SlackClient(token)
-        except ImportError as err:
-            if 'slackclient' in str(err):
-                logger.warning('The slackclient package (available in pip) is required for using the slack handler')
-            raise
+        else:
+            self.slackclient = None
+            print('\nWarning! unable to find slack credentials in <~/.project8_authentications.p8>\n')
     
     def update_parser(self, parser):
         parser.add_argument('--'+self.argparse_flag_str,
@@ -60,4 +62,5 @@ class SlackHandler(logging.Handler):
         print('supposed to do an emit')
         this_channel = '#p8_alerts'
         #this_channel = '#bot_integration_test'
-        self.slackclient.api_call('chat.postMessage', channel=this_channel, text=record.msg, username='dripline', as_user='true')
+        if self.slackclient is not None:
+            self.slackclient.api_call('chat.postMessage', channel=this_channel, text=record.msg, username='dripline', as_user='true')

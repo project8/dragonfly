@@ -93,9 +93,13 @@ class DriplineParser(argparse.ArgumentParser):
         self.add_dragonfly_subcommands()
 
     def add_dragonfly_handlers(self):
-        for a_handler in [getattr(dragonfly.status_log_handlers, h)() for h in dragonfly.status_log_handlers.__all__]:
-            a_handler.update_parser(self.base_parser)
-            self._handlers[a_handler.argparse_flag_str] = a_handler
+        for handler_class in [getattr(dragonfly.status_log_handlers, h) for h in dragonfly.status_log_handlers.__all__]:
+            try:
+                a_handler = handler_class()
+                a_handler.update_parser(self.base_parser)
+                self._handlers[a_handler.argparse_flag_str] = a_handler
+            except:
+                print('\nunable to create an instance of <{}>\n'.format(handler_class))
     
     def add_dragonfly_subcommands(self):
         # add the subcommands
