@@ -21,7 +21,7 @@ class SlackHandler(logging.Handler):
     '''
     A custom handler for sending messages to slack
     '''
-    argparse_flag_str = 'slack'
+    argparse_flag_str = 'no-slack'
     def __init__(self, *args, **kwargs):
         logging.Handler.__init__(self, *args, **kwargs)
         self.setLevel(logging.CRITICAL)
@@ -45,7 +45,7 @@ class SlackHandler(logging.Handler):
     
     def update_parser(self, parser):
         parser.add_argument('--'+self.argparse_flag_str,
-                            action='store_true',
+                            action='store_false',
                             help='enable a status log handler to post critical messages to slack',
                            )
 
