@@ -347,11 +347,10 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
         # Set the maximum number of events (note that the default is 10k)
         self.send(['SENS:ACQ:FSAV:FILE:MAX {:d};*OPC?'.format(self.max_nb_files)])
         # try to force external reference
-        ext_ref_error = self.send(['SENS:ROSC:SOUR EXT;*OPC?'])
-        if int(ext_ref_error) == 2028:
-            raise dripline.core.exceptions.DriplineHardwareConnectionError('External frequency reference signal is not valid.')
-        elif int(ext_ref_error) == 2029:
-            raise dripline.core.exceptions.DriplineHardwareConnectionError('Unable to lock to external frequency reference.')
+        self.send(['SENS:ROSC:SOUR EXT;*OPC?'])
+        the_ref = self.send(['SENS:ROSC:SOUR?'])
+        if the_ref != 'EXT':
+            raise dripline.core.exceptions.DriplineHardwareError('RSA external ref found to be <{}> (!="EXT")'.format(the_ref))
         # ensure in triggered mode
         self.send(['TRIG:SEQ:STAT 1;*OPC?'])
         # actually start to FastSave
