@@ -46,7 +46,7 @@ class SlackHandler(logging.Handler):
     def update_parser(self, parser):
         parser.add_argument('--'+self.argparse_flag_str,
                             action='store_false',
-                            help='enable a status log handler to post critical messages to slack',
+                            help='disable the status log handler to post critical messages to slack',
                            )
 
     def setLevel(self, level):
