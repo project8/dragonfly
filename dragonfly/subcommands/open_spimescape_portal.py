@@ -68,6 +68,13 @@ class Serve(object):
                 if thread.name.startswith('logger_'):
                     logger.info('canceling a thread named: {}'.format(thread.name))
                     thread.cancel()
+        except Exception as this_exception:
+            this_service_name = ''
+            try:
+                this_service_name = str(service.name)
+            except:
+                pass
+            logger.critical('service <{}> crashing due to unexpected error:\n{}'.format(this_service_name, this_exception))
 
     def create_child(self, service, conf_dict):
         module = conf_dict.pop('module')
