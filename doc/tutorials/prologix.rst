@@ -84,7 +84,7 @@ They follow the same pattern as the last two.
     :emphasize-lines: 11-20
 
 And there we have it, a configuration to let us remind ourselves just what the pulser is, and set how long the pulses last.
-To start it we use the :ref:`open_spimescape_portal` utility script, if everything works, it should look something like:
+To start it we use the ``dragonfly serve`` subcommand, if everything works, it should look something like:
 
 .. literalinclude:: open_portal_output.log
     :language: bash
@@ -93,7 +93,7 @@ You can then open another terminal and interact with your endpoints:
 
 .. code-block:: bash
 
-    $ dripline_agent -b myrna.local get tickler_pulse_width
+    $ dragonfly get tickler_pulse_width -b <amqp.broker.url>
     tickler_pulse_width: 1.00000E-3
 
 

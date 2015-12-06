@@ -1,4 +1,4 @@
-$ open_spimescape_portal -c /path/to/prologix_example.yaml
+$ dragonfly serve -c /path/to/prologix_example.yaml
 
 2015-01-08T17:00:28Z[32m[INFO    ] portal(45) -> [35margs parsed, reading config[0m
 2015-01-08T17:00:28Z[32m[INFO    ] portal(47) -> [35mconfig parsed[0m

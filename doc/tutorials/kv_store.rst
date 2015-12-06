@@ -1,20 +1,20 @@
+***********************************
 A Dragonfly powered key-value store
 ***********************************
 As an exploration of the dripline protocol and how to use it with the dragonfly
 package, let's create and work with a simple example. We will create a simple key-value
 store, which simply records a set of values, which can be accessed by name.
-This is certainly a bit contrived, but allows us to explore the interactions
-common in a dripline-based system, without needing physical instrument. For this
-reason, the kv_store is very commonly used in testing newly implemented features
-when developing new features.
+This is certainly a bit contrived, but it allows us to explore the interactions
+common in a dripline-based system without needing a physical instrument. For this
+reason, the kv_store is very commonly used in testing newly implemented features.
 
 This tutorial is mostly meant as a quick exploration of the commandline tools
 in dragonfly. There will be other tutorials covering specific tasks in more detail including writing new config files or creating new endpoints and providers.
 
 .. todo:: create a developing extension classes tutorial and link it
 
-Getting Started
----------------
+Getting Started (from scratch)
+------------------------------
 There are two steps here, installing/starting an AMQP server is required if you are
 doing local development, independent of a running system. It is certainly possible
 to work with an existing server, but for development you are encouraged to work
@@ -22,18 +22,18 @@ locally, both to ease debugging and to avoid breaking "production" components.
 
 AMQP Broker (RabbitMQ)
 ======================
-For detailed instructions, you should visit `the official website <https://www.rabbitmq.com/download.html>`_ for and read the section for your operating system.
-In the case of debian it is a simple as:
+For detailed instructions, you should visit `the official website <https://www.rabbitmq.com/download.html>`_
+and check the section for your operating system. In the case of debian it is a simple as:
 
-.. code-block:: bash
+.. code-block:: sh
 
     sudo apt-get install rabbitmq server
     sudo rabbitmq-server start
 
 Dragonfly works with a vanilla installation of rabbitmq, though there exists support
-for user authentication which is required if deploying a system across multiple
-computers (ie in any realistic production system). For our simple example, no
-further steps are required.
+for user authentication. Users are required if deploying a system across multiple
+computers (ie in any realistic production system). For this example we're going to just
+work locally and save that for later.
 
 Dragonfly Installation
 ======================
@@ -48,12 +48,13 @@ simple instructions for installation. You can find more detailed instructions in
 
 What's in a config file?
 ------------------------
-The configuration file for our key-value store is provide in the ``examples/`` directory.
-In this section we'll review the contents of that file and how one might go about writing
-one from scratch. Feel free to skip this section and come back later if you are currently
-working with a running system and not interested in new config files yet.
+The configuration file for our key-value store is named ``kv_store_tutorial.yaml`` and can
+be found in the ``examples/`` directory. In this section we'll review the contents of 
+that file and how one might go about writing one from scratch. Feel free to skip this
+section and come back later if you are currently working with a running system and not
+interested in new config files yet.
 
-Just to get started, let's look at the full config file for the kv_store.
+Just to get started, let's look at the full configuration file for the key-value store.
 
 .. literalinclude:: ../../examples/kv_store_tutorial.yaml
     :language: yaml
@@ -88,7 +89,7 @@ available for a ``kv_store_key`` instance, you would use the following two lines
 
 Which would open your shell's pager with output that starts like the following:
 
-.. code-block:: shell
+.. code-block:: sh
 
     Help on class kv_store_key in module abc:
     
@@ -106,6 +107,7 @@ Which would open your shell's pager with output that starts like the following:
     |      alert_routing_key (str): routing key for the alert message send when broadcasting a logging event result. The default value of 'sensor_value' is valid for DataLoggers which represent physical quantities being stored to the slow controls database tables
     |  
 
+
 Running it all
 --------------
 
@@ -113,9 +115,9 @@ To run and interact with our service, we will make use of various subcommands of
 the ``dragonfly`` program. It has a fairly complete commandline help for both
 the base command and the various subcommands, all accessible using the ``-h`` flag.
 
-So to get a listing of the available subcommands, we'll run ``dragonfly -h`` and see:
+So to get a listing of the available subcommands, we will run ``dragonfly -h`` and see:
 
-.. code-block:: bash
+.. code-block:: sh
 
     usage: dragonfly [-h] {get,set,config,run,cmd,send,monitor,serve,watchdog} ...
 
@@ -143,14 +145,16 @@ So to get a listing of the available subcommands, we'll run ``dragonfly -h`` and
                         provided config file (formerly open_spimescape_portal)
     watchdog            utility for making sure some data is always showing up
 
--------
 
-To start, we'll use the monitor. It binds to the AMQP exchange with a configurable
+Running the monitor
+===================
+
+To start, we will use the monitor. It binds to the AMQP exchange with a configurable
 binding key, and prints all messages received. This is especially useful when debugging
 to see if messages are being sent or to check intermediate steps. We can
 review the usage and options with ``dragonfly monitor -h``:
 
-.. code-block:: bash
+.. code-block:: sh
 
     usage: dragonfly monitor [-h] [-v] [-V] [-b [BROKER]] [-c CONFIG] [-t [TMUX]]
                              [--no-slack] [-e exchange name]
@@ -179,8 +183,8 @@ review the usage and options with ``dragonfly monitor -h``:
       -po, --payload-only   Print only the message.payload
 
 The ``-po`` flag is interesting, is displays a much less verbose version of all messages,
-so we'll use that for now, along with ``-e`` to specify the "requests" exchange. By
-default the "alerts" exchange is used. We don't need to specify a key with ``-k``
+so we will use that for now, along with ``-e`` to specify the "requests" exchange. By
+default the "alerts" exchange is used. We do not need to specify a key with ``-k``
 because the default is the all keys wildcard.
 
 Open up either a new terminal or tmux pane (and activate your virtual environment in it)
@@ -189,12 +193,15 @@ will see a few initial messages as it starts up, then it will sit blocking the t
 while waiting for new messages to be printed (the ``-v`` may be omitted, but the
 less will be printed and it can sometimes be hard to tell if it is running).
 
---------
+
+Starting the Key-Value service
+==============================
 
 Next, we will start our key-value store service, first reminding ourselves of the
-command's usage:
+command usage:
 
-.. code-block:: bash
+.. code-block:: sh
+
     usage: dragonfly serve [-h] [-v] [-V] [-b [BROKER]] [-c CONFIG] [-t [TMUX]]
                            [--no-slack] [-k BINDING_KEYS]
     
@@ -219,23 +226,29 @@ command's usage:
 
 So moving to another terminal or tmux pane (again with our virtual environment active),
 we start the service with ``dragonfly serve -c examples/kv_store_tutorial.yaml -v``.
-Again, we'll see some messages as it starts up, and can omit ``-v`` to silence output
+Again, we will see some messages as it starts up, and can omit ``-v`` to silence output
 or add ``-vv`` to have extremely verbose output of what our service is doing.
 
-----------
 
-Great, so now we have a running dripline service, started with dragonfly. Let's say
-we want to see the current value of the "peaches" endpoint, we'll use the "get" subcommand.
-You should know how to check the syntax by now, the result is ``dragonfly get peaches``
+Queries to the service
+======================
+
+Great, so now we have a running dripline service, started with dragonfly. What if
+we want to see the current value of the "peaches" endpoint? We use the "get" subcommand.
+You should know how to check the syntax by now, the answer is ``dragonfly get peaches``
 and should return something that looks like the following:
 
-.. code-block:: bash
+.. code-block:: sh
 
     peaches(ret:0): {u'value_cal': 1.5, u'value_raw': u'0.75'}
 
-And the monitor should display something like:
+So we see the raw and calibrated values. The monitor should display something like the following
+two messages. The first is our "get" request, and the second is the reply sent back to it.
+In the case of the key-value store, the expectation is two similar messages for any request
+we may send. In more complicated instrument interactions there could be several because
+one endpoint may need to make its own requests to other endpoints in order to properly respond.
 
-.. code-block:: bash
+.. code-block:: sh
 
     2015-12-04T17:25:03[Level 35] dragonfly.subcommands.message_monitor(34) -> 
     dripline.core.Service [peaches]     (From App [routing_key])
@@ -274,152 +287,52 @@ And the monitor should display something like:
         }
     }
 
-Deprecated
-**********
-*The following sections are all from the old tutorial. They will be removed as this tutorial becomes more fully flushed out.*
+Seeing logger broadcasts
+========================
+
+Now that we have seen the basic request/reply messages in the monitor, we can turn it off,
+and instead run it bound to the alerts exchange. This is where services broadcast individual
+messages which are not part of a request/reply pair. The syntax is similar, but the default
+"alerts" exchange is what we want, and the ``-po`` option is probably desirable
+(``dragonfly monitor --po``). This will allow us to see any values that our endpoints may broadcast.
+
+For a start, we can change the value of peaches, maybe ``dragonfly set peaches 0.64``
+for a new value. Notice that in the monitor we see the following:
+
+.. code-block:: json
+
+    2015-12-06T09:18:08[Level 35] dragonfly.subcommands.message_monitor(34) ->
+    dripline.core.Service [sensor_value.peaches]     (From App [routing_key])
+    {
+      "value_cal": 1.24,
+      "value_raw": "0.62"
+    }
+
+If we look back to line 14 of the config file, we see that peaches are configured with "log_on_set"
+set to True. This is interesting; it means that whenever the value of peaches gets changed
+the endpoint will broadcast the new value (useful, for example, if another service is listening
+for those broadcasts and storing the endpoint values into a database).
 
 
+Timed logger broadcasts
+=======================
 
-Let's go
---------
-To start with, let's consider the structure of our key-value store.  We
-have a list of some keys that have string names, and each key has a floating
-point value associated with it.  We will consider a list of items at a store,
-each of which has a price in dollars.  It's not a very big store - we only
-have peaches, chips, and waffles.  The prices of these items fluctuates a lot
-due to global waffle demand, and so we want to be able to both ask our system 
-what the current price is, and change the prices as necessary.  
+If our peaches endpoint were not just a store, but represented a measurement (such as a temperature
+sensor for example), then we would not have a "set" to trigger logs when there are new values.
+To deal with this, we can have the log on a timed schedule. By default, when you start a service
+the timed loggers are not started. This is done because one often needs to confirm or alter
+some configurations before the loggers should actually start broadcasting.
 
-The dripline ``kv_store`` provider and ``kv_store_key`` endpoint will give us
-exactly this in a very simple way.  If the current pricelist is something like
+We can use the "set" subcommand to configure a property of an endpoint, in addition to the 
+vaule of the endpoint itself. That syntax is ``dragonfly set peaches.logging_status on``
+(note the '.' delimiter which allows us to specify a property name, and that we provide a value.
 
-* Peaches: 0.75
-* Chips: 1.75
-* Waffles: 4.00
+You should now see a new value broadcast printed in the message monitor every 30 seconds.
+Those should all look the same, since the peaches value is just whatever value is stored,
+but you can use ``dragonfly set peaches 0.45`` (or any other value) and see that the value
+being broadcast changes.
 
-We can write a configuration file for dripline (note, this exact file is in ``
-examples/kv_store_tutorial.yaml``) that looks like this and represents our
-pricelist in a very recognizable way:
+As a convenience, because a single provider often has many endpoints which are loggers,
+all of the endpoints associated with a provider may have their "logging_status" configured at
+once, by sending the "set" command to the provider instead (``dragonfly set my_price_list.logging_status on``).
 
-.. code-block:: yaml
-
-  nodename: my_store
-  broker: localhost
-  providers:
-    - name: my_price_list
-      module: kv_store
-      endpoints:
-        - name: peaches
-          module: kv_store_key
-          initial_value: 0.75
-        - name: chips
-          module: kv_store_key
-          initial_value: 1.75
-        - name: waffles
-          module: kv_store_key
-          initial_value: 4.00
-
-That's it.  The ``nodename`` parameter is simply telling dripline that we want
-our dripline node to be called ``my_store``.  The ``broker`` is telling 
-dripline that there is an AMQP router which is installed on localhost.  
-In the ``providers`` section, we declare a provider named ``my_price_list``, 
-with the ``module`` parameter set to ``kv_store``.  When dripline sees the 
-``module`` parameter, it will look to see what that string value corresponds to
-in terms of the object that it should construct.  In this case, it will 
-construct an object of type ``KVStore`` and give it the name ``my_price_list``.
-The ``endpoints`` of ``my_price_list`` correspond to the prices of each
-individual item.  Each endpoint has a ``name``, which is simply the name of the
-item, and a ``module``, which is identical to the idea of a provider module.
-
-The only new thing here is the ``initial_value`` parameter, which you notice
-is equal in each case to the initial price of the object of the same name
-as the endpoint.  Dripline considers every parameter which isn't called 
-``name`` or ``module`` to be *specific to the object* and passes it along to
-the object for it to do with as it likes.  In this instance, the initializer
-of the ``KVStoreKey`` object looks like this:
-
-.. code-block:: python
-
- def __init__(self, name, initial_value=None):
-        self.name = name
-        self.provider = None
-        self.initial_value = initial_value
-
-Note that initial_value is a keyword argument to the constructor, which sets
-whatever that parameter may be to be the initial value associated with the
-key.  
-
-Interacting with it
--------------------
-OK, enough details.  To fire up our key-value store and start interacting with
-it, we want to start a dripline node which will use our configuration file.
-To do that, we will use :ref:`open_spimescape_portal` located in the bin directory.
-We point it to our configuration file (if you are intrepid enough to make your
-own, point to whatever you created), and fire it up:
-
-.. code-block:: bash
-
-  $ open_spimescape_portal -c examples/kv_store_tutorial.yaml -vvv
-
-Notice the ``-vvv`` which sets the output to its most verbose. For each "v" you
-omit, one logging severity level will be omited. If no ``-v`` option is given,
-normal operation should produce no terminal output. If you do the above, you should
-see output that looks like this:
-
-.. literalinclude:: kv_store_service_startup_output.log
-    :language: bash
-
-This isn't too hard to follow - dripline starts up, connects to the broker
-you told it to, adds a provider and the endpoints, and is ready to go.
-
-Now let's start getting some prices.  We're going to use ``dripline_agent``
-to do this, as it gives us a very easy way to interact with dripline 
-endpoints from the command line.  First of all, let's check the current
-price of peaches:
-
-.. code-block:: bash
-
-    $ dripline_agent -b localhost get peaches
-    2014-09-08 13:45:57,905 - node - INFO - connecting to broker localhost
-    peaches: 0.75
-
-Nice.  So the current price of peaches in our store is 0.75.  What about
-waffles?
-
-.. code-block:: bash
-
-    $ dripline_agent -b localhost get waffles
-    2014-09-08 13:52:26,597 - node - INFO - connecting to broker localhost
-    waffles: 4.0
-
-If you have another computer on your local network (or any network that can see
-your amqp broker) then you can do the same thing from there:
-
-.. code-block:: bash
-   
-    (on_amqp_server) $ dripline_agent -vvv get waffles
-    2015-01-15T13:00:30Z[INFO    ] dripline.core.node(22) -> connecting to broker None
-    waffles: 4.0
-    
-    (on_some_other_server) $ dripline_agent -b <amqp.broker.server.address> get peaches
-    peaches: 0.75
-
-Note again that the ``-v`` option can be given to increase the output verbosity.
-
-Now let's say that there's been a global rush on chips and the price we
-have to charge has skyrocketed from 1.75 to 1.79.  We can use 
-``dripline_agent`` to set the new value:
-
-.. code-block:: bash
-
-  $ dripline_agent -b localhost get chips
-  2014-09-08 13:53:57,432 - node - INFO - connecting to broker localhost
-  chips: 1.75
-  
-  $ dripline_agent -b localhost set chips 1.79
-  2014-09-08 13:53:38,545 - node - INFO - connecting to broker localhost
-  chips->1.79: complete
-  
-  $ dripline_agent -b localhost get chips
-  2014-09-08 13:53:59,768 - node - INFO - connecting to broker localhost
-  chips: 1.79
