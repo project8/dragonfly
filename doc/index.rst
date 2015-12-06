@@ -1,10 +1,10 @@
-.. dripline documentation master file, created by
+.. dragonfly documentation master file, created by
    sphinx-quickstart on Mon Aug 25 15:26:40 2014.
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to dripline's documentation!
-====================================
+Welcome to dragonfly's documentation!
+=====================================
 
 Contents:
 
@@ -13,6 +13,7 @@ Contents:
     
     introduction
     getting_started
+    tutorials/tutorials
 
 These docs have fallen way behind. Sections following this text block may not have yet been reviewed and updated.
 
@@ -21,7 +22,6 @@ These docs have fallen way behind. Sections following this text block may not ha
     :maxdepth: 2
 
     contribute
-    tutorials/tutorials
     cli_tools
 
 .. todolist:: 

@@ -34,12 +34,11 @@ It is responsible for connecting to AMQP and dealing with communcation.
 The service must be configured with a name, a network path to the amqp server, and a list of providers for which it is responsible (this last one comes in the next section).
 
 We create a new configuration file and add that content, it should look like this:
-(!!! I should be able to actually just ref line numbers in the source, rather than duplicate them in the rst...)
 
 .. literalinclude:: ../../examples/prologix_lecroy.yaml
     :language: yaml
-    :lines: 1-2
-    :emphasize-lines: 1-2
+    :lines: 1-3
+    :emphasize-lines: 1-3
 
 Here I've named the service prologix_tutorial, since that's what we're doing.
 I've set broker to localhost, this implies that there is an amqp server running on my local system.
@@ -51,8 +50,8 @@ We therefore add a (one element long) list of providers to the above servce, wit
 
 .. literalinclude:: ../../examples/prologix_lecroy.yaml
     :language: yaml
-    :lines: 1-6
-    :emphasize-lines: 3-6
+    :lines: 1-7
+    :emphasize-lines: 4-7
 
 Note that in addition to a name, I've assigned configuration values for module and socket_info.
 The module is the name of a class within dripline.instrument (that should be linked) which our service will create.
@@ -66,8 +65,8 @@ That now looks like:
 
 .. literalinclude:: ../../examples/prologix_lecroy.yaml
     :language: yaml
-    :lines: 1-10
-    :emphasize-lines: 7-10
+    :lines: 1-11
+    :emphasize-lines: 8-11
 
 Hopefully the pattern is starting to be clear.
 There is a name assigned to the instrument, and a module which is another class in dripline.instrument.
@@ -80,8 +79,8 @@ They follow the same pattern as the last two.
 
 .. literalinclude:: ../../examples/prologix_lecroy.yaml
     :language: yaml
-    :lines: 1-20
-    :emphasize-lines: 11-20
+    :lines: 1-21
+    :emphasize-lines: 12-21
 
 And there we have it, a configuration to let us remind ourselves just what the pulser is, and set how long the pulses last.
 To start it we use the ``dragonfly serve`` subcommand, if everything works, it should look something like:
@@ -93,7 +92,7 @@ You can then open another terminal and interact with your endpoints:
 
 .. code-block:: bash
 
-    $ dragonfly get tickler_pulse_width -b <amqp.broker.url>
+    $ dragonfly get tickler_pulse_width
     tickler_pulse_width: 1.00000E-3
 
 
