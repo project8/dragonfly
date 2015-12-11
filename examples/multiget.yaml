@@ -1,0 +1,17 @@
+name: multiget_test
+broker: localhost
+module: Spimescape
+endpoints:
+  - name: store_state
+    module: MultiGet
+    targets:
+        peaches:
+            payload_field: value_cal
+            units: "$"
+        waffles:
+            payload_field: value_raw
+            formatter: 'waffles will go for {} Euro'
+        cpu1_temp:
+            payload_field: value_raw
+        tofu:
+            payload_field: value_cal

@@ -27,7 +27,7 @@ fully qualified hierarchical address e.g. somenode.kv.foo.
 from __future__ import absolute_import
 import logging
 
-from dripline.core import Provider, Spime, calibrate
+from dripline.core import Provider, Spime, calibrate, fancy_doc
 
 __all__ = ['kv_store', 'kv_store_key']
 
@@ -64,6 +64,7 @@ class kv_store(Provider):
         logger.info('asked to send:\n{}'.format(to_send))
 
 
+@fancy_doc
 class kv_store_key(Spime):
     """
     A key in the KV store.
