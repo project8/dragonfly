@@ -2,9 +2,6 @@ name: multiget_test
 broker: localhost
 module: Spimescape
 endpoints:
-  - name: corn
-    module: kv_store_key
-    initial_value: 1.00
   - name: store_state
     module: MultiGet
     targets:
@@ -13,9 +10,8 @@ endpoints:
             units: "$"
         waffles:
             payload_field: value_raw
-            units: "GBP"
+            formatter: 'waffles will go for {} Euro'
         cpu1_temp:
             payload_field: value_raw
-#        chips:
-#            payload_field: value_cal
-#            units: "$"
+        tofu:
+            payload_field: value_cal
