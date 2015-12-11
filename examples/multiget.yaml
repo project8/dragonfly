@@ -5,13 +5,14 @@ endpoints:
   - name: store_state
     module: MultiGet
     targets:
-        peaches:
-            payload_field: value_cal
-            units: "$"
-        waffles:
-            payload_field: value_raw
-            formatter: 'waffles will go for {} Euro'
-        cpu1_temp:
-            payload_field: value_raw
-        tofu:
-            payload_field: value_cal
+      - target: peaches
+        payload_field: value_cal
+        units: "$"
+      - target: waffles
+        payload_field: value_raw
+        formatter: 'waffles will go for {} Euro'
+      - target: cpu1_temp
+        payload_field: value_raw
+      - target: tofu
+        payload_field: value_cal
+        formatter: ''
