@@ -49,7 +49,7 @@ class MultiGet(dripline.core.Endpoint):
             a_val,a_rep = self._single_get(a_target)
             result_vals[a_target] = a_val
             result_reps.append(a_rep)
-        return {'value_raw': result_vals, 'value_cal': result_reps}
+        return {'value_raw': result_vals, 'value_cal': '\n'.join(result_reps)}
 
     def _single_get(self, endpoint_name):
         '''
@@ -62,7 +62,7 @@ class MultiGet(dripline.core.Endpoint):
             ret_val = None
             ret_rep = '{} -> returned error <{}>:{}'.format(endpoint_name, a_result.retcode, a_result.return_msg)
         else:
-            ret_val = a_result.payload[get_details['payload_field']]
+            ret_val = a_result.payload[self._targets[endpoint_name]['payload_field']]
             ret_rep = self._targets[endpoint_name]['formatter'].format(ret_val)
         
         return ret_val,ret_rep
