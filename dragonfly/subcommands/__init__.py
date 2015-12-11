@@ -2,6 +2,9 @@ from __future__ import absolute_import
 
 __all__ = []
 
+from .doc_helper import *
+__all__ += doc_helper.__all__
+
 from .dripline_agent import *
 __all__ += dripline_agent.__all__
 
