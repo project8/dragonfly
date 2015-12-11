@@ -19,6 +19,12 @@ class GenericAgent(object):
     name = None
 
     def __call__(self, args):
+        self._call(args)
+
+    def _call(self, args):
+        '''
+        main action of __call__
+        '''
         logger.debug('in agent, got args:\n{}'.format(args))
         msgop = getattr(constants, 'OP_'+self.name.upper())
         conn = Service(broker = args.broker,
@@ -63,6 +69,7 @@ class GenericAgent(object):
         print('{color}{}(ret:{}): {}\033[0m'.format(print_prefix, result.retcode, result.payload, color=color))
         if result.return_msg:
             logger.log(25, 'return message: {}'.format(result.return_msg))
+        return result.payload
     
     @staticmethod
     def cast_arg(value):
@@ -106,6 +113,22 @@ class Get(GenericAgent):
     return the value of an endpoint or a property of an endpoint if specified
     '''
     name = 'get'
+
+    def __call__(self, args):
+        result = self._call(args)
+        these_args = args
+        if args.pretty_print:
+            if not 'value_cal' in result:
+                logger.warning('no value cal present, unable to pretty-print')
+            else:
+                print('\n{}\n'.format(result['value_cal']))
+
+    def update_parser(self, parser):
+        super(Get, self).update_parser(parser)
+        parser.add_argument('--pretty-print',
+                            action='store_true',
+                            help='attempt to print value_cal in a manor easily read by humans (and pasted into elogs)',
+                           )
 
 
 class Set(GenericAgent):
