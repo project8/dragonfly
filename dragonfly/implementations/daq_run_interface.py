@@ -259,6 +259,15 @@ class MantisAcquisitionInterface(DAQProvider, core.Spime):
             self.on_get()
             self.portal.send_request(request=core.RequestMessage(msgop=core.OP_SET, payload={'values':[self.acquisition_time*1000]}), target=self.mantis_queue+'.duration')
 
+    @property
+    def is_running(self):
+        logger.info('query mantis server status to see if it is finished')
+        result = self.portal.send_request(request=core.RequestMessage(msgop=core.OP_GET, payload={}), target=self.mantis_queue+'.server-status')
+        to_return = True
+        if result.payload['server']['server-worker']['status'] == u'Idle (queue is empty)':
+            to_return = False
+        return to_return
+
     def determine_RF_ROI(self):
         logger.info('trying to get roi')
         if not self._lf_lo_endpoint_name in self._run_meta:
