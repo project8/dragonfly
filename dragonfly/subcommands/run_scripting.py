@@ -99,7 +99,9 @@ multi_run -> probably the most useful/sophisticated action, effectively provides
 
 from __future__ import absolute_import
 
+import datetime
 import logging
+import time
 import uuid
 
 import yaml
@@ -117,18 +119,29 @@ class RunScript(object):
     '''
     name = 'execute'
 
-    def __init__(self, broker='localhost', **kwargs):
-        for kwarg in kwargs:
-            logger.warning('got unexpected kwarg: <{}>:<{}>'.format(kwarg, kwargs[kwarg]))
+    def __init__(self, broker='localhost', *args, **kwargs):
         self._lockout_key = None
         self.__to_unlock = []
         self.interface = dripline.core.Interface(amqp_url=broker, name='execution_script')
 
     def __call__(self, kwargs):
-        # do each of the actions listed in the execution file
-        # finally, unlock anything we locked
-        if self._lockout_key is not None:
-            self.do_unlocks()
+        logger.info('doing an execution')
+        try:
+            # re-initialize using provided cli args
+            self.__init__(**vars(kwargs))
+            # do each of the actions listed in the execution file
+            actions = yaml.load(open(kwargs.execution_file))
+            for action in actions:
+                method_name = 'action_' + action.pop('action')
+                this_method = getattr(self, method_name, False)
+                if not this_method:
+                    logger.warning('action <{}> not supported, perhaps your execution file has a typo?'.format(method_name.replace('action_','')))
+                    raise dripline.core.DriplineMethodNotSupportedError('RunScript class has no method <{}>'.format(method_name))
+                this_method(**action)
+        # finally, unlock anything we locked (even if there's an exception along the way)
+        finally:
+            if self._lockout_key is not None:
+                self.do_unlocks()
 
     def update_parser(self, parser):
         parser.add_argument('execution_file',
@@ -137,8 +150,9 @@ class RunScript(object):
 
     def action_lockout(self, endpoints=[], **kwargs):
         self._lockout_key = uuid.uuid4().get_hex()
+        logger.info('locking with key: {}'.format(self._lockout_key))
         for target in endpoints:
-            result = self.interface.cmd(target, 'lock', key=self._lockout_key)
+            result = self.interface.cmd(target, 'lock', lockout_key=self._lockout_key)
             if result.retcode == 0:
                 self.__to_unlock.append(target)
             else:
@@ -146,26 +160,56 @@ class RunScript(object):
                 raise dripline.core.exception_map[result.retcode](result.return_msg)
 
     def action_set(self, sets, **kwargs):
-        set_kwargs = {target:None, value:None}
+        logger.info('doing set block')
+        set_kwargs = {'endpoint':None, 'value':None}
         if self._lockout_key:
-            set_kwargs.update({'key':self._lockout_key})
-        for target,value in sets.items():
+            set_kwargs.update({'lockout_key':self._lockout_key})
+        for this_set in sets:
+            set_kwargs.update({'endpoint':this_set['name'],'value':this_set['value']})
             result = self.interface.set(**set_kwargs)
             if result.retcode == 0:
-                logger.info('set of {}->{} complete'.format(target, value))
+                logger.info('...set of {}->{} complete'.format(this_set['name'], this_set['value']))
             else:
-                logger.warning('unable to set <{}>'.format(target))
+                logger.warning('unable to set <{}>'.format(this_set['name']))
                 raise dripline.core.exception_map[result.retcode](result.return_msg)
         
-    def action_single_run(self, **kwargs):
-        pass
+    def action_single_run(self, run_duration, run_name, daq_targets, **kwargs):
+        logger.info('taking single run')
+        run_kwargs = {'endpoint':None,
+                      'method_name':'start_timed_run',
+                      'run_name':None,
+                      'run_time':run_duration,
+                     }
+        if self._lockout_key:
+            run_kwargs.update({'lockout_key':self._lockout_key})
+        start_of_runs = datetime.datetime.now()
+        for daq in daq_targets:
+            run_kwargs.update({'endpoint':daq, 'run_name':run_name.format(daq)})
+            logger.info('run_kwargs are: {}'.format(run_kwargs))
+            self.interface.cmd(**run_kwargs)
+        logger.info('daq all started, now wait for requested livetime')
+        while (datetime.datetime.now() - start_of_runs).total_seconds() < run_duration:
+            logger.info('time remaining >= {:.0f} seconds'.format(run_duration-(datetime.datetime.now()-start_of_runs).total_seconds()))
+            time.sleep(5)
+        all_done = False
+        logger.info('ideal livetime over, waiting for daq systems to finish')
+        while all_done == False:
+            all_done = True
+            for daq in daq_targets:
+                if self.interface.get(daq+'.is_running')['payload']['values'][0]:
+                    all_done = False
+                    logger.info('still waiting on <{}> (maybe others)'.format(daq))
+                    break
+            time.sleep(5)
+        logger.info('acquistions complete')
+
     def action_multi_run(self, **kwargs):
-        pass
+        raise dripline.core.DriplineMethodNotSupportedError('multi-run not yet implemented')
 
     def do_unlocks(self):
         unlocked = []
         for target in self.__to_unlock:
-            result = self.interface.cmd(target, 'unlock', key=self._lockout_key)
+            result = self.interface.cmd(target, 'unlock', lockout_key=self._lockout_key)
             if result.retcode == 0:
                 unlocked.append(target)
             else:
