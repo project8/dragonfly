@@ -81,7 +81,7 @@ class GenericAgent(object):
             if not a_reply.retcode == 0:
                 color = '\033[91m'
             print('{color}{}(ret:{}): [{}]-> {}\033[0m'.format(print_prefix, a_reply.retcode, a_reply.sender_info['service_name'], a_reply.payload, color=color))
-            if a_reply.return_msg:
+            if a_reply.return_msg and not a_reply.retcode == 0:
                 logger.log(25, 'return message: {}'.format(a_reply.return_msg))
         return reply[0].payload
     
