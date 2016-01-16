@@ -1,6 +1,8 @@
 - action: lockout
   endpoints:
     - peaches
+- action: pause_for_user
+  message: "Ready when you are..."
 - action: set
   sets:
     - name: peaches
@@ -8,7 +10,7 @@
     - name: waffles
       value: 16.0
 - action: single_run
-  run_duration: 10
+  run_duration: 5 
   run_name: "demo scripting some runs {}"
   daq_targets:
     - mantis_interface
@@ -16,3 +18,18 @@
   sets:
     - name: waffles
       value: 0.0
+- action: multi_run
+  sets:
+    - name: peaches
+      value: '1.2*{}'
+    - name: waffles
+      value:
+          0: 1
+          1: 2
+          2: 3
+  runs:
+      run_duration: 12
+      run_name: 'multi-run with {daq_target} number {run_count}'
+      daq_targets:
+        - mantis_interface
+  total_runs: 3
