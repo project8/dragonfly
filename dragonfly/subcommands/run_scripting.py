@@ -131,7 +131,7 @@ class RunScript(object):
     '''
     name = 'execute'
 
-    def __init__(self, broker='localhost', *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         self.cache_attributes = [
                                  '_lockout_key',
                                  '_last_action',
@@ -144,6 +144,9 @@ class RunScript(object):
         self._to_unlock = []
         ##
         self._cache_file_name = '/tmp/execution_cache.json'
+        self.interface = None
+
+    def update_from_cache_file(self):
         try:
             cache_file = open(self._cache_file_name, 'r')
             cache = json.load(cache_file)
@@ -152,12 +155,11 @@ class RunScript(object):
                 if key in self.cache_attributes:
                     setattr(self, key, value)
             if self._lockout_key is not None:
-                self.action_lockout(targets=self._to_unlock)
+                self.action_lockout(endpoints=self._to_unlock)
         except IOError:
             # file doesn't exit assume starting from the beginning
             pass
         ##
-        self.interface = dripline.core.Interface(amqp_url=broker, name='execution_script')
 
     def update_parser(self, parser):
         parser.add_argument('execution_file',
@@ -165,12 +167,17 @@ class RunScript(object):
                            )
 
     def __call__(self, kwargs):
+        if not 'broker' in kwargs:
+            kwargs.broker = 'localhost'
+        if kwargs.broker is None:
+            kwargs.broker = 'localhost'
+        # create interface
+        self.interface = dripline.core.Interface(amqp_url=kwargs.broker, name='execution_script')
+        # update self from cache file
+        self.update_from_cache_file()
         try:
-            # re-initialize using provided cli args
-            self.__init__(**vars(kwargs))
             # do each of the actions listed in the execution file
             actions = yaml.load(open(kwargs.execution_file))
-            ###last_action = float(raw_input('start with which action?') or self._last_action)
             if self._last_action == len(actions)-1:
                 logger.warning('cache file indicates this execution is already complete')
                 return
@@ -218,10 +225,12 @@ class RunScript(object):
         if self._lockout_key is None:
             self._lockout_key = uuid.uuid4().get_hex()
         logger.info('locking with key: {}'.format(self._lockout_key))
+        logger.info('endpoings are: {}'.format(endpoints))
         for target in endpoints:
             result = self.interface.cmd(target, 'lock', lockout_key=self._lockout_key)
             if result.retcode == 0:
-                self._to_unlock.append(target)
+                if target not in self._to_unlock:
+                    self._to_unlock.append(target)
             else:
                 logger.warning('unable to lock <{}>'.format(target))
                 raise dripline.core.exception_map[result.retcode](result.return_msg)
