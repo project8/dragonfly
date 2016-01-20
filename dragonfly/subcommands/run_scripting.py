@@ -102,9 +102,6 @@ multi_run -> probably the most useful/sophisticated action, effectively provides
               - NAME
         total_runs: VALUE
 '''
-## TODO items:
-#  ~ various enhancements from each of the action descriptions above
-#  ~ /tmp file to cache state and recover aborted/crashed execution
 
 
 from __future__ import absolute_import
@@ -142,7 +139,6 @@ class RunScript(object):
         self._last_action = -1
         self._action_cache = {}
         self._to_unlock = []
-        ##
         self._cache_file_name = '/tmp/execution_cache.json'
         self.interface = None
 
@@ -159,7 +155,6 @@ class RunScript(object):
         except IOError:
             # file doesn't exit assume starting from the beginning
             pass
-        ##
 
     def update_parser(self, parser):
         parser.add_argument('execution_file',
@@ -183,10 +178,12 @@ class RunScript(object):
                 return
             for i_action,action in enumerate(actions):
                 logger.info('doing action [{}]: {}'.format(i_action, action['action']))
+                # sip if we're resuming an action
                 if i_action <= self._last_action:
                     logger.info('skipping')
                     continue
                 #########################
+                # actually do actions
                 method_name = 'action_' + action.pop('action')
                 this_method = getattr(self, method_name, False)
                 if not this_method:
@@ -196,9 +193,6 @@ class RunScript(object):
                 self._last_action = i_action
                 self._action_cache = {}
                 self.update_cache()
-                # an arbitrary delay between actions for debugging only
-                logger.warning('doing an abitrary sleep for dev/debugging purposes')
-                import time;time.sleep(2)
         # finally, unlock anything we locked (even if there's an exception along the way)
         finally:
             if self._lockout_key is not None:
@@ -216,7 +210,8 @@ class RunScript(object):
         fp.close()
 
     def action_pause_for_user(self, message, **kwargs):
-        # note, this is python2 specific...
+        # note, this is python2 specific... (in python3 it is input not raw_input
+        # but python2 has something different named input
         raw_input('{}\n(Press return to continue)\n'.format(message))
 
     def action_lockout(self, endpoints=[], lockout_key=None, **kwargs):
@@ -310,9 +305,6 @@ class RunScript(object):
             logger.info('computed sets are:\n{}'.format(these_sets))
             self.action_set(these_sets)
             # compute args for, and call, action_single_run, based on run_count
-            ############################################################################
-            #def action_single_run(self, run_duration, run_name, daq_targets, **kwargs):
-            ############################################################################
             this_run_duration = None
             if isinstance(runs['run_duration'], float) or isinstance(runs['run_duration'], int):
                 this_run_duration = runs['run_duration']
@@ -329,7 +321,6 @@ class RunScript(object):
             # update cache variable with this run being complete and update the cache file
             self._action_cache['last_run'] = run_count
             self.update_cache()
-            import time;time.sleep(2)
 
     def do_unlocks(self):
         unlocked = []
