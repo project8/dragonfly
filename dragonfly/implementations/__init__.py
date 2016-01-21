@@ -10,6 +10,7 @@ from .daq_run_interface import *
 from .ethernet_provider import *
 from .kv_store import *
 from .multiget import *
+from .pid_loop import *
 from .postgres_interface import *
 from .prologix import *
 from .random_sensor import *
