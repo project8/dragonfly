@@ -13,6 +13,6 @@ endpoints:
         formatter: 'waffles will go for {} Euro'
       - target: cpu1_temp
         payload_field: value_raw
-      - target: tofu
+      - target: chips
         payload_field: value_cal
         formatter: ''
