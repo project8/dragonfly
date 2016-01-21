@@ -47,29 +47,43 @@ class GenericAgent(object):
                 values.append(temp_val)
     
         payload.update({'values':values})
+        broadcast_targets = ['broadcast.lock',
+                             'broadcast.unlock',
+                             'broadcast.ping'
+                            ]
+        if args.target.startswith('broadcast') and args.target not in broadcast_targets:
+            # this try block is for python 2/3 compliance
+            try:
+                input = raw_input
+            except NameError:
+                pass
+            confirm = input('You are about to send a broadcast to all services, are you sure?[y/n]\n')
+            if not confirm.lower().startswith('y'):
+                logger.info('exiting without sending request')
+                return
+
         logger.debug('payload will be: {}'.format(payload))
         request = message.RequestMessage(msgop=msgop, payload=payload, lockout_key=args.lockout_key)
         try:
-            reply = conn.send_request(args.target, request, timeout=args.timeout)
+            reply = conn.send_request(args.target, request, timeout=args.timeout, multi_reply=args.target.startswith('broadcast'))
         except exceptions.DriplineAMQPConnectionError as dripline_error:
             logger.warning('{}; did you pass in a broker with "-b" or "--broker"?'.format(dripline_error.message))
             return
         except exceptions.DriplineException as dripline_error:
             logger.warning(dripline_error.message)
             return
-        if not isinstance(reply, Message):
-            result = Message.from_msgpack(reply)
-        else:
-            result = reply
-        logger.info('response:\n{}'.format(result))
+        if not isinstance(reply, list):
+            reply = [reply]
+        logger.info('response:\n{}'.format(reply))
         print_prefix = '->'.join([args.target]+args.values)
         color = ''
-        if not result.retcode == 0:
-            color = '\033[91m'
-        print('{color}{}(ret:{}): {}\033[0m'.format(print_prefix, result.retcode, result.payload, color=color))
-        if result.return_msg:
-            logger.log(25, 'return message: {}'.format(result.return_msg))
-        return result.payload
+        for a_reply in reply:
+            if not a_reply.retcode == 0:
+                color = '\033[91m'
+            print('{color}{}(ret:{}): [{}]-> {}\033[0m'.format(print_prefix, a_reply.retcode, a_reply.sender_info['service_name'], a_reply.payload, color=color))
+            if a_reply.return_msg and not a_reply.retcode == 0:
+                logger.log(25, 'return message: {}'.format(a_reply.return_msg))
+        return reply[0].payload
     
     @staticmethod
     def cast_arg(value):
@@ -136,16 +150,6 @@ class Set(GenericAgent):
     set the value of an endpoint, or a property of an endpoint if specified
     '''
     name = 'set'
-
-
-class Config(GenericAgent): 
-    '''
-    <deprecated> query or set the value of a property of an endpoint
-    '''
-    name = 'config'
-    def __call__(self, kwargs):
-        logger.warning("OP_CONFG is going to be deprecated, consider other usage")
-        super(Config, self).__call__(kwargs)
 
 
 class Run(GenericAgent):
