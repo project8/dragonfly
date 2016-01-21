@@ -13,7 +13,16 @@ The file should parse to a list of dictionaries. Each dictionary will define a t
 action to take, in order, with various configurable parameters. Each will specify the
 action with a line:
 
-    action: {lockout, set, single_run, multi_run}
+    action: {pause_for_user, lockout, set, single_run, multi_run}
+
+pause_for_user -> print a message to the user and wait for a response. The content
+    of the user's reply will not be stored or used. This allows indefinate pauses
+    for user action. For example, changing the vertical position of the insert, which
+    has to be done manually. Any result of the user action which needs to be measured
+    should still be done automatically (using loggers, sets/cmds to endpoints, etc.)
+    
+        - action: pause_for_user
+          message: STRING_TO_PRINT_PRIOR_TO_PAUSE
 
 lockout -> send a lockout command to the specified list of endpoints. If a lockout
     action is called, all subsequent requests will use the automatically generated
@@ -91,19 +100,19 @@ multi_run -> probably the most useful/sophisticated action, effectively provides
             daq_targets:
               - NAME
               - NAME
+        total_runs: VALUE
 '''
-## TODO items:
-#  ~ various enhancements from each of the action descriptions above
-#  ~ /tmp file to cache state and recover aborted/crashed execution
 
 
 from __future__ import absolute_import
 
 import datetime
+import json
 import logging
 import time
 import uuid
 
+import asteval
 import yaml
 
 import dripline
@@ -119,42 +128,104 @@ class RunScript(object):
     '''
     name = 'execute'
 
-    def __init__(self, broker='localhost', *args, **kwargs):
+    def __init__(self, *args, **kwargs):
+        self.cache_attributes = [
+                                 '_lockout_key',
+                                 '_last_action',
+                                 '_action_cache',
+                                 '_to_unlock',
+                                ]
         self._lockout_key = None
-        self.__to_unlock = []
-        self.interface = dripline.core.Interface(amqp_url=broker, name='execution_script')
+        self._last_action = -1
+        self._action_cache = {}
+        self._to_unlock = []
+        self._cache_file_name = '/tmp/execution_cache.json'
+        self.interface = None
+
+    def update_from_cache_file(self):
+        try:
+            cache_file = open(self._cache_file_name, 'r')
+            cache = json.load(cache_file)
+            cache_file.close()
+            for key,value in cache.items():
+                if key in self.cache_attributes:
+                    setattr(self, key, value)
+            if self._lockout_key is not None:
+                self.action_lockout(endpoints=self._to_unlock)
+        except IOError:
+            # file doesn't exit assume starting from the beginning
+            pass
+
+    def update_parser(self, parser):
+        parser.add_argument('execution_file',
+                            help='file containing the detailed execution steps',
+                           )
 
     def __call__(self, kwargs):
-        logger.info('doing an execution')
+        if not 'broker' in kwargs:
+            kwargs.broker = 'localhost'
+        if kwargs.broker is None:
+            kwargs.broker = 'localhost'
+        # create interface
+        self.interface = dripline.core.Interface(amqp_url=kwargs.broker, name='execution_script')
+        # update self from cache file
+        self.update_from_cache_file()
         try:
-            # re-initialize using provided cli args
-            self.__init__(**vars(kwargs))
             # do each of the actions listed in the execution file
             actions = yaml.load(open(kwargs.execution_file))
-            for action in actions:
+            if self._last_action == len(actions)-1:
+                logger.warning('cache file indicates this execution is already complete')
+                return
+            for i_action,action in enumerate(actions):
+                logger.info('doing action [{}]: {}'.format(i_action, action['action']))
+                # sip if we're resuming an action
+                if i_action <= self._last_action:
+                    logger.info('skipping')
+                    continue
+                #########################
+                # actually do actions
                 method_name = 'action_' + action.pop('action')
                 this_method = getattr(self, method_name, False)
                 if not this_method:
                     logger.warning('action <{}> not supported, perhaps your execution file has a typo?'.format(method_name.replace('action_','')))
                     raise dripline.core.DriplineMethodNotSupportedError('RunScript class has no method <{}>'.format(method_name))
                 this_method(**action)
+                self._last_action = i_action
+                self._action_cache = {}
+                self.update_cache()
         # finally, unlock anything we locked (even if there's an exception along the way)
         finally:
             if self._lockout_key is not None:
                 self.do_unlocks()
+        logger.info('execution complete')
 
-    def update_parser(self, parser):
-        parser.add_argument('execution_file',
-                            help='file containing the detailed execution steps'
-                           )
+    def update_cache(self):
+        to_dump = {}
+        for attribute in self.cache_attributes:
+            to_dump[attribute] = getattr(self, attribute)
+        fp = open(self._cache_file_name, 'w')
+        json.dump(obj=to_dump, fp=fp, indent=4)
+        fp.flush()
+        fp.truncate()
+        fp.close()
 
-    def action_lockout(self, endpoints=[], **kwargs):
-        self._lockout_key = uuid.uuid4().get_hex()
+    def action_pause_for_user(self, message, **kwargs):
+        # note, this is python2 specific... (in python3 it is input not raw_input
+        # but python2 has something different named input
+        raw_input('{}\n(Press return to continue)\n'.format(message))
+
+    def action_lockout(self, endpoints=[], lockout_key=None, **kwargs):
+        if lockout_key is not None:
+            self._lockout_key = lockout_key
+        if self._lockout_key is None:
+            self._lockout_key = uuid.uuid4().get_hex()
         logger.info('locking with key: {}'.format(self._lockout_key))
+        logger.info('endpoings are: {}'.format(endpoints))
         for target in endpoints:
             result = self.interface.cmd(target, 'lock', lockout_key=self._lockout_key)
             if result.retcode == 0:
-                self.__to_unlock.append(target)
+                if target not in self._to_unlock:
+                    self._to_unlock.append(target)
             else:
                 logger.warning('unable to lock <{}>'.format(target))
                 raise dripline.core.exception_map[result.retcode](result.return_msg)
@@ -168,7 +239,7 @@ class RunScript(object):
             set_kwargs.update({'endpoint':this_set['name'],'value':this_set['value']})
             result = self.interface.set(**set_kwargs)
             if result.retcode == 0:
-                logger.info('...set of {}->{} complete'.format(this_set['name'], this_set['value']))
+                logger.debug('...set of {}->{} complete'.format(this_set['name'], this_set['value']))
             else:
                 logger.warning('unable to set <{}>'.format(this_set['name']))
                 raise dripline.core.exception_map[result.retcode](result.return_msg)
@@ -185,7 +256,7 @@ class RunScript(object):
         start_of_runs = datetime.datetime.now()
         for daq in daq_targets:
             run_kwargs.update({'endpoint':daq, 'run_name':run_name.format(daq)})
-            logger.info('run_kwargs are: {}'.format(run_kwargs))
+            logger.debug('run_kwargs are: {}'.format(run_kwargs))
             self.interface.cmd(**run_kwargs)
         logger.info('daq all started, now wait for requested livetime')
         while (datetime.datetime.now() - start_of_runs).total_seconds() < run_duration:
@@ -203,16 +274,61 @@ class RunScript(object):
             time.sleep(5)
         logger.info('acquistions complete')
 
-    def action_multi_run(self, **kwargs):
-        raise dripline.core.DriplineMethodNotSupportedError('multi-run not yet implemented')
+    def action_multi_run(self, runs, total_runs, sets=[], **kwargs):
+        # establish default values for cache (in case of first call)
+        # override with any values loaded from file
+        # then update the instance variable with the current state
+        initial_state = {'last_run': -1,}
+        initial_state.update(self._action_cache)
+        self._action_cache.update(initial_state)
+
+        for run_count in range(total_runs):
+            # skip runs that were already completed (only relevant if restarting an execution)
+            logger.info('doing action [{}] run [{}]'.format(self._last_action+1, run_count))
+            if run_count <= self._action_cache['last_run']:
+                logger.info('run already complete, skipping')
+                continue
+            # compute args for, and call, action_set, based on run_count
+            these_sets = []
+            evaluator = asteval.Interpreter()
+            for a_set in sets:
+                this_value = None
+                logger.info('set type is: {}'.format(type(a_set['value'])))
+                if isinstance(a_set['value'], dict):
+                    this_value = a_set['value'][run_count]
+                elif isinstance(a_set['value'], str):
+                    this_value = evaluator(a_set['value'].format(run_count))
+                else:
+                    logger.info('failed to parse set:\n{}'.format(a_set))
+                    raise dripline.core.DriplineValueError('set value not a dictionary or evaluatable expression')
+                these_sets.append({'name': a_set['name'], 'value': this_value})
+            logger.info('computed sets are:\n{}'.format(these_sets))
+            self.action_set(these_sets)
+            # compute args for, and call, action_single_run, based on run_count
+            this_run_duration = None
+            if isinstance(runs['run_duration'], float) or isinstance(runs['run_duration'], int):
+                this_run_duration = runs['run_duration']
+            elif isinstance(runs['run_duration'], dict):
+                this_run_duration = runs['run_duration'][run_count]
+            elif isinstance(runs['run_duration'], str):
+                this_run_duration = evaluator(runs['run_duration'].format(run_count))
+            else:
+                logger.info('failed to compute run duration for run: {}'.format(run_count))
+                raise dripline.core.DriplineValueError('set value not a dictionary or evaluatable expression')
+            this_run_name = runs['run_name'].format(daq_target='{}', run_count=run_count)
+            logger.info('run will be [{}] seconds with name "{}"'.format(this_run_duration, this_run_name))
+            self.action_single_run(this_run_duration, this_run_name, runs['daq_targets'])
+            # update cache variable with this run being complete and update the cache file
+            self._action_cache['last_run'] = run_count
+            self.update_cache()
 
     def do_unlocks(self):
         unlocked = []
-        for target in self.__to_unlock:
+        for target in self._to_unlock:
             result = self.interface.cmd(target, 'unlock', lockout_key=self._lockout_key)
             if result.retcode == 0:
                 unlocked.append(target)
             else:
                 logger.warning('unable to unlock <{}>'.format(target))
         for a_name in unlocked:
-            self.__to_unlock.remove(a_name)
+            self._to_unlock.remove(a_name)

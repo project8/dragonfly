@@ -40,8 +40,6 @@ class SensorLogger(Gogol, PostgreSQLInterface):
             re_out = re.match(r'sensor_value.(?P<from>\S+)', basic_deliver.routing_key)
             sensor_name = re_out.groupdict()['from']
         # note that the following is deprecated in dripline 2.x, retained for compatibility
-        elif 'from' in message['payload']: 
-            sensor_name = message['payload']['from']
         else:
             raise exceptions.DriplineValueError('unknown sensor name')
         

@@ -6,6 +6,7 @@ Script to replace start_node using the spimescape abstraction upgrades
 from __future__ import print_function
 
 import imp
+import traceback
 
 import dripline
 
@@ -75,6 +76,7 @@ class Serve(object):
             except:
                 pass
             logger.critical('service <{}> crashing due to unexpected error:\n{}'.format(this_service_name, this_exception))
+            logger.error('traceback is:\n{}'.format(traceback.format_exc()))
 
     def create_child(self, service, conf_dict):
         module = conf_dict.pop('module')
