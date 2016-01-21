@@ -152,16 +152,6 @@ class Set(GenericAgent):
     name = 'set'
 
 
-class Config(GenericAgent): 
-    '''
-    <deprecated> query or set the value of a property of an endpoint
-    '''
-    name = 'config'
-    def __call__(self, kwargs):
-        logger.warning("OP_CONFG is going to be deprecated, consider other usage")
-        super(Config, self).__call__(kwargs)
-
-
 class Run(GenericAgent):
     '''
     send an OP_RUN, further details are endpoint specific
