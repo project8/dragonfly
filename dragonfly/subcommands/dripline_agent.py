@@ -122,6 +122,8 @@ class GenericAgent(object):
                             help='string to provide in the RequestMessage.lockout_key, for locking endpoints or using locked endpoints',
                            )
 
+
+__all__.append("Get")
 class Get(GenericAgent):
     '''
     return the value of an endpoint or a property of an endpoint if specified
@@ -145,6 +147,7 @@ class Get(GenericAgent):
                            )
 
 
+__all__.append("Set")
 class Set(GenericAgent):
     '''
     set the value of an endpoint, or a property of an endpoint if specified
@@ -152,6 +155,7 @@ class Set(GenericAgent):
     name = 'set'
 
 
+__all__.append("Run")
 class Run(GenericAgent):
     '''
     send an OP_RUN, further details are endpoint specific
@@ -159,17 +163,16 @@ class Run(GenericAgent):
     name = 'run'
 
 
+__all__.append('Cmd')
 class Cmd(GenericAgent):
     '''
     have an endpoint execute an internal function
     '''
     name = 'cmd'
 
+__all__.append("Send")
 class Send(GenericAgent):
     '''
     have an endpoint (which is probably also a provider) execute a send
     '''
     name = 'send'
-
-
-__all__ += ['Get', 'Set', 'Config', 'Run', 'Cmd', 'Send']
