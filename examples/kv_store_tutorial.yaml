@@ -10,7 +10,6 @@ endpoints:
         calibration: '2*{}'
         initial_value: 0.75
         log_interval: 30
-        logging_status: True
         get_on_set: True
         log_on_set: True
       - name: chips
@@ -39,3 +38,12 @@ endpoints:
             "on": OPEN
             "off": CLOSE
         set_value_lowercase: True
+setup_calls:
+  - target: peaches
+    method: on_set
+    args: 3.1
+  - target: my_price_list
+    method: on_set
+    args: "on"
+    kwargs:
+        routing_key_specifier: logging_status
