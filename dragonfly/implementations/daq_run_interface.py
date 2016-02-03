@@ -89,13 +89,15 @@ class DAQProvider(core.Provider):
             self.run_id = 0
             return
         request = core.RequestMessage(msgop=core.OP_CMD,
-                                      payload={'values':['do_insert'],
+                                      payload={'values':[],
                                                'run_name':value,
                                               },
                                      )
-        result = self.portal.send_request(self.run_table_endpoint,
+        result = self.portal.send_request(self.run_table_endpoint+'.do_insert',
                                           request=request,
                                          )
+        if not result.retcode == 0:
+            raise core.exception_map[result.retcode](result.return_msg)
         self.run_id = result.payload['run_id']
 
     def end_run(self):
@@ -340,6 +342,20 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
         DAQProvider.__init__(self, **kwargs)
         EthernetProvider.__init__(self, **kwargs)
         self.max_nb_files = max_nb_files
+
+    @property
+    def is_running(self):
+        logger.info('query RSA trigger status')
+        result = self.send(['TRIG:SEQ:STAT?'])
+        to_return = None
+        if result== '0':
+            to_return = False
+        elif result == '1':
+            to_return = True
+        else:
+            raise ValueError('unrecognized return value')
+        logger.info('trigger status is <{}>'.format(to_return))
+        return to_return
 
     def start_run(self, run_name):
         super(RSAAcquisitionInterface, self).start_run(run_name)
