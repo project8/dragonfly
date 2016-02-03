@@ -343,6 +343,20 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
         EthernetProvider.__init__(self, **kwargs)
         self.max_nb_files = max_nb_files
 
+    @property
+    def is_running(self):
+        logger.info('query RSA trigger status')
+        result = self.send(['TRIG:SEQ:STAT?'])
+        to_return = None
+        if result== '0':
+            to_return = False
+        elif result == '1':
+            to_return = True
+        else:
+            raise ValueError('unrecognized return value')
+        logger.info('trigger status is <{}>'.format(to_return))
+        return to_return
+
     def start_run(self, run_name):
         super(RSAAcquisitionInterface, self).start_run(run_name)
         # ensure the output format is set to mat
