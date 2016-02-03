@@ -89,11 +89,11 @@ class DAQProvider(core.Provider):
             self.run_id = 0
             return
         request = core.RequestMessage(msgop=core.OP_CMD,
-                                      payload={'values':['do_insert'],
+                                      payload={'values':[],
                                                'run_name':value,
                                               },
                                      )
-        result = self.portal.send_request(self.run_table_endpoint,
+        result = self.portal.send_request(self.run_table_endpoint+'.do_insert',
                                           request=request,
                                          )
         self.run_id = result.payload['run_id']
