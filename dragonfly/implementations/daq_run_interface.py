@@ -96,6 +96,8 @@ class DAQProvider(core.Provider):
         result = self.portal.send_request(self.run_table_endpoint+'.do_insert',
                                           request=request,
                                          )
+        if not result.retcode == 0:
+            raise core.exception_map[result.retcode](result.return_msg)
         self.run_id = result.payload['run_id']
 
     def end_run(self):
