@@ -65,19 +65,18 @@ class EthernetProvider(Provider):
         all_data = []
         self.alock.acquire()
         try:
-            
             for command in commands:
                 logger.debug('sending: {}'.format(repr(command)))
                 if self.command_terminator is not None:
                     command += self.command_terminator
                 self.socket.send(command)
                 data = self.get()
-                import ipdb
-                ipdb.set_trace()
                 # Edit starts here - Luis Saldana
-                if data.startswith(self.command_terminator):
+                if data.startswith(command):
                     data = data.rsplit(self.command_terminator,1)[1]
                 # Edit ends here - Luis Saldana
+                import ipdb
+                ipdb.set_trace()
                 logger.debug('sync: {} -> {}'.format(repr(command),repr(data)))
                 all_data.append(data)
         finally:
