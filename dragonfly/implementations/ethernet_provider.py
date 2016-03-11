@@ -20,6 +20,7 @@ class EthernetProvider(Provider):
                  socket_info=("localhost",1234),
                  response_terminator = None,
                  command_terminator = None,
+                 reply_echo_cmd = False,
                  **kwargs
                  ):
         '''
@@ -69,7 +70,9 @@ class EthernetProvider(Provider):
                     command += self.command_terminator
                 self.socket.send(command)
                 data = self.get()
-                if data.startswith(command):
+                import ipdb
+                ipdb.set_trace()
+                if (data.startswith(command) and self.reply_echo_cmd):
                     data = data[data.startswith(command) and len(command):]
                 logger.debug('sync: {} -> {}'.format(repr(command),repr(data)))
                 all_data.append(data)
