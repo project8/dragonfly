@@ -69,10 +69,8 @@ class EthernetProvider(Provider):
                     command += self.command_terminator
                 self.socket.send(command)
                 data = self.get()
-                import ipdb
-                ipdb.set_trace()
                 if data.startswith(command):
-                    data = data.rsplit(self.command_terminator,1)[1]
+                    data = data[data.startswith(command) and len(command):]
                 logger.debug('sync: {} -> {}'.format(repr(command),repr(data)))
                 all_data.append(data)
         finally:
