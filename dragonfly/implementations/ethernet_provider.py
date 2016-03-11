@@ -72,10 +72,10 @@ class EthernetProvider(Provider):
                     command += self.command_terminator
                 self.socket.send(command)
                 data = self.get()
-                # Edit starts here - Luis
+                # Edit starts here - Luis Saldana
                 if (self.command_terminator and data.startswith(self.command_terminator)):
                     data = data.rsplit(self.command_terminator,1)[1]
-                # Edit ends here - Luis
+                # Edit ends here - Luis Saldana
                 logger.debug('sync: {} -> {}'.format(repr(command),repr(data)))
                 all_data.append(data)
         finally:
