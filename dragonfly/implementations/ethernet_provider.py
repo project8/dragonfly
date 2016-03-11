@@ -75,8 +75,6 @@ class EthernetProvider(Provider):
                 if data.startswith(command):
                     data = data.rsplit(self.command_terminator,1)[1]
                 # Edit ends here - Luis Saldana
-                import ipdb
-                ipdb.set_trace()
                 logger.debug('sync: {} -> {}'.format(repr(command),repr(data)))
                 all_data.append(data)
         finally:
