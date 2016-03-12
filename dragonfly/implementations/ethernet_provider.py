@@ -36,6 +36,7 @@ class EthernetProvider(Provider):
         self.socket = socket.socket()
         self.response_terminator = response_terminator
         self.command_terminator = command_terminator
+        self.reply_echo_cmd = reply_echo_cmd
         if type(self.socket_info) is str:
             import re
             re_str = "\([\"'](\S+)[\"'], ?(\d+)\)"
@@ -70,8 +71,6 @@ class EthernetProvider(Provider):
                     command += self.command_terminator
                 self.socket.send(command)
                 data = self.get()
-                import ipdb
-                ipdb.set_trace()
                 if (data.startswith(command) and self.reply_echo_cmd):
                     data = data[data.startswith(command) and len(command):]
                 logger.debug('sync: {} -> {}'.format(repr(command),repr(data)))
