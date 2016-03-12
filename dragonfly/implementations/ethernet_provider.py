@@ -28,6 +28,7 @@ class EthernetProvider(Provider):
         socket_info (tuple): (<network_address_as_str>, <port_as_int>)
         response_terminator (str||None): string to rstrip() from responses
         command_terminator (str||None): string to append to commands
+        reply_echo_cmd (bool): set to true if command+command_terminator are present in reply
         '''
         Provider.__init__(self, **kwargs)
         self.alock = threading.Lock()
