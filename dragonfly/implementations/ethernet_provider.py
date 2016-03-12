@@ -1,5 +1,3 @@
-
-
 from __future__ import absolute_import
 import socket
 import threading
@@ -22,6 +20,7 @@ class EthernetProvider(Provider):
                  socket_info=("localhost",1234),
                  response_terminator = None,
                  command_terminator = None,
+                 reply_echo_cmd = False,
                  **kwargs
                  ):
         '''
@@ -29,6 +28,7 @@ class EthernetProvider(Provider):
         socket_info (tuple): (<network_address_as_str>, <port_as_int>)
         response_terminator (str||None): string to rstrip() from responses
         command_terminator (str||None): string to append to commands
+        reply_echo_cmd (bool): set to true if command+command_terminator are present in reply
         '''
         Provider.__init__(self, **kwargs)
         self.alock = threading.Lock()
@@ -37,6 +37,7 @@ class EthernetProvider(Provider):
         self.socket = socket.socket()
         self.response_terminator = response_terminator
         self.command_terminator = command_terminator
+        self.reply_echo_cmd = reply_echo_cmd
         if type(self.socket_info) is str:
             import re
             re_str = "\([\"'](\S+)[\"'], ?(\d+)\)"
@@ -65,13 +66,14 @@ class EthernetProvider(Provider):
         all_data = []
         self.alock.acquire()
         try:
-            
             for command in commands:
                 logger.debug('sending: {}'.format(repr(command)))
                 if self.command_terminator is not None:
                     command += self.command_terminator
                 self.socket.send(command)
                 data = self.get()
+                if (data.startswith(command) and self.reply_echo_cmd):
+                    data = data[data.startswith(command) and len(command):]
                 logger.debug('sync: {} -> {}'.format(repr(command),repr(data)))
                 all_data.append(data)
         finally:
