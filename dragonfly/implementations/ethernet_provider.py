@@ -1,4 +1,3 @@
-
 from __future__ import absolute_import
 import socket
 import threading
@@ -25,12 +24,12 @@ class EthernetProvider(Provider):
                  **kwargs
                  ):
         '''
-            socket_timeout (float): time in seconds for the socket to timeout
-            socket_info (tuple): (<network_address_as_str>, <port_as_int>)
-            response_terminator (str||None): string to rstrip() from responses
-            command_terminator (str||None): string to append to commands
-            reply_echo_cmd (bool): set to true if command+command_terminator are present in reply
-            '''
+        socket_timeout (float): time in seconds for the socket to timeout
+        socket_info (tuple): (<network_address_as_str>, <port_as_int>)
+        response_terminator (str||None): string to rstrip() from responses
+        command_terminator (str||None): string to append to commands
+        reply_echo_cmd (bool): set to true if command+command_terminator are present in reply
+        '''
         Provider.__init__(self, **kwargs)
         self.alock = threading.Lock()
         self.socket_timeout = float(socket_timeout)
@@ -46,10 +45,10 @@ class EthernetProvider(Provider):
             self.socket_info = (ip,int(port))
         logger.debug('socket info is {}'.format(self.socket_info))
         self.reconnect()
-    
+
     def send_commands(self, commands):
         all_data=[]
-        
+
         for command in commands:
             logger.debug('sending: {}'.format(repr(command)))
             if self.command_terminator is not None:
@@ -72,11 +71,11 @@ class EthernetProvider(Provider):
             raise
         self.socket.settimeout(self.socket_timeout)
         self.send("")
-    
+
     def send(self, commands):
         '''
-            this issues commands
-            '''
+        this issues commands
+        '''
         if isinstance(commands, types.StringType):
             commands = [commands]
         all_data = []
@@ -95,7 +94,7 @@ class EthernetProvider(Provider):
         to_return = ';'.join(all_data)
         logger.debug('should return:\n{}'.format(to_return))
         return to_return
-    
+
     def get(self):
         data = ""
         try:
@@ -110,9 +109,7 @@ class EthernetProvider(Provider):
         if self.response_terminator:
             data = data.rsplit(self.response_terminator,1)[0]
         return data
-    
+
     @property
     def spimes(self):
         return self.endpoints
-
-
