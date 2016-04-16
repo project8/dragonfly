@@ -91,7 +91,7 @@ class expanded_monitor(Gogol):
                         if condition["hastag"] in my_tags:
                             self.process_responses( condition["response"],{'sensor':sensor_name} )
             if time()>self.last_queue_flush+self.queue_flush_time_seconds:
-                logger.info(self.message_queue_info)
+                logger.critical(self.message_queue_info)
                 self.last_queue_flush=time()
 
             
