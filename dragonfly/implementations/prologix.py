@@ -122,7 +122,7 @@ class MuxerGetSpime(SimpleSCPIGetSpime):
     def __init__(self, ch_number, conf_str = None, **kwargs):
 	if conf_str is None:
 		logger.debug('no configuration string given for endpoint')
-	else	
+	else:	
 		self.conf_str = conf_str        
 	self.base_str = "DATA:LAST? (@{})"
         self.ch_number = ch_number
