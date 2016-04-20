@@ -119,8 +119,12 @@ def cernox_calibration(resistance, serial_number):
 
 
 class MuxerGetSpime(SimpleSCPIGetSpime):
-    def __init__(self, ch_number, **kwargs):
-        self.base_str = "DATA:LAST? (@{})"
+    def __init__(self, ch_number, conf_str = None, **kwargs):
+	if conf_str is None:
+		logger.debug('no configuration string given for endpoint')
+	else	
+		self.conf_str = conf_str        
+	self.base_str = "DATA:LAST? (@{})"
         self.ch_number = ch_number
         SimpleSCPIGetSpime.__init__(self, base_str=self.base_str, **kwargs)
         self.get_value = self.on_get
