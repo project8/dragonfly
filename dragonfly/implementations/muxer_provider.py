@@ -5,7 +5,7 @@ import types
 
 from dripline.core import Provider, Endpoint
 from dragonfly.implementations import EthernetProvider
-from dargonfly.implementations import MuxerGetSpime
+from dragonfly.implementations import MuxerGetSpime
 from dripline.core.utilities import fancy_doc
 from dripline.core import exceptions
 
