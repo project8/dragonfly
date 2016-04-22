@@ -37,7 +37,7 @@ class MuxerProvider(EthernetProvider):
 
                 ch_scan_list = list() # Initiate an empty scan list to be populated
 
-                self.send(["ABOR"]) # Stop the current scan
+                self.send(['ABOR']) # Stop the current scan
 
                 # Loop over the endpoints
                 for child in self.endpoints:
@@ -55,10 +55,10 @@ class MuxerProvider(EthernetProvider):
                                 self.send([self.endpoints[child].conf_str.format(self.endpoints[child].ch_number)]) # Send the configuration command w/ appropriate channel number 
                                 logger.debug('sending configuration command:\n{}'.format(self.endpoints[child].conf_str.format(self.endpoints[child].ch_number))) # Debug statement to keep track of things;
                                                                                                                                   # making sure we're sending the correct command
-                                ch_scan_list.append(self.endpoints[child].ch_number) # Add channel number to scan list
+                                ch_scan_list.append(str(self.endpoints[child].ch_number)) # Add channel number to scan list
 
                 # Setting up the scan
-                scan_list_cmd = 'ROUT:SCAN (@{})'.format(",".join(ch_scan_list)) # Create scan list command from channel scan list
+                scan_list_cmd = 'ROUT:SCAN (@{})'.format(','.join(ch_scan_list)) # Create scan list command from channel scan list
                 logger.debug('sending scan list command:\n{}'.format(scan_list_cmd)) # Making sure we send the right command
                 self.start_scan(scan_list_cmd) # Send command to start_scan method 
 
@@ -69,15 +69,7 @@ class MuxerProvider(EthernetProvider):
                 self.send([scan_list_cmd])
 
                 # Configure trigger settings
-                self.send(["TRIG:SOUR TIM", "TRIG:COUN INF", "TRIG:TIM {}".format(self.scan_interval)])
+                self.send(['TRIG:SOUR TIM', 'TRIG:COUN INF', 'TRIG:TIM {}'.format(self.scan_interval)])
 
                 # Send the init command to start the scan
-                self.send(["INIT"])
-
-
-
-
-
-
-
-
+                self.send(['INIT'])
