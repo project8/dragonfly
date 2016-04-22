@@ -41,22 +41,22 @@ class MuxerProvider(EthernetProvider):
 
                 # Loop over the endpoints
                 for child in self.endpoints:
-
                         # Only "MuxerGetSpime" endpoints are considered for scan list
                         if not isinstance(child, MuxerGetSpime):
                                 continue # If not of this type, go onto the next 
-                        if child.conf_str == None: # If no configuration string is given (initiated as None)
-                                raise exceptions.DriplineValueError('conf_str value is required to configure {}'.format(child.name)) # Raise an exception to user
-                                raise exceptions.DriplineWarning('if {} is not to be configured, please set conf_str to False'.format(child.name)) # Raise warning 
-                                continue # Don't configure channel nor add it to the scan list
-                        elif child.conf_str == False: # If endpoint conf_str is set to False don't configure channel but do add it to the scan list
-                                ch_scan_list.append(child.ch_number) # Add channel number to scan list
-                                continue 
-                        else: # If configuration string present
-                                self.send([child.conf_str.format(child.ch_number)]) # Send the configuration command w/ appropriate channel number 
-                                logger.debug('sending configuration command:\n{}'.format(child.conf_str.format(child.ch_number))) # Debug statement to keep track of things;
+                        else:
+                                if child.conf_str == None: # If no configuration string is given (initiated as None)
+                                        raise exceptions.DriplineValueError('conf_str value is required to configure {}'.format(child.name)) # Raise an exception to user
+                                        raise exceptions.DriplineWarning('if {} is not to be configured, please set conf_str to False'.format(child.name)) # Raise warning 
+                                        continue # Don't configure channel nor add it to the scan list
+                                elif child.conf_str == False: # If endpoint conf_str is set to False don't configure channel but do add it to the scan list
+                                        ch_scan_list.append(child.ch_number) # Add channel number to scan list
+                                        continue 
+                                else: # If configuration string present
+                                        self.send([child.conf_str.format(child.ch_number)]) # Send the configuration command w/ appropriate channel number 
+                                        logger.debug('sending configuration command:\n{}'.format(child.conf_str.format(child.ch_number))) # Debug statement to keep track of things;
                                                                                                                                   # making sure we're sending the correct command
-                                ch_scan_list.append(child.ch_number) # Add channel number to scan list
+                                        ch_scan_list.append(child.ch_number) # Add channel number to scan list
 
                 # Setting up the scan
                 scan_list_cmd = 'ROUT:SCAN (@{})'.format(",".join(ch_scan_list)) # Create scan list command from channel scan list
