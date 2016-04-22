@@ -100,10 +100,10 @@ class EthernetProvider(Provider):
         try:
             while True:
                 data += self.socket.recv(1024)
+                data = data.strip() # removes white space at the beginning and end of string
                 if (self.response_terminator and  data.endswith(self.response_terminator)):
-                    if(self.reply_echo_cmd):
                         data= data[0:data.find(self.response_terminator)]
-                    break
+                        break
         except socket.timeout:
             logger.critical('Cannot Connect!')
         if self.response_terminator:
