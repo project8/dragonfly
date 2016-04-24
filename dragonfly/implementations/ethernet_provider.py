@@ -54,6 +54,8 @@ class EthernetProvider(Provider):
             if self.command_terminator is not None:
                 command += self.command_terminator
             self.socket.send(command)
+            import ipdb
+            ipdb.set_trace()
             data = self.get()
             if (data.startswith(command) and self.reply_echo_cmd):
                 data = data[0:data.find(self.command_terminator)+len(self.command_terminator)] + data[data.rfind(self.command_terminator)+len(self.command_terminator):]
@@ -100,14 +102,12 @@ class EthernetProvider(Provider):
         try:
             while True:
                 data += self.socket.recv(1024)
-                data = data.strip() # removes white space at the beginning and end of string
+                data = data.strip()
                 if (self.response_terminator and  data.endswith(self.response_terminator)):
                         data= data[0:data.find(self.response_terminator)]
                         break
         except socket.timeout:
             logger.critical('Cannot Connect!')
-        if self.response_terminator:
-            data = data.rsplit(self.response_terminator,1)[0]
         return data
 
     @property
