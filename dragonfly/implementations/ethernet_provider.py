@@ -20,7 +20,7 @@ class EthernetProvider(Provider):
                  socket_info=("localhost",1234),
                  response_terminator = None,
                  command_terminator = None,
-                 reply_echo_cmd = True,
+                 reply_echo_cmd = False,
                  **kwargs
                  ):
         '''
@@ -28,7 +28,7 @@ class EthernetProvider(Provider):
         socket_info (tuple): (<network_address_as_str>, <port_as_int>)
         response_terminator (str||None): string to rstrip() from responses
         command_terminator (str||None): string to append to commands
-        reply_echo_cmd (bool): set to true if command+command_terminator are present in reply
+        reply_echo_cmd (bool): set to True if command+command_terminator or just command are present in reply
         '''
         Provider.__init__(self, **kwargs)
         self.alock = threading.Lock()
@@ -51,15 +51,18 @@ class EthernetProvider(Provider):
 
         for command in commands:
             logger.debug('sending: {}'.format(repr(command)))
-            og_cmd = command # saving original command
+            og_command = command # saving original command
             if self.command_terminator is not None:
                 command += self.command_terminator
             self.socket.send(command)
             data = self.get()
             logger.debug('data from get(): {}'.format(repr(data))) # Added for debugging
             logger.debug('data is of type: {}'.format(type(data))) # Added for debugging
-            if (data.startswith(og_cmd) and self.reply_echo_cmd): # Using original command to parse response
-                data = data[len(og_cmd):]
+            if self.reply_echo_cmd: # See reply_echo_cmd docstring above
+                if data.startswith(command): # Note that command here is original command + command terminator 
+                    data = data[len(command):] 
+                elif data.startswith(og_command): # If response only include the original command w/o the command terminator
+                    data = data[len(og_command):]
             logger.debug('sync: {} -> {}'.format(repr(command),repr(data)))
             all_data.append(data)
         return all_data
@@ -104,6 +107,7 @@ class EthernetProvider(Provider):
             while True:
                 data += self.socket.recv(1024)
                 data = data.strip()
+                logger.debug('data received from the socket is: {}'.format(repr(data))) # Added for debugging
                 if (self.response_terminator and  data.endswith(self.response_terminator)):
                         data= data[0:data.find(self.response_terminator)]
                         break

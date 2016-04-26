@@ -136,4 +136,5 @@ class MuxerGetSpime(SimpleSCPIGetSpime):
         result = None
         if very_raw:
             result = very_raw.split()[0]
+            logger.debug('result is: {}'.format(repr(result))) # Added for debugging 
         return result
