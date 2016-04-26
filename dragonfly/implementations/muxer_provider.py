@@ -53,7 +53,7 @@ class MuxerProvider(EthernetProvider):
                                 continue 
                         else: # If configuration string present
                                 self.send([self.endpoints[child].conf_str.format(self.endpoints[child].ch_number)]) # Send the configuration command w/ appropriate channel number 
-                                logger.debug('sending configuration command:\n{}'.format(self.endpoints[child].conf_str.format(self.endpoints[child].ch_number))) # Debug statement to keep track of things;
+                                logger.debug('sending:\n{}'.format(self.endpoints[child].conf_str.format(self.endpoints[child].ch_number))) # Debug statement to keep track of things;
                                                                                                                                   # making sure we're sending the correct command
                                 ch_scan_list.append(str(self.endpoints[child].ch_number)) # Add channel number to scan list
 

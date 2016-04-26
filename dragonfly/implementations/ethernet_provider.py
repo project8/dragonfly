@@ -51,14 +51,15 @@ class EthernetProvider(Provider):
 
         for command in commands:
             logger.debug('sending: {}'.format(repr(command)))
+            og_cmd = command # saving original command
             if self.command_terminator is not None:
                 command += self.command_terminator
             self.socket.send(command)
-            import ipdb
-            ipdb.set_trace()
             data = self.get()
-            if (data.startswith(command) and self.reply_echo_cmd):
-                data = data[0:data.find(self.command_terminator)+len(self.command_terminator)] + data[data.rfind(self.command_terminator)+len(self.command_terminator):]
+            logger.debug('data from get(): {}'.format(repr(data))) # Added for debugging
+            logger.debug('data is of type: {}'.format(type(data))) # Added for debugging
+            if (data.startswith(og_cmd) and self.reply_echo_cmd): # Using original command to parse response
+                data = data[len(og_cmd):]
             logger.debug('sync: {} -> {}'.format(repr(command),repr(data)))
             all_data.append(data)
         return all_data
@@ -108,6 +109,8 @@ class EthernetProvider(Provider):
                         break
         except socket.timeout:
             logger.critical('Cannot Connect!')
+        logger.debug('get() is returning data: {}'.format(repr(data))) # Added for debugging
+        logger.debug('data is of type: {}'.format(type(data))) # Added for debugging
         return data
 
     @property
