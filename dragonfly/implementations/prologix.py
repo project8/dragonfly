@@ -132,7 +132,7 @@ class MuxerGetSpime(SimpleSCPIGetSpime):
     @calibrate([pt100_calibration, cernox_calibration])
     def on_get(self):
         very_raw = self.provider.send(self.base_str.format(self.ch_number))
-        logger.debug('very raw is: {}'.format(very_raw))
+        logger.debug('very raw is: {}'.format(very_raw)) 
         result = None
         if very_raw:
             result = very_raw.split()[0]
