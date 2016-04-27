@@ -17,10 +17,9 @@ __all__ = []
 
 __all__.append('MuxerProvider')
 @fancy_doc
-# Defining new class MuxerProvider that inherits from EthernetProvider
 class MuxerProvider(EthernetProvider):
 
-        def __init__(self, scan_interval=0,**kwargs): # Adding scan_interval parameter 
+        def __init__(self, scan_interval=0,**kwargs): 
                 '''
                 scan_interval (int): time between scans in seconds
                 '''
@@ -29,48 +28,41 @@ class MuxerProvider(EthernetProvider):
                         raise ValueError("scan interval must be > 0")
                 self.scan_interval = scan_interval
 
-        # Function to configure channels
         def conf_scan_list(self, *args, **kwargs):
                 '''
                 conf_scan_list loops over the provider's internal list of endpoints and attempts to configure each		
                 '''
 
-                ch_scan_list = list() # Initiate an empty scan list to be populated
+                ch_scan_list = list()
 
-                self.send(['*RST']) # Reset all previous configurations
-                self.send(['ABOR']) # Stop the current scan
+                self.send(['*RST'])
+                self.send(['ABOR']) 
 
-                # Loop over the endpoints
                 for child in self.endpoints:
-                        # Only "MuxerGetSpime" endpoints are considered for scan list
+
                         if not isinstance(self.endpoints[child], MuxerGetSpime):
-                                continue # If not of this type, go onto the next 
-                        if self.endpoints[child].conf_str == None: # If no configuration string is given (initiated as None)
-                                raise exceptions.DriplineValueError('conf_str value is required to configure {}'.format(self.endpoints[child].name)) # Raise an exception to user
-                                raise exceptions.DriplineWarning('if {} is not to be configured, please set conf_str to False'.format(self.endpoints[child].name)) # Raise warning 
-                                continue # Don't configure channel nor add it to the scan list
-                        elif self.endpoints[child].conf_str == False: # If endpoint conf_str is set to False don't configure channel but do add it to the scan list
-                                ch_scan_list.append(self.endpoints[child].ch_number) # Add channel number to scan list
                                 continue 
-                        else: # If configuration string present
-                                self.send([self.endpoints[child].conf_str.format(self.endpoints[child].ch_number)]) # Send the configuration command w/ appropriate channel number 
-                                logger.debug('sending:\n{}'.format(self.endpoints[child].conf_str.format(self.endpoints[child].ch_number))) # Debug statement to keep track of things;
-                                                                                                                                  # making sure we're sending the correct command
-                                ch_scan_list.append(str(self.endpoints[child].ch_number)) # Add channel number to scan list
+                        if self.endpoints[child].conf_str == None: 
+                                raise exceptions.DriplineValueError('conf_str value is required to configure {}'.format(self.endpoints[child].name))
+                                raise exceptions.DriplineWarning('if {} is not to be configured, please set conf_str to False'.format(self.endpoints[child].name))
+                                continue 
+                        elif self.endpoints[child].conf_str == False: 
+                                ch_scan_list.append(self.endpoints[child].ch_number)
+                                continue 
+                        else: 
+                                self.send([self.endpoints[child].conf_str.format(self.endpoints[child].ch_number)])
+                                logger.debug('sending:\n{}'.format(self.endpoints[child].conf_str.format(self.endpoints[child].ch_number))) 
+                                                                                                                                 
+                                ch_scan_list.append(str(self.endpoints[child].ch_number)) 
 
-                # Setting up the scan
-                scan_list_cmd = 'ROUT:SCAN (@{})'.format(','.join(ch_scan_list)) # Create scan list command from channel scan list
-                logger.debug('sending scan list command:\n{}'.format(scan_list_cmd)) # Making sure we send the right command
-                self.start_scan(scan_list_cmd) # Send command to start_scan method 
+                scan_list_cmd = 'ROUT:SCAN (@{})'.format(','.join(ch_scan_list))
+                logger.debug('sending scan list command:\n{}'.format(scan_list_cmd))
+                self.start_scan(scan_list_cmd) 
 
-        # Function to start scan
         def start_scan(self, scan_list_cmd):
 
-                # Send scan command
                 self.send([scan_list_cmd])
 
-                # Configure trigger settings
                 self.send(['TRIG:SOUR TIM', 'TRIG:COUN INF', 'TRIG:TIM {}'.format(self.scan_interval)])
 
-                # Send the init command to start the scan
                 self.send(['INIT'])

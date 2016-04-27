@@ -36,7 +36,7 @@ class EthernetProvider(Provider):
         self.socket_info = socket_info
         self.socket = socket.socket()
         self.response_terminator = response_terminator
-        self.bare_response_terminator = self.response_terminator[len('\r\n'):] # definition for bare response terminator '34980A>' needed for get()
+        self.bare_response_terminator = self.response_terminator[len('\r\n'):]
         self.command_terminator = command_terminator
         self.reply_echo_cmd = reply_echo_cmd
         if type(self.socket_info) is str:
@@ -51,18 +51,15 @@ class EthernetProvider(Provider):
         all_data=[]
 
         for command in commands:
-            og_command = command # saving original command
-            #if self.command_terminator is not None:
+            og_command = command
             command += self.command_terminator
             logger.debug('sending: {}'.format(repr(command))) 
             self.socket.send(command)
             data = self.get()
-            logger.debug('data from get(): {}'.format(repr(data))) # Added for debugging
-            logger.debug('data is of type: {}'.format(type(data))) # Added for debugging
-            if self.reply_echo_cmd: # See reply_echo_cmd docstring above
-                if data.startswith(command): # Note that command here is original command + command terminator 
+            if self.reply_echo_cmd: 
+                if data.startswith(command):
                     data = data[len(command):] 
-                elif data.startswith(og_command): # If response only include the original command w/o the command terminator
+                elif data.startswith(og_command): 
                     data = data[len(og_command):]
             logger.debug('sync: {} -> {}'.format(repr(command),repr(data)))
             all_data.append(data)
@@ -77,8 +74,7 @@ class EthernetProvider(Provider):
             logger.warning('connection with info: {} refused'.format(self.socket_info))
             raise
         self.socket.settimeout(self.socket_timeout)
-        # Get these messages out of the way first before sending any other commands
-        self.send("") # Machine will respond with it's welcome message+response_terminator
+        self.send("")
 
     def send(self, commands):
         '''
@@ -88,7 +84,7 @@ class EthernetProvider(Provider):
             commands = [commands]
         all_data = []
         self.alock.acquire()
-        logger.debug('commands is: {}'.format(commands)) # Added for debugging
+
         try:
             all_data += self.send_commands(commands)
 
@@ -109,10 +105,9 @@ class EthernetProvider(Provider):
         try:
             while True:
                 data += self.socket.recv(1024)
-                logger.debug('data received from the socket is: {}'.format(repr(data))) # Added for debugging
                 data = data.strip()
                 if self.response_terminator:
-                    if data not in (self.response_terminator,self.bare_response_terminator): # Check to see if response from socket is not either terminator
+                    if data not in (self.response_terminator,self.bare_response_terminator): 
                         if data.endswith(self.response_terminator):
                             data = data[0:data.find(self.response_terminator)]
                             break
@@ -123,8 +118,6 @@ class EthernetProvider(Provider):
             logger.critical('Cannot Connect!')
         if self.response_terminator:
             data = data.rsplit(self.response_terminator,1)[0]
-        logger.debug('get() is returning data: {}'.format(repr(data))) # Added for debugging
-        logger.debug('data is of type: {}'.format(type(data))) # Added for debugging
         return data
 
     @property
