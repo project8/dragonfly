@@ -112,12 +112,14 @@ class EthernetProvider(Provider):
                 logger.debug('data received from the socket is: {}'.format(repr(data))) # Added for debugging
                 data = data.strip()
                 if self.response_terminator:
-                    if data.endswith(self.response_terminator):
-                        data = data[0:data.find(self.response_terminator)]
-                        break
-                    elif data.endswith(self.bare_response_terminator):
-                        data = data[0:data.find(self.bare_response_terminator)]     
-                        break
+                    if data not in (self.response_terminator,self.bare_response_terminator): # Check to see if response from socket is not just a (either) terminator;
+                                                                                             # Socket can back terminators sometimes in between command/response pairs
+                        if data.endswith(self.response_terminator):
+                            data = data[0:data.find(self.response_terminator)]
+                            break
+                        elif data.endswith(self.bare_response_terminator):
+                            data = data[0:data.find(self.bare_response_terminator)]     
+                            break
         except socket.timeout:
             logger.critical('Cannot Connect!')
         if self.response_terminator:
