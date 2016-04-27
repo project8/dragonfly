@@ -37,6 +37,7 @@ class MuxerProvider(EthernetProvider):
 
                 ch_scan_list = list() # Initiate an empty scan list to be populated
 
+                self.send(['*RST']) # Reset all previous configurations
                 self.send(['ABOR']) # Stop the current scan
 
                 # Loop over the endpoints
