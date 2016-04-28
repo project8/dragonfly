@@ -54,7 +54,7 @@ class GPIBInstrument(Provider):
         if data & 0b00100000:
             ";".join([status, "command error"])
         return status
-            
+
     def send(self, cmd):
         if isinstance(cmd, types.StringType):
             cmd = [cmd]
@@ -85,6 +85,30 @@ def pt100_calibration(resistance):
         value = None
     return value
 
+def cernox_calibration_chebychev(resistance,serial_number):
+    data={
+        73819:[((2.84146227936,3.92053008093),(54.238901,-44.615418,9.800540,-1.373596,0.137863,-0.004419)),
+               ((2.17544340838,2.99571912372),(187.259060,-119.735282,19.990658,-2.662007,0.418343,-0.068467,0.009811,-0.003678))]
+    }
+    Z=math.log10(resistance)
+    print Z
+    tmp=data[serial_number]
+    this_data = None
+    for this_data_range in tmp:
+        if (this_data_range[0][0]<Z and Z<this_data_range[0][1]):
+            this_data = this_data_range
+            break
+    if this_data is None:
+        return None
+    ZL = this_data[0][0]
+    ZU = this_data[0][1]
+    k = ((Z-ZL)-(ZU-Z))/(ZU-ZL)
+    temperature = 0
+    i=0
+    for A_i in this_data[1]:
+        temperature += A_i*math.cos(i*math.acos(k))
+        i+=1
+    return temperature
 
 def cernox_calibration(resistance, serial_number):
     data = {
@@ -123,12 +147,12 @@ class MuxerGetSpime(SimpleSCPIGetSpime):
 	if conf_str is None:
 		logger.debug('conf_str value not provided; set to None')
 	else:
-		self.conf_str = conf_str        
+		self.conf_str = conf_str
 	self.base_str = "DATA:LAST? (@{})"
         self.ch_number = ch_number
         SimpleSCPIGetSpime.__init__(self, base_str=self.base_str, **kwargs)
         self.get_value = self.on_get
-    
+
     @calibrate([pt100_calibration, cernox_calibration])
     def on_get(self):
         very_raw = self.provider.send(self.base_str.format(self.ch_number))
