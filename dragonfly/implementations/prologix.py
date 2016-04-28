@@ -153,7 +153,7 @@ class MuxerGetSpime(SimpleSCPIGetSpime):
         SimpleSCPIGetSpime.__init__(self, base_str=self.base_str, **kwargs)
         self.get_value = self.on_get
 
-    @calibrate([pt100_calibration, cernox_calibration])
+    @calibrate([pt100_calibration, cernox_calibration, cernox_calibration_chebychev])
     def on_get(self):
         very_raw = self.provider.send(self.base_str.format(self.ch_number))
         logger.debug('very raw is: {}'.format(very_raw))
