@@ -3,11 +3,10 @@ import socket
 import threading
 import types
 
-from dripline.core import Provider, Endpoint
+from dripline.core import Provider, Endpoint, exceptions
 from dragonfly.implementations import EthernetProvider
 from dragonfly.implementations import MuxerGetSpime
 from dripline.core.utilities import fancy_doc
-from dripline.core import exceptions
 
 import logging
 logger = logging.getLogger(__name__)
@@ -35,8 +34,8 @@ class MuxerProvider(EthernetProvider):
 
                 ch_scan_list = list()
 
-                self.send(['*RST'])
-                self.send(['ABOR']) 
+                self.send(['ABOR'])
+                self.send(['*CLS']) 
 
                 for child in self.endpoints:
 
@@ -50,8 +49,9 @@ class MuxerProvider(EthernetProvider):
                                 ch_scan_list.append(self.endpoints[child].ch_number)
                                 continue 
                         else: 
-                                self.send([self.endpoints[child].conf_str.format(self.endpoints[child].ch_number)])
                                 logger.debug('sending:\n{}'.format(self.endpoints[child].conf_str.format(self.endpoints[child].ch_number))) 
+                                self.send([self.endpoints[child].conf_str.format(self.endpoints[child].ch_number)])
+                                self.send(['SYST:ERR?'])
                                                                                                                                  
                                 ch_scan_list.append(str(self.endpoints[child].ch_number)) 
 

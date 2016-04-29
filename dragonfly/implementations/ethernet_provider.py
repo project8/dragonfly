@@ -3,7 +3,7 @@ import socket
 import threading
 import types
 
-from dripline.core import Provider, Endpoint
+from dripline.core import Provider, Endpoint, exceptions
 from dripline.core.utilities import fancy_doc
 
 import logging
@@ -56,13 +56,27 @@ class EthernetProvider(Provider):
             logger.debug('sending: {}'.format(repr(command))) 
             self.socket.send(command)
             data = self.get()
-            if self.reply_echo_cmd: 
-                if data.startswith(command):
-                    data = data[len(command):] 
-                elif data.startswith(og_command): 
-                    data = data[len(og_command):]
-            logger.debug('sync: {} -> {}'.format(repr(command),repr(data)))
-            all_data.append(data)
+            if self.reply_echo_cmd:
+                if og_command == 'SYST:ERR?':
+                    if data.startswith(command):
+                        error_data = data[len(command):]
+                    elif data.startswith(og_command):
+                        error_data = data[len(og_command):]
+                    if error_data == '+0,"No error"':
+                        logger.debug('sync: {} -> {}'.format(repr(command),repr(error_data)))
+                        all_data.append(error_data)   
+                    else:
+                        # Raise exception with explanation as to what channel and what endpoint name's conf str put an error on the queue
+                        raise exceptions.DriplineHardwareError('error:\n{}'.format(error_data))
+                        raise exceptions.DriplineWarning('no further commands sent')
+                        break      
+                else: 
+                    if data.startswith(command):
+                        data = data[len(command):] 
+                    elif data.startswith(og_command): 
+                        data = data[len(og_command):]
+                    logger.debug('sync: {} -> {}'.format(repr(command),repr(data)))
+                    all_data.append(data)
         return all_data
 
     def reconnect(self):
