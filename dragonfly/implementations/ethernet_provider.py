@@ -76,12 +76,24 @@ class EthernetProvider(Provider):
                     else:
                         logger.error('error detected; no further commands will be sent')
                         raise exceptions.DriplineHardwareError('{} when attempting to configure endpoint named "{}" with channel number "{}"'.format(error_data,endpoint_name,endpoint_ch_number))
-                        continue     
+                        break     
                 else: 
                     if data.startswith(command):
                         data = data[len(command):] 
                     elif data.startswith(og_command): 
                         data = data[len(og_command):]
+                    logger.debug('sync: {} -> {}'.format(repr(command),repr(data)))
+                    all_data.append(data)
+            else:
+                if og_command == 'SYST:ERR?':
+                    if data == '+0,"No error"':
+                        logger.debug('sync: {} -> {}'.format(repr(command),repr(error_data)))
+                        all_data.append(error_data)
+                    else:
+                        logger.error('error detected; no further commands will be sent')
+                        raise exceptions.DriplineHardwareError('{} when attempting to configure endpoint named "{}" with channel number "{}"'.format(error_data,endpoint_name,endpoint_ch_number))
+                        break       
+                else:
                     logger.debug('sync: {} -> {}'.format(repr(command),repr(data)))
                     all_data.append(data)
         return all_data
