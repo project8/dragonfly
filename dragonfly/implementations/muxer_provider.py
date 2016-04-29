@@ -42,7 +42,7 @@ class MuxerProvider(EthernetProvider):
                         if not isinstance(self.endpoints[child], MuxerGetSpime):
                                 continue 
                         if self.endpoints[child].conf_str == None: 
-                                raise exceptions.DriplineValueError('conf_str value is required to configure {}'.format(self.endpoints[child].name))
+                                logger.error('conf_str value is required to configure {}'.format(self.endpoints[child].name))  
                                 raise exceptions.DriplineWarning('if {} is not to be configured, please set conf_str to False'.format(self.endpoints[child].name))
                                 continue 
                         elif self.endpoints[child].conf_str == False: 
@@ -51,7 +51,7 @@ class MuxerProvider(EthernetProvider):
                         else: 
                                 logger.debug('sending:\n{}'.format(self.endpoints[child].conf_str.format(self.endpoints[child].ch_number))) 
                                 self.send([self.endpoints[child].conf_str.format(self.endpoints[child].ch_number)])
-                                self.send(['SYST:ERR?'])
+                                self.send(['SYST:ERR?'], endpoint_name=self.endpoints[child].name, endpoint_ch_number=self.endpoints[child].ch_number)
                                                                                                                                  
                                 ch_scan_list.append(str(self.endpoints[child].ch_number)) 
 

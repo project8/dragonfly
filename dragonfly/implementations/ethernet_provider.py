@@ -47,8 +47,16 @@ class EthernetProvider(Provider):
         logger.debug('socket info is {}'.format(self.socket_info))
         self.reconnect()
 
-    def send_commands(self, commands):
+    def send_commands(self, commands, **kwargs):
         all_data=[]
+        
+        endpoint_name = None
+        endpoint_ch_number = None
+
+        if 'endpoint_name' in kwargs.keys():
+            endpoint_name = kwargs['endpoint_name']
+        if 'endpoint_ch_number' in kwargs.keys():
+            endpoint_ch_number = kwargs['endpoint_ch_number']  
 
         for command in commands:
             og_command = command
@@ -66,10 +74,9 @@ class EthernetProvider(Provider):
                         logger.debug('sync: {} -> {}'.format(repr(command),repr(error_data)))
                         all_data.append(error_data)   
                     else:
-                        # Raise exception with explanation as to what channel and what endpoint name's conf str put an error on the queue
-                        raise exceptions.DriplineHardwareError('error:\n{}'.format(error_data))
-                        raise exceptions.DriplineWarning('no further commands sent')
-                        break      
+                        logger.error('error detected; no further commands will be sent')
+                        raise exceptions.DriplineHardwareError('{} when attempting to configure endpoint named "{}" with channel number "{}"'.format(error_data,endpoint_name,endpoint_ch_number))
+                        continue     
                 else: 
                     if data.startswith(command):
                         data = data[len(command):] 
@@ -90,7 +97,7 @@ class EthernetProvider(Provider):
         self.socket.settimeout(self.socket_timeout)
         self.send("")
 
-    def send(self, commands):
+    def send(self, commands, **kwargs):
         '''
         this issues commands
         '''
@@ -100,13 +107,13 @@ class EthernetProvider(Provider):
         self.alock.acquire()
 
         try:
-            all_data += self.send_commands(commands)
+            all_data += self.send_commands(commands, **kwargs)
 
         except socket.error:
             self.alock.release()
             self.reconnect()
             self.alock.acquire()
-            all_data += self.send_commands(commands)
+            all_data += self.send_commands(commands, **kwargs)
 
         finally:
             self.alock.release()
