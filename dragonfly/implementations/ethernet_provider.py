@@ -3,7 +3,7 @@ import socket
 import threading
 import types
 
-from dripline.core import Provider, Endpoint
+from dripline.core import Provider, Endpoint, exceptions
 from dripline.core.utilities import fancy_doc
 
 import logging
@@ -47,8 +47,16 @@ class EthernetProvider(Provider):
         logger.debug('socket info is {}'.format(self.socket_info))
         self.reconnect()
 
-    def send_commands(self, commands):
+    def send_commands(self, commands, **kwargs):
         all_data=[]
+        
+        endpoint_name = None
+        endpoint_ch_number = None
+
+        if 'endpoint_name' in kwargs.keys():
+            endpoint_name = kwargs['endpoint_name']
+        if 'endpoint_ch_number' in kwargs.keys():
+            endpoint_ch_number = kwargs['endpoint_ch_number']  
 
         for command in commands:
             og_command = command
@@ -56,13 +64,26 @@ class EthernetProvider(Provider):
             logger.debug('sending: {}'.format(repr(command))) 
             self.socket.send(command)
             data = self.get()
-            if self.reply_echo_cmd: 
-                if data.startswith(command):
-                    data = data[len(command):] 
-                elif data.startswith(og_command): 
-                    data = data[len(og_command):]
-            logger.debug('sync: {} -> {}'.format(repr(command),repr(data)))
-            all_data.append(data)
+            if self.reply_echo_cmd:
+                if og_command == 'SYST:ERR?':
+                    if data.startswith(command):
+                        error_data = data[len(command):]
+                    elif data.startswith(og_command):
+                        error_data = data[len(og_command):]
+                    if error_data == '+0,"No error"':
+                        logger.debug('sync: {} -> {}'.format(repr(command),repr(error_data)))
+                        all_data.append(error_data)   
+                    else:
+                        logger.error('error detected; no further commands will be sent')
+                        raise exceptions.DriplineHardwareError('{} when attempting to configure endpoint named "{}" with channel number "{}"'.format(error_data,endpoint_name,endpoint_ch_number))
+                        continue     
+                else: 
+                    if data.startswith(command):
+                        data = data[len(command):] 
+                    elif data.startswith(og_command): 
+                        data = data[len(og_command):]
+                    logger.debug('sync: {} -> {}'.format(repr(command),repr(data)))
+                    all_data.append(data)
         return all_data
 
     def reconnect(self):
@@ -76,7 +97,7 @@ class EthernetProvider(Provider):
         self.socket.settimeout(self.socket_timeout)
         self.send("")
 
-    def send(self, commands):
+    def send(self, commands, **kwargs):
         '''
         this issues commands
         '''
@@ -86,13 +107,13 @@ class EthernetProvider(Provider):
         self.alock.acquire()
 
         try:
-            all_data += self.send_commands(commands)
+            all_data += self.send_commands(commands, **kwargs)
 
         except socket.error:
             self.alock.release()
             self.reconnect()
             self.alock.acquire()
-            all_data += self.send_commands(commands)
+            all_data += self.send_commands(commands, **kwargs)
 
         finally:
             self.alock.release()
