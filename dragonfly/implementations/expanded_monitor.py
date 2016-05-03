@@ -38,12 +38,14 @@ class expanded_monitor(Gogol):
         for sensor_name in self.sensor_defs["sensors"]:
             for sensor_type in self.sensor_defs["sensors"][sensor_name]["sensor_types"]:
                 if sensor_type in self.sensor_defs["sensor_types"]:
-                    self.sensor_defs["sensors"][sensor_name]["tag_conditions"].extend(self.sensor_defs["sensor_types"][sensor_type]["tag_conditions"])
+                    if "tag_conditions" in self.sensor_defs["sensors"][sensor_name]:
+                        self.sensor_defs["sensors"][sensor_name]["tag_conditions"].extend(self.sensor_defs["sensor_types"][sensor_type]["tag_conditions"])
                 else:
                     logger.info("Error, sensor_type not found")
          #use the generic reactions to populate sensor reactions
         for sensor_name in self.sensor_defs["sensors"]:
-            self.sensor_defs["sensors"][sensor_name]["reactions"].extend(self.sensor_defs["generic_reactions"])
+            if "reactions" in self.sensor_defs["sensors"][sensor_name]:
+                self.sensor_defs["sensors"][sensor_name]["reactions"].extend(self.sensor_defs["generic_reactions"])
         #the message queue is what I'm about to log to info
         #it's there so when I do things like email someone or post to slack,
         #I don't senda  whole bunch of messages. I only send the queue every queue_flush_time
