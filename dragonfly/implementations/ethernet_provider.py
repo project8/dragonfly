@@ -18,9 +18,10 @@ class EthernetProvider(Provider):
     def __init__(self,
                  socket_timeout=1.0,
                  socket_info=("localhost",1234),
-                 response_terminator = None,
-                 command_terminator = None,
-                 reply_echo_cmd = False,
+                 response_terminator=None,
+                 bare_response_terminator=None,
+                 command_terminator=None,
+                 reply_echo_cmd=False,
                  **kwargs
                  ):
         '''
@@ -36,7 +37,7 @@ class EthernetProvider(Provider):
         self.socket_info = socket_info
         self.socket = socket.socket()
         self.response_terminator = response_terminator
-        self.bare_response_terminator = self.response_terminator[len('\r\n'):]
+        self.bare_response_terminator = bare_response_terminator
         self.command_terminator = command_terminator
         self.reply_echo_cmd = reply_echo_cmd
         if type(self.socket_info) is str:
@@ -147,6 +148,8 @@ class EthernetProvider(Provider):
                         elif data.endswith(self.bare_response_terminator):
                             data = data[0:data.find(self.bare_response_terminator)]     
                             break
+                else:
+                    break  
         except socket.timeout:
             logger.critical('Cannot Connect!')
         if self.response_terminator:
