@@ -50,21 +50,27 @@ class EthernetProvider(Provider):
 
     def send_commands(self, commands, **kwargs):
         all_data=[]
-        
+
         endpoint_name = None
         endpoint_ch_number = None
 
         if 'endpoint_name' in kwargs.keys():
             endpoint_name = kwargs['endpoint_name']
         if 'endpoint_ch_number' in kwargs.keys():
-            endpoint_ch_number = kwargs['endpoint_ch_number']  
+            endpoint_ch_number = kwargs['endpoint_ch_number']
 
         for command in commands:
             og_command = command
             command += self.command_terminator
-            logger.debug('sending: {}'.format(repr(command))) 
+            logger.debug('sending: {}'.format(repr(command)))
             self.socket.send(command)
-            data = self.get()
+            if command == "":
+                blank_command = True
+            else:
+                blank_command = False
+
+            data = self.get(blank_command)
+
             if self.reply_echo_cmd:
                 if og_command == 'SYST:ERR?':
                     if data.startswith(command):
@@ -73,15 +79,15 @@ class EthernetProvider(Provider):
                         error_data = data[len(og_command):]
                     if error_data == '+0,"No error"':
                         logger.debug('sync: {} -> {}'.format(repr(command),repr(error_data)))
-                        all_data.append(error_data)   
+                        all_data.append(error_data)
                     else:
                         logger.error('error detected; no further commands will be sent')
                         raise exceptions.DriplineHardwareError('{} when attempting to configure endpoint named "{}" with channel number "{}"'.format(error_data,endpoint_name,endpoint_ch_number))
-                        break     
-                else: 
+                        break
+                else:
                     if data.startswith(command):
-                        data = data[len(command):] 
-                    elif data.startswith(og_command): 
+                        data = data[len(command):]
+                    elif data.startswith(og_command):
                         data = data[len(og_command):]
                     logger.debug('sync: {} -> {}'.format(repr(command),repr(data)))
                     all_data.append(data)
@@ -93,7 +99,7 @@ class EthernetProvider(Provider):
                     else:
                         logger.error('error detected; no further commands will be sent')
                         raise exceptions.DriplineHardwareError('{} when attempting to configure endpoint named "{}" with channel number "{}"'.format(error_data,endpoint_name,endpoint_ch_number))
-                        break       
+                        break
                 else:
                     logger.debug('sync: {} -> {}'.format(repr(command),repr(data)))
                     all_data.append(data)
@@ -134,24 +140,24 @@ class EthernetProvider(Provider):
         logger.debug('should return:\n{}'.format(to_return))
         return to_return
 
-    def get(self):
+    def get(self, blank_command = False):
         data = ""
         try:
             while True:
                 data += self.socket.recv(1024)
-                data = data.strip()
                 if self.response_terminator:
-                    if data not in (self.response_terminator,self.bare_response_terminator): 
+                    if data not in (self.response_terminator,self.bare_response_terminator):
                         if data.endswith(self.response_terminator):
                             data = data[0:data.find(self.response_terminator)]
                             break
                         elif data.endswith(self.bare_response_terminator):
-                            data = data[0:data.find(self.bare_response_terminator)]     
+                            data = data[0:data.find(self.bare_response_terminator)]
                             break
                 else:
-                    break  
+                    break
         except socket.timeout:
-            logger.critical('Cannot Connect!')
+            if blank_command == False :
+                logger.critical('Cannot Connect to: ' + self.socket_info[0])
         if self.response_terminator:
             data = data.rsplit(self.response_terminator,1)[0]
         return data
