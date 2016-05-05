@@ -54,7 +54,7 @@ class expanded_monitor(Gogol):
         self.last_queue_flush=time()-self.queue_flush_time_seconds
 
     def this_consume(self, message, basic_deliver):
-#logger.info('Alert: consume called')
+        logger.info('Alert: consume called')
         ### Get the sensor name
         sensor_name = None
         if '.' in basic_deliver.routing_key:
@@ -67,6 +67,7 @@ class expanded_monitor(Gogol):
         #-----For this particular sensor, compare the value with the range for certain tags
         #-----If that value is within range, those tags are true
         if sensor_name in self.sensor_defs["sensors"]:
+            logger.info("Parsing message from ",sensor_name)
             my_tags=[]
             for cond in self.sensor_defs["sensors"][sensor_name]["tag_conditions"]:
                 value=0
