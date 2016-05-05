@@ -3,7 +3,7 @@ import socket
 import threading
 import types
 
-from dripline.core import Provider, Endpoint
+from dripline.core import Provider, Endpoint, exceptions
 from dripline.core.utilities import fancy_doc
 
 import logging
@@ -18,9 +18,10 @@ class EthernetProvider(Provider):
     def __init__(self,
                  socket_timeout=1.0,
                  socket_info=("localhost",1234),
-                 response_terminator = None,
-                 command_terminator = None,
-                 reply_echo_cmd = True,
+                 response_terminator=None,
+                 bare_response_terminator=None,
+                 command_terminator=None,
+                 reply_echo_cmd=False,
                  **kwargs
                  ):
         '''
@@ -28,7 +29,7 @@ class EthernetProvider(Provider):
         socket_info (tuple): (<network_address_as_str>, <port_as_int>)
         response_terminator (str||None): string to rstrip() from responses
         command_terminator (str||None): string to append to commands
-        reply_echo_cmd (bool): set to true if command+command_terminator are present in reply
+        reply_echo_cmd (bool): set to True if command+command_terminator or just command are present in reply
         '''
         Provider.__init__(self, **kwargs)
         self.alock = threading.Lock()
@@ -36,6 +37,7 @@ class EthernetProvider(Provider):
         self.socket_info = socket_info
         self.socket = socket.socket()
         self.response_terminator = response_terminator
+        self.bare_response_terminator = bare_response_terminator
         self.command_terminator = command_terminator
         self.reply_echo_cmd = reply_echo_cmd
         if type(self.socket_info) is str:
@@ -46,19 +48,61 @@ class EthernetProvider(Provider):
         logger.debug('socket info is {}'.format(self.socket_info))
         self.reconnect()
 
-    def send_commands(self, commands):
+    def send_commands(self, commands, **kwargs):
         all_data=[]
 
+        endpoint_name = None
+        endpoint_ch_number = None
+
+        if 'endpoint_name' in kwargs.keys():
+            endpoint_name = kwargs['endpoint_name']
+        if 'endpoint_ch_number' in kwargs.keys():
+            endpoint_ch_number = kwargs['endpoint_ch_number']
+
         for command in commands:
+            og_command = command
+            command += self.command_terminator
             logger.debug('sending: {}'.format(repr(command)))
-            if self.command_terminator is not None:
-                command += self.command_terminator
             self.socket.send(command)
-            data = self.get()
-            if (data.startswith(command) and self.reply_echo_cmd):
-                data = data[0:data.find(self.command_terminator)+len(self.command_terminator)] + data[data.rfind(self.command_terminator)+len(self.command_terminator):]
-            logger.debug('sync: {} -> {}'.format(repr(command),repr(data)))
-            all_data.append(data)
+            if command == "":
+                blank_command = True
+            else:
+                blank_command = False
+
+            data = self.get(blank_command)
+
+            if self.reply_echo_cmd:
+                if og_command == 'SYST:ERR?':
+                    if data.startswith(command):
+                        error_data = data[len(command):]
+                    elif data.startswith(og_command):
+                        error_data = data[len(og_command):]
+                    if error_data == '+0,"No error"':
+                        logger.debug('sync: {} -> {}'.format(repr(command),repr(error_data)))
+                        all_data.append(error_data)
+                    else:
+                        logger.error('error detected; no further commands will be sent')
+                        raise exceptions.DriplineHardwareError('{} when attempting to configure endpoint named "{}" with channel number "{}"'.format(error_data,endpoint_name,endpoint_ch_number))
+                        break
+                else:
+                    if data.startswith(command):
+                        data = data[len(command):]
+                    elif data.startswith(og_command):
+                        data = data[len(og_command):]
+                    logger.debug('sync: {} -> {}'.format(repr(command),repr(data)))
+                    all_data.append(data)
+            else:
+                if og_command == 'SYST:ERR?':
+                    if data == '+0,"No error"':
+                        logger.debug('sync: {} -> {}'.format(repr(command),repr(error_data)))
+                        all_data.append(error_data)
+                    else:
+                        logger.error('error detected; no further commands will be sent')
+                        raise exceptions.DriplineHardwareError('{} when attempting to configure endpoint named "{}" with channel number "{}"'.format(error_data,endpoint_name,endpoint_ch_number))
+                        break
+                else:
+                    logger.debug('sync: {} -> {}'.format(repr(command),repr(data)))
+                    all_data.append(data)
         return all_data
 
     def reconnect(self):
@@ -72,7 +116,7 @@ class EthernetProvider(Provider):
         self.socket.settimeout(self.socket_timeout)
         self.send("")
 
-    def send(self, commands):
+    def send(self, commands, **kwargs):
         '''
         this issues commands
         '''
@@ -80,14 +124,15 @@ class EthernetProvider(Provider):
             commands = [commands]
         all_data = []
         self.alock.acquire()
+
         try:
-            all_data += self.send_commands(commands)
+            all_data += self.send_commands(commands, **kwargs)
 
         except socket.error:
             self.alock.release()
             self.reconnect()
             self.alock.acquire()
-            all_data += self.send_commands(commands)
+            all_data += self.send_commands(commands, **kwargs)
 
         finally:
             self.alock.release()
@@ -95,17 +140,24 @@ class EthernetProvider(Provider):
         logger.debug('should return:\n{}'.format(to_return))
         return to_return
 
-    def get(self):
+    def get(self, blank_command = False):
         data = ""
         try:
             while True:
                 data += self.socket.recv(1024)
-                if (self.response_terminator and  data.endswith(self.response_terminator)):
-                    if(self.reply_echo_cmd):
-                        data= data[0:data.find(self.response_terminator)]
+                if self.response_terminator:
+                    if data not in (self.response_terminator,self.bare_response_terminator):
+                        if data.endswith(self.response_terminator):
+                            data = data[0:data.find(self.response_terminator)]
+                            break
+                        elif data.endswith(self.bare_response_terminator):
+                            data = data[0:data.find(self.bare_response_terminator)]
+                            break
+                else:
                     break
         except socket.timeout:
-            logger.critical('Cannot Connect!')
+            if blank_command == False :
+                logger.critical('Cannot Connect to: ' + self.socket_info[0])
         if self.response_terminator:
             data = data.rsplit(self.response_terminator,1)[0]
         return data
