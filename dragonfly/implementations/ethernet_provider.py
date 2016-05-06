@@ -64,7 +64,7 @@ class EthernetProvider(Provider):
             command += self.command_terminator
             logger.debug('sending: {}'.format(repr(command)))
             self.socket.send(command)
-            if command == "":
+            if command == self.command_terminator:
                 blank_command = True
             else:
                 blank_command = False
