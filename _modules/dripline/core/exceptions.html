@@ -1,0 +1,315 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>dripline.core.exceptions &mdash; dripline wp2.0.0-python3.2.4-11-g6d93565 documentation</title>
+  
+
+  
+  
+    <link rel="shortcut icon" href="../../../_static/Blue_Dragonfly-32x32.ico"/>
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+    <link rel="top" title="dripline wp2.0.0-python3.2.4-11-g6d93565 documentation" href="../../../index.html"/>
+        <link rel="up" title="Module code" href="../../index.html"/> 
+
+  
+  <script src="../../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../../../index.html" class="icon icon-home"> dripline
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                wp2.0.0-python3.2.4-11-g6d93565
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+                <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../introduction.html">Introduction and Background Reading</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../getting_started.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tutorials/tutorials.html">Tutorials</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../contribute.html">Contribute</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cli_tools.html">Command Line Tools</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../glossary.html">Glossary</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../apidocs/modules.html">dripline</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="../../../index.html">dripline</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../../../index.html">Docs</a> &raquo;</li>
+      
+          <li><a href="../../index.html">Module code</a> &raquo;</li>
+      
+    <li>dripline.core.exceptions</li>
+      <li class="wy-breadcrumbs-aside">
+        
+          
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for dripline.core.exceptions</h1><div class="highlight"><pre>
+<span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">Dripline&#39;s exception and warning classes, including their associated return codes.</span>
+<span class="sd">&#39;&#39;&#39;</span>
+
+
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">absolute_import</span>
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
+          <span class="p">]</span>
+
+
+<div class="viewcode-block" id="DriplineException"><a class="viewcode-back" href="../../../apidocs/dripline.core.html#dripline.core.exceptions.DriplineException">[docs]</a><span class="k">class</span> <span class="nc">DriplineException</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
+    <span class="n">retcode</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">,</span> <span class="n">result</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">DriplineException</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">result</span> <span class="o">=</span> <span class="n">result</span></div>
+<span class="n">__all__</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#39;DriplineException&#39;</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="DriplineError"><a class="viewcode-back" href="../../../apidocs/dripline.core.html#dripline.core.exceptions.DriplineError">[docs]</a><span class="k">class</span> <span class="nc">DriplineError</span><span class="p">(</span><span class="n">DriplineException</span><span class="p">):</span>
+    <span class="n">retcode</span> <span class="o">=</span> <span class="bp">None</span></div>
+<span class="n">__all__</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#39;DriplineError&#39;</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="DriplineWarning"><a class="viewcode-back" href="../../../apidocs/dripline.core.html#dripline.core.exceptions.DriplineWarning">[docs]</a><span class="k">class</span> <span class="nc">DriplineWarning</span><span class="p">(</span><span class="n">DriplineException</span><span class="p">):</span>
+    <span class="n">retcode</span> <span class="o">=</span> <span class="mi">0</span></div>
+<span class="n">__all__</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#39;DriplineWarning&#39;</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="DriplineAMQPError"><a class="viewcode-back" href="../../../apidocs/dripline.core.html#dripline.core.exceptions.DriplineAMQPError">[docs]</a><span class="k">class</span> <span class="nc">DriplineAMQPError</span><span class="p">(</span><span class="n">DriplineError</span><span class="p">):</span>
+    <span class="n">retcode</span> <span class="o">=</span> <span class="mi">100</span></div>
+<span class="n">__all__</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#39;DriplineAMQPError&#39;</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="DriplineAMQPConnectionError"><a class="viewcode-back" href="../../../apidocs/dripline.core.html#dripline.core.exceptions.DriplineAMQPConnectionError">[docs]</a><span class="k">class</span> <span class="nc">DriplineAMQPConnectionError</span><span class="p">(</span><span class="n">DriplineError</span><span class="p">):</span>
+    <span class="n">retcode</span> <span class="o">=</span> <span class="mi">101</span></div>
+<span class="n">__all__</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#39;DriplineAMQPConnectionError&#39;</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="DriplineAMQPRoutingKeyError"><a class="viewcode-back" href="../../../apidocs/dripline.core.html#dripline.core.exceptions.DriplineAMQPRoutingKeyError">[docs]</a><span class="k">class</span> <span class="nc">DriplineAMQPRoutingKeyError</span><span class="p">(</span><span class="n">DriplineError</span><span class="p">):</span>
+    <span class="n">retcode</span> <span class="o">=</span> <span class="mi">102</span></div>
+<span class="n">__all__</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#39;DriplineAMQPRoutingKeyError&#39;</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="DriplineHardwareError"><a class="viewcode-back" href="../../../apidocs/dripline.core.html#dripline.core.exceptions.DriplineHardwareError">[docs]</a><span class="k">class</span> <span class="nc">DriplineHardwareError</span><span class="p">(</span><span class="n">DriplineError</span><span class="p">):</span>
+    <span class="n">retcode</span> <span class="o">=</span> <span class="mi">200</span></div>
+<span class="n">__all__</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#39;DriplineHardwareError&#39;</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="DriplineHardwareConnectionError"><a class="viewcode-back" href="../../../apidocs/dripline.core.html#dripline.core.exceptions.DriplineHardwareConnectionError">[docs]</a><span class="k">class</span> <span class="nc">DriplineHardwareConnectionError</span><span class="p">(</span><span class="n">DriplineError</span><span class="p">):</span>
+    <span class="n">retcode</span> <span class="o">=</span> <span class="mi">201</span></div>
+<span class="n">__all__</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#39;DriplineHardwareConnectionError&#39;</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="DriplineHardwareResponselessError"><a class="viewcode-back" href="../../../apidocs/dripline.core.html#dripline.core.exceptions.DriplineHardwareResponselessError">[docs]</a><span class="k">class</span> <span class="nc">DriplineHardwareResponselessError</span><span class="p">(</span><span class="n">DriplineError</span><span class="p">):</span>
+    <span class="n">retcode</span> <span class="o">=</span> <span class="mi">202</span></div>
+<span class="n">__all__</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#39;DriplineHardwareResponselessError&#39;</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="DriplineInternalError"><a class="viewcode-back" href="../../../apidocs/dripline.core.html#dripline.core.exceptions.DriplineInternalError">[docs]</a><span class="k">class</span> <span class="nc">DriplineInternalError</span><span class="p">(</span><span class="n">DriplineError</span><span class="p">):</span>
+    <span class="n">retcode</span> <span class="o">=</span> <span class="mi">300</span></div>
+<span class="n">__all__</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#39;DriplineInternalError&#39;</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="DriplineNoMessageEncodingError"><a class="viewcode-back" href="../../../apidocs/dripline.core.html#dripline.core.exceptions.DriplineNoMessageEncodingError">[docs]</a><span class="k">class</span> <span class="nc">DriplineNoMessageEncodingError</span><span class="p">(</span><span class="n">DriplineError</span><span class="p">):</span>
+    <span class="n">retcode</span> <span class="o">=</span> <span class="mi">301</span></div>
+<span class="n">__all__</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#39;DriplineNoMessageEncodingError&#39;</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="DriplineDecodingError"><a class="viewcode-back" href="../../../apidocs/dripline.core.html#dripline.core.exceptions.DriplineDecodingError">[docs]</a><span class="k">class</span> <span class="nc">DriplineDecodingError</span><span class="p">(</span><span class="n">DriplineError</span><span class="p">):</span>
+    <span class="n">retcode</span> <span class="o">=</span> <span class="mi">302</span></div>
+<span class="n">__all__</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#39;DriplineDecodingError&#39;</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="DriplinePayloadError"><a class="viewcode-back" href="../../../apidocs/dripline.core.html#dripline.core.exceptions.DriplinePayloadError">[docs]</a><span class="k">class</span> <span class="nc">DriplinePayloadError</span><span class="p">(</span><span class="n">DriplineError</span><span class="p">):</span>
+    <span class="n">retcode</span> <span class="o">=</span> <span class="mi">303</span></div>
+<span class="n">__all__</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#39;DriplinePayloadError&#39;</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="DriplineValueError"><a class="viewcode-back" href="../../../apidocs/dripline.core.html#dripline.core.exceptions.DriplineValueError">[docs]</a><span class="k">class</span> <span class="nc">DriplineValueError</span><span class="p">(</span><span class="n">DriplineError</span><span class="p">):</span>
+    <span class="n">retcode</span> <span class="o">=</span> <span class="mi">304</span></div>
+<span class="n">__all__</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#39;DriplineValueError&#39;</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="DriplineTimeoutError"><a class="viewcode-back" href="../../../apidocs/dripline.core.html#dripline.core.exceptions.DriplineTimeoutError">[docs]</a><span class="k">class</span> <span class="nc">DriplineTimeoutError</span><span class="p">(</span><span class="n">DriplineError</span><span class="p">):</span>
+    <span class="n">retcode</span> <span class="o">=</span> <span class="mi">305</span></div>
+<span class="n">__all__</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#39;DriplineTimeoutError&#39;</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="DriplineMethodNotSupportedError"><a class="viewcode-back" href="../../../apidocs/dripline.core.html#dripline.core.exceptions.DriplineMethodNotSupportedError">[docs]</a><span class="k">class</span> <span class="nc">DriplineMethodNotSupportedError</span><span class="p">(</span><span class="n">DriplineError</span><span class="p">):</span>
+    <span class="n">retcode</span> <span class="o">=</span> <span class="mi">306</span></div>
+<span class="n">__all__</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#39;DriplineMethodNotSupportedError&#39;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="DriplineAccessDenied"><a class="viewcode-back" href="../../../apidocs/dripline.core.html#dripline.core.exceptions.DriplineAccessDenied">[docs]</a><span class="k">class</span> <span class="nc">DriplineAccessDenied</span><span class="p">(</span><span class="n">DriplineError</span><span class="p">):</span>
+    <span class="n">retcode</span> <span class="o">=</span> <span class="mi">307</span></div>
+<span class="n">__all__</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#39;DriplineAccessDenied&#39;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="DriplineInvalidKey"><a class="viewcode-back" href="../../../apidocs/dripline.core.html#dripline.core.exceptions.DriplineInvalidKey">[docs]</a><span class="k">class</span> <span class="nc">DriplineInvalidKey</span><span class="p">(</span><span class="n">DriplineError</span><span class="p">):</span>
+    <span class="n">retcode</span> <span class="o">=</span> <span class="mi">308</span></div>
+<span class="n">__all__</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#39;DriplineInvalidKey&#39;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="DriplineDeprecated"><a class="viewcode-back" href="../../../apidocs/dripline.core.html#dripline.core.exceptions.DriplineDeprecated">[docs]</a><span class="k">class</span> <span class="nc">DriplineDeprecated</span><span class="p">(</span><span class="n">DriplineError</span><span class="p">):</span>
+    <span class="n">retcode</span> <span class="o">=</span> <span class="mi">309</span></div>
+<span class="n">__all__</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#39;DriplineDeprecated&#39;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="DriplineDatabaseError"><a class="viewcode-back" href="../../../apidocs/dripline.core.html#dripline.core.exceptions.DriplineDatabaseError">[docs]</a><span class="k">class</span> <span class="nc">DriplineDatabaseError</span><span class="p">(</span><span class="n">DriplineError</span><span class="p">):</span>
+    <span class="n">retcode</span> <span class="o">=</span> <span class="mi">400</span></div>
+<span class="n">__all__</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&quot;DriplineDatabaseError&quot;</span><span class="p">)</span>
+
+<span class="n">exception_map</span> <span class="o">=</span> <span class="p">{}</span>
+<span class="k">for</span> <span class="n">exception</span> <span class="ow">in</span> <span class="n">__all__</span><span class="p">:</span>
+    <span class="n">exception_map</span><span class="p">[</span><span class="nb">locals</span><span class="p">()[</span><span class="n">exception</span><span class="p">]</span><span class="o">.</span><span class="n">retcode</span><span class="p">]</span> <span class="o">=</span> <span class="nb">locals</span><span class="p">()[</span><span class="n">exception</span><span class="p">]</span>
+<span class="n">__all__</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#39;exception_map&#39;</span><span class="p">)</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2014, The Project 8 Collaboration.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../../',
+            VERSION:'wp2.0.0-python3.2.4-11-g6d93565',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="../../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../../_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../../../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>
