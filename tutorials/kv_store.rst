@@ -23,23 +23,65 @@ locally, both to ease debugging and to avoid breaking "production" components.
 AMQP Broker (RabbitMQ)
 ======================
 For detailed instructions, you should visit `the official website <https://www.rabbitmq.com/download.html>`_
-and check the section for your operating system. In the case of debian it is a simple as:
+and check the section for your operating system.
+
+In the case of debian it is a simple as:
 
 .. code-block:: sh
 
-    sudo apt-get install rabbitmq server
+    sudo apt-get install rabbitmq-server
     sudo rabbitmq-server start
+
+In the case of an OS X machine, you can use the homebrew package manager:
+
+.. code-block:: sh
+
+   brew install rabbitmq
+   brew link rabbitmq
+
+There are two options for starting the service:
+
+1. as a daemon (``brew services start rabbitmq``)
+2. as a foreground process (``rabbitmq-server start``)
+To do so, you might have to add ``PATH=$PATH:/usr/local/sbin`` to your ``.bash_profile`` file.
 
 Dragonfly works with a vanilla installation of rabbitmq, though there exists support
 for user authentication. Users are required if deploying a system across multiple
 computers (ie in any realistic production system). For this example we're going to just
 work locally and save that for later.
 
+To work on a specific broker, you need to be registered as user.
+To do so, connect to the broker address using your internet browser: we have several you can use
+
+1. higgsino.physics.ucsb.edu:15672 (broker used as non-production only)
+2. myrna.p8:15672 (requires to be on the UW/project8 network)
+3. localhost:15672 (this is your local broker, available only once you install your own rabbitmq-server and start it).
+
+For the first two brokers, you can connect using standard IDs (ask Ben L. or Noah S. for more details).
+For your local broker, use ``guest`` as username and password.
+Once connected, add a new user and a password in the "Admin tab", typically [your name]@[computer you’re using].
+Once your username has been added to the list, click on it and click on "Set permissions": "Currents permissions" table should then be populated.
+
+You now can use this broker.
+The final step is to create a ``.project8_authentications.json`` in your home (~) which should look as:
+
+.. code-block:: python
+
+    {
+        "amqp": {
+              "username": "username",
+              "password": "password"
+            }
+    }
+    
+The username and password are the ones you defined in the broker.
+This file will be searched and read by dragonfly to authentificate on the broker.
+
 Dragonfly Installation
 ======================
 
 Each package, dripline and dragonfly, includes a ``README.md`` file which has
-simple instructions for installation. You can find more detailed instructions in the 
+simple instructions for installation. You can find more detailed instructions in the
 :doc:`/getting_started` section. In each case, there are basically three steps:
 
 1. **Prepare your environment:** Usually this amounts to activating a virtualenvironment, or creating one if needed. Further discussion of why you would do this is beyond the scope of this tutorial, but rest assured that it is a very very good idea.
@@ -49,7 +91,7 @@ simple instructions for installation. You can find more detailed instructions in
 What's in a config file?
 ------------------------
 The configuration file for our key-value store is named ``kv_store_tutorial.yaml`` and can
-be found in the ``examples/`` directory. In this section we'll review the contents of 
+be found in the ``examples/`` directory. In this section we'll review the contents of
 that file and how one might go about writing one from scratch. Feel free to skip this
 section and come back later if you are currently working with a running system and not
 interested in new config files yet.
@@ -92,10 +134,10 @@ Which would open your shell's pager with output that starts like the following:
 .. code-block:: sh
 
     Help on class kv_store_key in module abc:
-    
+
     class kv_store_key(dragonfly.implementations.kv_store.kv_store_key)
     |  A key in the KV store.
-    |  
+    |
     |  Keyword Args:
     |      log_on_set (bool): flag to enable logging the new value whenever a new one is set
     |      name (str): unique identifier across all dripline services (used to determine routing key)
@@ -105,7 +147,7 @@ Which would open your shell's pager with output that starts like the following:
     |      max_interval (float): If > 0, any log event exceding this number of seconds since the last broadcast will trigger a broadcast.
     |      max_fractional_change (float): If > 0, any log event which produces a value which differs from the previous value by more than this amount (expressed as a fraction, ie 10% change is 0.1) will trigger a broadcast
     |      alert_routing_key (str): routing key for the alert message send when broadcasting a logging event result. The default value of 'sensor_value' is valid for DataLoggers which represent physical quantities being stored to the slow controls database tables
-    |  
+    |
 
 
 Running it all
@@ -159,7 +201,7 @@ review the usage and options with ``dragonfly monitor -h``:
     usage: dragonfly monitor [-h] [-v] [-V] [-b [BROKER]] [-c CONFIG] [-t [TMUX]]
                              [--no-slack] [-e exchange name]
                              [-k [keys [keys ...]]] [-po]
-    
+
     optional arguments:
       -h, --help            show this help message and exit
       -v, --verbose         increases terminal output verbosity
@@ -188,7 +230,7 @@ default the "alerts" exchange is used. We do not need to specify a key with ``-k
 because the default is the all keys wildcard.
 
 Open up either a new terminal or tmux pane (and activate your virtual environment in it)
-and then run ``dragonfly monitor -e requests -v``. This is a forground process so we 
+and then run ``dragonfly monitor -e requests -v``. This is a forground process so we
 will see a few initial messages as it starts up, then it will sit blocking the terminal
 while waiting for new messages to be printed (the ``-v`` may be omitted, but the
 less will be printed and it can sometimes be hard to tell if it is running).
@@ -204,7 +246,7 @@ command usage:
 
     usage: dragonfly serve [-h] [-v] [-V] [-b [BROKER]] [-c CONFIG] [-t [TMUX]]
                            [--no-slack] [-k BINDING_KEYS]
-    
+
     optional arguments:
       -h, --help            show this help message and exit
       -v, --verbose         increases terminal output verbosity
@@ -250,39 +292,39 @@ one endpoint may need to make its own requests to other endpoints in order to pr
 
 .. code-block:: sh
 
-    2015-12-04T17:25:03[Level 35] dragonfly.subcommands.message_monitor(34) -> 
+    2015-12-04T17:25:03[Level 35] dragonfly.subcommands.message_monitor(34) ->
     dripline.core.Service [peaches]     (From App [routing_key])
     {
-        "timestamp": "2015-12-05T01:25:03Z", 
+        "timestamp": "2015-12-05T01:25:03Z",
         "sender_info": {
-            "username": "laroque", 
-            "exe": "/home/laroque/python_environments/more_alerts/bin/dragonfly", 
-            "package": "dripline", 
-            "hostname": "higgsino", 
-            "version": "wp1.4.0", 
+            "username": "laroque",
+            "exe": "/home/laroque/python_environments/more_alerts/bin/dragonfly",
+            "package": "dripline",
+            "hostname": "higgsino",
+            "version": "wp1.4.0",
             "commit": "g5c3ea72"
-        }, 
+        },
         "payload": {
             "values": []
-        }, 
+        },
         "msgop": 1
     }
-    2015-12-04T17:25:03[Level 35] dragonfly.subcommands.message_monitor(34) -> 
+    2015-12-04T17:25:03[Level 35] dragonfly.subcommands.message_monitor(34) ->
     dripline.core.Service [request_reply582034c6-ebbf-4379-9dc9-6a0b159b7527]     (From App [routing_key])
     {
-        "timestamp": "2015-12-05T01:25:03Z", 
+        "timestamp": "2015-12-05T01:25:03Z",
         "sender_info": {
-            "username": "laroque", 
-            "exe": "/home/laroque/python_environments/more_alerts/bin/dragonfly", 
-            "package": "dripline", 
-            "hostname": "higgsino", 
-            "version": "wp1.4.0", 
+            "username": "laroque",
+            "exe": "/home/laroque/python_environments/more_alerts/bin/dragonfly",
+            "package": "dripline",
+            "hostname": "higgsino",
+            "version": "wp1.4.0",
             "commit": "g5c3ea72"
-        }, 
-        "retcode": 0, 
-        "return_msg": "", 
+        },
+        "retcode": 0,
+        "return_msg": "",
         "payload": {
-            "value_cal": 1.5, 
+            "value_cal": 1.5,
             "value_raw": "0.75"
         }
     }
@@ -323,7 +365,7 @@ To deal with this, we can have the log on a timed schedule. By default, when you
 the timed loggers are not started. This is done because one often needs to confirm or alter
 some configurations before the loggers should actually start broadcasting.
 
-We can use the "set" subcommand to configure a property of an endpoint, in addition to the 
+We can use the "set" subcommand to configure a property of an endpoint, in addition to the
 vaule of the endpoint itself. That syntax is ``dragonfly set peaches.logging_status on``
 (note the '.' delimiter which allows us to specify a property name, and that we provide a value.
 
@@ -335,4 +377,3 @@ being broadcast changes.
 As a convenience, because a single provider often has many endpoints which are loggers,
 all of the endpoints associated with a provider may have their "logging_status" configured at
 once, by sending the "set" command to the provider instead (``dragonfly set my_price_list.logging_status on``).
-
