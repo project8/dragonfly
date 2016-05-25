@@ -1,4 +1,4 @@
-from __future__ import absolute_import
+1;3409;0cfrom __future__ import absolute_import
 import socket
 import threading
 import types
@@ -47,13 +47,15 @@ class MuxerProvider(EthernetProvider):
                                 continue 
                         elif self.endpoints[child].conf_str == False: 
                                 ch_scan_list.append(self.endpoints[child].ch_number)
+                                self.endpoints[child].log_interval = self.scan_interval
                                 continue 
                         else: 
                                 logger.debug('sending:\n{}'.format(self.endpoints[child].conf_str.format(self.endpoints[child].ch_number))) 
                                 self.send([self.endpoints[child].conf_str.format(self.endpoints[child].ch_number)])
                                 self.send(['SYST:ERR?'], endpoint_name=self.endpoints[child].name, endpoint_ch_number=self.endpoints[child].ch_number)
                                                                                                                                  
-                                ch_scan_list.append(str(self.endpoints[child].ch_number)) 
+                                ch_scan_list.append(str(self.endpoints[child].ch_number))
+                                self.endpoints[child].log_interval = self.scan_interval
 
                 scan_list_cmd = 'ROUT:SCAN (@{})'.format(','.join(ch_scan_list))
                 logger.debug('sending scan list command:\n{}'.format(scan_list_cmd))
