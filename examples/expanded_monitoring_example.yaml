@@ -1,0 +1,4 @@
+name: test_monitor
+broker: localhost
+module: expanded_monitor
+sensor_definition_file: kv_store_sensor_info.yaml
