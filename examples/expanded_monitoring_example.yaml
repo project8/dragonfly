@@ -1,4 +1,35 @@
 name: test_monitor
 broker: localhost
 module: expanded_monitor
-sensor_definition_file: kv_store_sensor_info.yaml
+sensor_definitions:
+  sensor_types:
+    physical_object:
+        tag_conditions:
+            - tags: [ unphysical ]
+              raw_or_cal: raw
+              range: [ -inf, -1]
+              value_type: float
+  sensors:
+    peaches:
+        sensor_types: [ physical_object ]
+        tag_conditions:
+            - tags: [ too_many ]
+              raw_or_cal: raw
+              value_type: float
+              range: [ 5 , 100 ]
+            - tags: [ too_few ]
+              raw_or_cal: raw
+              range: [ 0, 3 ]
+              value_type: float
+        reactions:
+            - stimulus: hastag
+              hastag: too_many
+              response: 
+                  - actiontype: "say"
+                    message: "too many peaches"
+  generic_reactions:
+    - stimulus: hastag
+      hastag: unphysical
+      response:
+        - actiontype: "say"
+          message: "$sensor is unphysical"
