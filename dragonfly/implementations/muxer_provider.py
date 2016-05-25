@@ -1,4 +1,4 @@
-1;3409;0cfrom __future__ import absolute_import
+from __future__ import absolute_import
 import socket
 import threading
 import types
