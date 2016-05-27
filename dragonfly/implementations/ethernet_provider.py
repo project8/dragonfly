@@ -27,7 +27,8 @@ class EthernetProvider(Provider):
         '''
         socket_timeout (float): time in seconds for the socket to timeout
         socket_info (tuple): (<network_address_as_str>, <port_as_int>)
-        response_terminator (str||None): string to rstrip() from responses
+        response_terminator (str||None): string to strip from responses
+        bare_response_terminator (str||None): alternate string to strip from responses; depending on provider's reply 
         command_terminator (str||None): string to append to commands
         reply_echo_cmd (bool): set to True if command+command_terminator or just command are present in reply
         '''
