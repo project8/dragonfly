@@ -21,7 +21,7 @@ class PidController(Gogol):
     is used to compute the **change** to the value of some channel and not the value
     itself. In the case of temperature control, this makes sense if the loop is working
     against some fixed load (such as a cryocooler).
-    
+
     The input sensor can be anything which broadcasts regular values on the alerts
     exchange (using the standard sensor_value.<name> routing key format). Usually
     this would be a temperature sensor, but it could be anything. Similarly, the
@@ -55,7 +55,7 @@ class PidController(Gogol):
         '''
         kwargs.update({'keys':['sensor_value.'+input_channel]})
         Gogol.__init__(self, **kwargs)
-        
+
         self._current_channel = output_channel
         self.input_payload_field = input_payload_field
 
@@ -99,13 +99,13 @@ class PidController(Gogol):
         delta = self.target_temp - float(value)
         logger.info("delta is: {}".format(delta))
         this_time = datetime.datetime.strptime(timestamp, constants.TIME_FORMAT)
-        self._integral += delta
+        self._integral += delta * (this_time.seconds - self._last_data['time'].seconds)
         if (this_time - self._last_data['time']).seconds < (5 * 60):
             derivative = (delta - self._last_data['delta']) / (this_time - self._last_data['time']).seconds
         else:
             derivative = 0.
         self._last_data = {'delta': delta, 'time': this_time}
-            
+
         logger.info("proportional: {}".format(self.Kproportional*delta))
         logger.info("integral: {}".format(self.Kintegral*self._integral))
         logger.info("differential: {}".format(self.Kdifferential * derivative))
