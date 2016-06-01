@@ -109,11 +109,16 @@ class PidController(Gogol):
         logger.info("proportional: {}".format(self.Kproportional*delta))
         logger.info("integral: {}".format(self.Kintegral*self._integral))
         logger.info("differential: {}".format(self.Kdifferential * derivative))
-        change_to_current = (self.Kproportional * delta +
-                             self.Kintegral * self._integral +
-                             self.Kdifferential * derivative
-                            )
-        new_current = (self._old_current or 0) + change_to_current
+        # change_to_current = (self.Kproportional * delta +
+        #                      self.Kintegral * self._integral +
+        #                      self.Kdifferential * derivative
+        #                     )
+        # new_current = (self._old_current or 0) + change_to_current
+        new_current = (self.Kproportional * delta +
+                       self.Kintegral * self._integral +
+                       self.Kdifferential * derivative
+                      )
+        change_to_current = new_current - self._old_current
         if abs(change_to_current) < self.min_current_change:
             logger.info("current change less than min delta")
             logger.info("old[new] are: {}[{}]".format(self._old_current,new_current))
