@@ -118,7 +118,7 @@ class PidController(Gogol):
                              self.Kdifferential * derivative
                             )
         new_current = (self._old_current or 0)*self.enable_offset_term + change_to_current
-        change_to_current = new_current - self._old_current
+        # change_to_current = new_current - self._old_current
         if abs(change_to_current) < self.min_current_change:
             logger.info("current change less than min delta")
             logger.info("old[new] are: {}[{}]".format(self._old_current,new_current))
