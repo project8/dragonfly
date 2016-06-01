@@ -40,6 +40,7 @@ class PidController(Gogol):
                  target_value=110,
                  proportional=0.0, integral=0.0, differential=0.0,
                  maximum_out=1.0, delta_out_min= 0.001,
+                 enable_offset_term=True,
                  **kwargs
                 ):
         '''
@@ -69,6 +70,9 @@ class PidController(Gogol):
 
         self.max_current = maximum_out
         self.min_current_change = delta_out_min
+
+        self.enable_offset_term = enable_offset_term
+
 
         self._old_current = self.__get_old_current()
         logger.info('starting current is: {}'.format(self._old_current))
@@ -109,15 +113,11 @@ class PidController(Gogol):
         logger.info("proportional: {}".format(self.Kproportional*delta))
         logger.info("integral: {}".format(self.Kintegral*self._integral))
         logger.info("differential: {}".format(self.Kdifferential * derivative))
-        # change_to_current = (self.Kproportional * delta +
-        #                      self.Kintegral * self._integral +
-        #                      self.Kdifferential * derivative
-        #                     )
-        # new_current = (self._old_current or 0) + change_to_current
-        new_current = (self.Kproportional * delta +
-                       self.Kintegral * self._integral +
-                       self.Kdifferential * derivative
-                      )
+        change_to_current = (self.Kproportional * delta +
+                             self.Kintegral * self._integral +
+                             self.Kdifferential * derivative
+                            )
+        new_current = (self._old_current or 0)*self.enable_offset_term + change_to_current
         change_to_current = new_current - self._old_current
         if abs(change_to_current) < self.min_current_change:
             logger.info("current change less than min delta")
