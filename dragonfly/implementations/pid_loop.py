@@ -99,7 +99,7 @@ class PidController(Gogol):
         delta = self.target_temp - float(value)
         logger.info("delta is: {}".format(delta))
         this_time = datetime.datetime.strptime(timestamp, constants.TIME_FORMAT)
-        self._integral += delta * (this_time - self._last_data['time'].seconds)
+        self._integral += delta * (this_time - self._last_data['time']).seconds
         if (this_time - self._last_data['time']).seconds < (5 * 60):
             derivative = (delta - self._last_data['delta']) / (this_time - self._last_data['time']).seconds
         else:
