@@ -41,6 +41,7 @@ class PidController(Gogol):
                  proportional=0.0, integral=0.0, differential=0.0,
                  maximum_out=1.0, minimum_out=1.0, delta_out_min= 0.001,
                  enable_offset_term=True,
+                 minimum_elapsed_time=0,
                  **kwargs
                 ):
         '''
@@ -73,6 +74,8 @@ class PidController(Gogol):
         self.min_current_change = delta_out_min
 
         self.enable_offset_term = enable_offset_term
+        self.minimum_elapsed_time = minimum_elapsed_time
+
 
 
         self._old_current = self.__get_old_current()
@@ -104,6 +107,9 @@ class PidController(Gogol):
         delta = self.target_temp - float(value)
         logger.info("delta is: {}".format(delta))
         this_time = datetime.datetime.strptime(timestamp, constants.TIME_FORMAT)
+        if abs((this_time - self._last_data['time']).seconds)<self.minimum_elapsed_time:
+            logger.info("not enough time has elasped: {}[{}]".format(abs((this_time - self._last_data['time']).seconds),self.minimum_elapsed_time))
+            return
         self._integral += delta * (this_time - self._last_data['time']).seconds
         if (this_time - self._last_data['time']).seconds < (5 * 60):
             derivative = (delta - self._last_data['delta']) / (this_time - self._last_data['time']).seconds
