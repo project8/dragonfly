@@ -39,7 +39,7 @@ class PidController(Gogol):
                  input_payload_field='value_cal',
                  target_value=110,
                  proportional=0.0, integral=0.0, differential=0.0,
-                 maximum_out=1.0, delta_out_min= 0.001,
+                 maximum_out=1.0, minimum_out=1.0, delta_out_min= 0.001,
                  enable_offset_term=True,
                  **kwargs
                 ):
@@ -69,6 +69,7 @@ class PidController(Gogol):
         self._integral= 0
 
         self.max_current = maximum_out
+        self.min_current = minimum_out
         self.min_current_change = delta_out_min
 
         self.enable_offset_term = enable_offset_term
@@ -127,6 +128,9 @@ class PidController(Gogol):
         if new_current > self.max_current:
             logger.info("new current above max")
             new_current = self.max_current
+        if new_current < self.min_current:
+            logger.info("new current below min")
+            new_current = self.min_current
         if new_current < 0.:
             logger.info("new current < 0")
             new_current = 0.
