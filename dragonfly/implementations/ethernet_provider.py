@@ -65,7 +65,7 @@ class EthernetProvider(Provider):
             command += self.command_terminator
             logger.debug('sending: {}'.format(repr(command)))
             self.socket.send(command)
-            if command == self.command_terminator:
+            if command == self.command_terminator or command.startswith("++"):
                 blank_command = True
             else:
                 blank_command = False
@@ -157,7 +157,7 @@ class EthernetProvider(Provider):
                 else:
                     break
         except socket.timeout:
-            if blank_command == False and self.socket_info[0]!="longmorn.p8":
+            if blank_command == False:
                 logger.critical('Cannot Connect to: ' + self.socket_info[0])
         if self.response_terminator:
             data = data.rsplit(self.response_terminator,1)[0]
