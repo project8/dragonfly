@@ -19,4 +19,4 @@ If you will not be interacting with any SQL databases, then you can instead inst
 ```bash
 pip install -r requirements_no_sql.txt
 ```
-Note: On Claude, use requirements_no_sql.txt
+Note: On Claude, use requirements_no_sql.txt  
