@@ -157,7 +157,7 @@ class EthernetProvider(Provider):
                 else:
                     break
         except socket.timeout:
-            if blank_command == False :
+            if blank_command == False && self.socket_info[0]!="longmorn.p8":
                 logger.critical('Cannot Connect to: ' + self.socket_info[0])
         if self.response_terminator:
             data = data.rsplit(self.response_terminator,1)[0]
