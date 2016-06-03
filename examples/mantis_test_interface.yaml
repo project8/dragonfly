@@ -12,14 +12,10 @@ endpoints:
     filename_prefix: rid
     log_interval: 5
     mantis_queue: mantis
-#    ensure_sets:
-#        peaches: 1.1
-#    ensure_locked:
-#      - peaches
-#      - chips
-    metadata_gets:
-        peaches: value_raw
-        chips: value_cal
-        waffles: value_cal
+#    metadata_gets:
+#        peaches: value_raw
+#        chips: value_cal
+#        waffles: value_cal
+    metadata_state_target: store_state
     lf_lo_endpoint_name: waffles
     metadata_target: 'metadata'

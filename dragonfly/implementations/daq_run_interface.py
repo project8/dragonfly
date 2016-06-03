@@ -27,10 +27,8 @@ class DAQProvider(core.Provider):
                  data_directory_path=None,
                  meta_data_directory_path=None,
                  filename_prefix='',
-                 ensure_sets={},
-                 ensure_locked=[],
-                 metadata_gets={},
-                 metadata_target=None,
+                 metadata_state_target='',
+                 metadata_target='',
                  debug_mode_without_database=False,
                  debug_mode_without_metadata_broadcast=False,
                  **kwargs):
@@ -38,8 +36,12 @@ class DAQProvider(core.Provider):
         daq_name (str): name of the DAQ (used with the run table and in metadata)
         run_table_endpoint (str): name of the endpoint providing an interface to the run table
         directory_path (str): absolute path to "hot" storage (as seen from the DAQ software, not a network path)
-        ensure_sets (dict): a dictionary of endpoint names as keys, with values to set them to. These will all be set prior to each run and should 
-        filename_prefix (str): string which will prefix unique filenames
+        meta_data_directory_path (str): path where the metadata file should be written
+        filename_prefix (str): prefix for unique filenames
+        metadata_state_target (str): multiget endpoint to Get() for system state
+        metadata_target (str): target to send metadata to
+        debug_mode_without_database (bool): if True, forces a run_id of 0, rather that making a query (should only be True as part of debugging)
+        debug_mode_without_metadata_broadcast (bool): if True, skips the step of sending metadata to the metadata receiver (should only be True as part of debugging)
         '''
         core.Provider.__init__(self, **kwargs)
 
@@ -59,13 +61,11 @@ class DAQProvider(core.Provider):
             data_directory_path = directory_path
         if (meta_data_directory_path is None) and (directory_path is not None):
             meta_data_directory_path = directory_path
-        #self.directory_path = directory_path
         self.data_directory_path = data_directory_path
         self.meta_data_directory_path = meta_data_directory_path
         
-        self._ensure_sets = ensure_sets
-        self._ensure_locked = ensure_locked
-        self._metadata_gets = metadata_gets
+        #self._metadata_gets = metadata_gets
+        self._metadata_state_target = metadata_state_target
         self._metadata_target = metadata_target
         self.filename_prefix = filename_prefix
         self._debug_without_db = debug_mode_without_database
@@ -75,7 +75,6 @@ class DAQProvider(core.Provider):
         self._run_name = None
         self.run_id = None
         self._acquisition_count = None
-        self._internal_lockout_key = None
 
     @property
     def run_name(self):
@@ -113,9 +112,6 @@ class DAQProvider(core.Provider):
         '''
         '''
         self.run_name = run_name
-        self._do_prerun_sets()
-        actually_locked = self._do_prerun_lockout()
-        logger.debug('will need to unlock: {}'.format(actually_locked))
         self._run_meta = {'DAQ': self.daq_name,
                          }
         self._do_prerun_gets()
@@ -124,47 +120,12 @@ class DAQProvider(core.Provider):
         logger.debug('these meta will be {}'.format(self._run_meta))
         logger.info('start_run finished')
 
-    def _do_prerun_sets(self):
-        logger.info('doing prerun sets')
-        m = core.RequestMessage(msgop=core.OP_SET, payload={'values':[None]})
-        if self._internal_lockout_key:
-            m.lockout_key = self._internal_lockout_key
-        for endpoint,value in self._ensure_sets.items():
-            logger.debug('should set {} -> {}'.format(endpoint,value))
-            m.payload['values'] = [value]
-            result = self.portal.send_request(request=m, target=endpoint)
-            if result.retcode != 0:
-                raise core.exception_map[result.retcode](result.return_msg)
-        logger.debug('prerun sets complete')
-    
-    def _do_prerun_lockout(self):
-        logger.info('doing prerun lockout')
-        this_lockout_key = self._internal_lockout_key or self.lockout_key or uuid.uuid4().get_hex()
-        self._internal_lockout_key = this_lockout_key
-        to_unlock = []
-        lock_query = core.RequestMessage(msgop=core.OP_GET)
-        lock_cmd = core.RequestMessage(msgop=core.OP_CMD, lockout_key=this_lockout_key)
-        for endpoint in self._ensure_locked:
-            logger.debug('ensuring lockout of {}'.format(endpoint))
-            if not self.portal.send_request(request=lock_query, target=endpoint+'.is-locked').payload['values'][0]:
-                self.portal.send_request(request=lock_cmd, target=endpoint+'.lock')
-                to_unlock.append(endpoint)
-        logger.debug('prerun lockout complete')
-        return to_unlock
-
     def _do_prerun_gets(self):
         logger.info('doing prerun meta-data gets')
         query_msg = core.RequestMessage(msgop=core.OP_GET)
-        #### the following line should go away once everything is upgraded to dragonfly
-        query_msg['payload'] = {}
         these_metadata = {}
-        for endpoint,element in self._metadata_gets.items():
-            result = self.portal.send_request(request=query_msg, target=endpoint)
-            logger.debug('endpoint get is:\n'.format(str(result)))
-            try:
-                these_metadata[endpoint] = result.payload[element]
-            except:
-                raise core.exceptions.DriplineValueError('unable to get a value for <{}>'.format(endpoint))
+        result = self.portal.send_request(request=query_msg, target=self._metadata_state_target, timeout=120)
+        these_metadata = result.payload['value_raw']
         self._run_meta.update(these_metadata)
         self.determine_RF_ROI()
 
@@ -209,7 +170,6 @@ class MantisAcquisitionInterface(DAQProvider, core.Spime):
                  lf_lo_endpoint_name=None,
                  hf_lo_freq=24.2e9,
                  analysis_bandwidth=50e6,
-                 #filename_prefix='',
                  **kwargs
                 ):
         '''
@@ -222,7 +182,6 @@ class MantisAcquisitionInterface(DAQProvider, core.Spime):
         core.Spime.__init__(self, **kwargs)
         self.alert_routing_key = 'daq_requests'
         self.mantis_queue = mantis_queue
-        #self.filename_prefix = filename_prefix
         if lf_lo_endpoint_name is None:
             raise core.exceptions.DriplineValueError('the mantis interface requires a "lf_lo_endpoint_name"')
         self._lf_lo_endpoint_name = lf_lo_endpoint_name
