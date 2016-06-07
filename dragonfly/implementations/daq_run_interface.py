@@ -53,7 +53,7 @@ class DAQProvider(core.Provider):
             raise core.exceptions.DriplineValueError('<{}> instance <{}> requires a value for "{}" to initialize'.format(self.__class__.__name__, self.name, 'run_table_endpoint'))
         else:
             self.run_table_endpoint = run_table_endpoint
-
+        
         # deal with directory structures
         if (directory_path is None) and (data_directory_path is None) and (meta_data_directory_path is None):
             raise core.exceptions.DriplineValueError('<{}> instance <{}> requires a value for "{}" to initialize'.format(self.__class__.__name__, self.name, '[meta_[data_]]directory_path'))
@@ -63,7 +63,7 @@ class DAQProvider(core.Provider):
             meta_data_directory_path = directory_path
         self.data_directory_path = data_directory_path
         self.meta_data_directory_path = meta_data_directory_path
-
+        
         #self._metadata_gets = metadata_gets
         self._metadata_state_target = metadata_state_target
         self._metadata_target = metadata_target
@@ -107,7 +107,7 @@ class DAQProvider(core.Provider):
         self._run_name = None
         self.run_id = None
         logger.info('run <{}> ended'.format(run_was))
-
+    
     def start_run(self, run_name):
         '''
         '''
@@ -323,15 +323,18 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
         # build strings for output directory and file prefix, then set those
         file_directory = "\\".join([self.data_directory_path, '{:09d}'.format(self.run_id)])
         file_base = "{}{:09d}".format(self.filename_prefix, self.run_id)
-        self.send('SENS:ACQ:FSAV:LOC "{}";*OPC?'.format(file_directory))
-        self.send('SENS:ACQ:FSAV:NAME:BASE "{}";*OPC?'.format(file_base))
+        self.send(['SENS:ACQ:FSAV:LOC "{}"'.format(file_directory),
+                   'SENS:ACQ:FSAV:NAME:BASE "{}"'.format(file_base),
+                   "*OPC?"
+                  ]
+                 )
         # Set the maximum number of events (note that the default is 10k)
         self.send(['SENS:ACQ:FSAV:FILE:MAX {:d};*OPC?'.format(self.max_nb_files)])
         # try to force external reference
         self.send(['SENS:ROSC:SOUR EXT;*OPC?'])
         the_ref = self.send(['SENS:ROSC:SOUR?'])
         if the_ref != 'EXT':
-            raise core.exceptions.DriplineHardwareError('RSA external ref found to be <{}> (!="EXT")'.format(the_ref))
+            raise dripline.core.exceptions.DriplineHardwareError('RSA external ref found to be <{}> (!="EXT")'.format(the_ref))
         # ensure in triggered mode
         self.send(['TRIG:SEQ:STAT 1;*OPC?'])
         # actually start to FastSave
@@ -339,7 +342,7 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
 
     def end_run(self):
         # something to stop FastSave
-        self.send(['SENS:ACQ:FSAV:ENAB 0;*OPC?'])
+        self.send(['SENS:ACQ:FSAV:ENAB 0'])
         self.send(['TRIG:SEQ:STAT 0;*OPC?'])
         super(RSAAcquisitionInterface, self).end_run()
 
