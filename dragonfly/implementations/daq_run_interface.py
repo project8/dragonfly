@@ -296,6 +296,8 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
     A DAQProvider for interacting with the RSA
     '''
     def __init__(self,
+                 instrument_setup_filename_prefix=None,
+                 mask_filename_prefix=None,
                  max_nb_files=10000,
                  **kwargs):
         DAQProvider.__init__(self, **kwargs)
