@@ -303,8 +303,6 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
         DAQProvider.__init__(self, **kwargs)
         EthernetProvider.__init__(self, **kwargs)
         self.max_nb_files = max_nb_files
-        self.instrument_setup_filename_prefix = instrument_setup_filename_prefix
-        self.mask_filename_prefix = mask_filename_prefix
 
     @property
     def is_running(self):
