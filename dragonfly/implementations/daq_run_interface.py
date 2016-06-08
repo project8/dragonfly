@@ -340,7 +340,7 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
         self.send(['TRIG:SEQ:STAT 1;*OPC?'])
         # saving the instrument status in hot
         instrument_status_full_name = '{directory}/{runN:09d}/{prefix}{runN:09d}_rsa_setup'.format(
-                                                        directory=self.file_directory,
+                                                        directory=file_directory,
                                                         prefix=self.filename_prefix,
                                                         runN=self.run_id
                                                                                )
@@ -348,7 +348,7 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
         self.send(['MMEM:STOR:STAT "{}";*OPC?'.format(instrument_status_full_name)])
         # saving the frequency mask in hot
         mask_full_name = '{directory}/{runN:09d}/{prefix}{runN:09d}_mask'.format(
-                                                        directory=self.file_directory,
+                                                        directory=file_directory,
                                                         prefix=self.filename_prefix,
                                                         runN=self.run_id
                                                                                )
