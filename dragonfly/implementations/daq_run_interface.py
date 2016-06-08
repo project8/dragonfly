@@ -341,11 +341,11 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
         # ensure in triggered mode
         self.send(['TRIG:SEQ:STAT 1;*OPC?'])
         # saving the instrument status in hot
-        instrument_status_full_name = "{}\{}_{:09d}".format(file_directory,self.instrument_setup_filename_prefix,self.run_id)
-        self.send(['MMEM:STOR:STAT"{}";*OPC?'.format(instrument_status_full_name)])
+        instrument_status_full_name = "{}{}_{:09d}".format(file_directory,self.instrument_setup_filename_prefix,self.run_id)
+        self.send(['MMEM:STOR:STAT "{}";*OPC?'.format(instrument_status_full_name)])
         # saving the frequency mask in hot
-        mask_full_name = "{}\{}_{:09d}".format(file_directory,self.mask_filename_prefix,self.run_id)
-        self.send(['TRIG:MASK:SAVE"{}";*OPC?'.format(mask_full_name)])
+        mask_full_name = "{}{}_{:09d}".format(file_directory,self.mask_filename_prefix,self.run_id)
+        self.send(['TRIG:MASK:SAVE "{}";*OPC?'.format(mask_full_name)])
 
         # actually start to FastSave
         self.send(['SENS:ACQ:FSAV:ENAB 1;*OPC?'])
