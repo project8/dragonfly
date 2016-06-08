@@ -301,6 +301,8 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
         DAQProvider.__init__(self, **kwargs)
         EthernetProvider.__init__(self, **kwargs)
         self.max_nb_files = max_nb_files
+        self.instrument_setup_filename_prefix = instrument_setup_filename_prefix
+        self.mask_filename_prefix = mask_filename_prefix
 
     @property
     def is_running(self):
@@ -333,8 +335,16 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
         the_ref = self.send(['SENS:ROSC:SOUR?'])
         if the_ref != 'EXT\n':
             raise core.exceptions.DriplineHardwareError('RSA external ref found to be <{}> (!="EXT")'.format(the_ref))
+
         # ensure in triggered mode
         self.send(['TRIG:SEQ:STAT 1;*OPC?'])
+        # saving the instrument status in hot
+        instrument_status_full_name = "{}\{}_{:09d}".format(file_directory,self.instrument_setup_filename_prefix,self.run_id)
+        self.send(['MMEM:STOR:STAT"{}";*OPC?'.format(instrument_status_full_name)])
+        # saving the frequency mask in hot
+        mask_full_name = "{}\{}_{:09d}".format(file_directory,self.mask_filename_prefix,self.run_id)
+        self.send(['TRIG:MASK:SAVE"{}";*OPC?'.format(mask_full_name)])
+
         # actually start to FastSave
         self.send(['SENS:ACQ:FSAV:ENAB 1;*OPC?'])
 
