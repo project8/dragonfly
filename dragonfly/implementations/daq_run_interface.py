@@ -319,8 +319,13 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
         return to_return
 
     def define_frequencies(self, central_frequency, frequency_span):
+        logger.info('setting central and span frequencies')
         self.send(['IQVT:FREQ:CENT {}GHz;*OPC?'.format(central_frequency)])
         self.send(['IQVT:FREQ:SPAN {}MHz;*OPC?'.format(frequency_span)])
+
+    def new_mask(self, trace, xmargin, ymargin):
+        logger.info('setting the auto mask')
+        self.send(['TRIG:MASK:NEW:AUTO "dpsa",{},{},{};*OPC?'.format(trace,xmargin,ymargin)])
 
     def start_run(self, run_name):
         super(RSAAcquisitionInterface, self).start_run(run_name)
