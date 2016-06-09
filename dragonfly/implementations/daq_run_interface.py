@@ -320,6 +320,8 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
 
     def start_run(self, run_name):
         super(RSAAcquisitionInterface, self).start_run(run_name)
+        # get id -  test
+        self.send(["*idn?"])
         # ensure the output format is set to mat
         self.send(["SENS:ACQ:FSAV:FORM MAT;*OPC?"])
         # build strings for output directory and file prefix, then set those
