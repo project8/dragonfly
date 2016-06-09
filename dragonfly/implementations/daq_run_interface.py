@@ -331,6 +331,10 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
         logger.info('setting span frequency')
         self.send(['DPX:FREQ:SPAN {}MHz;*OPC?'.format(frequency_span)])
 
+    def set_trigger_status(self, trig_status):
+        logger.info('setting trigger status')
+        self.send(['TRIG:SEQUENCE:STATUS {};*OPC?'.format(trig_status)])
+
     def new_mask(self, trace, xmargin, ymargin):
         logger.info('setting the auto mask')
         self.send(['TRIG:MASK:NEW:AUTO "dpsa",{},{},{};*OPC?'.format(trace,xmargin,ymargin)])
