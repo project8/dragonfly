@@ -318,10 +318,12 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
         logger.info('trigger status is <{}>'.format(to_return))
         return to_return
 
+    def define_frequencies(self, central_frequency, frequency_span):
+        self.send(['IQVT:FREQ:CENT {}GHz;*OPC?'.format(central_frequency)])
+        self.send(['IQVT:FREQ:SPAN {}MHz;*OPC?'.format(frequency_span)])
+
     def start_run(self, run_name):
         super(RSAAcquisitionInterface, self).start_run(run_name)
-        # get id -  test
-        self.send(["*idn?"])
         # ensure the output format is set to mat
         self.send(["SENS:ACQ:FSAV:FORM MAT;*OPC?"])
         # build strings for output directory and file prefix, then set those
