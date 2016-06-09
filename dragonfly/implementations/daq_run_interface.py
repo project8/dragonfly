@@ -318,10 +318,18 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
         logger.info('trigger status is <{}>'.format(to_return))
         return to_return
 
-    def define_frequencies(self, central_frequency, frequency_span):
+    def set_frequencies(self, central_frequency, frequency_span):
         logger.info('setting central and span frequencies')
-        self.send(['IQVT:FREQ:CENT {}GHz;*OPC?'.format(central_frequency)])
-        self.send(['IQVT:FREQ:SPAN {}MHz;*OPC?'.format(frequency_span)])
+        self.send(['DPX:FREQ:CENT {}MHz;*OPC?'.format(central_frequency)])
+        self.send(['DPX:FREQ:SPAN {}MHz;*OPC?'.format(frequency_span)])
+
+    def set_central_frequency(self, central_frequency):
+        logger.info('setting central frequency')
+        self.send(['DPX:FREQ:CENT {}MHz;*OPC?'.format(central_frequency)])
+
+    def set_frequency_span(self, frequency_span):
+        logger.info('setting span frequency')
+        self.send(['DPX:FREQ:SPAN {}MHz;*OPC?'.format(frequency_span)])
 
     def new_mask(self, trace, xmargin, ymargin):
         logger.info('setting the auto mask')
