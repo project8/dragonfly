@@ -11,6 +11,9 @@ import uuid
 from dripline import core
 from .ethernet_provider import EthernetProvider
 
+#phasmid import
+import r2daq
+
 __all__ = []
 
 logger = logging.getLogger(__name__)
@@ -370,19 +373,22 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
 
 
 __all__.append('PsyllidAcquisitionInterface')
-class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
+class Roach2AcquisitionInterface(DAQProvider, core.Spime):
     '''
     A DAQProvider for interacting with Psyllid DAQ
     '''
     def __init__(self,
                  psyllid_queue='psyllid',
+                 psyllid_preset = 'str-1ch',
+                 udp_receiver_port = 4001,
+                 roach2_hostname = 'led',
                  lf_lo_endpoint_name=None,
                  hf_lo_freq=24.2e9,
                  analysis_bandwidth=50e6,
                  **kwargs
                 ):
         '''
-        mantis_queue (str): binding key for mantis AMQP service
+        psyllid_queue (str): binding key for psyllid AMQP service
         lf_lo_endpoint_name (str): endpoint name for the 2nd stage LO
         hf_lo_freq (float): local oscillator frequency [Hz] for the 1st stage (default should be correct)
         analysis_bandwidth (float): total receiver bandwidth [Hz]
@@ -396,7 +402,74 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
         self._lf_lo_endpoint_name = lf_lo_endpoint_name
         self._hf_lo_freq = hf_lo_freq
         self._analysis_bandwidth = analysis_bandwidth
+       
+        self.roach2_hostname = roach2_hostname
+        self.daq_status = self.psyllid_status
+        self.psyllid_preset = psyllid_preset
+        self.udp_receiver_port = udp_receiver_port
+        
+        
+        '''connect to roach, pre-configure and start streaming data packages'''
+        
+        r2=r2daq.ArtooDaq(roach2_hostname, boffile='latest-built')
+        
+        '''check whether roach is streaming data packages'''
+        pkts = r2.grab_packets(n=1,dsoc_desc=("10.0.11.1",4001),close_soc=True)
+        x = pkts[0].interpret_data()
+        if len(x)>0:
+            logger.info('The Roach2 is streaming data')
+        else:
+            logger.error('no data packages could be grabbed')
+            raise core.DriplineInternalError('no streaming data')
+         
+            
+        
+     
+        '''check psyllid status''' 
+        if self.daq_status == 0:
+            logger.info('psyllid is running, status initialized')
+            
+        else:
+            logger.warning('status of psyllid is <{}>'.format(self.daq_status))
+            
+            if self.daq_status == 4:
+                logger.info('deactivating daq')
+                request = core.RequestMessage(msgop=core.OP_CMD)
+                result = self.portal.send_request(target=self.psyllid_queue+'.deactivate-daq', request=request)
+                self.daq_status = self.psyllid_status
+                logger.info('psyllid status is now {}'.format(self.daq_status))
+                
+            else:
+                logger.error('status could not be corrected')
+                raise core.DriplineInternalError('status of psyllid must be returned to "initialized"')
+         
+        ''' set daq presets '''       
+        result = self.portal.send_request(request=core.RequestMessage(msgop=core.OP_SET, payload={'values':[self.psyllid_preset]}), target=self.psyllid_queue+'.daq_preset')
+        if result.retcode >= 100:
+            logger.warning('retcode indicates an error')
+             
+        ''' set udp receiver port '''       
+        result = self.portal.send_request(request=core.RequestMessage(msgop=core.OP_SET, payload={'values':[self.udp_receiver_port]}), target=self.psyllid_queue+'.node.udp.port')
+        if result.retcode >= 100:
+            logger.warning('retcode indicates an error')
+        
+        '''activate daq'''
+        request = core.RequestMessage(msgop=core.OP_CMD)
+        result = self.portal.send_request(target=self.psyllid_queue+'.activate-daq', request=request)
+            
+    @property   
+    def psyllid_status(self):
+        logger.info('check psyllid status')
+        query_msg = core.RequestMessage(msgop=core.OP_GET)
+        result = self.portal.send_request(request=query_msg, target=self._psyllid_queue+'.daq-status', timeout=120)
+        return result.payload['value_raw']
+    
 
+
+
+
+
+    
     @property
     def acquisition_time(self):
         return self.log_interval
@@ -411,6 +484,11 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
         super(PsyllidAcquisitionInterface, self).start_run(run_name)
         self.on_get()
         self.logging_status = 'on'
+        
+        
+    
+    def change_cf(f):
+        r2.change(f)
 
     def start_timed_run(self, run_name, run_time):
         '''
