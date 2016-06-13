@@ -367,3 +367,133 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
     def determine_RF_ROI(self):
         logger.info('trying to determine roi')
         logger.warning('RSA does not support proper determination of RF ROI yet')
+
+
+__all__.append('PsyllidAcquisitionInterface')
+class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
+    '''
+    A DAQProvider for interacting with Psyllid DAQ
+    '''
+    def __init__(self,
+                 psyllid_queue='psyllid',
+                 lf_lo_endpoint_name=None,
+                 hf_lo_freq=24.2e9,
+                 analysis_bandwidth=50e6,
+                 **kwargs
+                ):
+        '''
+        mantis_queue (str): binding key for mantis AMQP service
+        lf_lo_endpoint_name (str): endpoint name for the 2nd stage LO
+        hf_lo_freq (float): local oscillator frequency [Hz] for the 1st stage (default should be correct)
+        analysis_bandwidth (float): total receiver bandwidth [Hz]
+        '''
+        DAQProvider.__init__(self, **kwargs)
+        core.Spime.__init__(self, **kwargs)
+        self.alert_routing_key = 'daq_requests'
+        self.psyllid_queue = psyllid_queue
+        if lf_lo_endpoint_name is None:
+            raise core.exceptions.DriplineValueError('the psyllid interface requires a "lf_lo_endpoint_name"')
+        self._lf_lo_endpoint_name = lf_lo_endpoint_name
+        self._hf_lo_freq = hf_lo_freq
+        self._analysis_bandwidth = analysis_bandwidth
+
+    @property
+    def acquisition_time(self):
+        return self.log_interval
+    @acquisition_time.setter
+    def acquisition_time(self, value):
+        self.log_interval = value
+
+    def start_run(self, run_name):
+        result = self.portal.send_request(request=core.RequestMessage(msgop=core.OP_SET, payload={'values':[self.acquisition_time*1000.]}), target=self.psyllid_queue+'.duration')
+        if result.retcode >= 100:
+            logger.warning('retcode indicates an error')
+        super(PsyllidAcquisitionInterface, self).start_run(run_name)
+        self.on_get()
+        self.logging_status = 'on'
+
+    def start_timed_run(self, run_name, run_time):
+        '''
+        '''
+        super(PsyllidAcquisitionInterface, self).start_run(run_name)
+        num_acquisitions = int(run_time // self.acquisition_time)
+        last_run_time = run_time % self.acquisition_time
+        logger.info("going to request <{}> runs, then one of <{}> [s]".format(num_acquisitions, last_run_time))
+        result = self.portal.send_request(request=core.RequestMessage(msgop=core.OP_SET, payload={'values':[self.acquisition_time*1000]}), target=self.psyllid_queue+'.duration')
+        if result.retcode != 0:
+            logger.warning('bad set')
+        for acq in range(num_acquisitions):
+            self.on_get()
+        if last_run_time != 0:
+            self.portal.send_request(request=core.RequestMessage(msgop=core.OP_SET, payload={'values':[last_run_time*1000]}), target=self.psyllid_queue+'.duration')
+            self.on_get()
+            self.portal.send_request(request=core.RequestMessage(msgop=core.OP_SET, payload={'values':[self.acquisition_time*1000]}), target=self.psyllid_queue+'.duration')
+
+    @property
+    def is_running(self):
+        logger.info('query psyllid server status to see if it is finished')
+        result = self.portal.send_request(request=core.RequestMessage(msgop=core.OP_GET, payload={}), target=self.psyllid_queue+'.server-status')
+        to_return = True
+        if result.payload['server']['server-worker']['status'] == u'Idle (queue is empty)':
+            to_return = False
+        return to_return
+
+    def determine_RF_ROI(self):
+        logger.info('trying to get roi')
+        if not self._lf_lo_endpoint_name in self._run_meta:
+            logger.error('meta are:\n{}'.format(self._run_meta))
+            raise core.exceptions.DriplineInternalError('the lf_lo_endpoint_name must be configured in the metadata_gets field')
+        lf_lo_freq = self._run_meta.pop(self._lf_lo_endpoint_name)
+        self._run_meta['RF_ROI_MIN'] = float(lf_lo_freq) + float(self._hf_lo_freq)
+        logger.debug('RF Min: {}'.format(self._run_meta['RF_ROI_MIN']))
+        self._run_meta['RF_ROI_MAX'] = float(self._analysis_bandwidth) + float(lf_lo_freq) + float(self._hf_lo_freq)
+        logger.debug('RF Max: {}'.format(self._run_meta['RF_ROI_MAX']))
+
+    def on_get(self):
+        '''
+        Setting an on_get so that the logging functionality can be used to queue multiple acquisitions.
+        '''
+        logger.info('requesting acquisition <{}>'.format(self._acquisition_count))
+        if self.run_id is None:
+            raise core.DriplineInternalError('run number is None, must request a run_id assignment prior to starting acquisition')
+        filepath = '{directory}/{runN:09d}/{prefix}{runN:09d}_{acqN:09d}.egg'.format(
+                                        directory=self.data_directory_path,
+                                        prefix=self.filename_prefix,
+                                        runN=self.run_id,
+                                        acqN=self._acquisition_count
+                                                  )
+        request = core.RequestMessage(payload={'values':[], 'file':filepath},
+                                      msgop=core.OP_RUN,
+                                     )
+        result = self.portal.send_request(self.psyllid_queue,
+                                          request=request,
+                                         )
+        if not result.retcode == 0:
+            msg = ''
+            if 'ret_msg' in result.payload:
+                msg = result.payload['ret_msg']
+            logger.warning('got an error from psyllid: {}'.format(msg))
+        else:
+            self._acquisition_count += 1
+            return "acquisition of [{}] requested".format(filepath)
+
+    def end_run(self):
+        self.logging_status = 'stop'
+        super(PsyllidAcquisitionInterface, self).end_run()
+        request = core.RequestMessage(msgop=core.OP_CMD)
+        result = self.portal.send_request(target=self.psyllid_queue+'.stop-queue', request=request)
+        if not result.retcode == 0:
+            logger.warning('error stoping queue:\n{}'.format(result.return_msg))
+        else:
+            logger.warning('queue stopped')
+        result = self.portal.send_request(target=self.psyllid_queue+'.clear-queue', request=request)
+        if not result.retcode == 0:
+            logger.warning('error clearing queue:\n{}'.format(result.return_msg))
+        else:
+            logger.warning('queue cleared')
+        result = self.portal.send_request(target=self.psyllid_queue+'.start-queue', request=request)
+        if not result.retcode == 0:
+            logger.warning('error restarting queue:\n{}'.format(result.return_msg))
+        else:
+            logger.warning('queue started')
+        self._acquisition_count = 0
