@@ -1,5 +1,5 @@
 name: my_store
-broker: myrna.p8
+broker: localhost
 module: Spimescape
 endpoints:
   - name: my_price_list
