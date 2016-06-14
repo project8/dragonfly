@@ -303,6 +303,16 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
         DAQProvider.__init__(self, **kwargs)
         EthernetProvider.__init__(self, **kwargs)
         self.max_nb_files = max_nb_files
+        self.span_frequency_def_lab = span_frequency_def_lab
+        self.central_frequency_def_lab = central_frequency_def_lab
+        self.mask_ymargin_def_lab = mask_ymargin_def_lab
+        self.mask_xmargin_def_lab = mask_xmargin_def_lab
+        self.ref_level_def_lab = ref_level_def_lab
+        self.source_event_def_lab = source_event_def_lab
+        self.type_event_def_lab = type_event_def_lab
+        self.violation_def_lab = violation_def_lab
+        self.RBW_def_lab = RBW_def_lab
+        self.holdoff_def_lab = holdoff_def_lab
 
     @property
     def is_running(self):
@@ -318,24 +328,33 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
         logger.info('trigger status is <{}>'.format(to_return))
         return to_return
 
-    def set_frequencies(self, central_frequency, frequency_span):
-        logger.info('setting central and span frequencies')
-        self.send(['DPX:FREQ:CENT {}MHz;*OPC?'.format(central_frequency)])
-        self.send(['DPX:FREQ:SPAN {}MHz;*OPC?'.format(frequency_span)])
+    def set_default_config(self):
+        logger.info('setting default config for data taking')
+        logger.info('setting frequencies')
+        self.send(['DPX:FREQ:CENT {}MHz;*OPC?'.format(self.central_frequency_def_lab)])
+        self.send(['DPX:FREQ:SPAN {}MHz;*OPC?'.format(self.span_frequency_def_lab)])
+        logger.info('setting new mask auto')
+        self.send(['TRIG:MASK:NEW:AUTO "dpsa",{},{},{};*OPC?'.format('TRACE3',self.mask_xmargin_def_lab,self.mask_ymargin_def_lab)])
+        logger.info('setting reference level')
+        self.send(['INP:RLEV {};*OPC?'.format(self.ref_level_def_lab)])
+        logger.info('setting source of events')
+        self.send(['TRIG:EVEN:SOUR {};*OPC?'.format(self.source_event_def_lab)])
+        logger.info('setting type of events')
+        self.send(['TRIG:EVEN:INP:TYPE {};*OPC?'.format(self.type_event_def_lab)])
+        logger.info('setting trigger violation condition')
+        self.send(['TRIG:EVEN:INP:FMASk:VIOL {};*OPC?'.format(self.violation_def_lab)])
+        logger.info('setting bandwidths')
+        self.send(['DPX:BWID:RES {};*OPC?'.format(self.RBW_def_lab)])
+        logger.info('setting holdoff')
+        self.send(['TRIG:ADV:HOLD {};*OPC?'.format(self.holdoff_def_lab)])
 
-    def set_central_frequency(self, central_frequency):
-        logger.info('setting central frequency')
-        self.send(['DPX:FREQ:CENT {}MHz;*OPC?'.format(central_frequency)])
+    def set_config_from_file(self,file_path):
+        logger.info('setting instrument config from file')
+        if file_path is None:
+            raise core.DriplineInternalError('no file_path was given')
+        self.send('MMEMory:LOAD:STATe "{}"; OPC?'.format(file_path))
 
-    def set_frequency_span(self, frequency_span):
-        logger.info('setting span frequency')
-        self.send(['DPX:FREQ:SPAN {}MHz;*OPC?'.format(frequency_span)])
-
-    def set_trigger_status(self, trig_status):
-        logger.info('setting trigger status')
-        self.send(['TRIG:SEQUENCE:STATUS {};*OPC?'.format(trig_status)])
-
-    def new_mask(self, trace, xmargin, ymargin):
+    def create_new_auto_mask(self, trace, xmargin, ymargin):
         logger.info('setting the auto mask')
         self.send(['TRIG:MASK:NEW:AUTO "dpsa",{},{},{};*OPC?'.format(trace,xmargin,ymargin)])
 
