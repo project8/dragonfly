@@ -12,7 +12,7 @@ from dripline import core
 from .ethernet_provider import EthernetProvider
 
 #phasmid import
-import r2daq
+#import r2daq
 
 __all__ = []
 
@@ -373,7 +373,7 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
 
 
 __all__.append('PsyllidAcquisitionInterface')
-class Roach2AcquisitionInterface(DAQProvider, core.Spime):
+class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
     '''
     A DAQProvider for interacting with Psyllid DAQ
     '''
@@ -381,10 +381,9 @@ class Roach2AcquisitionInterface(DAQProvider, core.Spime):
                  psyllid_queue='psyllid',
                  psyllid_preset = 'str-1ch',
                  udp_receiver_port = 4001,
-                 roach2_hostname = 'led',
+                 
                  lf_lo_endpoint_name=None,
-                 hf_lo_freq=24.2e9,
-                 analysis_bandwidth=50e6,
+                 
                  **kwargs
                 ):
         '''
@@ -398,68 +397,60 @@ class Roach2AcquisitionInterface(DAQProvider, core.Spime):
         self.alert_routing_key = 'daq_requests'
         self.psyllid_queue = psyllid_queue
         if lf_lo_endpoint_name is None:
-            raise core.exceptions.DriplineValueError('the psyllid interface requires a "lf_lo_endpoint_name"')
+            raise core.exceptions.DriplineValueError('the Psyllid interface requires a "lf_lo_endpoint_name"')
         self._lf_lo_endpoint_name = lf_lo_endpoint_name
-        self._hf_lo_freq = hf_lo_freq
-        self._analysis_bandwidth = analysis_bandwidth
+
        
-        self.roach2_hostname = roach2_hostname
+       
         self.daq_status = self.psyllid_status
         self.psyllid_preset = psyllid_preset
         self.udp_receiver_port = udp_receiver_port
         
         
-        '''connect to roach, pre-configure and start streaming data packages'''
-        
-        r2=r2daq.ArtooDaq(roach2_hostname, boffile='latest-built')
-        
-        '''check whether roach is streaming data packages'''
-        pkts = r2.grab_packets(n=1,dsoc_desc=("10.0.11.1",4001),close_soc=True)
-        x = pkts[0].interpret_data()
-        if len(x)>0:
-            logger.info('The Roach2 is streaming data')
-        else:
-            logger.error('no data packages could be grabbed')
-            raise core.DriplineInternalError('no streaming data')
+       
          
             
         
      
-        '''check psyllid status''' 
+        #check psyllid status
         if self.daq_status == 0:
-            logger.info('psyllid is running, status initialized')
+            logger.info('Psyllid is running, status initialized')
             
         else:
-            logger.warning('status of psyllid is <{}>'.format(self.daq_status))
+            logger.warning('Status of psyllid is <{}>'.format(self.daq_status))
             
             if self.daq_status == 4:
-                logger.info('deactivating daq')
+                logger.info('Deactivating daq')
                 request = core.RequestMessage(msgop=core.OP_CMD)
                 result = self.portal.send_request(target=self.psyllid_queue+'.deactivate-daq', request=request)
                 self.daq_status = self.psyllid_status
-                logger.info('psyllid status is now {}'.format(self.daq_status))
+                logger.info('Psyllid status is now {}'.format(self.daq_status))
                 
             else:
-                logger.error('status could not be corrected')
-                raise core.DriplineInternalError('status of psyllid must be returned to "initialized"')
+                logger.error('Status could not be corrected')
+                raise core.DriplineInternalError('Status of psyllid must be returned to "initialized"')
          
-        ''' set daq presets '''       
+        #set daq presets      
         result = self.portal.send_request(request=core.RequestMessage(msgop=core.OP_SET, payload={'values':[self.psyllid_preset]}), target=self.psyllid_queue+'.daq_preset')
         if result.retcode >= 100:
             logger.warning('retcode indicates an error')
+            
+        #r2.tune_ddc_1st_to_freq(self._hf_lo_freq,tag='a')
+
+
              
-        ''' set udp receiver port '''       
+        #set udp receiver port    
         result = self.portal.send_request(request=core.RequestMessage(msgop=core.OP_SET, payload={'values':[self.udp_receiver_port]}), target=self.psyllid_queue+'.node.udp.port')
         if result.retcode >= 100:
             logger.warning('retcode indicates an error')
         
-        '''activate daq'''
+        #activate daq
         request = core.RequestMessage(msgop=core.OP_CMD)
         result = self.portal.send_request(target=self.psyllid_queue+'.activate-daq', request=request)
             
     @property   
     def psyllid_status(self):
-        logger.info('check psyllid status')
+        logger.info('Checking Psyllid status')
         query_msg = core.RequestMessage(msgop=core.OP_GET)
         result = self.portal.send_request(request=query_msg, target=self._psyllid_queue+'.daq-status', timeout=120)
         return result.payload['value_raw']
@@ -487,8 +478,8 @@ class Roach2AcquisitionInterface(DAQProvider, core.Spime):
         
         
     
-    def change_cf(f):
-        r2.change(f)
+   # def change_cf(f):
+    #    r2.change(f)
 
     def start_timed_run(self, run_name, run_time):
         '''
@@ -575,3 +566,45 @@ class Roach2AcquisitionInterface(DAQProvider, core.Spime):
         else:
             logger.warning('queue started')
         self._acquisition_count = 0
+        
+__all__.append('Roach2AcquisitionInterface')
+class Roach2AcquisitionInterface(DAQProvider, EthernetProvider):
+    '''
+    A DAQProvider for interacting with the RSA
+    '''
+    def __init__(self,
+                 roach2_hostname = 'led',
+                 instrument_setup_filename_prefix=None,
+                 mask_filename_prefix=None,
+                 
+                 hf_lo_freq=24.2e9,
+                 analysis_bandwidth=50e6,
+                 **kwargs):
+        DAQProvider.__init__(self, **kwargs)
+        EthernetProvider.__init__(self, **kwargs)
+       
+        self.roach2_hostname = roach2_hostname
+        self._hf_lo_freq = hf_lo_freq
+        self._analysis_bandwidth = analysis_bandwidth
+        
+        
+        #connect to roach, pre-configure and start streaming data packages'''
+        try:
+            r2=r2daq.ArtooDaq(roach2_hostname, boffile='latest-built')
+        except:
+            logger.error('The Roach2 could not be setup or configured. '
+                            'Possibly another service is already using it and closing this service might solve the problem')
+        
+        self.is_running()
+
+    @property
+    def is_running(self):
+        logger.info('Checking whether roach is streaming data packages')
+        pkts = r2.grab_packets(n=1,dsoc_desc=("10.0.11.1",4001),close_soc=True)
+        x = pkts[0].interpret_data()
+        if len(x)>0:
+            logger.info('The Roach2 is streaming data')
+        else:
+            logger.error('no data packages could be grabbed')
+            raise core.DriplineInternalError('no streaming data')
+        return
