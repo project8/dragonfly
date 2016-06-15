@@ -323,6 +323,8 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
         self.violation_def_lab = violation_def_lab
         self.RBW_def_lab = RBW_def_lab
         self.holdoff_def_lab = holdoff_def_lab
+        self.holdoff_status_def_lab = holdoff_status_def_lab
+        self.osc_source_def_lab = osc_source_def_lab
 
     @property
     def is_running(self):
@@ -357,6 +359,38 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
         self.send(['DPX:BWID:RES {};*OPC?'.format(self.RBW_def_lab)])
         logger.info('setting holdoff')
         self.send(['TRIG:ADV:HOLD {};*OPC?'.format(self.holdoff_def_lab)])
+        logger.info('setting holdoff status')
+        self.send(['TRIG:ADV:HOLD:ENABle {};*OPC?'.format(self.holdoff_status_def_lab)])
+        logger.info('setting oscillator source')
+        self.send(['SENSE:ROSCILLATOR:SOURCE {};*OPC?'.format(self.osc_source_def_lab)])
+
+    def set_central_frequency(self,central_frequency):
+        logger.info('setting central frequency')
+        self.send(['DPX:FREQ:CENT {}MHz;*OPC?'.format(central_frequency)])
+
+    def set_span_frequency(self,span_frequency):
+        logger.info('setting frequency span')
+        self.send(['DPX:FREQ:SPAN {}MHz;*OPC?'.format(span_frequency)])
+
+    def set_ref_level(self,ref_level):
+        logger.info('setting reference level')
+        self.send(['INPUT:RLEVEL {};*OPC?'.format(ref_level)])
+
+    def set_event_source(self,event_source):
+        logger.info('setting event source')
+        self.send(['TRIG:EVEN:SOUR {};*OPC?'.format(event_source)])
+
+    def set_event_type(self,event_type):
+        logger.info('setting event type')
+        self.send(['TRIG:EVEN:INP:TYPE {};*OPC?'.format(event_type)])
+
+    def set_trig_violation_condition(self,trig_viol):
+        logger.info('setting trigger violation')
+        self.send(['TRIG:EVEN:INP:FMASk:VIOL {};*OPC?'.format(trig_viol)])
+
+    def set_resolution_bandwidth(self,rbw):
+        logger.info('setting resolution bandwidths')
+        self.send(['DPX:BWID:RES {};*OPC?'.format(rbw)])
 
     def set_config_from_file(self,file_path):
         logger.info('setting instrument config from file')
@@ -370,6 +404,10 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
 
     def start_run(self, run_name):
         super(RSAAcquisitionInterface, self).start_run(run_name)
+
+        #ensure that the oscillator source is on EXTERNAL (which is the default cvalue and should always be this value)
+        logger.info('setting oscillator source')
+        self.send(['SENSE:ROSCILLATOR:SOURCE {};*OPC?'.format(self.osc_source_def_lab)])
         # ensure the output format is set to mat
         self.send(["SENS:ACQ:FSAV:FORM MAT;*OPC?"])
         # build strings for output directory and file prefix, then set those
