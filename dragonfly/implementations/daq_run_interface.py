@@ -344,6 +344,9 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
 
     def set_default_config(self):
         logger.info('setting default config for data taking')
+        logger.info('getting all the lastest errors in the system and purging the queue')
+        errors = [self.send(['SYSTEM:ERROR:ALL?'])]
+        print('System errors are: {}'.format(errors[0]))
         logger.info('setting frequencies')
         self.send(['DPX:FREQ:CENT {};*OPC?'.format(self.central_frequency_def_lab)])
         self.send(['DPX:FREQ:SPAN {};*OPC?'.format(self.span_frequency_def_lab)])
@@ -406,10 +409,6 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
 
     def start_run(self, run_name):
         super(RSAAcquisitionInterface, self).start_run(run_name)
-
-        #ensure that the oscillator source is on EXTERNAL (which is the default cvalue and should always be this value)
-        logger.info('setting oscillator source')
-        self.send(['SENSE:ROSCILLATOR:SOURCE {};*OPC?'.format(self.osc_source_def_lab)])
         # ensure the output format is set to mat
         self.send(["SENS:ACQ:FSAV:FORM MAT;*OPC?"])
         # build strings for output directory and file prefix, then set those
