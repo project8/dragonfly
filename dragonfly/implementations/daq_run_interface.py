@@ -308,6 +308,8 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
 		 violation_def_lab=None,
 		 RBW_def_lab=None,
 		 holdoff_def_lab=None,
+		 holdoff_status_def_lab=None,
+		 osc_source_def_lab='EXT',
 		 max_nb_files=10000,
                  **kwargs):
         DAQProvider.__init__(self, **kwargs)
