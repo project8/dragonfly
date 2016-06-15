@@ -298,7 +298,17 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
     def __init__(self,
                  instrument_setup_filename_prefix=None,
                  mask_filename_prefix=None,
-                 max_nb_files=10000,
+                 span_frequency_def_lab=None,
+		 central_frequency_def_lab=None,
+		 mask_ymargin_def_lab=None,
+		 mask_xmargin_def_lab=None,
+		 ref_level_def_lab=None,
+		 source_event_def_lab=None,
+		 type_event_def_lab=None,
+		 violation_def_lab=None,
+		 RBW_def_lab=None,
+		 holdoff_def_lab=None, 
+		 max_nb_files=10000,
                  **kwargs):
         DAQProvider.__init__(self, **kwargs)
         EthernetProvider.__init__(self, **kwargs)
