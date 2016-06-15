@@ -345,8 +345,8 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
     def set_default_config(self):
         logger.info('setting default config for data taking')
         logger.info('setting frequencies')
-        self.send(['DPX:FREQ:CENT {}MHz;*OPC?'.format(self.central_frequency_def_lab)])
-        self.send(['DPX:FREQ:SPAN {}MHz;*OPC?'.format(self.span_frequency_def_lab)])
+        self.send(['DPX:FREQ:CENT {};*OPC?'.format(self.central_frequency_def_lab)])
+        self.send(['DPX:FREQ:SPAN {};*OPC?'.format(self.span_frequency_def_lab)])
         logger.info('setting new mask auto')
         self.send(['TRIG:MASK:NEW:AUTO "dpsa",{},{},{};*OPC?'.format('TRACE3',self.mask_xmargin_def_lab,self.mask_ymargin_def_lab)])
         logger.info('setting reference level')
@@ -368,11 +368,11 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
 
     def set_central_frequency(self,central_frequency):
         logger.info('setting central frequency')
-        self.send(['DPX:FREQ:CENT {}MHz;*OPC?'.format(central_frequency)])
+        self.send(['DPX:FREQ:CENT {};*OPC?'.format(central_frequency)])
 
     def set_span_frequency(self,span_frequency):
         logger.info('setting frequency span')
-        self.send(['DPX:FREQ:SPAN {}MHz;*OPC?'.format(span_frequency)])
+        self.send(['DPX:FREQ:SPAN {};*OPC?'.format(span_frequency)])
 
     def set_ref_level(self,ref_level):
         logger.info('setting reference level')
