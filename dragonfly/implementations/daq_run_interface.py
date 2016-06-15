@@ -345,8 +345,8 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
     def set_default_config(self):
         logger.info('setting default config for data taking')
         logger.info('getting all the lastest errors in the system and purging the queue')
-        errors = [self.send(['SYSTEM:ERROR:ALL?'])]
-        print('System errors are: {}'.format(errors[0]))
+        errors = self.send(['SYSTEM:ERROR:ALL?'])
+        print('System errors are: {}'.format(errors))
         logger.info('setting frequencies')
         self.send(['DPX:FREQ:CENT {};*OPC?'.format(self.central_frequency_def_lab)])
         self.send(['DPX:FREQ:SPAN {};*OPC?'.format(self.span_frequency_def_lab)])
@@ -368,6 +368,10 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
         self.send(['TRIG:ADV:HOLD:ENABle {};*OPC?'.format(self.holdoff_status_def_lab)])
         logger.info('setting oscillator source')
         self.send(['SENSE:ROSCILLATOR:SOURCE {};*OPC?'.format(self.osc_source_def_lab)])
+        if errors='0,"No error;Queue empty - No events to report"\n':
+            return {'value_raw': 'No errors', 'value_cal': '\n'.join('OK')}
+        else:
+            return {'value_raw': '{}'.format(errors), 'value_cal': '\n'.join('Not OK')}
 
     def set_central_frequency(self,central_frequency):
         logger.info('setting central frequency')
