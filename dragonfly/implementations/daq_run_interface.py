@@ -368,10 +368,10 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
         self.send(['TRIG:ADV:HOLD:ENABle {};*OPC?'.format(self.holdoff_status_def_lab)])
         logger.info('setting oscillator source')
         self.send(['SENSE:ROSCILLATOR:SOURCE {};*OPC?'.format(self.osc_source_def_lab)])
-        if errors=='0,"No error;Queue empty - No events to report"\n':
-            return {'value_raw': 'No errors', 'value_cal': '\n'.join('OK')}
+        if errors=='0,"No error;Queue empty - No events to report"':
+            return {'value_raw': 'No errors', 'value_cal': 'OK'}
         else:
-            return {'value_raw': '{}'.format(errors), 'value_cal': '\n'.join('Not OK')}
+            return {'value_raw': '{}'.format(errors), 'value_cal': 'NOT OK'}
 
     def set_central_frequency(self,central_frequency):
         logger.info('setting central frequency')
