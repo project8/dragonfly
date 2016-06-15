@@ -307,7 +307,7 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
 		 type_event_def_lab=None,
 		 violation_def_lab=None,
 		 RBW_def_lab=None,
-		 holdoff_def_lab=None, 
+		 holdoff_def_lab=None,
 		 max_nb_files=10000,
                  **kwargs):
         DAQProvider.__init__(self, **kwargs)
@@ -344,9 +344,9 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
         self.send(['DPX:FREQ:CENT {}MHz;*OPC?'.format(self.central_frequency_def_lab)])
         self.send(['DPX:FREQ:SPAN {}MHz;*OPC?'.format(self.span_frequency_def_lab)])
         logger.info('setting new mask auto')
-        self.send(['TRIG:MASK:NEW:AUTO "dpsa",{},{},{};*OPC?'.format('TRACE3',self.mask_xmargin_def_lab,self.mask_ymargin_def_lab)])
+        self.send(['TRIG:MASK:NEW:AUTO "dpsa","{}",{},{};*OPC?'.format('TRACE3',self.mask_xmargin_def_lab,self.mask_ymargin_def_lab)])
         logger.info('setting reference level')
-        self.send(['INP:RLEV {};*OPC?'.format(self.ref_level_def_lab)])
+        self.send(['INPUT:RLEVEL {};*OPC?'.format(self.ref_level_def_lab)])
         logger.info('setting source of events')
         self.send(['TRIG:EVEN:SOUR {};*OPC?'.format(self.source_event_def_lab)])
         logger.info('setting type of events')
@@ -366,7 +366,7 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
 
     def create_new_auto_mask(self, trace, xmargin, ymargin):
         logger.info('setting the auto mask')
-        self.send(['TRIG:MASK:NEW:AUTO "dpsa",{},{},{};*OPC?'.format(trace,xmargin,ymargin)])
+        self.send(['TRIG:MASK:NEW:AUTO "dpsa","{}",{},{};*OPC?'.format(trace,xmargin,ymargin)])
 
     def start_run(self, run_name):
         super(RSAAcquisitionInterface, self).start_run(run_name)
