@@ -296,24 +296,26 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
     A DAQProvider for interacting with the RSA
     '''
     def __init__(self,
+                 rsa_config_target='',
                  instrument_setup_filename_prefix=None,
                  mask_filename_prefix=None,
                  span_frequency_def_lab=None,
-		 central_frequency_def_lab=None,
-		 mask_ymargin_def_lab=None,
-		 mask_xmargin_def_lab=None,
-		 ref_level_def_lab=None,
-		 source_event_def_lab=None,
-		 type_event_def_lab=None,
-		 violation_def_lab=None,
-		 RBW_def_lab=None,
-		 holdoff_def_lab=None,
-		 holdoff_status_def_lab=None,
-		 osc_source_def_lab='EXT',
-		 max_nb_files=10000,
+		         central_frequency_def_lab=None,
+		         mask_ymargin_def_lab=None,
+		         mask_xmargin_def_lab=None,
+		         ref_level_def_lab=None,
+		         source_event_def_lab=None,
+		         type_event_def_lab=None,
+		         violation_def_lab=None,
+		         RBW_def_lab=None,
+		         holdoff_def_lab=None,
+		         holdoff_status_def_lab=None,
+		         osc_source_def_lab='EXT',
+		         max_nb_files=10000,
                  **kwargs):
         DAQProvider.__init__(self, **kwargs)
         EthernetProvider.__init__(self, **kwargs)
+        self.rsa_config_target=rsa_config_target
         self.max_nb_files = max_nb_files
         self.span_frequency_def_lab = span_frequency_def_lab
         self.central_frequency_def_lab = central_frequency_def_lab
@@ -350,7 +352,7 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
         self.send(['DPX:FREQ:CENT {};*OPC?'.format(self.central_frequency_def_lab)])
         self.send(['DPX:FREQ:SPAN {};*OPC?'.format(self.span_frequency_def_lab)])
         logger.info('setting new mask auto')
-        self.send(['TRIG:MASK:NEW:AUTO "dpsa",{},{},{};*OPC?'.format('TRACE3',self.mask_xmargin_def_lab,self.mask_ymargin_def_lab)])
+        self.send(['TRIG:MASK:NEW:AUTO "dpsa",'{}',{},{};*OPC?'.format('TRACE3',self.mask_xmargin_def_lab,self.mask_ymargin_def_lab)])
         logger.info('setting reference level')
         self.send(['INPUT:RLEVEL {};*OPC?'.format(self.ref_level_def_lab)])
         logger.info('setting source of events')
@@ -367,14 +369,14 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
         self.send(['TRIG:ADV:HOLD:ENABle {};*OPC?'.format(self.holdoff_status_def_lab)])
         logger.info('setting oscillator source')
         self.send(['SENSE:ROSCILLATOR:SOURCE {};*OPC?'.format(self.osc_source_def_lab)])
-        Nerrors = self.send(['SYSTEM:ERROR:COUNT?'])
+        # Nerrors = self.send(['SYSTEM:ERROR:COUNT?'])
         # if Nerrors=='0':
         #     return {'value_raw': 'No errors during the configuration', 'value_cal': 'OK'}
         # else:
         #     errors==self.send(['SYSTEM:ERROR:ALL?'])
         #     return {'value_raw': '{}'.format(errors), 'value_cal': 'NOT OK'}
-        self._request_message = dripline.core.RequestMessage(msgop=dripline.core.OP_GET)
-        result = self.portal.send_request(request=self._request_message, target='rsa_config')
+        self._request_message = core.RequestMessage(msgop=core.OP_GET)
+        result = self.portal.send_request(request=self._request_message, target=self.rsa_config_target)
         return result
 
     def set_central_frequency(self,central_frequency):
