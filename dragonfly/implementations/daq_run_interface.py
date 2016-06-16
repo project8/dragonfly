@@ -351,8 +351,6 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
         logger.info('setting frequencies')
         self.send(['DPX:FREQ:CENT {};*OPC?'.format(self.central_frequency_def_lab)])
         self.send(['DPX:FREQ:SPAN {};*OPC?'.format(self.span_frequency_def_lab)])
-        logger.info('setting new mask auto')
-        self.send(['TRIG:MASK:NEW:AUTO "dpsa",TRACE3,{},{};*OPC?'.format(self.mask_xmargin_def_lab,self.mask_ymargin_def_lab)])
         logger.info('setting reference level')
         self.send(['INPUT:RLEVEL {};*OPC?'.format(self.ref_level_def_lab)])
         logger.info('setting source of events')
@@ -369,6 +367,8 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
         self.send(['TRIG:ADV:HOLD:ENABle {};*OPC?'.format(self.holdoff_status_def_lab)])
         logger.info('setting oscillator source')
         self.send(['SENSE:ROSCILLATOR:SOURCE {};*OPC?'.format(self.osc_source_def_lab)])
+        logger.info('setting new mask auto')
+        self.send(['TRIG:MASK:NEW:AUTO "dpsa",TRACE3,{},{};*OPC?'.format(self.mask_xmargin_def_lab,self.mask_ymargin_def_lab)])
         # Nerrors = self.send(['SYSTEM:ERROR:COUNT?'])
         # if Nerrors=='0':
         #     return {'value_raw': 'No errors during the configuration', 'value_cal': 'OK'}
