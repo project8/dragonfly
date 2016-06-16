@@ -296,11 +296,39 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
     A DAQProvider for interacting with the RSA
     '''
     def __init__(self,
-                 max_nb_files=10000,
+                 rsa_config_target='',
+                 instrument_setup_filename_prefix=None,
+                 mask_filename_prefix=None,
+                 span_frequency_def_lab=None,
+		         central_frequency_def_lab=None,
+		         mask_ymargin_def_lab=None,
+		         mask_xmargin_def_lab=None,
+		         ref_level_def_lab=None,
+		         source_event_def_lab=None,
+		         type_event_def_lab=None,
+		         violation_def_lab=None,
+		         RBW_def_lab=None,
+		         holdoff_def_lab=None,
+		         holdoff_status_def_lab=None,
+		         osc_source_def_lab='EXT',
+		         max_nb_files=10000,
                  **kwargs):
         DAQProvider.__init__(self, **kwargs)
         EthernetProvider.__init__(self, **kwargs)
+        self.rsa_config_target=rsa_config_target
         self.max_nb_files = max_nb_files
+        self.span_frequency_def_lab = span_frequency_def_lab
+        self.central_frequency_def_lab = central_frequency_def_lab
+        self.mask_ymargin_def_lab = mask_ymargin_def_lab
+        self.mask_xmargin_def_lab = mask_xmargin_def_lab
+        self.ref_level_def_lab = ref_level_def_lab
+        self.source_event_def_lab = source_event_def_lab
+        self.type_event_def_lab = type_event_def_lab
+        self.violation_def_lab = violation_def_lab
+        self.RBW_def_lab = RBW_def_lab
+        self.holdoff_def_lab = holdoff_def_lab
+        self.holdoff_status_def_lab = holdoff_status_def_lab
+        self.osc_source_def_lab = osc_source_def_lab
 
     @property
     def is_running(self):
@@ -315,6 +343,80 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
             raise ValueError('unrecognized return value')
         logger.info('trigger status is <{}>'.format(to_return))
         return to_return
+
+    def set_default_config(self):
+        logger.info('setting default config for data taking')
+        logger.info('getting all the lastest errors in the system and purging the queue')
+        errors = self.send(['SYSTEM:ERROR:ALL?'])
+        logger.info('setting frequencies')
+        self.send(['DPX:FREQ:CENT {};*OPC?'.format(self.central_frequency_def_lab)])
+        self.send(['DPX:FREQ:SPAN {};*OPC?'.format(self.span_frequency_def_lab)])
+        logger.info('setting reference level')
+        self.send(['INPUT:RLEVEL {};*OPC?'.format(self.ref_level_def_lab)])
+        logger.info('setting source of events')
+        self.send(['TRIG:EVEN:SOUR {};*OPC?'.format(self.source_event_def_lab)])
+        logger.info('setting type of events')
+        self.send(['TRIG:EVEN:INP:TYPE {};*OPC?'.format(self.type_event_def_lab)])
+        logger.info('setting trigger violation condition')
+        self.send(['TRIG:EVEN:INP:FMASk:VIOL {};*OPC?'.format(self.violation_def_lab)])
+        logger.info('setting bandwidths')
+        self.send(['DPX:BWID:RES {};*OPC?'.format(self.RBW_def_lab)])
+        logger.info('setting holdoff')
+        self.send(['TRIG:ADV:HOLD {};*OPC?'.format(self.holdoff_def_lab)])
+        logger.info('setting holdoff status')
+        self.send(['TRIG:ADV:HOLD:ENABle {};*OPC?'.format(self.holdoff_status_def_lab)])
+        logger.info('setting oscillator source')
+        self.send(['SENSE:ROSCILLATOR:SOURCE {};*OPC?'.format(self.osc_source_def_lab)])
+        logger.info('setting new mask auto')
+        self.send(['TRIG:MASK:NEW:AUTO "dpsa",TRACE3,{},{};*OPC?'.format(self.mask_xmargin_def_lab,self.mask_ymargin_def_lab)])
+        # Nerrors = self.send(['SYSTEM:ERROR:COUNT?'])
+        # if Nerrors=='0':
+        #     return {'value_raw': 'No errors during the configuration', 'value_cal': 'OK'}
+        # else:
+        #     errors==self.send(['SYSTEM:ERROR:ALL?'])
+        #     return {'value_raw': '{}'.format(errors), 'value_cal': 'NOT OK'}
+        # self._request_message = core.RequestMessage(msgop=core.OP_GET)
+        # result = self.portal.send_request(request=self._request_message, target=self._metadata_state_target, timeout=120)
+        # the_result = result.payload['value_raw']
+        # return the_result
+
+    def set_central_frequency(self,central_frequency):
+        logger.info('setting central frequency')
+        self.send(['DPX:FREQ:CENT {};*OPC?'.format(central_frequency)])
+
+    def set_span_frequency(self,span_frequency):
+        logger.info('setting frequency span')
+        self.send(['DPX:FREQ:SPAN {};*OPC?'.format(span_frequency)])
+
+    def set_ref_level(self,ref_level):
+        logger.info('setting reference level')
+        self.send(['INPUT:RLEVEL {};*OPC?'.format(ref_level)])
+
+    def set_event_source(self,event_source):
+        logger.info('setting event source')
+        self.send(['TRIG:EVEN:SOUR {};*OPC?'.format(event_source)])
+
+    def set_event_type(self,event_type):
+        logger.info('setting event type')
+        self.send(['TRIG:EVEN:INP:TYPE {};*OPC?'.format(event_type)])
+
+    def set_trig_violation_condition(self,trig_viol):
+        logger.info('setting trigger violation')
+        self.send(['TRIG:EVEN:INP:FMASk:VIOL {};*OPC?'.format(trig_viol)])
+
+    def set_resolution_bandwidth(self,rbw):
+        logger.info('setting resolution bandwidths')
+        self.send(['DPX:BWID:RES {};*OPC?'.format(rbw)])
+
+    def set_config_from_file(self,file_path):
+        logger.info('setting instrument config from file')
+        if file_path is None:
+            raise core.DriplineInternalError('no file_path was given')
+        self.send('MMEMory:LOAD:STATe "{}"; OPC?'.format(file_path))
+
+    def create_new_auto_mask(self, trace, xmargin, ymargin):
+        logger.info('setting the auto mask')
+        self.send(['TRIG:MASK:NEW:AUTO "dpsa",{},{},{};*OPC?'.format(trace,xmargin,ymargin)])
 
     def start_run(self, run_name):
         super(RSAAcquisitionInterface, self).start_run(run_name)
@@ -333,8 +435,29 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
         the_ref = self.send(['SENS:ROSC:SOUR?'])
         if the_ref != 'EXT\n':
             raise core.exceptions.DriplineHardwareError('RSA external ref found to be <{}> (!="EXT")'.format(the_ref))
+
+        # counting the number of errors in the RSA system queue and aborting the data taking if Nerrors>0
+        Nerrors = self.send(['SYSTEM:ERROR:COUNT?'])
+        if Nerrors!='0':
+            raise core.exceptions.DriplineHardwareError('RSA system has {} error(s) in the queue: check them with <dragonfly get rsa_system_error_queue>'.format(Nerrors))
+
         # ensure in triggered mode
         self.send(['TRIG:SEQ:STAT 1;*OPC?'])
+        # saving the instrument status in hot
+        instrument_status_full_name = '{directory}/{prefix}{runN:09d}_rsa_setup'.format(
+                                                        directory=file_directory,
+                                                        prefix=self.filename_prefix,
+                                                        runN=self.run_id
+                                                                               )
+        self.send(['MMEM:STOR:STAT "{}";*OPC?'.format(instrument_status_full_name)])
+        # saving the frequency mask in hot
+        mask_full_name = '{directory}/{prefix}{runN:09d}_mask'.format(
+                                                        directory=file_directory,
+                                                        prefix=self.filename_prefix,
+                                                        runN=self.run_id
+                                                                               )
+        self.send(['TRIG:MASK:SAVE "{}";*OPC?'.format(mask_full_name)])
+
         # actually start to FastSave
         self.send(['SENS:ACQ:FSAV:ENAB 1;*OPC?'])
 
