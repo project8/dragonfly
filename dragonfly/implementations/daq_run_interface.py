@@ -368,11 +368,14 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
         logger.info('setting oscillator source')
         self.send(['SENSE:ROSCILLATOR:SOURCE {};*OPC?'.format(self.osc_source_def_lab)])
         Nerrors = self.send(['SYSTEM:ERROR:COUNT?'])
-        if Nerrors=='0':
-            return {'value_raw': 'No errors during the configuration', 'value_cal': 'OK'}
-        else:
-            errors==self.send(['SYSTEM:ERROR:ALL?'])
-            return {'value_raw': '{}'.format(errors), 'value_cal': 'NOT OK'}
+        # if Nerrors=='0':
+        #     return {'value_raw': 'No errors during the configuration', 'value_cal': 'OK'}
+        # else:
+        #     errors==self.send(['SYSTEM:ERROR:ALL?'])
+        #     return {'value_raw': '{}'.format(errors), 'value_cal': 'NOT OK'}
+        self._request_message = dripline.core.RequestMessage(msgop=dripline.core.OP_GET)
+        result = self.portal.send_request(request=self._request_message, target='rsa_config')
+        return result
 
     def set_central_frequency(self,central_frequency):
         logger.info('setting central frequency')
@@ -433,6 +436,8 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
         Nerrors = self.send(['SYSTEM:ERROR:COUNT?'])
         if Nerrors!='0':
             raise core.exceptions.DriplineHardwareError('RSA system has {} error(s) in the queue: check them with <dragonfly get rsa_system_error_queue>'.format(Nerrors))
+
+
 
         # ensure in triggered mode
         self.send(['TRIG:SEQ:STAT 1;*OPC?'])
