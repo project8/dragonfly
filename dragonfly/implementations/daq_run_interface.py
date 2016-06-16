@@ -377,7 +377,8 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
         #     return {'value_raw': '{}'.format(errors), 'value_cal': 'NOT OK'}
         self._request_message = core.RequestMessage(msgop=core.OP_GET)
         result = self.portal.send_request(request=self._request_message, target=self.rsa_config_target)
-        return result
+        the_result = result.payload['value_raw']
+        return the_result
 
     def set_central_frequency(self,central_frequency):
         logger.info('setting central frequency')
