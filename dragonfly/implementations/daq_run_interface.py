@@ -380,7 +380,7 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
     A DAQProvider for interacting with Psyllid DAQ
     '''
     def __init__(self,
-                 psyllid_queue='psyllid',
+                 daq_queue='psyllid',
                  psyllid_preset = 'str-1ch',
                  udp_receiver_port = 4001,
                  path_to_egg_file_location = 'somepath',
@@ -399,19 +399,24 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
         DAQProvider.__init__(self, **kwargs)
         core.Spime.__init__(self, **kwargs)
         self.alert_routing_key = 'daq_requests'
-        self.psyllid_queue = psyllid_queue
+        self.psyllid_queue = daq_queue
         if lf_lo_endpoint_name is None:
             raise core.exceptions.DriplineValueError('the Psyllid interface requires a "lf_lo_endpoint_name"')
         self._lf_lo_endpoint_name = lf_lo_endpoint_name
 
        
        
-        self.daq_status = self.status()
+        
         self.psyllid_preset = psyllid_preset
         self.udp_receiver_port = udp_receiver_port
         self.path = 'somepath'
-       
         
+        
+       
+    def finish_configure(self):
+        print('Hello, I got here')
+        
+        self.daq_status = self.status()
      
         #check psyllid status
         if self.daq_status == 0:
@@ -442,8 +447,12 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
     def status(self):
         logger.info('Checking Psyllid status')
         query_msg = core.RequestMessage(msgop=core.OP_GET)
-        print(type(self.portal))
-        result = self.portal.send_request(request=query_msg, target=self._psyllid_queue+'.daq-status', timeout=120)
+        
+        result = self.portal.send_request(request=query_msg, target=self.psyllid_queue+'.daq-status', timeout=120)
+        print(type(result))
+        if result.retcode >= 100:
+            logger.warning('retcode indicates an error')
+        print(result)
         return result.payload['value_raw']
         
     def set_port(self, new_port):
@@ -626,5 +635,7 @@ class Roach2AcquisitionInterface(DAQProvider, EthernetProvider):
     def set_cf(self, freq):
         return
     def set_gain(self,gain):
+        return
         
-    def set_fft_shift(self.shift):
+    def set_fft_shift(self,shift):
+        return
