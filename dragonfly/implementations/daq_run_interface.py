@@ -376,7 +376,7 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
         #     errors==self.send(['SYSTEM:ERROR:ALL?'])
         #     return {'value_raw': '{}'.format(errors), 'value_cal': 'NOT OK'}
         self._request_message = core.RequestMessage(msgop=core.OP_GET)
-        result = self.portal.send_request(request=self._request_message, target=self.rsa_config_target)
+        result = self.portal.send_request(request=self._request_message, target=self.rsa_config_target, timeout=120)
         the_result = result.payload['value_raw']
         return the_result
 
