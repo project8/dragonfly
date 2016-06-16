@@ -375,10 +375,10 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
         # else:
         #     errors==self.send(['SYSTEM:ERROR:ALL?'])
         #     return {'value_raw': '{}'.format(errors), 'value_cal': 'NOT OK'}
-        self._request_message = core.RequestMessage(msgop=core.OP_GET)
-        result = self.portal.send_request(request=self._request_message, target=self._metadata_state_target, timeout=120)
-        the_result = result.payload['value_raw']
-        return the_result
+        # self._request_message = core.RequestMessage(msgop=core.OP_GET)
+        # result = self.portal.send_request(request=self._request_message, target=self._metadata_state_target, timeout=120)
+        # the_result = result.payload['value_raw']
+        # return the_result
 
     def set_central_frequency(self,central_frequency):
         logger.info('setting central frequency')
@@ -436,11 +436,10 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
         if the_ref != 'EXT\n':
             raise core.exceptions.DriplineHardwareError('RSA external ref found to be <{}> (!="EXT")'.format(the_ref))
 
+        # counting the number of errors in the RSA system queue and aborting the data taking if Nerrors>0
         Nerrors = self.send(['SYSTEM:ERROR:COUNT?'])
         if Nerrors!='0':
             raise core.exceptions.DriplineHardwareError('RSA system has {} error(s) in the queue: check them with <dragonfly get rsa_system_error_queue>'.format(Nerrors))
-
-
 
         # ensure in triggered mode
         self.send(['TRIG:SEQ:STAT 1;*OPC?'])
@@ -450,7 +449,6 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
                                                         prefix=self.filename_prefix,
                                                         runN=self.run_id
                                                                                )
-        # instrument_status_full_name = "{}\{}{}_{:09d}".format(file_directory,self.instrument_setup_filename_prefix,self.run_id)
         self.send(['MMEM:STOR:STAT "{}";*OPC?'.format(instrument_status_full_name)])
         # saving the frequency mask in hot
         mask_full_name = '{directory}/{prefix}{runN:09d}_mask'.format(
@@ -458,7 +456,6 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
                                                         prefix=self.filename_prefix,
                                                         runN=self.run_id
                                                                                )
-        # mask_full_name = "{}\{}_{:09d}".format(file_directory,self.mask_filename_prefix,self.run_id)
         self.send(['TRIG:MASK:SAVE "{}";*OPC?'.format(mask_full_name)])
 
         # actually start to FastSave
