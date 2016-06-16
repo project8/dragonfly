@@ -346,7 +346,6 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
         logger.info('setting default config for data taking')
         logger.info('getting all the lastest errors in the system and purging the queue')
         errors = self.send(['SYSTEM:ERROR:ALL?'])
-        print('System errors are: {}'.format(errors))
         logger.info('setting frequencies')
         self.send(['DPX:FREQ:CENT {};*OPC?'.format(self.central_frequency_def_lab)])
         self.send(['DPX:FREQ:SPAN {};*OPC?'.format(self.span_frequency_def_lab)])
@@ -368,9 +367,11 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
         self.send(['TRIG:ADV:HOLD:ENABle {};*OPC?'.format(self.holdoff_status_def_lab)])
         logger.info('setting oscillator source')
         self.send(['SENSE:ROSCILLATOR:SOURCE {};*OPC?'.format(self.osc_source_def_lab)])
-        if errors=='0,"No error;Queue empty - No events to report"':
-            return {'value_raw': 'No errors', 'value_cal': 'OK'}
+        Nerrors = self.send(['SYSTEM:ERROR:COUNT?'])
+        if Nerrors=='0':
+            return {'value_raw': 'No errors during the configuration', 'value_cal': 'OK'}
         else:
+            errors==self.send(['SYSTEM:ERROR:ALL?'])
             return {'value_raw': '{}'.format(errors), 'value_cal': 'NOT OK'}
 
     def set_central_frequency(self,central_frequency):
@@ -428,6 +429,10 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
         the_ref = self.send(['SENS:ROSC:SOUR?'])
         if the_ref != 'EXT\n':
             raise core.exceptions.DriplineHardwareError('RSA external ref found to be <{}> (!="EXT")'.format(the_ref))
+
+        Nerrors = self.send(['SYSTEM:ERROR:COUNT?'])
+        if Nerrors!='0':
+            raise core.exceptions.DriplineHardwareError('RSA system has {} error(s) in the queue: check them with <dragonfly get rsa_system_error_queue>'.format(Nerrors))
 
         # ensure in triggered mode
         self.send(['TRIG:SEQ:STAT 1;*OPC?'])
