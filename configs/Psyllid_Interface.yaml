@@ -1,6 +1,6 @@
 name: psyllid_service
 module: Spimescape
-broker: myrna.p8
+broker: higgsino.physics.ucsb.edu
 endpoints:
   - name: psyllid_interface
     module: PsyllidAcquisitionInterface
@@ -14,13 +14,13 @@ endpoints:
     metadata_target: metadata_ignatius
     #metadata_gets:
     # ROACH2 DAQ Interface params
-    daq_queue = 'psyllid'
-    psyllid_preset = 'str-1ch'
-    udp_receiver_port = 4001
+    daq_queue : 'psyllid'
+    psyllid_preset : 'str-1ch'
+    udp_receiver_port : 4002
     daq_name: 'Psyllid'
     lf_lo_endpoint_name: waffles
     run_table_endpoint: run_table
-    max_nb_files: 10000
+    max_nb_files: 100
     filename_prefix: 'rid'
     directory_path: "H:\\"
     meta_data_directory_path: "/data/hot"

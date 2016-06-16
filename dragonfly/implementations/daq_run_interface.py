@@ -78,6 +78,8 @@ class DAQProvider(core.Provider):
         self._run_name = None
         self.run_id = None
         self._acquisition_count = None
+        
+        print('no errors from DAQ Provider')
 
     @property
     def run_name(self):
@@ -381,6 +383,7 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
                  psyllid_queue='psyllid',
                  psyllid_preset = 'str-1ch',
                  udp_receiver_port = 4001,
+                 path_to_egg_file_location = 'somepath',
                  
                  lf_lo_endpoint_name=None,
                  
@@ -392,6 +395,7 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
         hf_lo_freq (float): local oscillator frequency [Hz] for the 1st stage (default should be correct)
         analysis_bandwidth (float): total receiver bandwidth [Hz]
         '''
+        
         DAQProvider.__init__(self, **kwargs)
         core.Spime.__init__(self, **kwargs)
         self.alert_routing_key = 'daq_requests'
@@ -402,58 +406,67 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
 
        
        
-        self.daq_status = self.psyllid_status
+        self.daq_status = self.status()
         self.psyllid_preset = psyllid_preset
         self.udp_receiver_port = udp_receiver_port
-        
-        
+        self.path = 'somepath'
        
-         
-            
         
      
         #check psyllid status
         if self.daq_status == 0:
             logger.info('Psyllid is running, status initialized')
             
-        else:
-            logger.warning('Status of psyllid is <{}>'.format(self.daq_status))
-            
-            if self.daq_status == 4:
-                logger.info('Deactivating daq')
-                request = core.RequestMessage(msgop=core.OP_CMD)
-                result = self.portal.send_request(target=self.psyllid_queue+'.deactivate-daq', request=request)
-                self.daq_status = self.psyllid_status
-                logger.info('Psyllid status is now {}'.format(self.daq_status))
+        elif self.daq_status == 4:
+                      
+            logger.warning('Status of psillid is idle')
+            self.deactivate()
+            self.daq_status = self.psyllid_status
+            logger.info('Psyllid status is now {}'.format(self.daq_status))
                 
-            else:
-                logger.error('Status could not be corrected')
-                raise core.DriplineInternalError('Status of psyllid must be returned to "initialized"')
+        else:
+            logger.error('Status of psyllid is <{}>'.format(self.daq_status))            
+            raise core.DriplineInternalError('Status of psyllid must be returned to "initialized"')
          
         #set daq presets      
-        result = self.portal.send_request(request=core.RequestMessage(msgop=core.OP_SET, payload={'values':[self.psyllid_preset]}), target=self.psyllid_queue+'.daq_preset')
-        if result.retcode >= 100:
-            logger.warning('retcode indicates an error')
+        self.configure(self.psyllid_preset)
             
-        #r2.tune_ddc_1st_to_freq(self._hf_lo_freq,tag='a')
-
-
-             
+            
         #set udp receiver port    
-        result = self.portal.send_request(request=core.RequestMessage(msgop=core.OP_SET, payload={'values':[self.udp_receiver_port]}), target=self.psyllid_queue+'.node.udp.port')
-        if result.retcode >= 100:
-            logger.warning('retcode indicates an error')
+        self.set_port(self.udp_receiver_port)
         
         #activate daq
-        request = core.RequestMessage(msgop=core.OP_CMD)
-        result = self.portal.send_request(target=self.psyllid_queue+'.activate-daq', request=request)
+        self.activate()
             
-    @property   
-    def psyllid_status(self):
+      
+    def status(self):
         logger.info('Checking Psyllid status')
         query_msg = core.RequestMessage(msgop=core.OP_GET)
+        print(type(self.portal))
         result = self.portal.send_request(request=query_msg, target=self._psyllid_queue+'.daq-status', timeout=120)
         return result.payload['value_raw']
+        
+    def set_port(self, new_port):
+        logger.info('Setting upd receiver port to {}'.format(new_port))
+        result = self.portal.send_request(request=core.RequestMessage(msgop=core.OP_SET, payload={'values':[new_port]}), target=self.psyllid_queue+'.node.udp.port')
+        if result.retcode >= 100:
+            logger.warning('retcode indicates an error')   
+            
+    def configure(self,config):
+        result = self.portal.send_request(request=core.RequestMessage(msgop=core.OP_SET, payload={'values':[config]}), target=self.psyllid_queue+'.daq_preset')
+        if result.retcode >= 100:
+            logger.warning('retcode indicates an error')
+            
+    def activate(self):
+        request = core.RequestMessage(msgop=core.OP_CMD)
+        result = self.portal.send_request(target=self.psyllid_queue+'.activate-daq', request=request)
+        
+    def deactivate(self):
+        logger.info('Deactivating daq')
+        request = core.RequestMessage(msgop=core.OP_CMD)
+        result = self.portal.send_request(target=self.psyllid_queue+'.deactivate-daq', request=request)
+        
+        
     
 
 
@@ -469,6 +482,7 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
         self.log_interval = value
 
     def start_run(self, run_name):
+        #self.egg_path = 
         result = self.portal.send_request(request=core.RequestMessage(msgop=core.OP_SET, payload={'values':[self.acquisition_time*1000.]}), target=self.psyllid_queue+'.duration')
         if result.retcode >= 100:
             logger.warning('retcode indicates an error')
@@ -580,8 +594,8 @@ class Roach2AcquisitionInterface(DAQProvider, EthernetProvider):
                  hf_lo_freq=24.2e9,
                  analysis_bandwidth=50e6,
                  **kwargs):
-        DAQProvider.__init__(self, **kwargs)
-        EthernetProvider.__init__(self, **kwargs)
+        #DAQProvider.__init__(self, **kwargs)
+        #EthernetProvider.__init__(self, **kwargs)
        
         self.roach2_hostname = roach2_hostname
         self._hf_lo_freq = hf_lo_freq
@@ -608,3 +622,9 @@ class Roach2AcquisitionInterface(DAQProvider, EthernetProvider):
             logger.error('no data packages could be grabbed')
             raise core.DriplineInternalError('no streaming data')
         return
+    
+    def set_cf(self, freq):
+        return
+    def set_gain(self,gain):
+        
+    def set_fft_shift(self.shift):
