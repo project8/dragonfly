@@ -352,7 +352,7 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
         self.send(['DPX:FREQ:CENT {};*OPC?'.format(self.central_frequency_def_lab)])
         self.send(['DPX:FREQ:SPAN {};*OPC?'.format(self.span_frequency_def_lab)])
         logger.info('setting new mask auto')
-        self.send(['TRIG:MASK:NEW:AUTO "dpsa",'{}',{},{};*OPC?'.format('TRACE3',self.mask_xmargin_def_lab,self.mask_ymargin_def_lab)])
+        self.send(['TRIG:MASK:NEW:AUTO "dpsa",TRACE3,{},{};*OPC?'.format(self.mask_xmargin_def_lab,self.mask_ymargin_def_lab)])
         logger.info('setting reference level')
         self.send(['INPUT:RLEVEL {};*OPC?'.format(self.ref_level_def_lab)])
         logger.info('setting source of events')
