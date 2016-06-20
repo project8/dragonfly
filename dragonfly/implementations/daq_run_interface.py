@@ -459,11 +459,11 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
         self.send(['TRIG:MASK:SAVE "{}";*OPC?'.format(mask_full_name)])
 
         # actually start to FastSave
-        self.send(['SENS:ACQ:FSAV:ENAB 1;*OPC?'])
+        # self.send(['SENS:ACQ:FSAV:ENAB 1;*OPC?'])
 
     def end_run(self):
         # something to stop FastSave
-        self.send(['SENS:ACQ:FSAV:ENAB 0;*OPC?'])
+        # self.send(['SENS:ACQ:FSAV:ENAB 0;*OPC?'])
         self.send(['TRIG:SEQ:STAT 0;*OPC?'])
         super(RSAAcquisitionInterface, self).end_run()
 
