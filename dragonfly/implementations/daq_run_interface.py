@@ -433,7 +433,7 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
         # try to force external reference
         self.send(['SENS:ROSC:SOUR EXT;*OPC?'])
         the_ref = self.send(['SENS:ROSC:SOUR?'])
-        if the_ref != 'EXT\n':
+        if the_ref != 'EXT\n' and the_ref != 'EXT':
             raise core.exceptions.DriplineHardwareError('RSA external ref found to be <{}> (!="EXT")'.format(the_ref))
 
         # counting the number of errors in the RSA system queue and aborting the data taking if Nerrors>0
