@@ -11,8 +11,7 @@ import uuid
 from dripline import core
 from .ethernet_provider import EthernetProvider
 
-#phasmid import
-#import r2daq
+
 
 __all__ = []
 
@@ -406,7 +405,8 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
 
        
        
-        
+        self.status = None
+        self.status_value = None
         self.psyllid_preset = psyllid_preset
         self.udp_receiver_port = udp_receiver_port
         self.path = 'somepath'
@@ -418,19 +418,19 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
         
         self.is_running()
            
-        if self.status == 4:                      
+        if self.status_value == 4:                      
             self.deactivate()
             self.status()         
                 
-        elif self.status!=0:
-            raise core.DriplineInternalError('Status of psyllid must be returned to "initialized"')
+        elif self.status_value!=0:
+            raise core.DriplineInternalError('Status of psyllid must be returned to "initialized", status is {}'.format(self.status))
          
         #set daq presets      
         self.configure(self.psyllid_preset)
             
             
         #set udp receiver port    
-        self.set_port(self.udp_receiver_port)
+        self.udp_port(self.udp_receiver_port)
         
         #activate daq
         #self.activate()
@@ -440,43 +440,69 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
     def is_running(self):
         logger.info('Checking Psyllid status')
         query_msg = core.RequestMessage(msgop=core.OP_GET)
+        to_return = False
         
-        result = self.portal.send_request(request=query_msg, target=self.psyllid_queue+'.daq-status', timeout=120)
-        to_return = True
+        try:
+            result = self.portal.send_request(request=query_msg, target=self.psyllid_queue+'.daq-status', timeout=120)
+            to_return = True
         
-        if result.retcode >= 100:
-            logger.warning('retcode indicates an error')
-            to_return = False
+            if result.retcode >= 100:
+                logger.warning('retcode indicates an error')
+                to_return = False
         
-        self.status = result.payload['server']['status']
-        self.status_value = result.payload['server']['status-value']
-        
-        logger.info('Psyllid is running, status is {}, status-value is {}'.format(self.status, self.status_value))
+            self.status = result.payload['server']['status']
+            self.status_value = result.payload['server']['status-value']
+            logger.info('Status is {}'.format(self.status_value))
+            
+        except:
+            logger.warning('Psyllid is not running or sth else is wrong')
         
         return to_return
 
         
-        
-    def set_port(self, new_port):
-        logger.info('Setting upd receiver port to {}'.format(new_port))
-        result = self.portal.send_request(request=core.RequestMessage(msgop=core.OP_SET, payload={'values':[new_port]}), target=self.psyllid_queue+'.node.udp.port')
-        if result.retcode >= 100:
-            logger.warning('retcode indicates an error')   
-            
-    def configure(self,config):
+    
+    def udp_port(self, new_port= None):
+        if new_port == None:
+            return self.udp_receiver_port
+        else:
+            self.udp_receiver_port = new_port
+            logger.info('Setting upd receiver port to {}'.format(new_port))
+            result = self.portal.send_request(request=core.RequestMessage(msgop=core.OP_SET, payload={'values':[new_port]}), target=self.psyllid_queue+'.node.udpr.port')
+            if result.retcode >= 100:
+                logger.warning('retcode indicates an error')   
+    
+                      
+    def configure(self,config=None):
+        if config == None:
+            config = self.psyllid_preset
         logger.info('Configuring Psyllid with {}'.format(config))
-        result = self.portal.send_request(request=core.RequestMessage(msgop=core.OP_SET, payload={'values':'str-1ch'}), target=self.psyllid_queue+'.daq-preset')
+        result = self.portal.send_request(request=core.RequestMessage(msgop=core.OP_SET, payload={'values':['str-1ch']}), target=self.psyllid_queue+'.daq-preset')
         if result.retcode >= 100:
             logger.warning('retcode indicates an error')
             
     def activate(self):
-        request = core.RequestMessage(msgop=core.OP_CMD)
-        result = self.portal.send_request(target=self.psyllid_queue+'.activate-daq', request=request)
+        if self.status == None:
+            self.is_running()
+            
+        if self.status_value == 0:
+            logger.info('Activating Psyllid')
+            request = core.RequestMessage(msgop=core.OP_CMD)
+            result = self.portal.send_request(target=self.psyllid_queue+'.activate-daq', request=request)
+            self.is_running()
+        else:
+            logger.warning('Could not activate. Status is not "initialized"')
         
     def deactivate(self):
-        logger.info('Deactivating daq')
-        request = core.RequestMessage(msgop=core.OP_CMD)
-        result = self.portal.send_request(target=self.psyllid_queue+'.deactivate-daq', request=request)
+        if self.status == None:
+            self.is_running()
+            
+        if self.status != 0:
+            logger.info('Deactivating daq, status is {}'.format(self.status_value))
+            request = core.RequestMessage(msgop=core.OP_CMD)
+            result = self.portal.send_request(target=self.psyllid_queue+'.deactivate-daq', request=request)
+            self.is_running()
+        else:
+            logger.info('Psyllid is already deactivated')
         
     def set_egg_file_location(self, path):
         self.egg_file_location = path
@@ -566,9 +592,9 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
                                         acqN=self._acquisition_count
                                                   )
         request = core.RequestMessage(payload={'values':[], 'file':filepath},
-                                      msgop=core.OP_RUN,
+                                      msgop=core.OP_CMD,
                                      )
-        result = self.portal.send_request(self.psyllid_queue,
+        result = self.portal.send_request(self.psyllid_queue+'.start_run',
                                           request=request,
                                          )
         if not result.retcode == 0:
@@ -601,52 +627,3 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
             logger.warning('queue started')
         self._acquisition_count = 0
         
-__all__.append('Roach2AcquisitionInterface')
-class Roach2AcquisitionInterface(DAQProvider, EthernetProvider):
-    '''
-    A DAQProvider for interacting with the RSA
-    '''
-    def __init__(self,
-                 roach2_hostname = 'led',
-                 instrument_setup_filename_prefix=None,
-                 mask_filename_prefix=None,
-                 
-                 hf_lo_freq=24.2e9,
-                 analysis_bandwidth=50e6,
-                 **kwargs):
-        #DAQProvider.__init__(self, **kwargs)
-        #EthernetProvider.__init__(self, **kwargs)
-       
-        self.roach2_hostname = roach2_hostname
-        self._hf_lo_freq = hf_lo_freq
-        self._analysis_bandwidth = analysis_bandwidth
-        
-        
-        #connect to roach, pre-configure and start streaming data packages'''
-        try:
-            r2=r2daq.ArtooDaq(roach2_hostname, boffile='latest-built')
-        except:
-            logger.error('The Roach2 could not be setup or configured. '
-                            'Possibly another service is already using it and closing this service might solve the problem')
-        
-        self.is_running()
-
-    @property
-    def is_running(self):
-        logger.info('Checking whether roach is streaming data packages')
-        pkts = r2.grab_packets(n=1,dsoc_desc=("10.0.11.1",4001),close_soc=True)
-        x = pkts[0].interpret_data()
-        if len(x)>0:
-            logger.info('The Roach2 is streaming data')
-        else:
-            logger.error('no data packages could be grabbed')
-            raise core.DriplineInternalError('no streaming data')
-        return
-    
-    def set_cf(self, freq):
-        return
-    def set_gain(self,gain):
-        return
-        
-    def set_fft_shift(self,shift):
-        return
