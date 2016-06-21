@@ -85,6 +85,7 @@ class DAQProvider(core.Provider):
         return self._run_name
     @run_name.setter
     def run_name(self, value):
+        
         self._run_name = value
         self._acquisition_count = 0
         if self._debug_without_db:
@@ -115,9 +116,11 @@ class DAQProvider(core.Provider):
     def start_run(self, run_name):
         '''
         '''
+        
         self.run_name = run_name
         self._run_meta = {'DAQ': self.daq_name,
                          }
+        
         self._do_prerun_gets()
         if not self._debug_without_meta_broadcast:
             self._send_metadata()
@@ -382,7 +385,7 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
                  daq_queue='psyllid',
                  psyllid_preset = 'str-1ch',
                  udp_receiver_port = 4001,
-                 path_to_egg_file_location = 'somepath',
+                 egg_file_location = 'somepath',
                  
                  lf_lo_endpoint_name=None,
                  
@@ -409,7 +412,7 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
         self.status_value = None
         self.psyllid_preset = psyllid_preset
         self.udp_receiver_port = udp_receiver_port
-        self.path = 'somepath'
+        self.egg_file_location = egg_file_location
         
         
        
@@ -420,7 +423,7 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
            
         if self.status_value == 4:                      
             self.deactivate()
-            self.status()         
+            self.is_running()         
                 
         elif self.status_value!=0:
             raise core.DriplineInternalError('Status of psyllid must be returned to "initialized", status is {}'.format(self.status))
@@ -432,10 +435,9 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
         #set udp receiver port    
         self.udp_port(self.udp_receiver_port)
         
-        #activate daq
-        #self.activate()
-        #return 1
-            
+        self.activate()
+        
+                    
       
     def is_running(self):
         logger.info('Checking Psyllid status')
@@ -462,6 +464,7 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
         
     
     def udp_port(self, new_port= None):
+        logger.info('Setting udp receiver port')
         if new_port == None:
             return self.udp_receiver_port
         else:
@@ -491,13 +494,19 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
             self.is_running()
         else:
             logger.warning('Could not activate. Status is not "initialized"')
+            try:
+                self.finish_configure()
+            except:
+                logger.error('Psyllid could not be activated')
+                raise
+                    
         
     def deactivate(self):
         if self.status == None:
             self.is_running()
             
         if self.status != 0:
-            logger.info('Deactivating daq, status is {}'.format(self.status_value))
+            logger.info('Deactivating Psyllid, status is {}'.format(self.status_value))
             request = core.RequestMessage(msgop=core.OP_CMD)
             result = self.portal.send_request(target=self.psyllid_queue+'.deactivate-daq', request=request)
             self.is_running()
@@ -506,11 +515,14 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
         
     def set_egg_file_location(self, path):
         self.egg_file_location = path
+        logger.info('Egg file location set to {}'.format(path))
         
-    def set_egg_file_path(self, path):
-        result = self.portal.send_request(request=core.RequestMessage(msgop=core.OP_SET, payload={'values':[path]}), target=self.psyllid_queue+'.filename')
+    def set_egg_file_path(self, filename):
+        self.egg_file_path = self.egg_file_location+filename+'.egg'
+        result = self.portal.send_request(request=core.RequestMessage(msgop=core.OP_SET, payload={'values':[self.egg_file_path]}), target=self.psyllid_queue+'.filename')
         if result.retcode >= 100:
             logger.warning('retcode indicates an error')
+        logger.info('Egg file name is {} path is {}'.format(filename, self.egg_file_path))
         
         
 
@@ -524,15 +536,27 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
         self.log_interval = value
 
     def start_run(self, run_name):
+        logger.info('Starting run. Psyllid status is {}'.format(self.status))
         
-        self.egg_file_path = self.egg_file_location+run_name+'.egg'
-        self.set_egg_file_path(self.egg_file_path)
-        
+        if self.status_value != 4:
+            logger.warning('Psyllid status is not idle')
+            try:
+                self.activate()
+            except:
+                logger.error('Problem could not be solved by activating daq')
+                raise
+                
+                
+        self.set_egg_file_path(str(run_name))
+                
         
         result = self.portal.send_request(request=core.RequestMessage(msgop=core.OP_SET, payload={'values':[self.acquisition_time*1000.]}), target=self.psyllid_queue+'.duration')
         if result.retcode >= 100:
             logger.warning('retcode indicates an error')
         super(PsyllidAcquisitionInterface, self).start_run(run_name)
+        #normally super.start_run sets the following variables    
+        #self._acquisition_count = 0
+        #self.run_id = 0
         self.on_get()
         self.logging_status = 'on'
         
@@ -594,7 +618,7 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
         request = core.RequestMessage(payload={'values':[], 'file':filepath},
                                       msgop=core.OP_CMD,
                                      )
-        result = self.portal.send_request(self.psyllid_queue+'.start_run',
+        result = self.portal.send_request(self.psyllid_queue+'.start-run',
                                           request=request,
                                          )
         if not result.retcode == 0:
