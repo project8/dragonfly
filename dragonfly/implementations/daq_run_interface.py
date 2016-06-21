@@ -444,14 +444,14 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
         # ensure in triggered mode
         self.send(['TRIG:SEQ:STAT 1;*OPC?'])
         # saving the instrument status in hot
-        instrument_status_full_name = '{directory}/{prefix}{runN:09d}_rsa_setup'.format(
+        instrument_status_full_name = '{directory}/{prefix}{runN:09d}'.format(
                                                         directory=file_directory,
                                                         prefix=self.filename_prefix,
                                                         runN=self.run_id
                                                                                )
         self.send(['MMEM:STOR:STAT "{}";*OPC?'.format(instrument_status_full_name)])
         # saving the frequency mask in hot
-        mask_full_name = '{directory}/{prefix}{runN:09d}_mask'.format(
+        mask_full_name = '{directory}/{prefix}{runN:09d}'.format(
                                                         directory=file_directory,
                                                         prefix=self.filename_prefix,
                                                         runN=self.run_id
@@ -459,13 +459,14 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
         self.send(['TRIG:MASK:SAVE "{}";*OPC?'.format(mask_full_name)])
 
         # actually start to FastSave
-        self.send(['SENS:ACQ:FSAV:ENAB 1;*OPC?'])
+        # self.send(['SENS:ACQ:FSAV:ENAB 1;*OPC?'])
 
     def end_run(self):
         # something to stop FastSave
-        self.send(['SENS:ACQ:FSAV:ENAB 0;*OPC?'])
+        # self.send(['SENS:ACQ:FSAV:ENAB 0;*OPC?'])
         self.send(['TRIG:SEQ:STAT 0;*OPC?'])
         super(RSAAcquisitionInterface, self).end_run()
+
 
     def determine_RF_ROI(self):
         logger.info('trying to determine roi')
