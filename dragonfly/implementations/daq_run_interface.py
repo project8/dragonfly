@@ -416,7 +416,7 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
         
         
        
-    def finish_configure(self):
+    def _finish_configure(self):
         logger.debug('Configuring Psyllid')
         
         self.is_running()
@@ -454,10 +454,10 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
         
             self.status = result.payload['server']['status']
             self.status_value = result.payload['server']['status-value']
-            logger.info('Status is {}'.format(self.status_value))
+            logger.info('Status is {}'.format(self.status))
             
         except:
-            logger.warning('Psyllid is not running or sth else is wrong')
+            logger.warning('Psyllid is not running or sth. else is wrong')
         
         return to_return
 
@@ -487,18 +487,25 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
         if self.status == None:
             self.is_running()
             
-        if self.status_value == 0:
+        elif self.status_value != 0:
+            logger.warning('Can not activate. Status is not "initialized"')
+            try:
+                self.deactivate()
+                logger.info('Activating Psyllid')
+                request = core.RequestMessage(msgop=core.OP_CMD)
+                result = self.portal.send_request(target=self.psyllid_queue+'.activate-daq', request=request)
+                self.is_running()
+            except:
+                logger.error('Psyllid could not be activated')
+                raise
+            
+            
+        else:
             logger.info('Activating Psyllid')
             request = core.RequestMessage(msgop=core.OP_CMD)
             result = self.portal.send_request(target=self.psyllid_queue+'.activate-daq', request=request)
             self.is_running()
-        else:
-            logger.warning('Could not activate. Status is not "initialized"')
-            try:
-                self.finish_configure()
-            except:
-                logger.error('Psyllid could not be activated')
-                raise
+       
                     
         
     def deactivate(self):
@@ -517,7 +524,7 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
         self.egg_file_location = path
         logger.info('Egg file location set to {}'.format(path))
         
-    def set_egg_file_path(self, filename):
+    def _set_egg_file_path(self, filename):
         self.egg_file_path = self.egg_file_location+filename+'.egg'
         result = self.portal.send_request(request=core.RequestMessage(msgop=core.OP_SET, payload={'values':[self.egg_file_path]}), target=self.psyllid_queue+'.filename')
         if result.retcode >= 100:
@@ -547,7 +554,7 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
                 raise
                 
                 
-        self.set_egg_file_path(str(run_name))
+        self._set_egg_file_path(str(run_name))
                 
         
         result = self.portal.send_request(request=core.RequestMessage(msgop=core.OP_SET, payload={'values':[self.acquisition_time*1000.]}), target=self.psyllid_queue+'.duration')
