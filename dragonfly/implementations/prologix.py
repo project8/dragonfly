@@ -58,7 +58,7 @@ class GPIBInstrument(Provider):
     def send(self, cmd):
         if isinstance(cmd, types.StringType):
             cmd = [cmd]
-        to_send = ['++addr {}\r'.format(self.addr)] + cmd
+        to_send = ['++addr {}'.format(self.addr)] + cmd
         result = self.provider.send(to_send)
         logger.debug('raw result:\n{}'.format(result))
         if isinstance(result, list):

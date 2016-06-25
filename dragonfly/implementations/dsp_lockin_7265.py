@@ -23,12 +23,19 @@ class DSPLockin7265(GPIBInstrument):
         # set the external ADC trigger mode
         value = self.send("TADC 0;TADC")
         logger.info('trig: {}'.format(value))
+        if int(value) != 0:
+            raise ValueError("Failure to set TADC")
         # select the curves to sample
         value = self.send("CBD 55;CBD")
         logger.info('curve buffer: {}'.format(value))
+        if int(value) != 55:
+            raise ValueError("Failure to set CBD")
         # set the status byte to include all options
         value = self.send("MSK 255;MSK")
         logger.info('status mask: {}'.format(value))
+        if int(value) != 255:
+            raise ValueError("Failure to set MSK")
+        return "done"
 
     def _check_status(self):
         raw = self.send("ST")
@@ -38,10 +45,35 @@ class DSPLockin7265(GPIBInstrument):
             return "No response"
         status = ""
         if data & 0b00000010:
-            ";".join([status, "invalid command"])
+            status += "invalid command;"
         if data & 0b00000100:
-            ";".join([status, "invalid parameter"])
+            status += "invalid parameter"
         return status
+
+    def _grab_data(self, key):
+        pts = self.number_of_points()
+        cbd = self.send("CBD")
+        if not 4 & cbd:
+            raise ValueError("No floating point data available, configure CBD")
+        status = self.send("M")
+        if status[1] != 1:
+            raise ValueError("No curve available")
+        if status[3] != pts:
+            raise ValueError("Unexpected number of data points")
+        if not isinstance(key, int):
+            if key == "x": key = 0
+            elif key == "y": key = 1
+            elif key == "mag": key = 2
+            elif key == "phase": key = 3
+            elif key == "adc": key = 5
+            else:
+                raise ValueError("Invalid string key.")
+        if not (1<<key) & cbd:
+            raise ValueError("Curve not available")
+        command = "DC. {}".format(key)
+        extended = [command] + (pts-1)*[""]
+        result = self.send(extended)
+        return result
 
     def _taking_data_status(self):
         result = self.send("M")
