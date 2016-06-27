@@ -51,11 +51,14 @@ class DSPLockin7265(GPIBInstrument):
         return status
 
     def _grab_data(self, key):
-        pts = self.number_of_points()
-        cbd = self.send("CBD")
+        pts = int(self.send("LEN"))
+        logger.info("expect {} pt data curves".format(pts))
+        cbd = int(self.send("CBD"))
+        logger.info("mask of available data curves is ".format(cbd))
         if not 4 & cbd:
             raise ValueError("No floating point data available, configure CBD")
         status = self.send("M")
+        status = map(int, status.split(','))
         if status[1] != 1:
             raise ValueError("No curve available")
         if status[3] != pts:
@@ -73,6 +76,8 @@ class DSPLockin7265(GPIBInstrument):
         command = "DC. {}".format(key)
         extended = [command] + (pts-1)*[""]
         result = self.send(extended)
+        if len(result.split(';')) != pts:
+            raise ValueError("Missing data points")
         return result
 
     def _taking_data_status(self):
