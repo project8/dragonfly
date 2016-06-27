@@ -123,17 +123,16 @@ class EthernetProvider(Provider):
         '''
         if isinstance(commands, types.StringType):
             commands = [commands]
-        all_data = []
         self.alock.acquire()
 
         try:
-            all_data += self.send_commands(commands, **kwargs)
+            all_data = self.send_commands(commands, **kwargs)
 
         except socket.error:
             self.alock.release()
             self.reconnect()
             self.alock.acquire()
-            all_data += self.send_commands(commands, **kwargs)
+            all_data = self.send_commands(commands, **kwargs)
 
         finally:
             self.alock.release()
