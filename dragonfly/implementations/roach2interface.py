@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 __all__.append('Roach2AcquisitionInterface')
 class Roach2Provider(ArtooDaq, core.Provider):
     '''
-    A DAQProvider for interacting with the RSA
+    A DAQProvider for interacting with the Roach
     '''
     def __init__(self,
                  roach2_hostname = 'led',
@@ -54,16 +54,16 @@ class Roach2Provider(ArtooDaq, core.Provider):
         
         #connect to roach, pre-configure and start streaming data packages'''
         try:
-            super(ArtooDaq).__init__(roach2_hostname, boffile='latest-built')
+            super(ArtooDaq, self).__init__(roach2_hostname, boffile='latest-built')
         except:
             logger.error('The Roach2 could not be setup or configured. '
-                            'Possibly another service is already using it and closing this service might solve the problem')
+                            'Possibly another service is already using it and closing that service might solve the problem')
         
         
 
     @property
     def is_running(self):
-        logger.info('Checking whether roach is streaming data packages')
+        logger.info('Checking whether ROACH2 is streaming data packages')
         pkts = self.grab_packets(n=1,dsoc_desc=("10.0.11.1",4001),close_soc=True)
         x = pkts[0].interpret_data()
         if len(x)>0:

@@ -128,6 +128,7 @@ class DAQProvider(core.Provider):
         logger.info('start_run finished')
 
     def _do_prerun_gets(self):
+        logger.info(self._metadata_state_target)
         logger.info('doing prerun meta-data gets')
         query_msg = core.RequestMessage(msgop=core.OP_GET)
         these_metadata = {}
@@ -435,7 +436,7 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
         #set udp receiver port    
         self.udp_port(self.udp_receiver_port)
         
-        self.activate()
+       # self.activate()
         
                     
       
@@ -485,38 +486,50 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
             
     def activate(self):
         if self.status == None:
+            self._finish_configure()
+            
+        elif self.status_value == 6:
             self.is_running()
             
-        elif self.status_value != 0:
-            logger.warning('Can not activate. Status is not "initialized"')
-            try:
-                self.deactivate()
-                logger.info('Activating Psyllid')
-                request = core.RequestMessage(msgop=core.OP_CMD)
-                result = self.portal.send_request(target=self.psyllid_queue+'.activate-daq', request=request)
-                self.is_running()
-            except:
-                logger.error('Psyllid could not be activated')
-                raise
-            
-            
-        else:
+        if self.status_value == 0:
             logger.info('Activating Psyllid')
             request = core.RequestMessage(msgop=core.OP_CMD)
             result = self.portal.send_request(target=self.psyllid_queue+'.activate-daq', request=request)
-            self.is_running()
+            if result.retcode >= 100:
+                logger.warning('retcode indicates an error')
+            #self.is_running()
+            return 'Activated. Status is: {}'.format(self.status)
+            
+        else:
+            logger.warning('Can not activate. Status is not "Initialized"')
+#            try:
+#                self.deactivate()
+#                logger.info('Activating Psyllid')
+#                request = core.RequestMessage(msgop=core.OP_CMD)
+#                result = self.portal.send_request(target=self.psyllid_queue+'.activate-daq', request=request)
+#                self.is_running()
+#                return 'Activated. Status is: {}'.format(self.status)
+#            except:
+#                logger.error('Psyllid could not be activated')
+#                raise
+                
+                      
        
                     
         
     def deactivate(self):
         if self.status == None:
-            self.is_running()
+            self._finish_configure()
             
         if self.status != 0:
-            logger.info('Deactivating Psyllid, status is {}'.format(self.status_value))
+            logger.info('Deactivating Psyllid, status is {}'.format(self.status))
             request = core.RequestMessage(msgop=core.OP_CMD)
             result = self.portal.send_request(target=self.psyllid_queue+'.deactivate-daq', request=request)
+            if result.retcode >= 100:
+                logger.warning('retcode indicates an error')
             self.is_running()
+            
+            return 'Status is: {}'.format(self.status)
         else:
             logger.info('Psyllid is already deactivated')
         
@@ -550,8 +563,12 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
             try:
                 self.activate()
             except:
-                logger.error('Problem could not be solved by activating daq')
-                raise
+                logger.warning('Problem could not be solved by activating daq')
+                try:
+                    self._finish_configure()
+                except:
+                    logger.error('Problem could not be solved by re-configuring')
+                    raise
                 
                 
         self._set_egg_file_path(str(run_name))
@@ -599,15 +616,8 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
  #       return to_return
 
     def determine_RF_ROI(self):
-        logger.info('trying to get roi')
-        if not self._lf_lo_endpoint_name in self._run_meta:
-            logger.error('meta are:\n{}'.format(self._run_meta))
-            raise core.exceptions.DriplineInternalError('the lf_lo_endpoint_name must be configured in the metadata_gets field')
-        lf_lo_freq = self._run_meta.pop(self._lf_lo_endpoint_name)
-        self._run_meta['RF_ROI_MIN'] = float(lf_lo_freq) + float(self._hf_lo_freq)
-        logger.debug('RF Min: {}'.format(self._run_meta['RF_ROI_MIN']))
-        self._run_meta['RF_ROI_MAX'] = float(self._analysis_bandwidth) + float(lf_lo_freq) + float(self._hf_lo_freq)
-        logger.debug('RF Max: {}'.format(self._run_meta['RF_ROI_MAX']))
+        logger.info('trying to determine roi')
+        logger.warning('Psyllid interface does not support proper determination of RF ROI yet. Probably more a roach thing')
 
     def on_get(self):
         '''
