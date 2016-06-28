@@ -7,14 +7,16 @@ from __future__ import absolute_import
 
 # standard imports
 import logging
-
+#import uuid
 
 # internal imports
 from dripline import core
+#from .ethernet_provider import EthernetProvider
 
 #phasmid import
 try:
     from r2daq import ArtooDaq
+    
 except ImportError:
     
     
@@ -36,11 +38,17 @@ class Roach2Provider(ArtooDaq, core.Provider):
     '''
     def __init__(self,
                  roach2_hostname = 'led',
-                 instrument_setup_filename_prefix=None,
-                 mask_filename_prefix=None,
-                 
+                 do_ogp_cal=False,
+                 do_adcif_cal=False,
+                 source_ip = None,
+                 source_port = None,
+                 dest_ip = None,
+                 dest_port = None,
+                 dest_mac = None,
+                                  
                  hf_lo_freq=24.2e9,
                  analysis_bandwidth=50e6,
+                 
                  **kwargs):
         #DAQProvider.__init__(self, **kwargs)
         #EthernetProvider.__init__(self, **kwargs)
@@ -48,20 +56,37 @@ class Roach2Provider(ArtooDaq, core.Provider):
         self.roach2_hostname = roach2_hostname
         self._hf_lo_freq = hf_lo_freq
         self._analysis_bandwidth = analysis_bandwidth
+        self.do_ogp_cal = do_ogp_cal
+        self.do_adcif_cal = do_adcif_cal
+        self.source_ip = source_ip
+        self.source_port = source_port
+        self.dest_ip = dest_ip
+        self.dest_port = dest_port
+        self.dest_mac = dest_mac
+        self.cfg_list = None
+        
         
         core.Provider.__init__(self, **kwargs)
         
         
+    def _finish_configure(self):
+        
+        if self.source_ip != None:
+            cfg_a = self.make_interface_config_dictionary(self.source_ip, self.source_port,dest_ip,self.dest_port,dest_mac=self.dest_mac,tag='a') 
+            #cfg_b = self.make_interface_config_dictionary('192.168.10.101',4000,'192.168.10.64',4001,dest_mac='00:60:dd:44:91:e8',tag='b') 
+            self.cfg_list = [cfg_a] 
+        
+        
         #connect to roach, pre-configure and start streaming data packages'''
         try:
-            super(ArtooDaq, self).__init__(roach2_hostname, boffile='latest-built')
+            super(ArtooDaq, self).__init__(self.roach2_hostname, boffile='latest-built',do_ogp_cal=self.do_ogp_cal,do_adcif_cal=self.do_adcif_cal,ifcfg=self.cfg_list)
         except:
             logger.error('The Roach2 could not be setup or configured. '
                             'Possibly another service is already using it and closing that service might solve the problem')
         
         
 
-    @property
+   
     def is_running(self):
         logger.info('Checking whether ROACH2 is streaming data packages')
         pkts = self.grab_packets(n=1,dsoc_desc=("10.0.11.1",4001),close_soc=True)

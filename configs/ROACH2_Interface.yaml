@@ -3,23 +3,27 @@ module: Spimescape
 broker: higgsino.physics.ucsb.edu
 endpoints:
   - name: roach2_interface
-    module: Roach2AcquisitionInterface
+    module: Roach2Provider
+
     # debug only options
-    debug_mode_without_database: False
-    # ethernet SCPI params
-    #socket_info: ("roach2.p8", communication_port)
+    debug_mode_without_database: True
+    debug_mode_without_metadata_broadcast: True
+    
     command_terminator: "\n"
     response_terminator: "\n"
+
+
+    # ethernet SCPI params
+    socket_info: ("led.p8", communication_port)
+    command_terminator: "\n"
+    response_terminator: "\n"
+
     # daq_run_interface params
-    metadata_target: metadata_ignatius
-    #metadata_gets:
-    # ROACH2 DAQ Interface params
-    daq_queue = 'roach2'
+    daq_queue : 'roach2'
     daq_name: 'ROACH2'
-    roach2_hostname = '10.0.0.149'
-    lf_lo_endpoint_name: waffles
-    #run_table_endpoint: run_table
-    #max_nb_files: 10000
-    #filename_prefix: 'rid'
-    #directory_path: "H:\\"
-    #meta_data_directory_path: "/data/hot"
+    roach2_hostname: 'led'
+
+    
+    metadata_state_target: run_metadata
+    run_table_endpoint: run_table
+    
