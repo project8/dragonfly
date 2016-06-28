@@ -1,6 +1,6 @@
 from __future__ import absolute_import
 
-from dripline.core import Endpoint
+from dripline.core import Endpoint, exceptions
 from .prologix import GPIBInstrument
 
 import logging
@@ -100,9 +100,9 @@ class DSPLockin7265(GPIBInstrument):
     def number_of_points(self, value):
         if not isinstance(value, int):
             raise TypeError('value must be an int')
-        status = self.send("len {};ST".format(value))
-        if not status == 1:
-            raise ValueError("got an error status code")
+        status = self.send("LEN {};LEN".format(value))
+        if not int(status) == value:
+            raise ValueError("Failure to set number_of_points")
 
     @property
     def sampling_interval(self):
@@ -117,9 +117,9 @@ class DSPLockin7265(GPIBInstrument):
         '''
         if not isinstance(value, int):
             raise TypeError('value must be an int')
-        status = self.send("STR {};ST".format(value))
-        if not status == 1:
-            raise ValueError("got an error status code")
+        status = self.send("STR {};STR".format(value))
+        if not int(status) == value:
+            raise ValueError("Failure to set sampling_interval")
 
 class RawSendEndpoint(Endpoint):
 
@@ -161,3 +161,4 @@ class ProviderProperty(Endpoint):
             setattr(self.provider, self.target_property, value)
         else:
             raise AttributeError
+        return 'done'
