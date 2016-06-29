@@ -3,7 +3,7 @@ module: Spimescape
 broker: higgsino.physics.ucsb.edu
 endpoints:
   - name: roach2_interface
-    module: Roach2Provider
+    module: Roach2Interface
 
     # debug only options
     debug_mode_without_database: True
@@ -14,14 +14,14 @@ endpoints:
 
 
     # ethernet SCPI params
-    socket_info: ("led.p8", communication_port)
+    #socket_info: ("led.p8", communication_port)
     command_terminator: "\n"
     response_terminator: "\n"
 
     # daq_run_interface params
     daq_queue : 'roach2'
     daq_name: 'ROACH2'
-    roach2_hostname: 'led'
+    roach2_hostname: led.p8
 
     
     metadata_state_target: run_metadata

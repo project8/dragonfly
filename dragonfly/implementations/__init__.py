@@ -20,3 +20,4 @@ from .simple_shell import *
 from .step_attenuator import *
 from .expanded_monitor import *
 from .muxer_provider import *
+from .roach2interface import *
