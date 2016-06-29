@@ -38,27 +38,26 @@ class DSPLockin7265(GPIBInstrument):
         return "done"
 
     def _check_status(self):
-        raw = self.send("ST")
-        if raw:
-            data = int(raw)
-        else:
+        status = self.send("ST")
+        if not status:
             return "No response"
-        status = ""
+        data = int(status)
         if data & 0b00000010:
-            status += "invalid command;"
+            status += ";invalid command"
         if data & 0b00000100:
-            status += "invalid parameter"
+            status += ";invalid parameter"
         return status
 
     def _grab_data(self, key):
         pts = int(self.send("LEN"))
         logger.info("expect {} pt data curves".format(pts))
         cbd = int(self.send("CBD"))
-        logger.info("mask of available data curves is ".format(cbd))
-        if not 4 & cbd:
-            raise ValueError("No floating point data available, configure CBD")
+        logger.info("mask of available data curves is {}".format(cbd))
+        if not cbd & 0b00010000:
+            raise ValueError("No floating point data available, reconfigure CBD")
         status = self.send("M")
         status = map(int, status.split(','))
+        logger.info("{} curve(s) available, {} points per curve".format(status[1], status[3]))
         if status[1] != 1:
             raise ValueError("No curve available")
         if status[3] != pts:
@@ -72,7 +71,7 @@ class DSPLockin7265(GPIBInstrument):
             else:
                 raise ValueError("Invalid string key.")
         if not (1<<key) & cbd:
-            raise ValueError("Curve not available")
+            raise ValueError("Curve {} not available, reconfigure CBD".format(key))
         command = "DC. {}".format(key)
         extended = [command] + (pts-1)*[""]
         result = self.send(extended)
