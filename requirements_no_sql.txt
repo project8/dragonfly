@@ -36,3 +36,4 @@ websocket-client==0.34.0
 wsgiref==0.1.2
 corr==0.7.3
 -e git+git://github.com/sma-wideband/adc_tests.git@65a2ef4e1cf68bee35176a1171d923a73952e13e#egg=adc5
+katcp==0.5.5

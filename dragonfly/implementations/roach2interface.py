@@ -13,9 +13,14 @@ import uuid
 from dripline import core
 from .ethernet_provider import EthernetProvider
 
+
+logger = logging.getLogger(__name__)
+
+
 #phasmid import
 try:
     from r2daq import ArtooDaq
+    logger.info('Imported ArtooDaq')
     
 except ImportError:
     
@@ -28,7 +33,7 @@ except ImportError:
 
 __all__ = []
 
-logger = logging.getLogger(__name__)
+
 
 
 __all__.append('Roach2Provider')
@@ -42,9 +47,10 @@ class Roach2Provider(ArtooDaq, core.Provider):
                  **kwargs):
         #DAQProvider.__init__(self, **kwargs)
         #EthernetProvider.__init__(self, **kwargs)
-       
+                 
+        for i in kwargs:
+            print(i)
 
-        
         
         core.Provider.__init__(self, **kwargs)
         
@@ -61,6 +67,7 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
                  dest_ip = None,
                  dest_port = None,
                  dest_mac = None,
+                 daq_name = None,
                                   
                  hf_lo_freq=24.2e9,
                  analysis_bandwidth=50e6,
@@ -68,6 +75,7 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
                  **kwargs):
 
 
+        
         Roach2Provider.__init__(self, **kwargs)
       
         
@@ -83,6 +91,7 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
         self.dest_port = dest_port
         self.dest_mac = dest_mac
         self.cfg_list = None
+        self.daq_name = daq_name
 
 
   
@@ -96,7 +105,7 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
         
         #connect to roach, pre-configure and start streaming data packages'''
         #try:
-        super(ArtooDaq, self).__init__(self.roach2_hostname, boffile='latest-built',do_ogp_cal=self.do_ogp_cal,do_adcif_cal=self.do_adcif_cal,ifcfg=self.cfg_list)
+        ArtooDaq.__init__(self, self.roach2_hostname, boffile='latest-build',do_ogp_cal=self.do_ogp_cal,do_adcif_cal=self.do_adcif_cal,ifcfg=self.cfg_list)
         logger.info('sth should be happening now')
         #except:
         #    logger.error('The Roach2 could not be setup or configured. '
