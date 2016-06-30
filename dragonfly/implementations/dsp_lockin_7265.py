@@ -8,7 +8,6 @@ logger = logging.getLogger(__name__)
 
 __all__ = [
             'DSPLockin7265',
-            'RawSendEndpoint',
             'CallProviderMethod',
             'ProviderProperty',
           ]
@@ -19,25 +18,7 @@ class DSPLockin7265(GPIBInstrument):
         GPIBInstrument.__init__(self, **kwargs)
         self._device_status_cmd = "ST"
 
-    def _confirm_setup(self):
-        # set the external ADC trigger mode
-        value = self.send("TADC 0;TADC")
-        logger.info('trig: {}'.format(value))
-        if int(value) != 0:
-            raise ValueError("Failure to set TADC")
-        # select the curves to sample
-        value = self.send("CBD 55;CBD")
-        logger.info('curve buffer: {}'.format(value))
-        if int(value) != 55:
-            raise ValueError("Failure to set CBD")
-        # set the status byte to include all options
-        value = self.send("MSK 255;MSK")
-        logger.info('status mask: {}'.format(value))
-        if int(value) != 255:
-            raise ValueError("Failure to set MSK")
-        return "done"
-
-    def _check_status(self):
+    def _decode_status(self):
         status = self.send("ST")
         if not status:
             return "No response"
@@ -46,6 +27,19 @@ class DSPLockin7265(GPIBInstrument):
             status += ";invalid command"
         if data & 0b00000100:
             status += ";invalid parameter"
+        return status
+
+    def _curve_status(self):
+        result = self.send("M")
+        result = result.split(',')
+        status  = None
+        if result[0] == '0':
+            status = 'done, {} curve(s) available with {} points'.format(result[1], result[3])
+        elif result[0] == '1':
+            npts = self.send("LEN")
+            status = 'running, {} of {} points collected'.format(result[3], npts)
+        else:
+            raise ValueError('unexpected status byte value: {}'.format(result[0]))
         return status
 
     def _grab_data(self, key):
@@ -79,59 +73,6 @@ class DSPLockin7265(GPIBInstrument):
             raise ValueError("Missing data points")
         return result
 
-    def _taking_data_status(self):
-        result = self.send("M")
-        curve_status = result.split(',')[0]
-        status  = None
-        if curve_status == '0':
-            status = 'done'
-        elif curve_status == '1':
-            status = 'running'
-        else:
-            logger.error("unexpected status byte: {}".format(curve_status))
-            raise ValueError('unexpected status byte value')
-        return status
-
-    @property
-    def number_of_points(self):
-        return self.send("LEN")
-    @number_of_points.setter
-    def number_of_points(self, value):
-        if not isinstance(value, int):
-            raise TypeError('value must be an int')
-        status = self.send("LEN {};LEN".format(value))
-        if not int(status) == value:
-            raise ValueError("Failure to set number_of_points")
-
-    @property
-    def sampling_interval(self):
-        '''
-        Returns the sampling interval in ms
-        '''
-        return self.send("STR")
-    @sampling_interval.setter
-    def sampling_interval(self, value):
-        '''
-        set the sampling interval in integer ms (must be a multiple of 5)
-        '''
-        if not isinstance(value, int):
-            raise TypeError('value must be an int')
-        status = self.send("STR {};STR".format(value))
-        if not int(status) == value:
-            raise ValueError("Failure to set sampling_interval")
-
-class RawSendEndpoint(Endpoint):
-
-    def __init__(self, base_str, **kwargs):
-        Endpoint.__init__(self, **kwargs)
-        self.base_str = base_str
-
-    def on_get(self):
-        return self.provider.send(self.base_str)
-    
-    def on_set(self, value):
-        return self.provider.send(self.base_str + " " + value)
-
 class CallProviderMethod(Endpoint):
     def __init__(self, method_name, **kwargs):
         Endpoint.__init__(self, **kwargs)
@@ -139,7 +80,6 @@ class CallProviderMethod(Endpoint):
 
     def on_get(self):
         method = getattr(self.provider, self.target_method_name)
-        logger.debug('method is: {}'.format(method))
         return method()
 
     def on_set(self, value):
@@ -147,17 +87,22 @@ class CallProviderMethod(Endpoint):
         return method(value)
 
 class ProviderProperty(Endpoint):
-    def __init__(self, property_name, **kwargs):
+    def __init__(self, property_key, disable_set = False, **kwargs):
         Endpoint.__init__(self, **kwargs)
-        self.target_property = property_name
+        self.target_property = property_key
+        self.disable_set = disable_set
 
     def on_get(self):
-        prop = getattr(self.provider, self.target_property)
+        prop = self.provider.send(self.target_property)
         return prop
 
     def on_set(self, value):
-        if hasattr(self.provider, self.target_property):
-            setattr(self.provider, self.target_property, value)
-        else:
-            raise AttributeError
-        return 'done'
+        if self.disable_set:
+            raise NameError("Set property unavailable for {}".format(self.target_property))
+        if not isinstance(value, int):
+            raise TypeError("Set value must be an int")
+        cmd = "{} {}; {}".format(self.target_property, value, self.target_property)
+        prop = self.provider.send(cmd)
+        if not int(prop) == value:
+            raise ValueError("Failure to set {}".format(self.target_property))
+        return "done"
