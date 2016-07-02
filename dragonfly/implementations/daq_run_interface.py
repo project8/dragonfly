@@ -310,6 +310,8 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
 		         RBW_def_lab=None,
 		         holdoff_def_lab=None,
 		         holdoff_status_def_lab=None,
+                 trig_delay_time_def_lab=None,
+                 trig_delay_pos_def_lab=None,
 		         osc_source_def_lab='EXT',
 		         max_nb_files=10000,
                  **kwargs):
@@ -328,6 +330,8 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
         self.RBW_def_lab = RBW_def_lab
         self.holdoff_def_lab = holdoff_def_lab
         self.holdoff_status_def_lab = holdoff_status_def_lab
+        self.trig_delay_time_def_lab = trig_delay_time_def_lab
+        self.trig_delay_pos_def_lab = trig_delay_pos_def_lab
         self.osc_source_def_lab = osc_source_def_lab
 
     @property
@@ -348,25 +352,41 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
         logger.info('setting default config for data taking')
         logger.info('getting all the lastest errors in the system and purging the queue')
         errors = self.send(['SYSTEM:ERROR:ALL?'])
+
         logger.info('setting frequencies')
         self.send(['DPX:FREQ:CENT {};*OPC?'.format(self.central_frequency_def_lab)])
         self.send(['DPX:FREQ:SPAN {};*OPC?'.format(self.span_frequency_def_lab)])
+
         logger.info('setting reference level')
         self.send(['INPUT:RLEVEL {};*OPC?'.format(self.ref_level_def_lab)])
+
         logger.info('setting source of events')
         self.send(['TRIG:EVEN:SOUR {};*OPC?'.format(self.source_event_def_lab)])
+
         logger.info('setting type of events')
         self.send(['TRIG:EVEN:INP:TYPE {};*OPC?'.format(self.type_event_def_lab)])
+
         logger.info('setting trigger violation condition')
         self.send(['TRIG:EVEN:INP:FMASk:VIOL {};*OPC?'.format(self.violation_def_lab)])
+
         logger.info('setting bandwidths')
         self.send(['DPX:BWID:RES {};*OPC?'.format(self.RBW_def_lab)])
-        logger.info('setting holdoff')
+
+        logger.info('setting trigger holdoff')
         self.send(['TRIG:ADV:HOLD {};*OPC?'.format(self.holdoff_def_lab)])
-        logger.info('setting holdoff status')
+
+        logger.info('setting trigger holdoff status')
         self.send(['TRIG:ADV:HOLD:ENABle {};*OPC?'.format(self.holdoff_status_def_lab)])
+
+        logger.info('setting trigger delay time')
+        self.send(['TRIGGER:SEQUENCE:TIME:DELAY {};*OPC?'.format(self.trig_delay_time_def_lab)])
+
+        logger.info('setting trigger delay position')
+        self.send(['TRIGGER:SEQUENCE:TIME:POSITION {};*OPC?'.format(self.trig_delay_pos_def_lab)])
+
         logger.info('setting oscillator source')
         self.send(['SENSE:ROSCILLATOR:SOURCE {};*OPC?'.format(self.osc_source_def_lab)])
+
         logger.info('setting new mask auto')
         self.send(['TRIG:MASK:NEW:AUTO "dpsa",TRACE3,{},{};*OPC?'.format(self.mask_xmargin_def_lab,self.mask_ymargin_def_lab)])
         # Nerrors = self.send(['SYSTEM:ERROR:COUNT?'])
@@ -419,6 +439,17 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
         self.send(['TRIG:MASK:NEW:AUTO "dpsa",{},{},{};*OPC?'.format(trace,xmargin,ymargin)])
 
     def start_run(self, run_name):
+        # try to force external reference
+        self.send(['SENS:ROSC:SOUR EXT;*OPC?'])
+        the_ref = self.send(['SENS:ROSC:SOUR?'])
+        if the_ref != 'EXT\n' and the_ref != 'EXT':
+            raise core.exceptions.DriplineHardwareError('RSA external ref found to be <{}> (!="EXT")'.format(the_ref))
+
+        # counting the number of errors in the RSA system queue and aborting the data taking if Nerrors>0
+        Nerrors = self.send(['SYSTEM:ERROR:COUNT?'])
+        if Nerrors!='0':
+            raise core.exceptions.DriplineHardwareError('RSA system has {} error(s) in the queue: check them with <dragonfly get rsa_system_error_queue -b myrna.p8>'.format(Nerrors))
+
         super(RSAAcquisitionInterface, self).start_run(run_name)
         # ensure the output format is set to mat
         self.send(["SENS:ACQ:FSAV:FORM MAT;*OPC?"])
@@ -430,17 +461,6 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
 
         # Set the maximum number of events (note that the default is 10k)
         self.send(['SENS:ACQ:FSAV:FILE:MAX {:d};*OPC?'.format(self.max_nb_files)])
-        # try to force external reference
-        self.send(['SENS:ROSC:SOUR EXT;*OPC?'])
-        the_ref = self.send(['SENS:ROSC:SOUR?'])
-        if the_ref != 'EXT\n' and the_ref != 'EXT':
-            raise core.exceptions.DriplineHardwareError('RSA external ref found to be <{}> (!="EXT")'.format(the_ref))
-
-        # counting the number of errors in the RSA system queue and aborting the data taking if Nerrors>0
-        Nerrors = self.send(['SYSTEM:ERROR:COUNT?'])
-        if Nerrors!='0':
-            raise core.exceptions.DriplineHardwareError('RSA system has {} error(s) in the queue: check them with <dragonfly get rsa_system_error_queue>'.format(Nerrors))
-
         # ensure in triggered mode
         self.send(['TRIG:SEQ:STAT 1;*OPC?'])
         # saving the instrument status in hot
