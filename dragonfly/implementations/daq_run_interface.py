@@ -337,7 +337,7 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
         self.trig_delay_time_def_lab = trig_delay_time_def_lab
         self.trig_delay_pos_def_lab = trig_delay_pos_def_lab
         self.trig_time_qualification_def_lab = trig_time_qualification_def_lab
-        self.internal_attenuator_auto_def_lab_auto_def_lab = internal_attenuator_auto_def_lab
+        self.internal_attenuator_auto_def_lab = internal_attenuator_auto_def_lab
         self.internal_attenuator_def_lab = internal_attenuator_def_lab
         self.osc_source_def_lab = osc_source_def_lab
 
@@ -420,7 +420,7 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
         # self.send(['SENSE:ROSCILLATOR:SOURCE {};*OPC?'.format(self.osc_source_def_lab)])
 
         logger.info('setting new mask auto')
-        self.create_new_auto_mask(self.mask_xmargin_def_lab,self.mask_ymargin_def_lab)
+        self.create_new_auto_mask('TRACE3',self.mask_xmargin_def_lab,self.mask_ymargin_def_lab)
         # self.send(['TRIG:MASK:NEW:AUTO "dpsa",TRACE3,{},{};*OPC?'.format(self.mask_xmargin_def_lab,self.mask_ymargin_def_lab)])
 
     def set_central_frequency(self,central_frequency):
