@@ -312,7 +312,6 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
 		         holdoff_status_def_lab=None,
                  trig_delay_time_def_lab=None,
                  trig_delay_pos_def_lab=None,
-                 trig_time_qualification_auto_def_lab=None,
                  trig_time_qualification_def_lab=None,
                  internal_attenuator_def_lab=None,
                  internal_attenuator_auto_def_lab=None,
@@ -403,7 +402,7 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
         self.set_trigger_delay_position(self.trig_delay_pos_def_lab)
         # self.send(['TRIGGER:SEQUENCE:TIME:POSITION {};*OPC?'.format(self.trig_delay_pos_def_lab)])
 
-        logger.info('setting trigger time qulification')
+        logger.info('setting trigger time qualification')
         self.set_trigger_time_qualification(self.trig_time_qualification_def_lab)
         # self.send(['TRIGger:SEQuence:TIME:QUALified {};*OPC?'.format(self.trig_time_qualification)])
 
@@ -476,9 +475,9 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
     def set_trigger_status(self,value):
         logger.info('setting trigger status')
         if value == 1 or value == 'on' or value == 'enable':
-            self.send(['TRIGGER:SEQUENCE:TIME:POSITION 1;*OPC?'.format(value)])
+            self.send(['TRIG:SEQUENCE:STATUS 1;*OPC?'.format(value)])
         elif value == 0 or value == 'off' or value == 'disable':
-            self.send(['TRIGGER:SEQUENCE:TIME:POSITION 0;*OPC?'.format(value)])
+            self.send(['TRIG:SEQUENCE:STATUS 0;*OPC?'.format(value)])
         else:
             core.DriplineInternalError('invalid given parameter ({}) instead of 1/on/enable/0/off/disable'.format(value))
 
@@ -496,7 +495,7 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
     def set_osc_source(self,value):
         logger.info('setting oscillator source')
         if value == 'INT' or value == 'EXT':
-            self.send(['TRIGger:SEQuence:TIME:QUALified {};*OPC?'.format(value)])
+            self.send(['SENSE:ROSCILLATOR:SOURCE {};*OPC?'.format(value)])
         else:
             core.DriplineInternalError('invalid given parameter ({}) instead of EXT/INT'.format(value))
 
