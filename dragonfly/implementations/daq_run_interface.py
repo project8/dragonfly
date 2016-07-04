@@ -476,7 +476,7 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
         logger.info('setting trigger status')
         if value == 1 or value == 'on' or value == 'enable':
             self.send(['TRIGGER:SEQUENCE:TIME:POSITION 1;*OPC?'.format(value)])
-        else if value == 0 or value == 'off' or value == 'disable':
+        elif value == 0 or value == 'off' or value == 'disable':
             self.send(['TRIGGER:SEQUENCE:TIME:POSITION 0;*OPC?'.format(value)])
         else:
             core.DriplineInternalError('invalid given parameter ({}) instead of 1/on/enable/0/off/disable'.format(value))
@@ -506,7 +506,7 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
     def set_internal_attenuator_auto(self,value):
         if value == 1 or value == 'on' or value == 'enable':
             self.send(['INPUT:RF:ATTENUATION:AUTO 1;*OPC?'.format(value)])
-        else if value == 0 or value == 'off' or value == 'disable':
+        elif value == 0 or value == 'off' or value == 'disable':
             self.send(['INPUT:RF:ATTENUATION:AUTO 0;*OPC?'.format(value)])
         else:
             core.DriplineInternalError('invalid given parameter ({}) instead of 1/on/enable/0/off/disable'.format(value))
