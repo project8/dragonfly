@@ -315,6 +315,7 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
                  trig_time_qualification_auto_def_lab=None,
                  trig_time_qualification_def_lab=None,
                  internal_attenuator_def_lab=None,
+                 internal_attenuator_auto_def_lab=None,
 		         osc_source_def_lab='EXT',
 		         max_nb_files=10000,
                  **kwargs):
