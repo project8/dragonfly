@@ -363,7 +363,7 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
 
         logger.info('setting frequencies')
         self.set_central_frequency(self.central_frequency_def_lab)
-        self.set_frequency_span(self.frequency_span)
+        self.set_frequency_span(self.span_frequency_def_lab)
         # self.send(['DPX:FREQ:CENT {};*OPC?'.format(self.central_frequency_def_lab)])
         # self.send(['DPX:FREQ:SPAN {};*OPC?'.format(self.span_frequency_def_lab)])
 
