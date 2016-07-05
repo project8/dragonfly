@@ -153,6 +153,30 @@ class DAQProvider(core.Provider):
             raise core.exceptions.DriplineValueError('writing meta-data did not return success')
         logger.debug('meta sent')
 
+    #TBD
+    # def _send_daq_config(self):
+    #     '''
+    #     Save the daq configuration into a json file
+    #     '''
+    #     logger.info('{} config should broadcast'.format(self.daq_name))
+    #     filename = '{directory}/{runN:09d}/{prefix}{runN:09d}_{daqname}_config.json'.format(
+    #                                                     directory=self.meta_data_directory_path,
+    #                                                     prefix=self.filename_prefix,
+    #                                                     runN=self.run_id,
+    #                                                     acqN=self._acquisition_count,
+    #                                                     daqname=self.daq_name
+    #                                                                            )
+    #     logger.debug('should request daq config file: {}'.format(filename))
+    #     this_payload = {'metadata': self._run_meta,
+    #                     'filename': filename,
+    #                    }
+    #     this_payload['metadata']['run_id'] = self.run_id
+    #     request_msg = core.RequestMessage(payload=this_payload, msgop=core.OP_CMD)
+    #     req_result = self.portal.send_request(request=request_msg, target=self._metadata_target)
+    #     if not req_result.retcode == 0:
+    #         raise core.exceptions.DriplineValueError('writing meta-data did not return success')
+    #     logger.debug('meta sent')
+
     def start_timed_run(self, run_name, run_time):
         '''
         '''
@@ -480,10 +504,6 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
             self.send(['TRIG:SEQUENCE:STATUS 0;*OPC?'.format(value)])
         else:
             core.DriplineInternalError('invalid given parameter ({}) instead of 1/on/enable/0/off/disable'.format(value))
-
-    def set_dpx_bandwidth(self,value):
-        logger.info('setting dpx bandwidth')
-        self.send(['DPX:BWID:RES {};*OPC?'.format(value)])
 
     def set_trigger_time_qualification(self,value):
         logger.info('setting trigger time qulification')
