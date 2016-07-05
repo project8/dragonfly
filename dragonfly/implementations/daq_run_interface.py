@@ -153,6 +153,30 @@ class DAQProvider(core.Provider):
             raise core.exceptions.DriplineValueError('writing meta-data did not return success')
         logger.debug('meta sent')
 
+    #TBD
+    # def _send_daq_config(self):
+    #     '''
+    #     Save the daq configuration into a json file
+    #     '''
+    #     logger.info('{} config should broadcast'.format(self.daq_name))
+    #     filename = '{directory}/{runN:09d}/{prefix}{runN:09d}_{daqname}_config.json'.format(
+    #                                                     directory=self.meta_data_directory_path,
+    #                                                     prefix=self.filename_prefix,
+    #                                                     runN=self.run_id,
+    #                                                     acqN=self._acquisition_count,
+    #                                                     daqname=self.daq_name
+    #                                                                            )
+    #     logger.debug('should request daq config file: {}'.format(filename))
+    #     this_payload = {'metadata': self._run_meta,
+    #                     'filename': filename,
+    #                    }
+    #     this_payload['metadata']['run_id'] = self.run_id
+    #     request_msg = core.RequestMessage(payload=this_payload, msgop=core.OP_CMD)
+    #     req_result = self.portal.send_request(request=request_msg, target=self._metadata_target)
+    #     if not req_result.retcode == 0:
+    #         raise core.exceptions.DriplineValueError('writing meta-data did not return success')
+    #     logger.debug('meta sent')
+
     def start_timed_run(self, run_name, run_time):
         '''
         '''
@@ -310,6 +334,11 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
 		         RBW_def_lab=None,
 		         holdoff_def_lab=None,
 		         holdoff_status_def_lab=None,
+                 trig_delay_time_def_lab=None,
+                 trig_delay_pos_def_lab=None,
+                 trig_time_qualification_def_lab=None,
+                 internal_attenuator_def_lab=None,
+                 internal_attenuator_auto_def_lab=None,
 		         osc_source_def_lab='EXT',
 		         max_nb_files=10000,
                  **kwargs):
@@ -328,6 +357,11 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
         self.RBW_def_lab = RBW_def_lab
         self.holdoff_def_lab = holdoff_def_lab
         self.holdoff_status_def_lab = holdoff_status_def_lab
+        self.trig_delay_time_def_lab = trig_delay_time_def_lab
+        self.trig_delay_pos_def_lab = trig_delay_pos_def_lab
+        self.trig_time_qualification_def_lab = trig_time_qualification_def_lab
+        self.internal_attenuator_auto_def_lab = internal_attenuator_auto_def_lab
+        self.internal_attenuator_def_lab = internal_attenuator_def_lab
         self.osc_source_def_lab = osc_source_def_lab
 
     @property
@@ -346,49 +380,81 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
 
     def set_default_config(self):
         logger.info('setting default config for data taking')
+
         logger.info('getting all the lastest errors in the system and purging the queue')
         errors = self.send(['SYSTEM:ERROR:ALL?'])
+
         logger.info('setting frequencies')
-        self.send(['DPX:FREQ:CENT {};*OPC?'.format(self.central_frequency_def_lab)])
-        self.send(['DPX:FREQ:SPAN {};*OPC?'.format(self.span_frequency_def_lab)])
+        self.set_central_frequency(self.central_frequency_def_lab)
+        self.set_frequency_span(self.span_frequency_def_lab)
+        # self.send(['DPX:FREQ:CENT {};*OPC?'.format(self.central_frequency_def_lab)])
+        # self.send(['DPX:FREQ:SPAN {};*OPC?'.format(self.span_frequency_def_lab)])
+
         logger.info('setting reference level')
-        self.send(['INPUT:RLEVEL {};*OPC?'.format(self.ref_level_def_lab)])
+        self.set_reference_level(self.ref_level_def_lab)
+        # self.send(['INPUT:RLEVEL {};*OPC?'.format(self.ref_level_def_lab)])
+
+        logger.info('setting resolution bandwidths')
+        self.set_resolution_bandwidth(self.RBW_def_lab)
+        # self.send(['DPX:BWID:RES {};*OPC?'.format(self.RBW_def_lab)])
+
         logger.info('setting source of events')
-        self.send(['TRIG:EVEN:SOUR {};*OPC?'.format(self.source_event_def_lab)])
+        self.set_event_source(self.source_event_def_lab)
+        # self.send(['TRIG:EVEN:SOUR {};*OPC?'.format(self.source_event_def_lab)])
+
         logger.info('setting type of events')
-        self.send(['TRIG:EVEN:INP:TYPE {};*OPC?'.format(self.type_event_def_lab)])
+        self.set_event_type(self.type_event_def_lab)
+        # self.send(['TRIG:EVEN:INP:TYPE {};*OPC?'.format(self.type_event_def_lab)])
+
         logger.info('setting trigger violation condition')
-        self.send(['TRIG:EVEN:INP:FMASk:VIOL {};*OPC?'.format(self.violation_def_lab)])
-        logger.info('setting bandwidths')
-        self.send(['DPX:BWID:RES {};*OPC?'.format(self.RBW_def_lab)])
-        logger.info('setting holdoff')
-        self.send(['TRIG:ADV:HOLD {};*OPC?'.format(self.holdoff_def_lab)])
-        logger.info('setting holdoff status')
-        self.send(['TRIG:ADV:HOLD:ENABle {};*OPC?'.format(self.holdoff_status_def_lab)])
+        self.set_trig_violation_condition(self.violation_def_lab)
+        # self.send(['TRIG:EVEN:INP:FMASk:VIOL {};*OPC?'.format(self.violation_def_lab)])
+
+        logger.info('setting trigger holdoff')
+        self.set_trigger_holdoff(self.holdoff_def_lab)
+        # self.send(['TRIG:ADV:HOLD {};*OPC?'.format(self.holdoff_def_lab)])
+
+        logger.info('setting trigger holdoff status')
+        self.set_trigger_holdoff_status(self.holdoff_status_def_lab)
+        # self.send(['TRIG:ADV:HOLD:ENABle {};*OPC?'.format(self.holdoff_status_def_lab)])
+
+        logger.info('setting trigger delay time')
+        self.set_trigger_delay_time(self.trig_delay_time_def_lab)
+        # self.send(['TRIGGER:SEQUENCE:TIME:DELAY {};*OPC?'.format(self.trig_delay_time_def_lab)])
+
+        logger.info('setting trigger delay position')
+        self.set_trigger_delay_position(self.trig_delay_pos_def_lab)
+        # self.send(['TRIGGER:SEQUENCE:TIME:POSITION {};*OPC?'.format(self.trig_delay_pos_def_lab)])
+
+        logger.info('setting trigger time qualification')
+        self.set_trigger_time_qualification(self.trig_time_qualification_def_lab)
+        # self.send(['TRIGger:SEQuence:TIME:QUALified {};*OPC?'.format(self.trig_time_qualification)])
+
+        logger.info('setting internal attenuator auto mode')
+        self.set_internal_attenuator_auto(self.internal_attenuator_auto_def_lab)
+        # self.send(['INPUT:RF:ATTENUATION:AUTO {};*OPC?'.format(self.internal_attenuator_auto_def_lab)])
+
+        logger.info('setting internal attenuator')
+        self.set_internal_attenuator(self.internal_attenuator_def_lab)
+        # self.send(['INPUT:RF:ATTENUATION {};*OPC?'.format(self.internal_attenuator_def_lab)])
+
         logger.info('setting oscillator source')
-        self.send(['SENSE:ROSCILLATOR:SOURCE {};*OPC?'.format(self.osc_source_def_lab)])
+        self.set_osc_source(self.osc_source_def_lab)
+        # self.send(['SENSE:ROSCILLATOR:SOURCE {};*OPC?'.format(self.osc_source_def_lab)])
+
         logger.info('setting new mask auto')
-        self.send(['TRIG:MASK:NEW:AUTO "dpsa",TRACE3,{},{};*OPC?'.format(self.mask_xmargin_def_lab,self.mask_ymargin_def_lab)])
-        # Nerrors = self.send(['SYSTEM:ERROR:COUNT?'])
-        # if Nerrors=='0':
-        #     return {'value_raw': 'No errors during the configuration', 'value_cal': 'OK'}
-        # else:
-        #     errors==self.send(['SYSTEM:ERROR:ALL?'])
-        #     return {'value_raw': '{}'.format(errors), 'value_cal': 'NOT OK'}
-        # self._request_message = core.RequestMessage(msgop=core.OP_GET)
-        # result = self.portal.send_request(request=self._request_message, target=self._metadata_state_target, timeout=120)
-        # the_result = result.payload['value_raw']
-        # return the_result
+        self.create_new_auto_mask('TRACE3',self.mask_xmargin_def_lab,self.mask_ymargin_def_lab)
+        # self.send(['TRIG:MASK:NEW:AUTO "dpsa",TRACE3,{},{};*OPC?'.format(self.mask_xmargin_def_lab,self.mask_ymargin_def_lab)])
 
     def set_central_frequency(self,central_frequency):
         logger.info('setting central frequency')
         self.send(['DPX:FREQ:CENT {};*OPC?'.format(central_frequency)])
 
-    def set_span_frequency(self,span_frequency):
+    def set_frequency_span(self,frequency_span):
         logger.info('setting frequency span')
-        self.send(['DPX:FREQ:SPAN {};*OPC?'.format(span_frequency)])
+        self.send(['DPX:FREQ:SPAN {};*OPC?'.format(frequency_span)])
 
-    def set_ref_level(self,ref_level):
+    def set_reference_level(self,ref_level):
         logger.info('setting reference level')
         self.send(['INPUT:RLEVEL {};*OPC?'.format(ref_level)])
 
@@ -414,11 +480,74 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
             raise core.DriplineInternalError('no file_path was given')
         self.send('MMEMory:LOAD:STATe "{}"; OPC?'.format(file_path))
 
+    def set_trigger_holdoff(self,value):
+        logger.info('setting trigger holdoff')
+        self.send(['TRIG:ADV:HOLD {};*OPC?'.format(value)])
+
+    def set_trigger_holdoff_status(self,value):
+        logger.info('setting trigger holdoff status')
+        self.send(['TRIG:ADV:HOLD:ENABle {};*OPC?'.format(value)])
+
+    def set_trigger_delay_time(self,value):
+        logger.info('setting trigger delay time')
+        self.send(['TRIGGER:SEQUENCE:TIME:DELAY {};*OPC?'.format(value)])
+
+    def set_trigger_delay_position(self,value):
+        logger.info('setting trigger delay position')
+        self.send(['TRIGGER:SEQUENCE:TIME:POSITION {};*OPC?'.format(value)])
+
+    def set_trigger_status(self,value):
+        logger.info('setting trigger status')
+        if value == 1 or value == 'on' or value == 'enable':
+            self.send(['TRIG:SEQUENCE:STATUS 1;*OPC?'.format(value)])
+        elif value == 0 or value == 'off' or value == 'disable':
+            self.send(['TRIG:SEQUENCE:STATUS 0;*OPC?'.format(value)])
+        else:
+            core.DriplineInternalError('invalid given parameter ({}) instead of 1/on/enable/0/off/disable'.format(value))
+
+    def set_trigger_time_qualification(self,value):
+        logger.info('setting trigger time qulification')
+        if value == 'SHOR' or value == 'LONG' or value == 'INS' or value == 'OUT' or value == 'NONE':
+            self.send(['TRIGger:SEQuence:TIME:QUALified {};*OPC?'.format(value)])
+        else:
+            core.DriplineInternalError('invalid given parameter ({}) instead of SHOR/LONG/INS/OUT/NONE'.format(value))
+
+    def set_osc_source(self,value):
+        logger.info('setting oscillator source')
+        if value == 'INT' or value == 'EXT':
+            self.send(['SENSE:ROSCILLATOR:SOURCE {};*OPC?'.format(value)])
+        else:
+            core.DriplineInternalError('invalid given parameter ({}) instead of EXT/INT'.format(value))
+
+    def set_internal_attenuator(self,value):
+        logger.info('setting internal attenuator')
+        self.send(['INPUT:RF:ATTENUATION {};*OPC?'.format(value)])
+
+    def set_internal_attenuator_auto(self,value):
+        if value == 1 or value == 'on' or value == 'enable':
+            self.send(['INPUT:RF:ATTENUATION:AUTO 1;*OPC?'.format(value)])
+        elif value == 0 or value == 'off' or value == 'disable':
+            self.send(['INPUT:RF:ATTENUATION:AUTO 0;*OPC?'.format(value)])
+        else:
+            core.DriplineInternalError('invalid given parameter ({}) instead of 1/on/enable/0/off/disable'.format(value))
+
     def create_new_auto_mask(self, trace, xmargin, ymargin):
         logger.info('setting the auto mask')
+        # if trace == 'TRACE1' or trace == 'trace1':
         self.send(['TRIG:MASK:NEW:AUTO "dpsa",{},{},{};*OPC?'.format(trace,xmargin,ymargin)])
 
     def start_run(self, run_name):
+        # try to force external reference
+        self.send(['SENS:ROSC:SOUR EXT;*OPC?'])
+        the_ref = self.send(['SENS:ROSC:SOUR?'])
+        if the_ref != 'EXT\n' and the_ref != 'EXT':
+            raise core.exceptions.DriplineHardwareError('RSA external ref found to be <{}> (!="EXT")'.format(the_ref))
+
+        # counting the number of errors in the RSA system queue and aborting the data taking if Nerrors>0
+        Nerrors = self.send(['SYSTEM:ERROR:COUNT?'])
+        if Nerrors!='0':
+            raise core.exceptions.DriplineHardwareError('RSA system has {} error(s) in the queue: check them with <dragonfly get rsa_system_error_queue -b myrna.p8>'.format(Nerrors))
+
         super(RSAAcquisitionInterface, self).start_run(run_name)
         # ensure the output format is set to mat
         self.send(["SENS:ACQ:FSAV:FORM MAT;*OPC?"])
@@ -430,19 +559,7 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
 
         # Set the maximum number of events (note that the default is 10k)
         self.send(['SENS:ACQ:FSAV:FILE:MAX {:d};*OPC?'.format(self.max_nb_files)])
-        # try to force external reference
-        self.send(['SENS:ROSC:SOUR EXT;*OPC?'])
-        the_ref = self.send(['SENS:ROSC:SOUR?'])
-        if the_ref != 'EXT\n' and the_ref != 'EXT':
-            raise core.exceptions.DriplineHardwareError('RSA external ref found to be <{}> (!="EXT")'.format(the_ref))
 
-        # counting the number of errors in the RSA system queue and aborting the data taking if Nerrors>0
-        Nerrors = self.send(['SYSTEM:ERROR:COUNT?'])
-        if Nerrors!='0':
-            raise core.exceptions.DriplineHardwareError('RSA system has {} error(s) in the queue: check them with <dragonfly get rsa_system_error_queue>'.format(Nerrors))
-
-        # ensure in triggered mode
-        self.send(['TRIG:SEQ:STAT 1;*OPC?'])
         # saving the instrument status in hot
         instrument_status_full_name = '{directory}/{prefix}{runN:09d}'.format(
                                                         directory=file_directory,
@@ -458,11 +575,13 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
                                                                                )
         self.send(['TRIG:MASK:SAVE "{}";*OPC?'.format(mask_full_name)])
 
-        # actually start to FastSave
+        # ensure in triggered mode
+        self.send(['TRIG:SEQ:STAT 1;*OPC?'])
+        # actually start to FastSave (depreciated)
         # self.send(['SENS:ACQ:FSAV:ENAB 1;*OPC?'])
 
     def end_run(self):
-        # something to stop FastSave
+        # something to stop FastSave (depreciated)
         # self.send(['SENS:ACQ:FSAV:ENAB 0;*OPC?'])
         self.send(['TRIG:SEQ:STAT 0;*OPC?'])
         super(RSAAcquisitionInterface, self).end_run()
