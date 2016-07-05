@@ -1,3 +1,4 @@
+
 '''
 A parser which defines a syntax for writing run scripts. This should in principle
 make it possible to define any data acquisition task (which might take hours or
@@ -20,7 +21,7 @@ pause_for_user -> print a message to the user and wait for a response. The conte
     for user action. For example, changing the vertical position of the insert, which
     has to be done manually. Any result of the user action which needs to be measured
     should still be done automatically (using loggers, sets/cmds to endpoints, etc.)
-    
+
         - action: pause_for_user
           message: STRING_TO_PRINT_PRIOR_TO_PAUSE
 
@@ -28,7 +29,7 @@ lockout -> send a lockout command to the specified list of endpoints. If a locko
     action is called, all subsequent requests will use the automatically generated
     key. An unlock will automatically be called at the end of execution. For now,
     the only available configuration is the list of endpoints to lock:
-        
+
         - action: lockout
           endpoints:
             - NAME
@@ -38,10 +39,10 @@ lockout -> send a lockout command to the specified list of endpoints. If a locko
 set -> send a list of set requests to change/ensure a desired system state. Initially
     these sets will be somewhat "blind" in the sense that they will only check the
     return code in the ReplyMessage, but will not further confirm that the system
-    has achieved the requested state. The next iteration should add support for 
+    has achieved the requested state. The next iteration should add support for
     checking the returned value (assuming the endpoint has get_on_set == True) against
     the value requested, and allowing the user to specify some tolerance. A further
-    enhancement would allow a similar check to be made by sending a "get" request 
+    enhancement would allow a similar check to be made by sending a "get" request
     to another endpoint (for example, set the current_limit of some power supply,
     then ensure that the current_output is close to the value desired). Both of
     these upgrades should be quite doable, but significantly increase the edge cases
@@ -78,7 +79,7 @@ multi_run -> probably the most useful/sophisticated action, effectively provides
     it can be either dictionary or a string. If it is a dictionary, a vale will
     be expected to be indexable from the run_iterator (which starts at 0). If a
     string, then a value will be determiend using eval(VALUE.format(run_count)).
-    Similarly, the run_name may contain both/either '{run_count}' or '{daq_target}'
+    Similarly, the run_name may contain both/either "{run_count}" or {daq_target}
     which will be passed as named replacements to format() (note that there will
     not be any un-named values to unpack). The run_duration may be a value (which
     will be used for all runs), or it may be an expression similar to the above
@@ -94,15 +95,15 @@ multi_run -> probably the most useful/sophisticated action, effectively provides
           - name: NAME
             value: "EXPRESION*{}"
           ...
+
         runs:
             run_duration: {VALUE | "EXPRESSION" | {RUN_COUNT: VALUE, ...}}
-            run_name: "STRING_OPTIONALLY_WITH_{daq_target}_AND/OR_{run_count}"
+            run_name: STRING_OPTIONALLY_WITH_{daq_target}_AND/OR_{run_count}
             daq_targets:
               - NAME
               - NAME
         total_runs: VALUE
 '''
-
 
 from __future__ import absolute_import
 
@@ -243,7 +244,7 @@ class RunScript(object):
             else:
                 logger.warning('unable to set <{}>'.format(this_set['name']))
                 raise dripline.core.exception_map[result.retcode](result.return_msg)
-        
+
     def action_single_run(self, run_duration, run_name, daq_targets, **kwargs):
         logger.info('taking single run')
         run_kwargs = {'endpoint':None,
