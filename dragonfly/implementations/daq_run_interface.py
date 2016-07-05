@@ -367,7 +367,7 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
         # self.send(['DPX:FREQ:SPAN {};*OPC?'.format(self.span_frequency_def_lab)])
 
         logger.info('setting reference level')
-        self.set_central_frequency(self.ref_level_def_lab)
+        self.set_reference_level(self.ref_level_def_lab)
         # self.send(['INPUT:RLEVEL {};*OPC?'.format(self.ref_level_def_lab)])
 
         logger.info('setting resolution bandwidths')
