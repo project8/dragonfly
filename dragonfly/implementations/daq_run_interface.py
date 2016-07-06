@@ -323,9 +323,7 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
                  rsa_config_target='',
                  instrument_setup_filename_prefix=None,
                  mask_filename_prefix=None,
-                #  roi_min_freq_endpoint_name=None,
-                #  roi_max_freq_endpoint_name=None,
-                 hf_lo_freq=24.2e9,
+                 hf_lo_freq=None,
                  span_frequency_def_lab=None,
 		         central_frequency_def_lab=None,
 		         mask_ymargin_def_lab=None,
@@ -350,14 +348,8 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
         self.rsa_config_target=rsa_config_target
 
         if hf_lo_freq is None:
-            raise core.exceptions.DriplineValueError('the rsa interface requires a "hf_lo_freq"')
+            raise core.exceptions.DriplineValueError('the rsa interface requires a "hf_lo_freq" in its config file')
         self._hf_lo_freq = hf_lo_freq
-        # if roi_min_freq_endpoint_name is None:
-        #     raise core.exceptions.DriplineValueError('the rsa interface requires a "roi_min_freq_endpoint_name"')
-        # self._roi_min_freq_endpoint_name = roi_min_freq_endpoint_name
-        # if roi_max_freq_endpoint_name is None:
-        #     raise core.exceptions.DriplineValueError('the rsa interface requires a "roi_max_freq_endpoint_name"')
-        # self._roi_max_freq_endpoint_name = roi_max_freq_endpoint_name
 
         self.max_nb_files = max_nb_files
         self.span_frequency_def_lab = span_frequency_def_lab
@@ -600,7 +592,6 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
         self.send(['TRIG:SEQ:STAT 0;*OPC?'])
         super(RSAAcquisitionInterface, self).end_run()
 
-
     def determine_RF_ROI(self):
         logger.info('trying to determine roi')
         # logger.warning('RSA does not support proper determination of RF ROI yet')
@@ -611,7 +602,7 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
         result = self.send(['DPX:FREQ:START?'])
         self._run_meta['RF_ROI_MIN'] = float(result) + float(self._hf_lo_freq)
         logger.debug('RF Min: {}'.format(self._run_meta['RF_ROI_MIN']))
-        
+
         result = self.send(['DPX:FREQ:STOP?'])
         self._run_meta['RF_ROI_MAX'] = float(result) + float(self._hf_lo_freq)
         logger.debug('RF Max: {}'.format(self._run_meta['RF_ROI_MAX']))
