@@ -1,111 +1,144 @@
 from __future__ import absolute_import
 __all__ = []
 
-import dripline
-
+import numpy
 import logging
 
-import numpy
+from dripline import core
 
 logger = logging.getLogger(__name__)
 
 
 def lockin_result_to_array(result):
-    return numpy.array(result.strip('\0').replace('\x00','').split(), dtype=float)
+    return numpy.array(result.replace('\x00','').split(';'), dtype=float)
 
 __all__.append('ESR_Measurement')
 #@fancy_doc
-class ESR_Measurement(dripline.core.Endpoint):
+class ESR_Measurement(core.Endpoint):
     """
         Operate the ESR system
     """
-    def __init__(self,**kwargs):
-        dripline.core.Endpoint.__init__(self,**kwargs)
-        #We'll start with the things you should ever try to get
-        self.status="done"
-        self.resonant_frequency=0
-        self.frequencies=[]
-        self.amplitudes=[]
-        self.filtered_data=[]
-        self.bfield_1=0
-        self.bfield_2=0
-        self.bfield_3=0
-        self.bfield_4=0
-        self.bfield_5=0
+    def __init__(self,
+                 lockin_n_points,
+                 lockin_sampling_interval,
+                 lockin_trigger,
+                 lockin_curve_mask,
+                 lockin_srq_mask,
+                 lockin_osc_amp,
+                 lockin_osc_freq,
+                 lockin_ac_gain,
+                 lockin_sensitivity,
+                 lockin_time_constant,
+                 hf_start_freq,
+                 hf_stop_freq,
+                 hf_power,
+                 hf_n_sweep_points,
+                 hf_dwell_time,
+                 **kwargs):
+        core.Endpoint.__init__(self,**kwargs)
+        # Settings for lockin and sweeper
+	self.lockin_n_points = lockin_n_points
+	self.lockin_sampling_interval = lockin_sampling_interval
+	self.lockin_trigger = lockin_trigger
+	self.lockin_curve_mask = lockin_curve_mask
+	self.lockin_srq_mask = lockin_srq_mask
+	self.lockin_osc_amp = lockin_osc_amp
+	self.lockin_osc_freq = lockin_osc_freq
+	self.lockin_ac_gain = lockin_ac_gain
+	self.lockin_sensitivity = lockin_sensitivity
+	self.lockin_time_constant = lockin_time_constant
+	self.hf_start_freq = float(hf_start_freq)
+	self.hf_stop_freq = float(hf_stop_freq)
+	self.hf_power = hf_power
+	self.hf_n_sweep_points = hf_n_sweep_points
+	self.hf_dwell_time = hf_dwell_time
+        # Constants and analysis parameters
+        self.width = 10.0e6 #resonance width in Hz, for a gaussian filter it is sigma, for a lorentzian it is FWMH
+        self.electron_cyclotron_frequency = 1.758820024e11 # rad s^-1 T^-1
+        self.esr_g_factor = 2.0026
+        # Output storage
+        self.data_dict = {}
         
-        #these are not things in general you would get
-        self.width=10.0e6; #resonance width in Hz, for a gaussian filter it is sigma, for a lorentzian it is FWMH
-        self.start_freq=0; #sweeper start frequency
-        self.stop_freq=0; #sweeper start frequency
-        self.frequency_span=(self.stop_freq-self.start_freq)
-        self.electron_cyclotron_frequency=1.758820024e11; # rad s^-1 T^-1
-        self.esr_g_factor=1; #TODO look this up or put in config file, should be 2 something
-        
-    #call this with cmd
-    def start_measurement(self,coilnum):
-        self.status="not_done"
-        #Make sure switches are in right configuration
-        #TODO
-        #Turn on sweeper
-        self.set_ept('hf_start_freq',self.start_freq)
-        self.set_ept('hf_stop_freq',self.stop_freq)
-        #TODO pick power self.set('hf_power',???)
-        self.set_ept('hf_output_status',1)
-        self.frequency_span=(self.stop_freq-self.start_freq)
-        #Activate lockin
-        logger.info('ensure_setup')
-        result=self.empty_get_ept('lockin_ensure_setup')
-        logger.info('start_taking_data')
-        result=self.empty_get_ept('lockin_take_data')
-        isdone='running'
-        while isdone=='running':
-            isdone=self.raw_get_ept('lockin_status')[1]
-            npts=self.raw_get_ept('lockin_curve_status')[1]
-            logger.info('collected {}/400? points'.format(npts.split(',')[-1].strip()))
-        #turn off the hf output
-        self.set_ept('hf_output_status',0)
-        #get the lockin data
-        data={}
+    # Configure instruments to default settings
+    def configure_instruments(self):
+        # dsp_lockin_7265 controls
+        self.set_ept('lockin_n_points', self.lockin_n_points)
+        self.set_ept('lockin_sampling_interval', self.lockin_sampling_interval)
+        self.set_ept('lockin_trigger', self.lockin_trigger)
+        self.set_ept('lockin_curve_mask', self.lockin_curve_mask)
+        self.set_ept('lockin_srq_mask', self.lockin_srq_mask)
+        self.set_ept('lockin_osc_amp', self.lockin_osc_amp)
+        self.set_ept('lockin_osc_freq', self.lockin_osc_freq)
+        #self.set_ept('lockin_ac_gain', self.lockin_ac_gain)
+        self.set_ept('lockin_sensitivity', self.lockin_sensitivity)
+        self.set_ept('lockin_time_constant', self.lockin_time_constant)
+        # sweeper controls
+        self.set_ept('hf_output_status', 0)
+        self.set_ept('hf_start_freq', self.hf_start_freq)
+        self.set_ept('hf_stop_freq', self.hf_stop_freq)
+        self.set_ept('hf_power', self.hf_power)
+        self.set_ept('hf_n_sweep_points', self.hf_n_sweep_points)
+        self.set_ept('hf_dwell_time', self.hf_dwell_time)
+        # relays
+        for i in range(1, 6):
+            self.set_ept('esr_coil_{}_switch_status'.format(i), 0)
 
-        data['amplitude']=lockin_result_to_array(self.raw_get_ept('lockin_mag_data')[0])
-        data['sweep_out']=lockin_result_to_array(self.raw_get_ept('lockin_adc_data')[0])
-        data['lockin_x_data']=lockin_result_to_array(self.raw_get_ept('lockin_x_data')[0])
-        data['lockin_y_data']=lockin_result_to_array(self.raw_get_ept('lockin_y_data')[0])
-        ten_volts=10.0
-        data['frequencies'] = self.start_freq + frequency_span * data['sweep_out']/ten_volts
+    def single_measure(self, coilnum):
+        self.set_ept('esr_coil_{}_switch_status'.format(coilnum), 1)
+        self.set_ept('hf_output_status', 1)
+        self.empty_get_ept('lockin_take_data')
+        # HF sweep takes 60 sec
+        while True:
+            status = self.raw_get_ept('lockin_curve_status')[0]
+            logger.info(status)
+            if status.split(',',1)[0] == 'done':
+                break
+        self.set_ept('hf_output_status', 0)
+        self.set_ept('esr_coil_{}_switch_status'.format(coilnum), 0)
+
+        # Get the lockin data
+        data = {}
+        data['sweep_out'] = lockin_result_to_array(self.set_ept('lockin_grab_data', 'adc')[0])
+        data['lockin_x_data'] = lockin_result_to_array(self.set_ept('lockin_grab_data', 'x')[0])
+        data['lockin_y_data'] = lockin_result_to_array(self.set_ept('lockin_grab_data', 'y')[0])
+        ten_volts = 10.0
+        frequency_span = self.hf_stop_freq - self.hf_start_freq
+        data['frequency'] = self.hf_start_freq + frequency_span * data['sweep_out']/ten_volts
         data['amplitude'] = data['lockin_x_data'] + 1j*data['lockin_y_data']
-        #Weiner filter
-        filtered_data=WeinerFilter(data['frequencies'],data['amplitude'],self.width,'lorentzian')
-        #find peak
-        #TODO a fit would be more appropriate to get uncertainty
-        max_freq_index = numpy.abs(filter_data['result']) == numpy.abs(filter_data['result']).max()
+
+        # Weiner filter and analysis
+        filter_data = WeinerFilter(data['frequency'],data['amplitude'],self.width,'lorentzian')
+            #TODO a fit would be more appropriate to get uncertainty
+        max_freq_index = numpy.argmax(filter_data['result'])
         res_freq = filter_data['freqs'][max_freq_index]
-        #convert to field
-        b_field=4.*scipy.pi*res_freq/(self.esr_g_factor*self.electron_cyclotron_frequency)
-        self.resonant_frequency=res_freq
-        self.frequencies=data['frequencies']
-        self.amplitudes=data['amplitude']
-        self.filtered_data=data['filtered_data']
-        self.bfield_1=b_field
-        self.bfield_2=b_field
-        self.bfield_3=b_field
-        self.bfield_4=b_field
-        self.bfield_5=b_field
+        b_field=4.*numpy.pi*res_freq/(self.esr_g_factor*self.electron_cyclotron_frequency)
+        self.data_dict[coilnum] = { 'field' : b_field,
+                                    'res_freq' : res_freq,
+                                    'raw_data' : { 'frequency' : data['frequency'],
+                                                   'amplitude' : data['amplitude'] },
+                                    'filtered_data' : filter_data }
+        logger.info("Coil #{} result: field = {}, res_freq = {}".format(coilnum,b_field,res_freq))
+
+        return b_field
+
+
+    def run_scan(self):
+        self.configure_instruments()
+        for i in range(1, 6):
+            self.single_measure(i)
+        logger.info(self.data_dict)
+        return [self.data_dict[i]['field'] for i in range(1,6)]
+
 
     def empty_get_ept(self, endptname):
-        request_message = dripline.core.RequestMessage(msgop=dripline.core.OP_GET)
+        request_message = core.RequestMessage(msgop=core.OP_GET)
         a_result=self.portal.send_request(request=request_message,target=endptname)
-        ret_rep=''
-        if a_result.retcode !=0 :
-            ret_val = None
-            ret_rep = '{} -> returned error <{}>:{}'.format(endpoint_name, a_result.retcode, a_result.return_msg)
-
 
     def get_ept(self, endptname):
-        request_message = dripline.core.RequestMessage(msgop=dripline.core.OP_GET)
+        request_message = core.RequestMessage(msgop=core.OP_GET)
         a_result=self.portal.send_request(request=request_message,target=endptname)
         ret_rep=''
-        if a_result.retcode !=0 :
+        if a_result.retcode != 0 :
             ret_val = None
             ret_rep = '{} -> returned error <{}>:{}'.format(endpoint_name, a_result.retcode, a_result.return_msg)
         else:
@@ -113,27 +146,30 @@ class ESR_Measurement(dripline.core.Endpoint):
         return ret_val,ret_rep
 
     def raw_get_ept(self, endptname):
-        request_message = dripline.core.RequestMessage(msgop=dripline.core.OP_GET)
+        request_message = core.RequestMessage(msgop=core.OP_GET)
         a_result=self.portal.send_request(request=request_message,target=endptname)
-        ret_rep=''
-        if a_result.retcode !=0 :
-            ret_val = None
-            ret_rep = '{} -> returned error <{}>:{}'.format(endpoint_name, a_result.retcode, a_result.return_msg)
+        if a_result.retcode == 0 :
+            return a_result.payload['values']
         else:
-            ret_val = a_result.payload['values']
-        return ret_val,ret_rep
+            return '{} -> returned error <{}>:{}'.format(endpoint_name, a_result.retcode, a_result.return_msg)
 
     def set_ept(self,endptname,val):
-        request_message = dripline.core.RequestMessage(msgop=dripline.core.OP_SET,
-                                                       payload={'values':[val]})
+        request_message = core.RequestMessage(msgop=core.OP_SET,
+                                              payload={'values':[val]})
         a_result=self.portal.send_request(request=request_message,target=endptname)
-        if a_result.retcode !=0 :
+        if a_result.retcode != 0 :
             ret_val = None
             ret_rep = '{} -> returned error <{}>:{}'.format(endpoint_name, a_result.retcode, a_result.return_msg)
             logger.alert("got error "+ret_rep)
-#        else:
-#    ret_val = a_result.payload['value_cal']
-#        return ret_val
+        else:
+            if 'values' in a_result.payload:
+                ret_val = a_result.payload['values']
+            elif 'value_cal' in a_result.payload:
+                ret_val = a_result.payload['value_cal']
+            else:
+                logger.info("return payload is {}".format(a_result.payload))
+                ret_val = a_result.payload
+        return ret_val
 
 
 def WeinerFilter(freq_data, amp_data, width, target='gaussian'):
@@ -160,6 +196,6 @@ def WeinerFilter(freq_data, amp_data, width, target='gaussian'):
     data_fft[0] = 0
     filtered = numpy.fft.ifft(data_fft * target_fft)
     return {'freqs': frequencies,
-            'result': abs(filtered),
+            'result': numpy.abs(filtered),
             'target': target_signal
            }
