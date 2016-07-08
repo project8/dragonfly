@@ -104,10 +104,6 @@ class ProviderProperty(Endpoint):
             raise TypeError("Set value must be an int")
         cmd = "{} {}; {}".format(self.target_property, value, self.target_property)
         prop = self.provider.send(cmd)
-        try:
-            prop = int(prop)
-        except ValueError:
-            prop = float(prop)
-        if not prop == value:
+        if not int(prop) == value:
             raise ValueError("Failure to set {}".format(self.target_property))
         return "done"
