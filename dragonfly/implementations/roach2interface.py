@@ -116,19 +116,22 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
    
     def is_running(self):
         logger.info('Checking whether ROACH2 is streaming data packages')
-        pkts = self.grab_packets(n=1,dsoc_desc=("10.0.11.1",4001),close_soc=True)
-        x = pkts[0].interpret_data()
-        if len(x)>0:
-            logger.info('The Roach2 is streaming data')
-        else:
-            logger.error('no data packages could be grabbed')
-            raise core.DriplineInternalError('no streaming data')
+        try:
+            pkts = ArtooDaq.grab_packets(self, n=1,dsoc_desc=("10.0.11.1",4001),close_soc=True)
+            x = pkts[0].interpret_data()
+            if len(x)>0:
+                logger.info('The Roach2 is streaming data')
+            else:
+                logger.error('no data packages could be grabbed')
+                raise core.DriplineInternalError('no streaming data')
+        except:
+            ArtooDaq.__init__(self, self.roach2_hostname)
         return
     
-    def set_cf(self, freq):
-        return
-    def set_gain(self,gain):
-        return
-        
-    def set_fft_shift(self,shift):
-        return
+#    def set_cf(self, freq):
+#        return
+#    def set_gain(self,gain):
+#        return
+#        
+#    def set_fft_shift(self,shift):
+#        return
