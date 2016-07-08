@@ -57,6 +57,7 @@ class DSPLockin7265(GPIBInstrument):
         if status[3] != pts:
             raise ValueError("Unexpected number of data points")
         if not isinstance(key, int):
+            key = key.lower()
             if key == "x": key = 0
             elif key == "y": key = 1
             elif key == "mag": key = 2
