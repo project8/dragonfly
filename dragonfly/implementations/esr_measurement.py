@@ -3,6 +3,7 @@ __all__ = []
 
 import numpy
 import logging
+from datetime import datetime
 
 from dripline import core
 
@@ -80,12 +81,22 @@ class ESR_Measurement(core.Endpoint):
         self.set_ept('hf_n_sweep_points', self.hf_n_sweep_points)
         self.set_ept('hf_dwell_time', self.hf_dwell_time)
         # relays
+        self.set_ept('esr_tickler_switch', 1)
+        for i in range(1, 6):
+            self.set_ept('esr_coil_{}_switch_status'.format(i), 0)
+
+    # Immutable "safe" configuration for switches and sweeper
+    def reset_configure(self):
+        self.set_ept('hf_output_status', 0)
+        self.set_ept('hf_power', -50)
+        self.set_ept('esr_tickler_switch', 1)
         for i in range(1, 6):
             self.set_ept('esr_coil_{}_switch_status'.format(i), 0)
 
     def single_measure(self, coilnum):
-        self.set_ept('esr_coil_{}_switch_status'.format(coilnum), 1)
         self.set_ept('hf_output_status', 1)
+        self.set_ept('esr_coil_{}_switch_status'.format(coilnum), 1)
+        time = datetime.today().ctime()
         self.empty_get_ept('lockin_take_data')
         # HF sweep takes 60 sec
         while True:
@@ -114,6 +125,7 @@ class ESR_Measurement(core.Endpoint):
         b_field=4.*numpy.pi*res_freq/(self.esr_g_factor*self.electron_cyclotron_frequency)
         self.data_dict[coilnum] = { 'field' : b_field,
                                     'res_freq' : res_freq,
+                                    'time' : time,
                                     'raw_data' : { 'frequency' : data['frequency'],
                                                    'amplitude' : data['amplitude'] },
                                     'filtered_data' : filter_data }
@@ -127,6 +139,7 @@ class ESR_Measurement(core.Endpoint):
         for i in range(1, 6):
             self.single_measure(i)
         logger.info(self.data_dict)
+        self.reset_configure()
         return [self.data_dict[i]['field'] for i in range(1,6)]
 
 
