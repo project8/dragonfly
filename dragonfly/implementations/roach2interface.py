@@ -18,13 +18,16 @@ logger = logging.getLogger(__name__)
 
 
 #phasmid import
+
+
 try:
+
     from r2daq import ArtooDaq
     logger.info('Imported ArtooDaq')
     
 except ImportError:
-    
-    
+    import sys
+    print sys.path    
     class ArtooDaq(object):
         def __init__(self, *args, **kwargs):
             raise RuntimeError("Dependency <ArtooDaq> not found but is required for roach2 support")
