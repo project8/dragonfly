@@ -28,7 +28,7 @@ endpoints:
     
     egg_file_location : "/home/cclaesse/test_files/"
     lf_lo_endpoint_name: lf_lo_lower_cw_freq
-    log_interval: 0.1
+    log_interval: 0.001
     #max_nb_files: 100
     
 setup_calls:

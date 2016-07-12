@@ -589,13 +589,13 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
             logger.warning('retcode indicates an error')
             
     def activate(self):
-        if self.status == None:
-            self._finish_configure()
+#        if self.status == None:
+#            self._finish_configure()
             
-        elif self.status_value == 6:
+        if self.status_value == 6:
             self.is_running()
             
-        if self.status_value == 0:
+        elif self.status_value == 0:
             logger.info('Activating Psyllid')
             request = core.RequestMessage(msgop=core.OP_CMD)
             result = self.portal.send_request(target=self.psyllid_queue+'.activate-daq', request=request)
@@ -622,8 +622,8 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
                     
         
     def deactivate(self):
-        if self.status == None:
-            self._finish_configure()
+#        if self.status == None:
+#            self._finish_configure()
             
         if self.status != 0:
             logger.info('Deactivating Psyllid, status is {}'.format(self.status))
@@ -736,6 +736,7 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
                                         runN=self.run_id,
                                         acqN=self._acquisition_count
                                                   )
+        logger.info(filepath)
         request = core.RequestMessage(payload={'values':[], 'file':filepath},
                                       msgop=core.OP_CMD,
                                      )
