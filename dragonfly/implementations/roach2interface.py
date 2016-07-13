@@ -28,11 +28,10 @@ try:
     logger.info('Imported ArtooDaq')
     
 except ImportError:
-    import sys
-    print sys.path    
+       
     class ArtooDaq(object):
         def __init__(self, *args, **kwargs):
-            raise RuntimeError("Dependency <ArtooDaq> not found but is required for roach2 support")
+            raise RuntimeError("Dependency <ArtooDaq> not found but is required for roach2 support. Maybe check out PYTHONPATH")
     
 
 
@@ -110,13 +109,14 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
             cfg_a = self.make_interface_config_dictionary(self.source_ip, self.source_port,self.dest_ip,self.dest_port,dest_mac=self.dest_mac,tag='a') 
             #cfg_b = self.make_interface_config_dictionary('192.168.10.101',4000,'192.168.10.64',4001,dest_mac='00:60:dd:44:91:e8',tag='b') 
             self.cfg_list = [cfg_a] 
-        
-        
+            logger.info(cfg_a)
+            ArtooDaq.__init__(self, self.roach2_hostname, boffile='latest-build', do_ogp_cal=self.do_ogp_cal, do_adcif_cal=self.do_adcif_cal, ifcfg=self.cfg_list)
         #connect to roach, pre-configure and start streaming data packages'''
-        #try:
-        ArtooDaq.__init__(self, self.roach2_hostname, boffile='latest-build')
-        #,do_ogp_cal=self.do_ogp_cal,do_adcif_cal=self.do_adcif_cal,ifcfg=self.cfg_list)
-        logger.info('sth should be happening now')
+        else:
+            logger.info('Configuring ROACH2 without specific IP settings')
+            ArtooDaq.__init__(self, self.roach2_hostname, boffile='latest-build')
+        
+            
         #except:
         #    logger.error('The Roach2 could not be setup or configured. '
          #                   'Have you tried turning it off and on again?')
@@ -144,6 +144,11 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
     def set_central_frequency(self, cf):
         logger.info('setting central frequency of channel {} to {}'.format(self.channel_tag, cf))
         ArtooDaq.tune_ddc_1st_to_freq(self, cf, tag=self.channel_tag)
+        
+    def get_central_frequency(self, cf):
+        cfg = ArtooDaq.read_ddc_1st_config(self, tag=self.channel_tag)
+        logger.info('Central frequency of channel {} to {}'.format(self.channel_tag, cf))
+        return cfg
         
     def set_gain(self, gain):
         if gain>5 and gain <10:
