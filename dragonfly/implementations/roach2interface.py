@@ -108,7 +108,8 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
         
         #connect to roach, pre-configure and start streaming data packages'''
         #try:
-        ArtooDaq.__init__(self, self.roach2_hostname, boffile='latest-build',do_ogp_cal=self.do_ogp_cal,do_adcif_cal=self.do_adcif_cal,ifcfg=self.cfg_list)
+        ArtooDaq.__init__(self, self.roach2_hostname, boffile='latest-build')
+        #,do_ogp_cal=self.do_ogp_cal,do_adcif_cal=self.do_adcif_cal,ifcfg=self.cfg_list)
         logger.info('sth should be happening now')
         #except:
         #    logger.error('The Roach2 could not be setup or configured. '
@@ -119,17 +120,19 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
    
     def is_running(self):
         logger.info('Checking whether ROACH2 is streaming data packages')
+        
         try:
             pkts = ArtooDaq.grab_packets(self, n=1,dsoc_desc=("10.0.11.1",4001),close_soc=True)
             x = pkts[0].interpret_data()
             if len(x)>0:
                 logger.info('The Roach2 is streaming data')
+                return_content = True
             else:
                 logger.error('no data packages could be grabbed')
-                raise core.DriplineInternalError('no streaming data')
-        except:
-            ArtooDaq.__init__(self, self.roach2_hostname)
-        return
+                raise core.DriplineInternalError('The Roach2 is not streaming data')
+        except:                 
+            return_content = False
+        return return_content
     
 #    def set_cf(self, freq):
 #        return
