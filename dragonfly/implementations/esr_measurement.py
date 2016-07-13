@@ -63,39 +63,40 @@ class ESR_Measurement(core.Endpoint):
     # Configure instruments to default settings
     def configure_instruments(self):
         # dsp_lockin_7265 controls
-        self.set_ept('lockin_n_points', self.lockin_n_points)
-        self.set_ept('lockin_sampling_interval', self.lockin_sampling_interval)
-        self.set_ept('lockin_trigger', self.lockin_trigger)
-        self.set_ept('lockin_curve_mask', self.lockin_curve_mask)
-        self.set_ept('lockin_srq_mask', self.lockin_srq_mask)
-        self.set_ept('lockin_osc_amp', self.lockin_osc_amp)
-        self.set_ept('lockin_osc_freq', self.lockin_osc_freq)
-        #self.set_ept('lockin_ac_gain', self.lockin_ac_gain)
-        self.set_ept('lockin_sensitivity', self.lockin_sensitivity)
-        self.set_ept('lockin_time_constant', self.lockin_time_constant)
+        self.check_ept('lockin_n_points', self.lockin_n_points)
+        self.check_ept('lockin_sampling_interval', self.lockin_sampling_interval)
+        self.check_ept('lockin_trigger', self.lockin_trigger)
+        self.check_ept('lockin_curve_mask', self.lockin_curve_mask)
+        self.check_ept('lockin_srq_mask', self.lockin_srq_mask)
+        self.check_ept('lockin_osc_amp', self.lockin_osc_amp)
+        self.check_ept('lockin_osc_freq', self.lockin_osc_freq)
+        #self.check_ept('lockin_ac_gain', self.lockin_ac_gain)
+        self.check_ept('lockin_sensitivity', self.lockin_sensitivity)
+        self.check_ept('lockin_time_constant', self.lockin_time_constant)
         # sweeper controls
-        self.set_ept('hf_output_status', 0)
-        self.set_ept('hf_start_freq', self.hf_start_freq)
-        self.set_ept('hf_stop_freq', self.hf_stop_freq)
-        self.set_ept('hf_power', self.hf_power)
-        self.set_ept('hf_n_sweep_points', self.hf_n_sweep_points)
-        self.set_ept('hf_dwell_time', self.hf_dwell_time)
+        self.check_ept('hf_output_status', 0)
+        self.check_ept('hf_freq_mode','LIST')
+        self.check_ept('hf_start_freq', self.hf_start_freq)
+        self.check_ept('hf_stop_freq', self.hf_stop_freq)
+        self.check_ept('hf_power', self.hf_power)
+        self.check_ept('hf_n_sweep_points', self.hf_n_sweep_points)
+        self.check_ept('hf_dwell_time', self.hf_dwell_time)
         # relays
-        self.set_ept('esr_tickler_switch', 1)
+        self.check_ept('esr_tickler_switch', 1)
         for i in range(1, 6):
-            self.set_ept('esr_coil_{}_switch_status'.format(i), 0)
+            self.check_ept('esr_coil_{}_switch_status'.format(i), 0)
 
     # Immutable "safe" configuration for switches and sweeper
     def reset_configure(self):
-        self.set_ept('hf_output_status', 0)
-        self.set_ept('hf_power', -50)
-        self.set_ept('esr_tickler_switch', 1)
+        self.check_ept('hf_output_status', 0)
+        self.check_ept('hf_power', -50)
+        self.check_ept('esr_tickler_switch', 1)
         for i in range(1, 6):
-            self.set_ept('esr_coil_{}_switch_status'.format(i), 0)
+            self.check_ept('esr_coil_{}_switch_status'.format(i), 0)
 
     def single_measure(self, coilnum):
-        self.set_ept('hf_output_status', 1)
-        self.set_ept('esr_coil_{}_switch_status'.format(coilnum), 1)
+        self.check_ept('hf_output_status', 1)
+        self.check_ept('esr_coil_{}_switch_status'.format(coilnum), 1)
         time = datetime.today().ctime()
         self.empty_get_ept('lockin_take_data')
         # HF sweep takes 60 sec
@@ -104,14 +105,14 @@ class ESR_Measurement(core.Endpoint):
             logger.info(status)
             if status.split(',',1)[0] == 'done':
                 break
-        self.set_ept('hf_output_status', 0)
-        self.set_ept('esr_coil_{}_switch_status'.format(coilnum), 0)
+        self.check_ept('hf_output_status', 0)
+        self.check_ept('esr_coil_{}_switch_status'.format(coilnum), 0)
 
         # Get the lockin data
         data = {}
-        data['sweep_out'] = lockin_result_to_array(self.set_ept('lockin_grab_data', 'adc')[0])
-        data['lockin_x_data'] = lockin_result_to_array(self.set_ept('lockin_grab_data', 'x')[0])
-        data['lockin_y_data'] = lockin_result_to_array(self.set_ept('lockin_grab_data', 'y')[0])
+        data['sweep_out'] = lockin_result_to_array(self.set_ept('lockin_grab_data', 'adc'))
+        data['lockin_x_data'] = lockin_result_to_array(self.set_ept('lockin_grab_data', 'x'))
+        data['lockin_y_data'] = lockin_result_to_array(self.set_ept('lockin_grab_data', 'y'))
         ten_volts = 10.0
         frequency_span = self.hf_stop_freq - self.hf_start_freq
         data['frequency'] = self.hf_start_freq + frequency_span * data['sweep_out']/ten_volts
@@ -166,7 +167,7 @@ class ESR_Measurement(core.Endpoint):
         else:
             return '{} -> returned error <{}>:{}'.format(endpoint_name, a_result.retcode, a_result.return_msg)
 
-    def set_ept(self,endptname,val):
+    def set_ept(self, endptname, val):
         request_message = core.RequestMessage(msgop=core.OP_SET,
                                               payload={'values':[val]})
         a_result=self.portal.send_request(request=request_message,target=endptname)
@@ -177,12 +178,23 @@ class ESR_Measurement(core.Endpoint):
         else:
             if 'values' in a_result.payload:
                 ret_val = a_result.payload['values']
-            elif 'value_cal' in a_result.payload:
-                ret_val = a_result.payload['value_cal']
+            elif 'value_raw' in a_result.payload:
+                ret_val = a_result.payload['value_raw']
             else:
                 logger.info("return payload is {}".format(a_result.payload))
                 ret_val = a_result.payload
-        return ret_val
+        return ret_val[0]
+
+    def check_ept(self, endptname, val):
+        ret_val = self.set_ept(endptname, val)
+        if isinstance(val, int) or isinstance(val, float):
+            ret_val = float(ret_val)
+        elif not isinstance(val, str):
+            logger.alert("ret_val is of type {} with value {}".format(type(ret_val), ret_val))
+            raise TypeError
+        if ret_val != val:
+            raise core.exceptions.DriplineValueError("Failure to set endpoint: {}".format(endptname))
+        return
 
 
 def WeinerFilter(freq_data, amp_data, width, target='gaussian'):
