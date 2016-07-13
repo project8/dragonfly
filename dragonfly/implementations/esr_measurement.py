@@ -74,6 +74,11 @@ class ESR_Measurement(core.Endpoint):
         self.check_ept('lockin_sensitivity', self.lockin_sensitivity)
         self.check_ept('lockin_time_constant', self.lockin_time_constant)
         # sweeper controls
+        while True:
+            err_msg = self.raw_get_ept('hf_error_check')
+            if err_msg == '+0,"No error"':
+                break
+            logger.warning("Clearing sweeper error queue: {}".format(err_msg))
         self.check_ept('hf_output_status', 0)
         self.check_ept('hf_freq_mode','LIST')
         self.check_ept('hf_start_freq', self.hf_start_freq)
@@ -81,6 +86,9 @@ class ESR_Measurement(core.Endpoint):
         self.check_ept('hf_power', self.hf_power)
         self.check_ept('hf_n_sweep_points', self.hf_n_sweep_points)
         self.check_ept('hf_dwell_time', self.hf_dwell_time)
+        err_msg = self.raw_get_ept('hf_error_check')
+        if err_msg != '+0,"No error"':
+            raise core.exceptions.DriplineHardwareError("Sweeper error: {}".format(err_msg))
         # relays
         self.check_ept('esr_tickler_switch', 1)
         for i in range(1, 6):
@@ -101,7 +109,7 @@ class ESR_Measurement(core.Endpoint):
         self.empty_get_ept('lockin_take_data')
         # HF sweep takes 60 sec
         while True:
-            status = self.raw_get_ept('lockin_curve_status')[0]
+            status = self.raw_get_ept('lockin_curve_status')
             logger.info(status)
             if status.split(',',1)[0] == 'done':
                 break
@@ -163,7 +171,10 @@ class ESR_Measurement(core.Endpoint):
         request_message = core.RequestMessage(msgop=core.OP_GET)
         a_result=self.portal.send_request(request=request_message,target=endptname)
         if a_result.retcode == 0 :
-            return a_result.payload['values']
+            if 'values' in a_result.payload:
+                return a_result.payload['values'][0]
+            elif 'value_raw' in a_result.payload:
+                return a_result.payload['value_raw']
         else:
             return '{} -> returned error <{}>:{}'.format(endpoint_name, a_result.retcode, a_result.return_msg)
 
