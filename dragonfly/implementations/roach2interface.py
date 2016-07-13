@@ -8,6 +8,8 @@ from __future__ import absolute_import
 # standard imports
 import logging
 import uuid
+import signal
+
 
 # internal imports
 from dripline import core
@@ -71,6 +73,8 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
                  dest_port = None,
                  dest_mac = None,
                  daq_name = None,
+                 channel_tag = 'a',
+                 central_freq = 1234e6,
                                   
                  hf_lo_freq=24.2e9,
                  analysis_bandwidth=50e6,
@@ -95,11 +99,13 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
         self.dest_mac = dest_mac
         self.cfg_list = None
         self.daq_name = daq_name
+        self.channel_tag = channel_tag
+        self.central_freq = central_freq
 
 
   
     def _finish_configure(self):
-        logger.info(self.roach2_hostname)
+        logger.info('Configuring ROACH2, this will take a while.... no news is good news.')
         if self.source_ip != None:
             cfg_a = self.make_interface_config_dictionary(self.source_ip, self.source_port,self.dest_ip,self.dest_port,dest_mac=self.dest_mac,tag='a') 
             #cfg_b = self.make_interface_config_dictionary('192.168.10.101',4000,'192.168.10.64',4001,dest_mac='00:60:dd:44:91:e8',tag='b') 
@@ -133,11 +139,23 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
         except:                 
             return_content = False
         return return_content
-    
-#    def set_cf(self, freq):
-#        return
-#    def set_gain(self,gain):
-#        return
-#        
-#    def set_fft_shift(self,shift):
-#        return
+        
+        
+    def set_central_frequency(self, cf):
+        logger.info('setting central frequency of channel {} to {}'.format(self.channel_tag, cf))
+        ArtooDaq.tune_ddc_1st_to_freq(self, cf, tag=self.channel_tag)
+        
+    def set_gain(self, gain):
+        if gain>5 and gain <10:
+            logger.info('setting gain of channel {} to {}'.format(self.channel_tag, gain))
+            ArtooDaq.set_gain(self, gain, tag=self.channel_tag)
+            return True
+        else:
+            logger.error('Only gain values between 5 and 10 are allowed')
+            return False
+        
+    def set_fft_shift(self, shift):
+        logger.info('setting fft shift of channel {} to {}'.format(self.channel_tag, shift))
+        ArtooDaq.set_fft_shift(self, shift, tag=self.channel_tag)
+        
+
