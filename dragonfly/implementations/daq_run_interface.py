@@ -596,8 +596,8 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
         logger.info('trying to determine roi')
         # logger.warning('RSA does not support proper determination of RF ROI yet')
 
-        self._run_meta['RF_ROI_CENTER'] = float(self._hf_lo_freq)
-        logger.debug('RF Central: {}'.format(self._run_meta['RF_ROI_CENTER']))
+        self._run_meta['RF_HF_MIXING'] = float(self._hf_lo_freq)
+        logger.debug('RF High stage mixing: {}'.format(self._run_meta['RF_HF_MIXING']))
 
         result = self.send(['DPX:FREQ:START?'])
         self._run_meta['RF_ROI_MIN'] = float(result) + float(self._hf_lo_freq)
