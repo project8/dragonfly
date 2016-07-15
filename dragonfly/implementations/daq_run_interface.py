@@ -591,7 +591,7 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
         if path!=None:
             self.egg_file_location = path
         
-        self.egg_file_path = self.egg_file_location+filename+'.egg'
+        self.egg_file_path = self.egg_file_location+str(filename)+'.egg'
         
         result = self.portal.send_request(request=core.RequestMessage(msgop=core.OP_SET, payload={'values':[self.egg_file_path]}), target=self.psyllid_queue+'.filename')
         

@@ -9,6 +9,7 @@ from __future__ import absolute_import
 import logging
 import uuid
 import signal
+import os
 
 
 # internal imports
@@ -96,6 +97,7 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
         self.daq_name = daq_name
         self.channel_tag = channel_tag
         self.central_freq = central_freq
+        self.configurated=False
 
 
   
@@ -108,11 +110,12 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
             self.cfg_list = [cfg_a] 
             logger.info(cfg_a)
             ArtooDaq.__init__(self, self.roach2_hostname, boffile='latest-build', do_ogp_cal=self.do_ogp_cal, do_adcif_cal=self.do_adcif_cal, ifcfg=self.cfg_list)
-        #connect to roach, pre-configure and start streaming data packages'''
+            self.configurated=True
         else:
             logger.info('Configuring ROACH2 without specific IP settings')
-            ArtooDaq.__init__(self, self.roach2_hostname, boffile='latest-build')
-        
+            ArtooDaq.__init__(self, self.roach2_hostname, boffile='latest-build', do_ogp_cal=self.do_ogp_cal, do_adcif_cal=self.do_adcif_cal)
+            self.configurated=True
+        return self.configurated
             
         #except:
         #    logger.error('The Roach2 could not be setup or configured. '
@@ -122,30 +125,27 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
 
    
     def is_running(self):
-        logger.info('Checking whether ROACH2 is streaming data packages')
-        
-        try:
-            pkts = ArtooDaq.grab_packets(self, n=1,dsoc_desc=("10.0.11.1",4001),close_soc=True)
-            x = pkts[0].interpret_data()
-            if len(x)>0:
-                logger.info('The Roach2 is streaming data')
-                return_content = True
+        to_return = False        
+        logger.info('Pinging ROACH2')
+        response = os.system("ping -c 1 " + self.roach2_hostname)
+        #and then check the response...
+        if response == 0:
+            logger.info('ROACH2 is switched on')
+            logger.info('Checking whether ROACH2 is streaming data packages')
+            if self.configurated==True:
+                pkts = ArtooDaq.grab_packets(self, n=1,dsoc_desc=("10.0.11.1",4001),close_soc=True)
+                x = pkts[0].interpret_data()
+                if len(x)>0:
+                    logger.info('The Roach2 is streaming data')
+                    to_return = True
+                else:
+                    logger.info('No data packages could be grabbed.')
             else:
-                logger.error('No data packages could be grabbed.')
-                raise core.DriplineInternalError('The Roach2 is not streaming data')
-        except:                 
-            return_content = False
-            logger.info('Pinging ROACH2')
+                logger.info('The ROACH2 has not been configured yet.')
+        return to_return
             
-            import os
             
-            response = os.system("ping -c 1 " + self.roach2_hostname)
-
-            #and then check the response...
-            if response == 0:
-              logger.info('ROACH2 is running but phasmid is not.')
-            else:
-              logger.info('ROACH2 is switched off or not connected to the network.')
+            
 
         return return_content
         
