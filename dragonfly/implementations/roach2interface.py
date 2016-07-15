@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 try:
 
-    from r2daq import ArtooDaq
+    from .r2daq import ArtooDaq
     logger.info('Imported ArtooDaq')
     
 except ImportError:
@@ -45,12 +45,8 @@ class Roach2Provider(ArtooDaq, core.Provider):
     '''
     A DAQProvider for interacting with the Roach
     '''
-    def __init__(self,
+    def __init__(self, **kwargs):
 
-                 
-                 **kwargs):
-        #DAQProvider.__init__(self, **kwargs)
-        #EthernetProvider.__init__(self, **kwargs)
                  
         for i in kwargs:
             print(i)
@@ -108,6 +104,7 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
         if self.source_ip != None:
             cfg_a = self.make_interface_config_dictionary(self.source_ip, self.source_port,self.dest_ip,self.dest_port,dest_mac=self.dest_mac,tag='a') 
             #cfg_b = self.make_interface_config_dictionary('192.168.10.101',4000,'192.168.10.64',4001,dest_mac='00:60:dd:44:91:e8',tag='b') 
+            
             self.cfg_list = [cfg_a] 
             logger.info(cfg_a)
             ArtooDaq.__init__(self, self.roach2_hostname, boffile='latest-build', do_ogp_cal=self.do_ogp_cal, do_adcif_cal=self.do_adcif_cal, ifcfg=self.cfg_list)
@@ -134,10 +131,22 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
                 logger.info('The Roach2 is streaming data')
                 return_content = True
             else:
-                logger.error('no data packages could be grabbed')
+                logger.error('No data packages could be grabbed.')
                 raise core.DriplineInternalError('The Roach2 is not streaming data')
         except:                 
             return_content = False
+            logger.info('Pinging ROACH2')
+            
+            import os
+            
+            response = os.system("ping -c 1 " + self.roach2_hostname)
+
+            #and then check the response...
+            if response == 0:
+              logger.info('ROACH2 is running but phasmid is not.')
+            else:
+              logger.info('ROACH2 is switched off or not connected to the network.')
+
         return return_content
         
         
@@ -145,10 +154,10 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
         logger.info('setting central frequency of channel {} to {}'.format(self.channel_tag, cf))
         ArtooDaq.tune_ddc_1st_to_freq(self, cf, tag=self.channel_tag)
         
-    def get_central_frequency(self, cf):
+    def get_central_frequency(self):
         cfg = ArtooDaq.read_ddc_1st_config(self, tag=self.channel_tag)
-        logger.info('Central frequency of channel {} to {}'.format(self.channel_tag, cf))
-        return cfg
+        logger.info('Central frequency of channel {} to {}'.format(self.channel_tag, cfg['digital']))
+        
         
     def set_gain(self, gain):
         if gain>5 and gain <10:
