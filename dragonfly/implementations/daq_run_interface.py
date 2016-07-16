@@ -153,30 +153,6 @@ class DAQProvider(core.Provider):
             raise core.exceptions.DriplineValueError('writing meta-data did not return success')
         logger.debug('meta sent')
 
-    #TBD
-    # def _send_daq_config(self):
-    #     '''
-    #     Save the daq configuration into a json file
-    #     '''
-    #     logger.info('{} config should broadcast'.format(self.daq_name))
-    #     filename = '{directory}/{runN:09d}/{prefix}{runN:09d}_{daqname}_config.json'.format(
-    #                                                     directory=self.meta_data_directory_path,
-    #                                                     prefix=self.filename_prefix,
-    #                                                     runN=self.run_id,
-    #                                                     acqN=self._acquisition_count,
-    #                                                     daqname=self.daq_name
-    #                                                                            )
-    #     logger.debug('should request daq config file: {}'.format(filename))
-    #     this_payload = {'metadata': self._run_meta,
-    #                     'filename': filename,
-    #                    }
-    #     this_payload['metadata']['run_id'] = self.run_id
-    #     request_msg = core.RequestMessage(payload=this_payload, msgop=core.OP_CMD)
-    #     req_result = self.portal.send_request(request=request_msg, target=self._metadata_target)
-    #     if not req_result.retcode == 0:
-    #         raise core.exceptions.DriplineValueError('writing meta-data did not return success')
-    #     logger.debug('meta sent')
-
     def start_timed_run(self, run_name, run_time):
         '''
         '''
@@ -323,6 +299,7 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
                  rsa_config_target='',
                  instrument_setup_filename_prefix=None,
                  mask_filename_prefix=None,
+                 hf_lo_freq=None,
                  span_frequency_def_lab=None,
 		         central_frequency_def_lab=None,
 		         mask_ymargin_def_lab=None,
@@ -345,6 +322,11 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
         DAQProvider.__init__(self, **kwargs)
         EthernetProvider.__init__(self, **kwargs)
         self.rsa_config_target=rsa_config_target
+
+        if hf_lo_freq is None:
+            raise core.exceptions.DriplineValueError('the rsa interface requires a "hf_lo_freq" in its config file')
+        self._hf_lo_freq = hf_lo_freq
+
         self.max_nb_files = max_nb_files
         self.span_frequency_def_lab = span_frequency_def_lab
         self.central_frequency_def_lab = central_frequency_def_lab
@@ -586,7 +568,17 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
         self.send(['TRIG:SEQ:STAT 0;*OPC?'])
         super(RSAAcquisitionInterface, self).end_run()
 
-
     def determine_RF_ROI(self):
         logger.info('trying to determine roi')
-        logger.warning('RSA does not support proper determination of RF ROI yet')
+        # logger.warning('RSA does not support proper determination of RF ROI yet')
+
+        self._run_meta['RF_HF_MIXING'] = float(self._hf_lo_freq)
+        logger.debug('RF High stage mixing: {}'.format(self._run_meta['RF_HF_MIXING']))
+
+        result = self.send(['DPX:FREQ:START?'])
+        self._run_meta['RF_ROI_MIN'] = float(result) + float(self._hf_lo_freq)
+        logger.debug('RF Min: {}'.format(self._run_meta['RF_ROI_MIN']))
+
+        result = self.send(['DPX:FREQ:STOP?'])
+        self._run_meta['RF_ROI_MAX'] = float(result) + float(self._hf_lo_freq)
+        logger.debug('RF Max: {}'.format(self._run_meta['RF_ROI_MAX']))
