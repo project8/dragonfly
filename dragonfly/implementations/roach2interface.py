@@ -144,7 +144,7 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
             logger.info('ROACH2 is switched on')
             logger.info('Checking whether ROACH2 is streaming data packages')
             if self.configurated==True:
-                pkts = ArtooDaq.grab_packets(self)
+                pkts = ArtooDaq.grab_packets(self, n=5,dsoc_desc=("10.0.11.1",4001),close_soc=True)
                 x = pkts[0].interpret_data()
                 if len(x)>0:
                     logger.info('The Roach2 is streaming data')
@@ -173,7 +173,7 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
     def set_gain(self, gain):
         if gain>5 and gain <10:
             logger.info('setting gain of channel {} to {}'.format(self.channel_tag, gain))
-            self.set_gain(self, gain, tag=self.channel_tag)
+            ArtooDaq.set_gain(self, gain, tag=self.channel_tag)
             return True
         else:
             logger.error('Only gain values between 5 and 10 are allowed')
@@ -184,7 +184,7 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
         ArtooDaq.set_fft_shift(self, shift, tag=self.channel_tag)
         
     def get_metadata(self):
-        result = ArtooDaq.FPGA_CLOCK()
+        result = ArtooDaq.FPGA_CLOCK
         print(result)
         return True
         
