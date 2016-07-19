@@ -1,6 +1,6 @@
 from __future__ import absolute_import
 
-from dripline.core import Endpoint, exceptions
+from dripline.core import Endpoint, exceptions, calibrate
 from .prologix import GPIBInstrument
 
 import logging
@@ -16,7 +16,6 @@ class DSPLockin7265(GPIBInstrument):
     
     def __init__(self, **kwargs):
         GPIBInstrument.__init__(self, **kwargs)
-        self._device_status_cmd = "ST"
 
     def _decode_status(self):
         status = self.send("ST")
@@ -93,6 +92,7 @@ class ProviderProperty(Endpoint):
         self.target_property = property_key
         self.disable_set = disable_set
 
+    @calibrate()
     def on_get(self):
         prop = self.provider.send(self.target_property)
         return prop
