@@ -199,6 +199,10 @@ class RunScript(object):
             if self._lockout_key is not None:
                 self.do_unlocks()
         logger.info('execution complete')
+        # reinitialize the _last_action to -1 and waiting for a new script execution
+        self._last_action = -1
+        self.update_cache()
+
 
     def update_cache(self):
         to_dump = {}
@@ -221,7 +225,7 @@ class RunScript(object):
         if self._lockout_key is None:
             self._lockout_key = uuid.uuid4().get_hex()
         logger.info('locking with key: {}'.format(self._lockout_key))
-        logger.info('endpoings are: {}'.format(endpoints))
+        logger.info('endpoints are: {}'.format(endpoints))
         for target in endpoints:
             result = self.interface.cmd(target, 'lock', lockout_key=self._lockout_key)
             if result.retcode == 0:
@@ -244,6 +248,28 @@ class RunScript(object):
             else:
                 logger.warning('unable to set <{}>'.format(this_set['name']))
                 raise dripline.core.exception_map[result.retcode](result.return_msg)
+
+    def action_set_and_check(self, sets, **kwargs):
+        logger.info('doing set block')
+        set_kwargs = {'endpoint':None, 'value':None}
+        get_kwargs = {'endpoint':None}
+        if self._lockout_key:
+            set_kwargs.update({'lockout_key':self._lockout_key})
+            get_kwargs.update({'lockout_key':self._lockout_key})
+        for this_set in sets:
+            logger.info('setting {}->{}'.format(this_set['name'], this_set['value']))
+            set_kwargs.update({'endpoint':this_set['name'],'value':this_set['value']})
+            result = self.interface.set(**set_kwargs)
+            if result.retcode == 0:
+                logger.debug('...set of {}->{} complete'.format(this_set['name'], this_set['value']))
+            else:
+                logger.warning('unable to set <{}>'.format(this_set['name']))
+                raise dripline.core.exception_map[result.retcode](result.return_msg)
+            logger.info('checking the set value using {}'.format(this_set['get_name']))
+            get_kwargs.update({'endpoint':this_set['get_name']})
+            result = self.interface.get(**set_kwargs)
+            logger.info('{} set to {}'.format(this_set['name'],result[0])
+            #need to add the tolerance check... 
 
     def action_single_run(self, run_duration, run_name, daq_targets, **kwargs):
         logger.info('taking single run')
