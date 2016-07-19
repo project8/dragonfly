@@ -17,17 +17,6 @@ class DSPLockin7265(GPIBInstrument):
     def __init__(self, **kwargs):
         GPIBInstrument.__init__(self, **kwargs)
 
-    def _decode_status(self):
-        status = self.send("ST")
-        if not status:
-            return "No response"
-        data = int(status)
-        if data & 0b00000010:
-            status += ";invalid command"
-        if data & 0b00000100:
-            status += ";invalid parameter"
-        return status
-
     def grab_data(self, key):
         pts = int(self.send("LEN"))
         logger.info("expect {} pt data curves".format(pts))
@@ -73,7 +62,7 @@ class CallProviderMethod(Endpoint):
         method = getattr(self.provider, self.target_method_name)
         return method(value)
 
-def status_calibration(value):
+def acquisition_calibration(value):
     if value[0] == 0:
         status = 'done, {} curve(s) available with {} points'.format(value[1], value[3])
     elif value[1] == 1:
@@ -82,6 +71,21 @@ def status_calibration(value):
         raise ValueError('unexpected status byte value: {}'.format(value[0]))
     return status
 
+def status_calibration(value):
+    lookup = { 0 : "command complete",
+               1 : "invalid command",
+               2 : "command parameter error",
+               3 : "reference unlock",
+               4 : "overload",
+               5 : "new ADC values available after external trigger",
+               6 : "asserted SRQ",
+               7 : "data available" }
+    status = []
+    for i in range(8):
+        if value & 1<<i:
+            status.append(lookup[i])
+    return "; ".join(status)
+
 class ProviderProperty(Endpoint):
     def __init__(self, property_key, disable_set = False, get_float = False, **kwargs):
         Endpoint.__init__(self, **kwargs)
@@ -89,7 +93,7 @@ class ProviderProperty(Endpoint):
         self.disable_set = disable_set
         self.get_float = get_float
 
-    @calibrate([status_calibration])
+    @calibrate([acquisition_calibration, status_calibration])
     def on_get(self):
         if self.get_float:
             cmd = self.target_property + "."
