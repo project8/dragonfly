@@ -56,10 +56,10 @@ class GPIBInstrument(Provider):
         return status
 
     def send(self, cmd):
-        if isinstance(cmd, types.StringType):
-            cmd = [cmd]
-        to_send = ['++addr {}'.format(self.addr)] + cmd
-        result = self.provider.send(to_send)
+        address = self.provider.send('++addr {}\r++addr'.format(self.addr))[0]
+        if int(address) != self.addr:
+            raise DriplineTypeError("Unable to set GPIB address at prologix")
+        result = self.provider.send(cmd)
         logger.debug('raw result:\n{}'.format(result))
         if isinstance(result, list):
             result = ';'.join(result)
