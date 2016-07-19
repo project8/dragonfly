@@ -28,20 +28,7 @@ class DSPLockin7265(GPIBInstrument):
             status += ";invalid parameter"
         return status
 
-    def _curve_status(self):
-        result = self.send("M")
-        result = result.split(',')
-        status  = None
-        if result[0] == '0':
-            status = 'done, {} curve(s) available with {} points'.format(result[1], result[3])
-        elif result[0] == '1':
-            npts = self.send("LEN")
-            status = 'running, {} of {} points collected'.format(result[3], npts)
-        else:
-            raise ValueError('unexpected status byte value: {}'.format(result[0]))
-        return status
-
-    def _grab_data(self, key):
+    def grab_data(self, key):
         pts = int(self.send("LEN"))
         logger.info("expect {} pt data curves".format(pts))
         cbd = int(self.send("CBD"))
@@ -86,15 +73,29 @@ class CallProviderMethod(Endpoint):
         method = getattr(self.provider, self.target_method_name)
         return method(value)
 
+def status_calibration(value):
+    if value[0] == 0:
+        status = 'done, {} curve(s) available with {} points'.format(value[1], value[3])
+    elif value[1] == 1:
+        status = 'running, {} points collected'.format(value[3])
+    else:
+        raise ValueError('unexpected status byte value: {}'.format(value[0]))
+    return status
+
 class ProviderProperty(Endpoint):
-    def __init__(self, property_key, disable_set = False, **kwargs):
+    def __init__(self, property_key, disable_set = False, get_float = False, **kwargs):
         Endpoint.__init__(self, **kwargs)
         self.target_property = property_key
         self.disable_set = disable_set
+        self.get_float = get_float
 
-    @calibrate()
+    @calibrate([status_calibration])
     def on_get(self):
-        prop = self.provider.send(self.target_property)
+        if self.get_float:
+            cmd = self.target_property + "."
+        else:
+            cmd = self.target_property
+        prop = self.provider.send(cmd)
         return prop
 
     def on_set(self, value):
