@@ -103,7 +103,7 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
                  boffile=None):
                      
         logger.info('Configuring ROACH2, this will take a while.... no news is good news.')
-        if self.source_ip != None:
+        if self.source_port != None:
             cfg_a = self.make_interface_config_dictionary(self.source_ip, self.source_port,self.dest_ip,self.dest_port,dest_mac=self.dest_mac,tag='a') 
             #cfg_b = self.make_interface_config_dictionary('192.168.10.101',4000,'192.168.10.64',4001,dest_mac='00:60:dd:44:91:e8',tag='b') 
             
@@ -116,22 +116,30 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
             ArtooDaq.__init__(self, self.roach2_hostname, boffile=boffile, do_ogp_cal=do_ogp_cal, do_adcif_cal=do_adcif_cal)
             self.configurated=True
         return self.configurated
+        
+
+        
+    def do_adc_ogp_calibration(self, **kwargs):
+                
+        logger.ingo('Doing adc an ogp calibration')
+        super(ArtooDaq, self).calibrate_adc_ogp(**kwargs)
             
 
-    def set_ip_configuration(self, 
-                 source_ip = None,
-                 source_port = None,
-                 dest_ip = None,
-                 dest_port = None,
-                 dest_mac = None):
-        
-        self.source_ip = str(source_ip)
-        self.source_port = source_port
-        self.dest_ip = str(dest_ip)
-        self.dest_port = dest_port
-        self.dest_mac = dest_mac
-        logger.info('New ip configuration set. Reconfiguring the ROACH2...')
-        self.configure_roach()
+#    def set_ip_configuration(self, 
+#                 source_ip = None,
+#                 source_port = None,
+#                 dest_ip = None,
+#                 dest_port = None,
+#                 dest_mac = None,
+#                 **kwargs):
+#        
+#        self.source_ip = str(source_ip)
+#        self.source_port = source_port
+#        self.dest_ip = str(dest_ip)
+#        self.dest_port = dest_port
+#        self.dest_mac = dest_mac
+#        logger.info('New ip configuration set. Reconfiguring the ROACH2...')
+#        self.configure_roach(**kwargs)
         
 
    
@@ -140,19 +148,12 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
         logger.info('Pinging ROACH2')
         response = os.system("ping -c 1 " + self.roach2_hostname)
         #and then check the response...
-        if response == 0:
+        if response == 0 and self.configurated==True:
             logger.info('ROACH2 is switched on')
-            logger.info('Checking whether ROACH2 is streaming data packages')
-            if self.configurated==True:
-                pkts = ArtooDaq.grab_packets(self, n=1,dsoc_desc=("10.0.11.1",4001),close_soc=True)
-                x = pkts[0].interpret_data()
-                if len(x)>0:
-                    logger.info('The Roach2 is streaming data')
-                    to_return = True
-                else:
-                    logger.info('No data packages could be grabbed.')
-            else:
-                logger.info('The ROACH2 has not been configured yet.')
+            to_return = True
+            
+        elif response == 0 and self.configurated==False:
+                logger.info('but has not been configured yet.')
         return to_return
             
             
