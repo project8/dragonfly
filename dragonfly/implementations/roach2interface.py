@@ -122,7 +122,7 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
     def do_adc_ogp_calibration(self, **kwargs):
                 
         logger.info('Doing adc an ogp calibration')
-        super(ArtooDaq, self).calibrate_adc_ogp(**kwargs)
+        ArtooDaq.calibrate_adc_ogp(self, **kwargs)
             
 
 #    def set_ip_configuration(self, 
@@ -167,7 +167,7 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
         ArtooDaq.tune_ddc_1st_to_freq(self, cf, tag=self.channel_tag)
         
     def get_ddc_config(self):
-        cfg = ArtooDaq.read_ddc_1st_config(self, tag=self.channel_tag)
+        cfg = self.read_ddc_1st_config(tag=self.channel_tag)
         logger.info('Configuration information of 1st stage DDC is {}'.format(self.channel_tag, cfg['digital']))
         
         
@@ -180,8 +180,8 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
             logger.error('Only gain values between -8 and 7.93 are allowed')
             return False
         
-    def set_fft_shift(self, shift):
-        logger.info('setting fft shift of channel {} to {}'.format(self.channel_tag, shift))
-        ArtooDaq.set_fft_shift(self, shift, tag=self.channel_tag)
+    def set_fft_shift(self, shift, tag):
+        logger.info('setting fft shift of channel {} to {}'.format(tag, shift))
+        ArtooDaq.set_fft_shift(self, str(shift), tag=tag)
         
 
