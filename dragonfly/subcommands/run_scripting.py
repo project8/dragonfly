@@ -107,11 +107,14 @@ multi_run -> probably the most useful/sophisticated action, effectively provides
 
 from __future__ import absolute_import
 
+import os
 import datetime
 import json
 import logging
 import time
 import uuid
+import types
+
 
 import asteval
 import yaml
@@ -140,8 +143,29 @@ class RunScript(object):
         self._last_action = -1
         self._action_cache = {}
         self._to_unlock = []
-        self._cache_file_name = '/tmp/execution_cache.json'
         self.interface = None
+        self._cache_file_name = '/tmp/execution_cache.json'
+        # self.init_cache_file(kwargs.execution_file)
+
+
+    def init_cache_file(self, execution_file):
+        # print(kwargs.execution_file)
+        # print(kwargs.execution_file)
+        if execution_file!=None and isinstance(execution_file, types.StringType):
+            if execution_file.find('.') !=-1:
+                cache_file_name = execution_file[0:execution_file.find('.')]
+            else:
+                logger.info('could not find an extension: using default execution_cache')
+                self._cache_file_name = '/tmp/execution_cache.json'
+                return
+            while execution_file.find('/') !=-1:
+                cache_file_name = cache_file_name[execution_file.find('/'):len(cache_file_name)]
+            if cache_file_name !='':
+                self._cache_file_name = '/tmp/'+cache_file_name+'_cache.json'
+                logger.info('new cache file is {}'.format(self._cache_file_name))
+            else:
+                logger.info('empty cache_file_name: using default execution_cache')
+                self._cache_file_name = '/tmp/execution_cache.json'
 
     def update_from_cache_file(self):
         try:
@@ -154,12 +178,24 @@ class RunScript(object):
             if self._lockout_key is not None:
                 self.action_lockout(endpoints=self._to_unlock)
         except IOError:
-            # file doesn't exit assume starting from the beginning
+            # file doesn't exist assume starting from the beginning
             pass
+
+    def remove_cache(self):
+        try:
+            logger.info('removing cache file {}'.format(self._cache_file_name))
+            os.remove(self._cache_file_name)
+        except OSError:
+            logger.warning('warning: cannot remove the cache file (maybe the file does not exist)')
 
     def update_parser(self, parser):
         parser.add_argument('execution_file',
                             help='file containing the detailed execution steps',
+                           )
+        parser.add_argument('-f','--force-restart',
+                            action='store_true',
+                            default = False,
+                            help='forcing to restarting the whole execution script, regardless of its completion status',
                            )
 
     def __call__(self, kwargs):
@@ -169,8 +205,12 @@ class RunScript(object):
             kwargs.broker = 'localhost'
         # create interface
         self.interface = dripline.core.Interface(amqp_url=kwargs.broker, name='execution_script')
-        # update self from cache file
-        self.update_from_cache_file()
+        # update self from cache file unless there is the --force-restart option
+        self.init_cache_file(kwargs.execution_file)
+        if kwargs.force_restart:
+            self.remove_cache()
+        else:
+            self.update_from_cache_file()
         try:
             # do each of the actions listed in the execution file
             actions = yaml.load(open(kwargs.execution_file))
@@ -200,8 +240,7 @@ class RunScript(object):
                 self.do_unlocks()
         logger.info('execution complete')
         # reinitialize the _last_action to -1 and waiting for a new script execution
-        self._last_action = -1
-        self.update_cache()
+        self.remove_cache()
 
 
     def update_cache(self):
@@ -248,28 +287,28 @@ class RunScript(object):
             else:
                 logger.warning('unable to set <{}>'.format(this_set['name']))
                 raise dripline.core.exception_map[result.retcode](result.return_msg)
-
-    def action_set_and_check(self, sets, **kwargs):
-        logger.info('doing set block')
-        set_kwargs = {'endpoint':None, 'value':None}
-        get_kwargs = {'endpoint':None}
-        if self._lockout_key:
-            set_kwargs.update({'lockout_key':self._lockout_key})
-            get_kwargs.update({'lockout_key':self._lockout_key})
-        for this_set in sets:
-            logger.info('setting {}->{}'.format(this_set['name'], this_set['value']))
-            set_kwargs.update({'endpoint':this_set['name'],'value':this_set['value']})
-            result = self.interface.set(**set_kwargs)
-            if result.retcode == 0:
-                logger.debug('...set of {}->{} complete'.format(this_set['name'], this_set['value']))
-            else:
-                logger.warning('unable to set <{}>'.format(this_set['name']))
-                raise dripline.core.exception_map[result.retcode](result.return_msg)
-            logger.info('checking the set value using {}'.format(this_set['get_name']))
-            get_kwargs.update({'endpoint':this_set['get_name']})
-            result = self.interface.get(**set_kwargs)
-            logger.info('{} set to {}'.format(this_set['name'],result[0])
-            #need to add the tolerance check... 
+    #
+    # def action_set_and_check(self, sets, **kwargs):
+    #     logger.info('doing set block')
+    #     set_kwargs = {'endpoint':None, 'value':None}
+    #     get_kwargs = {'endpoint':None}
+    #     if self._lockout_key:
+    #         set_kwargs.update({'lockout_key':self._lockout_key})
+    #         get_kwargs.update({'lockout_key':self._lockout_key})
+    #     for this_set in sets:
+    #         logger.info('setting {}->{}'.format(this_set['name'], this_set['value']))
+    #         set_kwargs.update({'endpoint':this_set['name'],'value':this_set['value']})
+    #         result = self.interface.set(**set_kwargs)
+    #         if result.retcode == 0:
+    #             logger.debug('...set of {}->{} complete'.format(this_set['name'], this_set['value']))
+    #         else:
+    #             logger.warning('unable to set <{}>'.format(this_set['name']))
+    #             raise dripline.core.exception_map[result.retcode](result.return_msg)
+    #         logger.info('checking the set value using {}'.format(this_set['get_name']))
+    #         get_kwargs.update({'endpoint':this_set['get_name']})
+    #         result = self.interface.get(**set_kwargs)
+    #         logger.info('{} set to {}'.format(this_set['name'],result[0])
+    #         #need to add the tolerance check...
 
     def action_single_run(self, run_duration, run_name, daq_targets, **kwargs):
         logger.info('taking single run')
@@ -323,8 +362,18 @@ class RunScript(object):
                 logger.info('set type is: {}'.format(type(a_set['value'])))
                 if isinstance(a_set['value'], dict):
                     this_value = a_set['value'][run_count]
+                elif isinstance(a_set['value'],list):
+                    if isinstance(a_set['value'][run_count],float) or isinstance(a_set['value'][run_count],int):
+                        this_value = a_set['value'][run_count]
+                    else:
+                        raise dripline.core.DriplineValueError('set list ({}) does not contain only float or int'.format(a_set['name']))
                 elif isinstance(a_set['value'], str):
-                    this_value = evaluator(a_set['value'].format(run_count))
+                    if isinstance(evaluator(a_set['value'].format(run_count)),float) or isinstance(evaluator(a_set['value'].format(run_count)),int):
+                        this_value = evaluator(a_set['value'].format(run_count))
+                    elif isinstance(evaluator(a_set['value'].format(run_count)),list):
+                        this_value = evaluator(a_set['value'].format(run_count))[run_count]
+                    else:
+                        raise dripline.core.DriplineValueError('set expression ({}) does not return a list or a float/int'.format(a_set['name']))
                 else:
                     logger.info('failed to parse set:\n{}'.format(a_set))
                     raise dripline.core.DriplineValueError('set value not a dictionary or evaluatable expression')
