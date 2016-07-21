@@ -8,7 +8,6 @@ logger = logging.getLogger(__name__)
 
 __all__ = [
             'DSPLockin7265',
-            'CallProviderMethod',
             'ProviderProperty',
           ]
 
@@ -49,18 +48,6 @@ class DSPLockin7265(GPIBInstrument):
             raise ValueError("Missing data points")
         return result
 
-class CallProviderMethod(Endpoint):
-    def __init__(self, method_name, **kwargs):
-        Endpoint.__init__(self, **kwargs)
-        self.target_method_name = method_name
-
-    def on_get(self):
-        method = getattr(self.provider, self.target_method_name)
-        return method()
-
-    def on_set(self, value):
-        method = getattr(self.provider, self.target_method_name)
-        return method(value)
 
 def acquisition_calibration(value):
     if value[0] == 0:
