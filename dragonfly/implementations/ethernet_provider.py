@@ -22,6 +22,7 @@ class EthernetProvider(Provider):
                  bare_response_terminator=None,
                  command_terminator=None,
                  reply_echo_cmd=False,
+                 cmd_at_reconnect=None,
                  **kwargs
                  ):
         '''
@@ -31,6 +32,7 @@ class EthernetProvider(Provider):
         bare_response_terminator (str||None): alternate string to strip from responses; depending on provider's reply
         command_terminator (str||None): string to append to commands
         reply_echo_cmd (bool): set to True if command+command_terminator or just command are present in reply
+        cmd_at_start (str||None): command to send to the instrument after the (re)connection to the instrument (must ask for a reply)
         '''
         Provider.__init__(self, **kwargs)
         self.alock = threading.Lock()
@@ -48,6 +50,7 @@ class EthernetProvider(Provider):
             self.socket_info = (ip,int(port))
         logger.debug('socket info is {}'.format(self.socket_info))
         self.reconnect()
+
 
     def send_commands(self, commands, **kwargs):
         all_data=[]
@@ -115,7 +118,10 @@ class EthernetProvider(Provider):
             logger.warning('connection with info: {} refused'.format(self.socket_info))
             raise
         self.socket.settimeout(self.socket_timeout)
-        self.send("")
+        if isinstance(self.cmd_at_reconnect, types.StringType) and self.cmd_at_reconnect!=None:
+            self.send(self.cmd_at_reconnect)
+        else:
+            self.send("")
 
     def send(self, commands, **kwargs):
         '''
