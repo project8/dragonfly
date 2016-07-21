@@ -118,10 +118,10 @@ class EthernetProvider(Provider):
             logger.warning('connection with info: {} refused'.format(self.socket_info))
             raise
         self.socket.settimeout(self.socket_timeout)
-        if isinstance(self.cmd_at_reconnect, types.StringType) and self.cmd_at_reconnect!=None:
+
+        self.send("")
+        if self.cmd_at_reconnect!=None:
             self.send(self.cmd_at_reconnect)
-        else:
-            self.send("")
 
     def send(self, commands, **kwargs):
         '''
