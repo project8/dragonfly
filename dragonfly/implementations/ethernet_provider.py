@@ -43,6 +43,7 @@ class EthernetProvider(Provider):
         self.bare_response_terminator = bare_response_terminator
         self.command_terminator = command_terminator
         self.reply_echo_cmd = reply_echo_cmd
+        self.cmd_at_reconnect = cmd_at_reconnect
         if type(self.socket_info) is str:
             import re
             re_str = "\([\"'](\S+)[\"'], ?(\d+)\)"
