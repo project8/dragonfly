@@ -114,6 +114,7 @@ import logging
 import time
 import uuid
 import types
+import re as re
 
 
 import asteval
@@ -287,28 +288,163 @@ class RunScript(object):
             else:
                 logger.warning('unable to set <{}>'.format(this_set['name']))
                 raise dripline.core.exception_map[result.retcode](result.return_msg)
-    #
-    # def action_set_and_check(self, sets, **kwargs):
-    #     logger.info('doing set block')
-    #     set_kwargs = {'endpoint':None, 'value':None}
-    #     get_kwargs = {'endpoint':None}
-    #     if self._lockout_key:
-    #         set_kwargs.update({'lockout_key':self._lockout_key})
-    #         get_kwargs.update({'lockout_key':self._lockout_key})
-    #     for this_set in sets:
-    #         logger.info('setting {}->{}'.format(this_set['name'], this_set['value']))
-    #         set_kwargs.update({'endpoint':this_set['name'],'value':this_set['value']})
-    #         result = self.interface.set(**set_kwargs)
-    #         if result.retcode == 0:
-    #             logger.debug('...set of {}->{} complete'.format(this_set['name'], this_set['value']))
-    #         else:
-    #             logger.warning('unable to set <{}>'.format(this_set['name']))
-    #             raise dripline.core.exception_map[result.retcode](result.return_msg)
-    #         logger.info('checking the set value using {}'.format(this_set['get_name']))
-    #         get_kwargs.update({'endpoint':this_set['get_name']})
-    #         result = self.interface.get(**set_kwargs)
-    #         logger.info('{} set to {}'.format(this_set['name'],result[0])
-    #         #need to add the tolerance check...
+
+    def action_set_and_check(self, sets, **kwargs):
+        logger.info('doing set block')
+        set_kwargs = {'endpoint':None, 'value':None}
+        get_kwargs = {'endpoint':None}
+        if self._lockout_key:
+            set_kwargs.update({'lockout_key':self._lockout_key})
+            get_kwargs.update({'lockout_key':self._lockout_key})
+        for this_set in sets:
+            logger.info('setting {}->{}'.format(this_set['name'], this_set['value']))
+            set_kwargs.update({'endpoint':this_set['name'],'value':this_set['value']})
+            result = self.interface.set(**set_kwargs)
+            if result.retcode == 0:
+                logger.debug('...set of {}->{} complete'.format(this_set['name'], this_set['value']))
+            else:
+                logger.warning('unable to set <{}>'.format(this_set['name']))
+                raise dripline.core.exception_map[result.retcode](result.return_msg)
+            if 'get_name' in this_set:
+                logger.info('checking the set value using {}'.format(this_set['get_name']))
+                get_kwargs.update({'endpoint':this_set['get_name']})
+            else:
+                logger.info('No get_name provided: checking the set value using {}'.format(this_set['name']))
+                get_kwargs.update({'endpoint':this_set['name']})
+
+            # get_kwargs.update({'endpoint':this_set['get_name']})
+            result_tmp = self.interface.get(**get_kwargs)
+            # for key in result:
+            #     for subkey in result[key]:
+            #         print(key,subkey)
+
+            if 'payload_field' in this_set:
+                if 'value_cal' in result['payload'] and this_set['payload_field']=='value_cal':
+                    value_get = result['payload']['value_cal']
+                elif 'values' in result['payload'] and this_set['payload_field']=='values':
+                    value_get = result['payload']['values'][0]
+                elif 'value_raw' in result['payload'] and this_set['payload_field']=='value_raw':
+                    value_get = result['payload']['value_raw']
+                else:
+                    raise DriplineInternalError('no payload matching!')
+            else:
+                print('no payload_field')
+                if 'value_cal' in result['payload']:
+                    value_get = result['payload']['value_cal']
+                elif 'values' in result['payload']:
+                    value_get = result['payload']['values'][0]
+                elif 'value_raw' in result['payload']:
+                    value_get = result['payload']['value_raw']
+                else:
+                    raise DriplineInternalError('no payload matching!')
+            if type(value_get) is unicode:
+                print('result in unicode')
+                value_get = value_get.encode('utf-8')
+            value_get_temp = value_get
+            try:
+                value_get = float(value_get_temp)
+            except:
+                logger.info('value get ({}) is not floatable'.format(value_get))
+                value_get = value_get_temp
+            print(value_get)
+            # checking a target has been given
+            if 'target' in this_set:
+                target = this_set['target']
+            else:
+                logger.info('no get_target given: using value ({}) as a target to check'.format(this_set['value']))
+                target = this_set['value']
+            if value_get==None:
+                raise dripline.core.DriplineValueError('value get is a None')
+
+            # if the value we are checking is a float/int
+            if isinstance(value_get, float) or isinstance(value_get, int):
+                if  not isinstance(target,float) and not isinstance(target,int):
+                    logger.warning('target is not the same type as the value get: going to use the set value ({}) as target'.format(this_set['value']))
+                    target==this_set['value']
+                if isinstance(target,float) or isinstance(target,int):
+                    tolerance = this_set['tolerance']
+                    print(tolerance)
+                    if tolerance==None:
+                        logger.info('No tolerance given: assigning an arbitrary tolerance (1.)')
+                        tolerance = 1.
+                    if not isinstance(tolerance,float) and not isinstance(tolerance,int) and not isinstance(tolerance,types.StringType):
+                        logger.warning('tolerance is not a float or a string: assigning an arbitrary tolerance (1.)')
+                        tolerance = 1.
+                    if isinstance(tolerance,float) or isinstance(tolerance,int):
+                        if tolerance == 0:
+                            logger.info('tolerance zero inacceptable: setting tolerance to 1.')
+                            tolerance = 1.
+                        logger.info('testing a-t<b<a+t')
+                        if target -  tolerance <= value_get and value_get <= target + tolerance:
+                            logger.info('the value get is included in the target +- tolerance')
+                        else:
+                            raise dripline.core.DriplineValueError('the value get ({}) is NOT included in the target ({}) +- tolerance ({}): stopping here!'.format(value_get,target,tolerance))
+                    elif isinstance(tolerance,types.StringType):
+                        if '%' not in tolerance:
+                            logger.info('absolute tolerance')
+                            tolerance = float(tolerance)
+                        else:
+                            logger.info('relative tolerance')
+                            match_number = re.compile('-?\ *[0-9]+\.?[0-9]*(?:[Ee]\ *-?\ *[0-9]+)?')
+                            tolerance = [float(x) for x in re.findall(match_number, tolerance)][0]*target/100.
+                            # tolerance = map(float, re.findall("(?: \d*  \. \d+ )",format(tolerance)))#*target/100. #(?: [Ee] [+-]? \d+ )
+                        if tolerance == 0:
+                            logger.info('tolerance zero inacceptable: setting tolerance to 1.')
+                            tolerance = 1.
+                        logger.info('testing a-t<b<a+t')
+                        if target -  tolerance <= value_get and value_get <= target + tolerance:
+                            logger.info('the value get is included in the target +- tolerance')
+                        else:
+                            raise dripline.core.DriplineValueError('the value get ({}) is NOT included in the target ({}) +- tolerance ({}): stopping here!'.format(value_get,target,tolerance))
+                    else:
+                        raise dripline.core.DriplineValueError('tolerance is not a float, int or string: stopping here')
+                else:
+                    raise dripline.core.DriplineValueError('Cannot check! value set and target are not the same type as value get (float/int): stopping here!')
+
+            # if the value we are checking is a string
+            elif isinstance(value_get, types.StringType):
+                if not isinstance(target,types.StringType):
+                    logger.warning('target is not the same type as the value get: going to use the set value ({}) as target'.format(this_set['value']))
+                    target==this_set['value']
+                if isinstance(target,types.StringType):
+                    target_backup = target
+                    value_get_backup = value_get
+                    # changing target in the dictionary
+                    if target=='on' or target=='enable' or target=='enabled' or 'positive':
+                        target=='1'
+                    if target=='off' or target=='disable' or target=='disabled' or 'negative':
+                        target=='0'
+                    # changing value_get in the dictionary
+                    if value_get=='on' or value_get=='enable' or value_get=='enabled' or 'positive':
+                        value_get=='1'
+                    if value_get=='off' or value_get=='disable' or value_get=='disabled' or 'negative':
+                        value_get=='0'
+                    # checking is target and value_get are the same
+                    if target==value_get:
+                        logger.info('value get ({}) corresponds to the target ({}): going on'.format(value_get_backup,target_backup))
+                    else:
+                        raise dripline.core.DriplineValueError('value get ({}) DOES NOT correspond to the target ({}): stopping here!'.format(value_get_backup,target_backup))
+                else:
+                    raise dripline.core.DriplineValueError('Cannot check! value set and target are not the same type as value get (string): stopping here!')
+
+            # if the value we are checking is a bool
+            elif isinstance(value_get, bool):
+                if not isinstance(target,bool):
+                    logger.warning('target is not the same type as the value get: going to use the set value ({}) as target'.format(this_set['value']))
+                    target==this_set['value']
+                if isinstance(target,bool):
+                    if value_get==target:
+                        logger.info('value get ({}) corresponds to the target ({}): going on'.format(value_get,target))
+                    else:
+                        raise dripline.core.DriplineValueError('value get ({}) DOES NOT correspond to the target ({}): stopping here!'.format(value_get,target))
+                else:
+                    raise dripline.core.DriplineValueError('Cannot check! value set and target are not the same type as value get (string): stopping here!')
+
+            # if you are in this "else", this means that you either wanted to mess up with us or you are not viligant enough
+            else:
+                raise dripline.core.DriplineValueError('value get ({}) is not a float, int, string, bool, None ({}): SUPER WEIRD!'.format(value_get,type(value_get)))
+
+            logger.info('{} set to {}'.format(this_set['name'],value_get))
 
     def action_single_run(self, run_duration, run_name, daq_targets, **kwargs):
         logger.info('taking single run')
@@ -393,7 +529,10 @@ class RunScript(object):
                 raise dripline.core.DriplineValueError('set value not a dictionary or evaluatable expression')
             this_run_name = runs['run_name'].format(daq_target='{}', run_count=run_count)
             logger.info('run will be [{}] seconds with name "{}"'.format(this_run_duration, this_run_name))
-            self.action_single_run(this_run_duration, this_run_name, runs['daq_targets'])
+            if isinstance(runs['debug_mode'], bool) and runs['debug_mode']==True:
+                logger.info('debug mode activated: no run will be launched')
+            else:
+                self.action_single_run(this_run_duration, this_run_name, runs['daq_targets'])
             # update cache variable with this run being complete and update the cache file
             self._action_cache['last_run'] = run_count
             self.update_cache()
