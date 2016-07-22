@@ -69,7 +69,7 @@ class EthernetProvider(Provider):
             command += self.command_terminator
             logger.debug('sending: {}'.format(repr(command)))
             self.socket.send(command)
-            if command == self.command_terminator or command.startswith("++"):
+            if command == self.command_terminator:
                 blank_command = True
             else:
                 blank_command = False
@@ -135,13 +135,11 @@ class EthernetProvider(Provider):
 
         try:
             all_data += self.send_commands(commands, **kwargs)
-
         except socket.error:
             self.alock.release()
             self.reconnect()
             self.alock.acquire()
             all_data += self.send_commands(commands, **kwargs)
-
         finally:
             self.alock.release()
         to_return = ';'.join(all_data)
@@ -164,6 +162,7 @@ class EthernetProvider(Provider):
                 else:
                     break
         except socket.timeout:
+            logger.warning('socket.timeout condition met')
             if blank_command == False and data == "":
                 logger.critical('Cannot Connect to: ' + self.socket_info[0])
         if self.response_terminator:
