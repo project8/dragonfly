@@ -1,0 +1,58 @@
+name: multiset_test
+broker: localhost
+module: Spimescape
+endpoints:
+  - name: all_trap_coil_current_limit
+    module: MultiSet
+    targets:
+      - target: trap_coil_1_current_limit
+      - target: trap_coil_2_current_limit
+      - target: trap_coil_3_current_limit
+      - target: trap_coil_4_current_limit
+      - target: trap_coil_5_current_limit
+  - name: all_trap_coil_voltage_limit
+    module: MultiSet
+    targets:
+      - target: trap_coil_1_voltage_limit
+      - target: trap_coil_2_voltage_limit
+      - target: trap_coil_3_voltage_limit
+      - target: trap_coil_4_voltage_limit
+      - target: trap_coil_5_voltage_limit
+  - name: all_trap_coil_output_status
+    module: MultiSet
+    targets:
+      - target: trap_coil_1_output_status
+      - target: trap_coil_2_output_status
+      - target: trap_coil_3_output_status
+      - target: trap_coil_4_output_status
+      - target: trap_coil_5_output_status
+  - name: all_trap_coil_relay_status
+    module: MultiSet
+    targets:
+      - target: trap_coil_1_relay_status
+      - target: trap_coil_2_relay_status
+      - target: trap_coil_3_relay_status
+      - target: trap_coil_4_relay_status
+      - target: trap_coil_5_relay_status
+  - name: all_trap_coils_output
+    module: MultiSet
+    targets:
+      - target: all_trap_coil_current_limit
+      - target: all_trap_coil_output_status
+      - target: all_trap_coil_relay_status
+  - name: trap_coil_output
+    module: MultiSet
+    targets:
+      - target: all_trap_coil_relay_status
+      - target: all_trap_coil_output_status
+      - target: all_trap_coil_current_limit
+  - name: bathtub_configuration
+    module: MultiSet
+    targets:
+      - target: all_trap_coil_current_limit
+        default_set: 0
+      - target: all_trap_coil_output_status
+        default_set: 0
+      - target: all_trap_coil_relay_status
+        default_set: 0
+      
