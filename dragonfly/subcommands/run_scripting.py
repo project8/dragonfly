@@ -289,6 +289,14 @@ class RunScript(object):
                 logger.warning('unable to set <{}>'.format(this_set['name']))
                 raise dripline.core.exception_map[result.retcode](result.return_msg)
 
+    # def action_single_set_and_check(self, set, **kwargs):
+    #     logger.info('doing set block')
+    #     set_kwargs = {'endpoint':None, 'value':None}
+    #     get_kwargs = {'endpoint':None}
+    #     if self._lockout_key:
+    #         set_kwargs.update({'lockout_key':self._lockout_key})
+    #         get_kwargs.update({'lockout_key':self._lockout_key})
+
     def action_set_and_check(self, sets, **kwargs):
         logger.info('doing set block')
         set_kwargs = {'endpoint':None, 'value':None}
@@ -305,6 +313,10 @@ class RunScript(object):
             else:
                 logger.warning('unable to set <{}>'.format(this_set['name']))
                 raise dripline.core.exception_map[result.retcode](result.return_msg)
+            if 'no_check' in this_set:
+                if this_set['no_check']==True:
+                    logger.info('no check requested: skipping!')
+                    return
             if 'get_name' in this_set:
                 logger.info('checking the set value using {}'.format(this_set['get_name']))
                 get_kwargs.update({'endpoint':this_set['get_name']})
@@ -314,11 +326,15 @@ class RunScript(object):
 
             # get_kwargs.update({'endpoint':this_set['get_name']})
             result_tmp = self.interface.get(**get_kwargs)
-            # for key in result:
-            #     for subkey in result[key]:
-            #         print(key,subkey)
+            for key in this_set:
+                # for subkey in this_set[key]:
+                    print(key)
+
+            # print(this_set['payload_field'])
+
 
             if 'payload_field' in this_set:
+                print(this_set['payload_field'])
                 if 'value_cal' in result['payload'] and this_set['payload_field']=='value_cal':
                     value_get = result['payload']['value_cal']
                 elif 'values' in result['payload'] and this_set['payload_field']=='values':
@@ -328,17 +344,20 @@ class RunScript(object):
                 else:
                     raise DriplineInternalError('no payload matching!')
             else:
-                print('no payload_field')
                 if 'value_cal' in result['payload']:
                     value_get = result['payload']['value_cal']
+                    logger.info('no payload_field: using value_cal')
                 elif 'values' in result['payload']:
                     value_get = result['payload']['values'][0]
+                    logger.info('no payload_field: using values')
                 elif 'value_raw' in result['payload']:
                     value_get = result['payload']['value_raw']
+                    logger.info('no payload_field: using value_raw')
+
                 else:
                     raise DriplineInternalError('no payload matching!')
             if type(value_get) is unicode:
-                print('result in unicode')
+                logger.info('result in unicode')
                 value_get = value_get.encode('utf-8')
             value_get_temp = value_get
             try:
@@ -346,7 +365,6 @@ class RunScript(object):
             except:
                 logger.info('value get ({}) is not floatable'.format(value_get))
                 value_get = value_get_temp
-            print(value_get)
             # checking a target has been given
             if 'target' in this_set:
                 target = this_set['target']
@@ -362,8 +380,11 @@ class RunScript(object):
                     logger.warning('target is not the same type as the value get: going to use the set value ({}) as target'.format(this_set['value']))
                     target==this_set['value']
                 if isinstance(target,float) or isinstance(target,int):
-                    tolerance = this_set['tolerance']
-                    print(tolerance)
+                    if 'tolerance' in this_set:
+                        tolerance = this_set['tolerance']
+                    else:
+                        tolerance = None
+                    # print(tolerance)
                     if tolerance==None:
                         logger.info('No tolerance given: assigning an arbitrary tolerance (1.)')
                         tolerance = 1.
@@ -376,7 +397,7 @@ class RunScript(object):
                             tolerance = 1.
                         logger.info('testing a-t<b<a+t')
                         if target -  tolerance <= value_get and value_get <= target + tolerance:
-                            logger.info('the value get is included in the target +- tolerance')
+                            logger.info('the value get ({}) is included in the target ({}) +- tolerance ({})'.format(value_get,target,tolerance))
                         else:
                             raise dripline.core.DriplineValueError('the value get ({}) is NOT included in the target ({}) +- tolerance ({}): stopping here!'.format(value_get,target,tolerance))
                     elif isinstance(tolerance,types.StringType):
@@ -387,13 +408,12 @@ class RunScript(object):
                             logger.info('relative tolerance')
                             match_number = re.compile('-?\ *[0-9]+\.?[0-9]*(?:[Ee]\ *-?\ *[0-9]+)?')
                             tolerance = [float(x) for x in re.findall(match_number, tolerance)][0]*target/100.
-                            # tolerance = map(float, re.findall("(?: \d*  \. \d+ )",format(tolerance)))#*target/100. #(?: [Ee] [+-]? \d+ )
                         if tolerance == 0:
                             logger.info('tolerance zero inacceptable: setting tolerance to 1.')
                             tolerance = 1.
                         logger.info('testing a-t<b<a+t')
                         if target -  tolerance <= value_get and value_get <= target + tolerance:
-                            logger.info('the value get is included in the target +- tolerance')
+                            logger.info('the value get ({}) is included in the target ({}) +- tolerance ({})'.format(value_get,target,tolerance))
                         else:
                             raise dripline.core.DriplineValueError('the value get ({}) is NOT included in the target ({}) +- tolerance ({}): stopping here!'.format(value_get,target,tolerance))
                     else:
@@ -509,13 +529,24 @@ class RunScript(object):
                     elif isinstance(evaluator(a_set['value'].format(run_count)),list):
                         this_value = evaluator(a_set['value'].format(run_count))[run_count]
                     else:
-                        raise dripline.core.DriplineValueError('set expression ({}) does not return a list or a float/int'.format(a_set['name']))
+                        this_value = evaluator(a_set['value'].format(run_count))
+                        if this_value==None:
+                            this_value = a_set['value']
+                        # print(this_value)
+                elif isinstance(a_set['value'], bool):
+                    this_value = a_set['value']
                 else:
                     logger.info('failed to parse set:\n{}'.format(a_set))
                     raise dripline.core.DriplineValueError('set value not a dictionary or evaluatable expression')
-                these_sets.append({'name': a_set['name'], 'value': this_value})
+                dict_temp = {'name': a_set['name'], 'value': this_value}
+                # these_sets.append({'name': a_set['name'], 'value': this_value})
+                for key in a_set:
+                    if key != 'name' and key != 'value':
+                        dict_temp.update({key: a_set[key]})
+                these_sets.append(dict_temp)
+
             logger.info('computed sets are:\n{}'.format(these_sets))
-            self.action_set(these_sets)
+            self.action_set_and_check(these_sets)
             # compute args for, and call, action_single_run, based on run_count
             this_run_duration = None
             if isinstance(runs['run_duration'], float) or isinstance(runs['run_duration'], int):
