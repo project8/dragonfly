@@ -22,6 +22,7 @@ class EthernetProvider(Provider):
                  bare_response_terminator=None,
                  command_terminator=None,
                  reply_echo_cmd=False,
+                 cmd_at_reconnect=None,
                  **kwargs
                  ):
         '''
@@ -31,6 +32,7 @@ class EthernetProvider(Provider):
         bare_response_terminator (str||None): alternate string to strip from responses; depending on provider's reply
         command_terminator (str||None): string to append to commands
         reply_echo_cmd (bool): set to True if command+command_terminator or just command are present in reply
+        cmd_at_start (str||None): command to send to the instrument after the (re)connection to the instrument (must ask for a reply)
         '''
         Provider.__init__(self, **kwargs)
         self.alock = threading.Lock()
@@ -41,6 +43,7 @@ class EthernetProvider(Provider):
         self.bare_response_terminator = bare_response_terminator
         self.command_terminator = command_terminator
         self.reply_echo_cmd = reply_echo_cmd
+        self.cmd_at_reconnect = cmd_at_reconnect
         if type(self.socket_info) is str:
             import re
             re_str = "\([\"'](\S+)[\"'], ?(\d+)\)"
@@ -48,6 +51,7 @@ class EthernetProvider(Provider):
             self.socket_info = (ip,int(port))
         logger.debug('socket info is {}'.format(self.socket_info))
         self.reconnect()
+
 
     def send_commands(self, commands, **kwargs):
         all_data=[]
@@ -65,7 +69,7 @@ class EthernetProvider(Provider):
             command += self.command_terminator
             logger.debug('sending: {}'.format(repr(command)))
             self.socket.send(command)
-            if command == self.command_terminator or command.startswith("++"):
+            if command == self.command_terminator:
                 blank_command = True
             else:
                 blank_command = False
@@ -115,7 +119,10 @@ class EthernetProvider(Provider):
             logger.warning('connection with info: {} refused'.format(self.socket_info))
             raise
         self.socket.settimeout(self.socket_timeout)
+
         self.send("")
+        if self.cmd_at_reconnect!=None:
+            self.send(self.cmd_at_reconnect)
 
     def send(self, commands, **kwargs):
         '''
@@ -128,13 +135,11 @@ class EthernetProvider(Provider):
 
         try:
             all_data += self.send_commands(commands, **kwargs)
-
         except socket.error:
             self.alock.release()
             self.reconnect()
             self.alock.acquire()
             all_data += self.send_commands(commands, **kwargs)
-
         finally:
             self.alock.release()
         to_return = ';'.join(all_data)
@@ -157,6 +162,7 @@ class EthernetProvider(Provider):
                 else:
                     break
         except socket.timeout:
+            logger.warning('socket.timeout condition met')
             if blank_command == False and data == "":
                 logger.critical('Cannot Connect to: ' + self.socket_info[0])
         if self.response_terminator:
