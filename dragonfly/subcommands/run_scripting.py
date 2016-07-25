@@ -56,6 +56,24 @@ set -> send a list of set requests to change/ensure a desired system state. Init
               value: VALUE
             ...
 
+set_and_check -> an improved method which sends a list of set requests to change/ensure a desired system state and make sure that this state has been reached.
+    The check can be done using an other endpoint (for example, the actual current output of trap_coil_X can be check using trap_coil_X_current_output after setting trap_coil_X_current_limit).
+    If no "get_name" is given, the check will use the endpoint used to set the value.
+    The check can use the raw or calibrated value of the get_value.
+    The tolerance between a "target" and the "value_get" can be set in an absolute scale (ex: 1) or a relative one (ex: 5%).
+    The automatic check after the set of a specific endpoint can be disabled by adding a "no_check: True" to the endpoint set.
+    Sooner or later, this method should replace the classical set...
+
+    - action: set_and_check
+      sets:
+        - name: NAME
+          value: VALUE
+          get_name: NAME
+          payload_field: value_raw/value_cal
+          target: TARGET_OF_SET
+          tolerance: TOLERANCE (default: 1.)
+
+
 single_run -> collect a single run using one or more DAQ systems. The value provided
     for the run_duration currently must be number in seconds, it would be nice if
     in the future we could also accept strings that are mathematical expressions
@@ -146,12 +164,9 @@ class RunScript(object):
         self._to_unlock = []
         self.interface = None
         self._cache_file_name = '/tmp/execution_cache.json'
-        # self.init_cache_file(kwargs.execution_file)
 
 
     def init_cache_file(self, execution_file):
-        # print(kwargs.execution_file)
-        # print(kwargs.execution_file)
         if execution_file!=None and isinstance(execution_file, types.StringType):
             if execution_file.find('.') !=-1:
                 cache_file_name = execution_file[0:execution_file.find('.')]
@@ -240,7 +255,7 @@ class RunScript(object):
             if self._lockout_key is not None:
                 self.do_unlocks()
         logger.info('execution complete')
-        # reinitialize the _last_action to -1 and waiting for a new script execution
+        # remove the cache to prepare for a new execution script
         self.remove_cache()
 
 
@@ -289,14 +304,6 @@ class RunScript(object):
                 logger.warning('unable to set <{}>'.format(this_set['name']))
                 raise dripline.core.exception_map[result.retcode](result.return_msg)
 
-    # def action_single_set_and_check(self, set, **kwargs):
-    #     logger.info('doing set block')
-    #     set_kwargs = {'endpoint':None, 'value':None}
-    #     get_kwargs = {'endpoint':None}
-    #     if self._lockout_key:
-    #         set_kwargs.update({'lockout_key':self._lockout_key})
-    #         get_kwargs.update({'lockout_key':self._lockout_key})
-
     def action_set_and_check(self, sets, **kwargs):
         logger.info('doing set block')
         set_kwargs = {'endpoint':None, 'value':None}
@@ -316,7 +323,7 @@ class RunScript(object):
             if 'no_check' in this_set:
                 if this_set['no_check']==True:
                     logger.info('no check requested: skipping!')
-                    return
+                    continue
             if 'get_name' in this_set:
                 logger.info('checking the set value using {}'.format(this_set['get_name']))
                 get_kwargs.update({'endpoint':this_set['get_name']})
@@ -324,15 +331,7 @@ class RunScript(object):
                 logger.info('No get_name provided: checking the set value using {}'.format(this_set['name']))
                 get_kwargs.update({'endpoint':this_set['name']})
 
-            # get_kwargs.update({'endpoint':this_set['get_name']})
-            result_tmp = self.interface.get(**get_kwargs)
-            for key in this_set:
-                # for subkey in this_set[key]:
-                    print(key)
-
-            # print(this_set['payload_field'])
-
-
+            # choose to use the calibrated or raw value of the get value.
             if 'payload_field' in this_set:
                 print(this_set['payload_field'])
                 if 'value_cal' in result['payload'] and this_set['payload_field']=='value_cal':
@@ -356,6 +355,8 @@ class RunScript(object):
 
                 else:
                     raise DriplineInternalError('no payload matching!')
+
+            # sometimes the value get is in unicode (value_raw) -> switch to a readable value
             if type(value_get) is unicode:
                 logger.info('result in unicode')
                 value_get = value_get.encode('utf-8')
@@ -365,7 +366,8 @@ class RunScript(object):
             except:
                 logger.info('value get ({}) is not floatable'.format(value_get))
                 value_get = value_get_temp
-            # checking a target has been given
+
+            # checking a target has been given (else use the endpoint used to set)
             if 'target' in this_set:
                 target = this_set['target']
             else:
@@ -384,7 +386,6 @@ class RunScript(object):
                         tolerance = this_set['tolerance']
                     else:
                         tolerance = None
-                    # print(tolerance)
                     if tolerance==None:
                         logger.info('No tolerance given: assigning an arbitrary tolerance (1.)')
                         tolerance = 1.
