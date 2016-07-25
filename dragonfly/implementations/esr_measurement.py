@@ -151,21 +151,22 @@ class ESR_Measurement(core.Endpoint):
     def save_data(self):
         outfile = TFile("/home/pettus/test.root", "recreate")
 
-        from ROOT import MyStruct1, MyStruct2
+        from ROOT import MyStruct1, MyStruct2, MyStruct3
         struct1 = MyStruct1()
         struct2 = MyStruct2()
+        struct3 = MyStruct3()
 
-        tree = TTree("header", "metadata")
-        tree.Branch("insert", struct1, "string_pot_mm/F:coil1_relay/I:coil1_polarity:coil1_output:coil1_current_A/F\
+        htree = TTree("header", "metadata")
+        htree.Branch("insert", struct1, "string_pot_mm/F:coil1_relay/I:coil1_polarity:coil1_output:coil1_current_A/F\
                                                        :coil2_relay/I:coil2_polarity:coil2_output:coil2_current_A/F\
                                                        :coil3_relay/I:coil3_polarity:coil3_output:coil3_current_A/F\
                                                        :coil4_relay/I:coil4_polarity:coil4_output:coil4_current_A/F\
                                                        :coil5_relay/I:coil5_polarity:coil5_output:coil5_current_A/F")
-        tree.Branch("lockin", AddressOf(struct1, "fLNPts"), "lockin_n_pts/I:lockin_sample_interval_ms:lockin_trigger/I\
+        htree.Branch("lockin", AddressOf(struct1, "fLNPts"), "lockin_n_pts/I:lockin_sample_interval_ms:lockin_trigger/I\
                                                             :lockin_curve_mask:lockin_srq_mask:lockin_ac_gain_dB/I\
                                                             :lockin_osc_amp_V/F:lockin_osc_freq_Hz:lockin_sensitivity_V:lockin_tc_s")
-        tree.Branch("sweeper", AddressOf(struct1, "fSStart"), "sweeper_start_freq_Hz/F:sweeper_stop_freq_Hz:sweeper_power_dBm/F\
-                                                              :sweeper_dwell_time_s:sweeper_n_pts/I")
+        htree.Branch("sweeper", AddressOf(struct1, "fSStart"), "sweeper_start_freq_Hz/F:sweeper_stop_freq_Hz:sweeper_power_dBm/F\
+                                                              :sweeper_dwell_time_s:sweeper_n_pts/I:sweeper_mode[10]/C")
 
         insert = self.raw_get_ept("run_metadata")
         struct1.fStringPot = insert['string_pot']
@@ -203,17 +204,21 @@ class ESR_Measurement(core.Endpoint):
         struct1.fLTC = float(lockin['lockin_time_constant'])
 
         sweeper = self.raw_get_ept("sweeper_settings")
-        key = "hf_freq_mode"
-        logger.info("{} - {} - {}".format(key, type(sweeper[key]), sweeper[key]))
         struct1.fSStart = float(sweeper['hf_start_freq'])
         struct1.fSStop = float(sweeper['hf_stop_freq'])
         struct1.fSPower = float(sweeper['hf_power'])
         struct1.fSDwell = float(sweeper['hf_dwell_time'])
         struct1.fSNPts = int(sweeper['hf_n_sweep_points'])
+        struct1.fSMode = sweeper['hf_freq_mode']
 
-        tree.Fill()
-        outfile.Write()
+        htree.Fill()
 
+        rtree = TTree("result", "ESR scan results")
+        map3 = { 1 : { 'res_freq' : struct3.fC1RF, 'field' : struct3.fC1B, 'time' : struct3.fC1T},\
+                 2 : { 'res_freq' : struct3.fC2RF, 'field' : struct3.fC2B, 'time' : struct3.fC2T},\
+                 3 : { 'res_freq' : struct3.fC3RF, 'field' : struct3.fC3B, 'time' : struct3.fC3T},\
+                 4 : { 'res_freq' : struct3.fC4RF, 'field' : struct3.fC4B, 'time' : struct3.fC4T},\
+                 5 : { 'res_freq' : struct3.fC5RF, 'field' : struct3.fC5B, 'time' : struct3.fC5T} }
         for coil in range(1, 6):
             if coil not in self.data_dict:
                 logger.warning("ESR coil #{} data not available".format(coil))
@@ -221,9 +226,11 @@ class ESR_Measurement(core.Endpoint):
             pts = len(self.data_dict[coil]['raw_data']['frequency'])
             if pts != self.lockin_n_points:
                 logger.warning("ESR coil #{}: unexpected trace length {}".format(coil, pts))
-            tree = TTree("coil{}".format(coil), "coil {} data".format(coil))
-            tree.Branch("raw", struct2, "freq/F:amp_x:amp_y:amp_mag")
-            tree.Branch("filt", AddressOf(struct2, "fF1"), "freq/F:result:target:result2:target2:result3:target3:mag:magx")
+            dtree = TTree("coil{}".format(coil), "coil {} data".format(coil))
+            dtree.Branch("raw", struct2, "freq/F:amp_x:amp_y:amp_mag")
+            dtree.Branch("filt", AddressOf(struct2, "fF1"), "freq/F:result:target:result2:target2:result3:target3:mag:magx")
+            rtree.Branch("coil{}".format(coil), AddressOf(struct3, "fC{}RF".format(coil)),\
+                              "res_freq_Hz/F:b_field_T:time[20]/C")
             
             for i in range(pts):
                 struct2.fR1 = self.data_dict[coil]['raw_data']['frequency'][i]
@@ -239,12 +246,31 @@ class ESR_Measurement(core.Endpoint):
                 struct2.fF7 = self.data_dict[coil]['filtered_data']['target3'][i]
                 struct2.fF8 = self.data_dict[coil]['filtered_data']['mag'][i]
                 struct2.fF9 = self.data_dict[coil]['filtered_data']['magx'][i]
-                tree.Fill()
+                dtree.Fill()
             outfile.Write()
+
+        if 1 in self.data_dict:
+            struct3.fC1RF = self.data_dict[1]['res_freq']
+            struct3.fC1B = self.data_dict[1]['field']
+        if 2 in self.data_dict:
+            struct3.fC2RF = self.data_dict[2]['res_freq']
+            struct3.fC2B = self.data_dict[2]['field']
+        if 3 in self.data_dict:
+            struct3.fC3RF = self.data_dict[3]['res_freq']
+            struct3.fC3B = self.data_dict[3]['field']
+        if 4 in self.data_dict:
+            struct3.fC4RF = self.data_dict[4]['res_freq']
+            struct3.fC4B = self.data_dict[4]['field']
+        if 5 in self.data_dict:
+            struct3.fC5RF = self.data_dict[5]['res_freq']
+            struct3.fC5B = self.data_dict[5]['field']
+        rtree.Fill()
+        outfile.Write()
+
         outfile.Close()
 
     def root_setup(self):
-	gROOT.ProcessLine("struct MyStruct1 {\
+        gROOT.ProcessLine("struct MyStruct1 {\
                                Float_t fStringPot;\
                                Int_t fC1Relay;\
                                Int_t fC1Polarity;\
@@ -281,8 +307,9 @@ class ESR_Measurement(core.Endpoint):
                                Float_t fSPower;\
                                Float_t fSDwell;\
                                Int_t fSNPts;\
+                               Char_t fSMode[10];\
                            };");
-	gROOT.ProcessLine("struct MyStruct2 {\
+        gROOT.ProcessLine("struct MyStruct2 {\
                                Float_t fR1;\
                                Float_t fR2;\
                                Float_t fR3;\
@@ -297,14 +324,26 @@ class ESR_Measurement(core.Endpoint):
                                Float_t fF8;\
                                Float_t fF9;\
 	                   };");
+        gROOT.ProcessLine("struct MyStruct3 {\
+                               Float_t fC1RF;\
+                               Float_t fC1B;\
+                               Float_t fC2RF;\
+                               Float_t fC2B;\
+                               Float_t fC3RF;\
+                               Float_t fC3B;\
+                               Float_t fC4RF;\
+                               Float_t fC4B;\
+                               Float_t fC5RF;\
+                               Float_t fC5B;\
+	                   };");
 
 
-    def debug_run(self):
+    def debug_run(self, coil=3):
         self.configure_instruments()
-        self.single_measure(1)
-        #logger.info(self.data_dict[1])
-        self.reset_configure()
+        self.single_measure(coil)
         self.save_data()
+        #logger.info(self.data_dict[coil])
+        #self.reset_configure()
 
     def run_scan(self):
         self.configure_instruments()
