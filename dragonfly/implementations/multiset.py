@@ -8,7 +8,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-__all__.append('MultiGet')
+__all__.append('MultiSet')
 @dripline.core.fancy_doc
 class MultiSet(dripline.core.Endpoint):
     '''
@@ -25,31 +25,37 @@ class MultiSet(dripline.core.Endpoint):
         self._targets = []
         #for a_name,details in targets:
         for a_target in targets:
-            these_details = {'payload_field':a_target['payload_field']}
-            if 'units' in a_target and 'formatter' in a_target:
-                raise dripline.core.DriplineValueError('may not specify both "units" and "formatter"')
-            if 'formatter' in a_target:
-                these_details['formatter'] = a_target['formatter']
-            elif 'units' in a_target:
-                these_details['formatter'] = '{} -> {} [{}]'.format(a_target['target'], '{}', a_target['units'])
-            else:
-                these_details['formatter'] = '{} -> {}'.format(a_target['target'], '{}')
+            print(a_target['target'])
+            if 'default_set' in a_target:
+                these_details = {'default_set':a_target['default_set']}
+            # if 'units' in a_target and 'formatter' in a_target:
+            #     raise dripline.core.DriplineValueError('may not specify both "units" and "formatter"')
+            # if 'formatter' in a_target:
+            #     these_details['formatter'] = a_target['formatter']
+            # elif 'units' in a_target:
+            #     these_details['formatter'] = '{} -> {} [{}]'.format(a_target['target'], '{}', a_target['units'])
+            # else:
+            #     these_details['formatter'] = '{} -> {}'.format(a_target['target'], '{}')
             self._targets.append([a_target['target'], these_details])
 
-        self._request_message = dripline.core.RequestMessage(msgop=dripline.core.OP_GET)
+        self._request_message = dripline.core.RequestMessage(msgop=dripline.core.OP_SET)
 
-    def on_get(self):
-        result_vals = {}
-        result_reps = []
+    def on_set(self, **kwargs):
         for a_target,details in self._targets:
-            a_val,a_rep = self._single_get(a_target, details)
-            result_vals[a_target] = a_val
-            result_reps.append(a_rep)
-        return {'value_raw': result_vals, 'value_cal': '\n'.join(result_reps)}
+            if 'default_set' in details:
+                value_to_set = details['default_set']
+            else:
 
-    def _single_get(self, endpoint_name, details):
+            result = self._single_set(a_target, details)
+            if result.retcode !=0:
+                logger.warning('unable to set <{}>'.format(a_target['target']))
+                raise dripline.core.exception_map[result.retcode](result.return_msg)
+
+        # return {'value_raw': result_vals, 'value_cal': '\n'.join(result_reps)}
+
+    def _single_set(self, endpoint_name, details):
         '''
-        attempt to get a single endpoint and return a tuple of (desired_value, string_rep)
+        attempt to set a single endpoint
         '''
         ret_val = None
         ret_rep = ''
