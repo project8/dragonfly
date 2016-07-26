@@ -51,27 +51,27 @@ class MultiSet(dripline.core.Endpoint):
             if isinstance(flag,str):
                 parser.add_argument(flag)
             self._list_flag.append(flag)
-        parser.add_argument('value_to_set')
+        # parser.add_argument('value_to_set')
 
-    def on_set(self, **kwargs):
+    def on_set(self, *args, **kwargs):
 
         to_be_sent = []
-        for a_target,details in self._targets:
-            if 'default_set' in details:
-                value = details['default_set']
-            else:
-                value = kwargs.value_to_set
-            # print(value)
-            if 'format_target' in details:
-                target = a_target.format(details['format_target'])
-            else:
-                target = a_target
-            print(value,target)
+        # for a_target,details in self._targets:
+        #     if 'default_set' in details:
+        #         value = details['default_set']
+        #     else:
+        #         value = args[0]
+        #     # print(value)
+        #     if 'format_target' in details:
+        #         target = a_target.format(details['format_target'])
+        #     else:
+        #         target = a_target
+        #     print(value,target)
 
             # result = self._single_set(a_target, value_to_set)
-            if result.retcode !=0:
-                logger.warning('unable to set <{}>'.format(a_target['target']))
-                raise dripline.core.exception_map[result.retcode](result.return_msg)
+            # if result.retcode !=0:
+            #     logger.warning('unable to set <{}>'.format(a_target['target']))
+            #     raise dripline.core.exception_map[result.retcode](result.return_msg)
 
         # return {'value_raw': result_vals, 'value_cal': '\n'.join(result_reps)}
 
