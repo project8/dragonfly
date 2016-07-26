@@ -25,6 +25,7 @@ class MultiSet(dripline.core.Endpoint):
         self._targets = []
         self._list_flag=[]
         #for a_name,details in targets:
+        these_details = {}
         for a_target in targets:
             print(a_target['target'])
 
