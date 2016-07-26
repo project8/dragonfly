@@ -29,10 +29,10 @@ class MultiSet(dripline.core.Endpoint):
             print(a_target['target'])
 
             if 'default_set' in a_target:
-                these_details = {'default_set':a_target['default_set']}
+                these_details.update({'default_set':a_target['default_set']})
 
             if 'format_target' in a_target:
-                these_details = {'format_target':a_target['format_target']}
+                these_details.update({'format_target':a_target['format_target']})
             # if 'units' in a_target and 'formatter' in a_target:
             #     raise dripline.core.DriplineValueError('may not specify both "units" and "formatter"')
             # if 'formatter' in a_target:
@@ -48,17 +48,26 @@ class MultiSet(dripline.core.Endpoint):
     def update_parser(self,parser):
         for flag in parser_new_flags:
             if isinstance(flag,str):
-                parser.add_argument('--'+flag)
+                parser.add_argument(flag)
             self._list_flag.append(flag)
+        parser.add_argument('value_to_set')
 
     def on_set(self, **kwargs):
 
+        to_be_sent = []
         for a_target,details in self._targets:
             if 'default_set' in details:
-                value_to_set = details['default_set']
+                value = details['default_set']
             else:
+                value = kwargs.value_to_set
+            # print(value)
+            if 'format_target' in details:
+                target = a_target.format(details['format_target'])
+            else:
+                target = a_target
+            print(value,target)
 
-            result = self._single_set(a_target, value_to_set)
+            # result = self._single_set(a_target, value_to_set)
             if result.retcode !=0:
                 logger.warning('unable to set <{}>'.format(a_target['target']))
                 raise dripline.core.exception_map[result.retcode](result.return_msg)
