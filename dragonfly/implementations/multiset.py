@@ -18,16 +18,21 @@ class MultiSet(dripline.core.Endpoint):
     '''
     def __init__(self, targets=[], **kwargs):
         '''
-        targets (list): list of two element lists where the first elements are endpoint names to set and second elements are themselves dictionaries which must provide a value for 'payload_field' and may provide either a 'units' field (for use with the default format string) or a 'formatter' field which is a format string which takes one insertion for the get result
+        targets (list): list of two element lists where the first elements are endpoint names to set and second elements are themselves dictionaries which must provide a value for 'payload_field'
         '''
         dripline.core.Endpoint.__init__(self, **kwargs)
 
         self._targets = []
+        self._list_flag=[]
         #for a_name,details in targets:
         for a_target in targets:
             print(a_target['target'])
+
             if 'default_set' in a_target:
                 these_details = {'default_set':a_target['default_set']}
+
+            if 'format_target' in a_target:
+                these_details = {'format_target':a_target['format_target']}
             # if 'units' in a_target and 'formatter' in a_target:
             #     raise dripline.core.DriplineValueError('may not specify both "units" and "formatter"')
             # if 'formatter' in a_target:
@@ -40,13 +45,20 @@ class MultiSet(dripline.core.Endpoint):
 
         self._request_message = dripline.core.RequestMessage(msgop=dripline.core.OP_SET)
 
+    def update_parser(self,parser):
+        for flag in parser_new_flags:
+            if isinstance(flag,str):
+                parser.add_argument('--'+flag)
+            self._list_flag.append(flag)
+
     def on_set(self, **kwargs):
+
         for a_target,details in self._targets:
             if 'default_set' in details:
                 value_to_set = details['default_set']
             else:
 
-            result = self._single_set(a_target, details)
+            result = self._single_set(a_target, value_to_set)
             if result.retcode !=0:
                 logger.warning('unable to set <{}>'.format(a_target['target']))
                 raise dripline.core.exception_map[result.retcode](result.return_msg)
