@@ -531,13 +531,16 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
             raise core.exceptions.DriplineHardwareError('RSA system has {} error(s) in the queue: check them with <dragonfly get rsa_system_error_queue -b myrna.p8>'.format(Nerrors))
 
         super(RSAAcquisitionInterface, self).start_run(run_name)
-        # ensure the output format is set to mat
-        self.send(["SENS:ACQ:FSAV:FORM MAT;*OPC?"])
+        # # ensure the output format is set to mat
+        # self.send(["SENS:ACQ:FSAV:FORM MAT;*OPC?"])
         # build strings for output directory and file prefix, then set those
         file_directory = "\\".join([self.data_directory_path, '{:09d}'.format(self.run_id)])
         file_base = "{}{:09d}".format(self.filename_prefix, self.run_id)
         self.send('SENS:ACQ:FSAV:LOC "{}";*OPC?'.format(file_directory))
-        self.send('SENS:ACQ:FSAV:NAME:BASE "{}";*OPC?'.format(file_base))
+        # ensure the output format is set to mat
+        self.send('TRIGger:SAVE:DATA:FORMat "{}";*OPC?'.format(file_base))
+        # ensure their is no limit on the number of saved files
+        self.send("TRIGger:SAVE:COUNt 0; *OPC?")
 
         # Set the maximum number of events (note that the default is 10k)
         self.send(['SENS:ACQ:FSAV:FILE:MAX {:d};*OPC?'.format(self.max_nb_files)])
@@ -557,6 +560,8 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
                                                                                )
         self.send(['TRIG:MASK:SAVE "{}";*OPC?'.format(mask_full_name)])
 
+        # enable the save dacq data on trigger mode
+        self.send("TRIGger:SAVE:DATA 1;*OPC?")
         # ensure in triggered mode
         self.send(['TRIG:SEQ:STAT 1;*OPC?'])
         # actually start to FastSave (depreciated)
@@ -566,6 +571,8 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
         # something to stop FastSave (depreciated)
         # self.send(['SENS:ACQ:FSAV:ENAB 0;*OPC?'])
         self.send(['TRIG:SEQ:STAT 0;*OPC?'])
+        self.send("TRIGger:SAVE:DATA 0;*OPC?")
+
         super(RSAAcquisitionInterface, self).end_run()
 
     def determine_RF_ROI(self):
