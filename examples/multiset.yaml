@@ -1,0 +1,11 @@
+name: multiset_test
+broker: localhost
+module: Spimescape
+endpoints:
+  - name: prices
+    module: MultiSet
+    targets:
+      - target: waffles
+      - target: peaches
+        default_set: 2.5
+      - target: chips
