@@ -4,7 +4,7 @@ __all__ = []
 import numpy
 import logging
 from datetime import datetime
-from ROOT import TFile, TTree, gROOT, AddressOf
+from ROOT import TFile, TTree, gROOT, AddressOf, TCanvas, TGraph, TF1, TGraphErrors
 
 from dripline import core
 
@@ -133,10 +133,14 @@ class ESR_Measurement(core.Endpoint):
             #TODO a fit would be more appropriate to get uncertainty
         max_freq_index = numpy.argmax(filter_data['result'])
         res_freq = filter_data['freqs'][max_freq_index]
-        b_field=4.*numpy.pi*res_freq/(self.esr_g_factor*self.electron_cyclotron_frequency)
-        self.data_dict[coilnum] = { 'field' : b_field,
-                                    'res_freq' : res_freq,
-                                    'time' : time,
+        res_freq_e = max(filter_data['freqs'][max_freq_index] - filter_data['freqs'][max_freq_index-1],
+                         filter_data['freqs'][max_freq_index+1] - filter_data['freqs'][max_freq_index])
+        b_field = 4.*numpy.pi*res_freq/(self.esr_g_factor*self.electron_cyclotron_frequency)
+        b_field_e = b_field * res_freq_e / res_freq
+        self.data_dict[coilnum] = { 'result' : { 'filt_field' : b_field,
+                                                 'filt_field_e' : b_field_e,
+                                                 'res_freq' : res_freq,
+                                                 'time' : time },
                                     'raw_data' : { 'frequency' : data['frequency'],
                                                    'amplitude' : data['amplitude'],
                                                    'amp_x' : data['lockin_x_data'],
@@ -212,13 +216,9 @@ class ESR_Measurement(core.Endpoint):
         struct1.fSMode = sweeper['hf_freq_mode']
 
         htree.Fill()
+        htree.Write()
 
         rtree = TTree("result", "ESR scan results")
-        map3 = { 1 : { 'res_freq' : struct3.fC1RF, 'field' : struct3.fC1B, 'time' : struct3.fC1T},\
-                 2 : { 'res_freq' : struct3.fC2RF, 'field' : struct3.fC2B, 'time' : struct3.fC2T},\
-                 3 : { 'res_freq' : struct3.fC3RF, 'field' : struct3.fC3B, 'time' : struct3.fC3T},\
-                 4 : { 'res_freq' : struct3.fC4RF, 'field' : struct3.fC4B, 'time' : struct3.fC4T},\
-                 5 : { 'res_freq' : struct3.fC5RF, 'field' : struct3.fC5B, 'time' : struct3.fC5T} }
         for coil in range(1, 6):
             if coil not in self.data_dict:
                 logger.warning("ESR coil #{} data not available".format(coil))
@@ -229,8 +229,8 @@ class ESR_Measurement(core.Endpoint):
             dtree = TTree("coil{}".format(coil), "coil {} data".format(coil))
             dtree.Branch("raw", struct2, "freq/F:amp_x:amp_y:amp_mag")
             dtree.Branch("filt", AddressOf(struct2, "fF1"), "freq/F:result:target:result2:target2:result3:target3:mag:magx")
-            rtree.Branch("coil{}".format(coil), AddressOf(struct3, "fC{}RF".format(coil)),\
-                              "res_freq_Hz/F:b_field_T:time[20]/C")
+            rtree.Branch("coil{}".format(coil), AddressOf(struct3, "fC{}RF".format(coil)), "res_freq_Hz/F:b_field_T")
+            rbranch = rtree.Branch("coil{}b".format(coil), AddressOf(struct3, "fCRF"), "res_freq_Hz/F:b_field_T")
             
             for i in range(pts):
                 struct2.fR1 = self.data_dict[coil]['raw_data']['frequency'][i]
@@ -247,27 +247,83 @@ class ESR_Measurement(core.Endpoint):
                 struct2.fF8 = self.data_dict[coil]['filtered_data']['mag'][i]
                 struct2.fF9 = self.data_dict[coil]['filtered_data']['magx'][i]
                 dtree.Fill()
-            outfile.Write()
-
-        if 1 in self.data_dict:
-            struct3.fC1RF = self.data_dict[1]['res_freq']
-            struct3.fC1B = self.data_dict[1]['field']
-        if 2 in self.data_dict:
-            struct3.fC2RF = self.data_dict[2]['res_freq']
-            struct3.fC2B = self.data_dict[2]['field']
-        if 3 in self.data_dict:
-            struct3.fC3RF = self.data_dict[3]['res_freq']
-            struct3.fC3B = self.data_dict[3]['field']
-        if 4 in self.data_dict:
-            struct3.fC4RF = self.data_dict[4]['res_freq']
-            struct3.fC4B = self.data_dict[4]['field']
-        if 5 in self.data_dict:
-            struct3.fC5RF = self.data_dict[5]['res_freq']
-            struct3.fC5B = self.data_dict[5]['field']
+            dtree.Write()
+            struct3.fCRF = self.data_dict[coil]['result']['res_freq']
+            struct3.fCB = self.data_dict[coil]['result']['filt_field']
+            struct3.fCBE = self.data_dict[coil]['result']['filt_field_e']
+            rbranch.Fill()
         rtree.Fill()
-        outfile.Write()
+        rtree.Write()
 
+        outfile.mkdir("Plots")
+        outfile.cd("Plots")
+        self.root_plot(outfile)
         outfile.Close()
+
+
+    def root_plot(self, outfile):
+        for i in self.data_dict:
+            can = TCanvas("can{}".format(i), "coil{}".format(i))
+            data = numpy.column_stack((self.data_dict[i]['raw_data']['frequency']*1e-6,
+                                       self.data_dict[i]['raw_data']['amp_x']*1e6,
+                                       self.data_dict[i]['raw_data']['amp_y']*1e6))
+            data = data.ravel().view([('f','float'), ('x','float'), ('y','float')])
+            fspan = data['f'][-1] - data['f'][0] + (self.hf_start_freq - self.hf_stop_freq) * 1e-6
+            numpy.ndarray.sort(data)
+
+            p1 = numpy.argmax(data['x'])
+            p2 = numpy.argmin(data['x'])
+            s = (data['f'][p2] - data['f'][p1]) / 2.
+            b = (data['f'][p2] + data['f'][p1]) / 2.
+            a = (data['x'][p1] - data['x'][p2]) / (2. * s * numpy.exp(-0.5))
+            gfit = TF1("gfit","(-(x-[1])*gaus(0)-[3])*(x>0)\
+                              +(-[4]*(x+[1])*exp(-(x+[1])**2/2./[2]**2)-[5])*(x<0)")
+            gfit.SetParameters(a,b,s,0,a/2,0)
+            gfit.SetLineColor(4)
+
+            f2 = numpy.concatenate((-data['f'][::-1], data['f']))
+            xy = numpy.concatenate((data['y'][::-1], data['x']))
+            fe = numpy.array(len(data['f']) * [fspan / (len(data['f']) - 1) / 6.], dtype=float)
+            f2e = numpy.concatenate((fe, fe))
+            if b < (self.hf_start_freq + self.hf_stop_freq) / 2.:
+                xe = numpy.array(len(data['x']) * [numpy.std(data['x'][-50:])])
+                ye = numpy.array(len(data['y']) * [numpy.std(data['y'][-50:])])
+            else:
+                xe = numpy.array(len(data['x']) * [numpy.std(data['x'][:50])])
+                ye = numpy.array(len(data['y']) * [numpy.std(data['y'][:50])])
+            xye = numpy.concatenate((ye, xe))
+
+            plot1 = TGraphErrors(len(f2), f2, xy, f2e, xye)
+            plot1.Fit("gfit","ME")
+
+            scale = (gfit.GetChisquare() / gfit.GetNDF())**0.5
+            logger.info("Chi-Square : {} / {}; rescale error by {}".format(gfit.GetChisquare(), gfit.GetNDF(), scale))
+            xe = xe * scale
+            ye = ye * scale
+            xye = xye * scale
+            plot1 = TGraphErrors(len(f2), f2, xy, f2e, xye)
+            plot1.Fit("gfit","ME")
+            plot1.SetName("xy_f")
+
+            plot2 = TGraphErrors(len(data['f']), data['f']*1., data['y']*1., fe, ye)
+            plot2.SetName("y_f")
+            plot2.SetTitle("Coil {};Frequency (MHz);Amplitude (arb)".format(i))
+            plot2.SetLineColor(2)
+            gfit2 = TF1("gfit","-(x-[1])*gaus(0)-[3]", self.hf_start_freq*1e-6, self.hf_stop_freq*1e-6)
+            gfit2.SetParameters(-gfit.GetParameter(4), gfit.GetParameter(1), gfit.GetParameter(2), gfit.GetParameter(5))
+            gfit2.SetLineColor(3)
+
+            ymax = max(numpy.max(data['x']), numpy.max(data['y']))
+            ymin = min(numpy.min(data['x']), numpy.min(data['y']))
+            yrng = ymax - ymin
+            ymax += yrng/8.
+            ymin -= yrng/8.
+            plot2.GetYaxis().SetRangeUser(ymin, ymax)
+            plot2.Draw("AL")
+            gfit2.Draw("same")
+            plot1.Draw("L")
+            can.Write()
+
 
     def root_setup(self):
         gROOT.ProcessLine("struct MyStruct1 {\
@@ -335,11 +391,14 @@ class ESR_Measurement(core.Endpoint):
                                Float_t fC4B;\
                                Float_t fC5RF;\
                                Float_t fC5B;\
-	                   };");
+                               Float_t fCRF;\
+                               Float_t fCB;\
+                               Float_t fCBE;\
+                           };");
 
 
     def debug_run(self, coil=3):
-        self.configure_instruments()
+        #self.configure_instruments()
         self.single_measure(coil)
         self.save_data()
         #logger.info(self.data_dict[coil])
@@ -352,7 +411,7 @@ class ESR_Measurement(core.Endpoint):
         self.save_data()
         logger.info(self.data_dict)
         self.reset_configure()
-        return [self.data_dict[i]['field'] for i in range(1,6)]
+        return [self.data_dict[i]['result']['filt_field'] for i in range(1,6)]
 
 
     def drip_cmd(self, cmdname, val):
