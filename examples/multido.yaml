@@ -10,7 +10,8 @@ endpoints:
       - target: peaches
         payload_field: value_cal
         default_set: 2.5
-        target: 5.0
+        target_value: 5.0
       - target: chips
         payload_field: value_cal
-        target: 3.6
+        get_target: chips
+        target_value: 3.
