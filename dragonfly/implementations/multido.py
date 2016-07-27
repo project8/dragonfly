@@ -78,7 +78,6 @@ class MultiDo(dripline.core.Endpoint):
         else:
             ret_val = a_result.payload[details['payload_field']]
             ret_rep = details['formatter'].format(ret_val)
-        print(ret_val,ret_rep)
         return ret_val,ret_rep
 
     def on_set(self, value):
@@ -95,9 +94,11 @@ class MultiDo(dripline.core.Endpoint):
                 logger.warning('unable to set <{}>'.format(a_target))
                 raise dripline.core.exception_map[result.retcode](result.return_msg)
             # checking the value of the endpoint
-            if details['no_check']!=True:
+            if details['no_check']==True:
+                logger.info('no check after set required: skipping!')
+                continue
+            else:
                 value_get,a_rep = self._single_get(details['get_name'], details)
-            print(a_rep)
 
             if type(value_get) is unicode:
                 logger.info('result in unicode')

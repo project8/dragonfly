@@ -1,4 +1,4 @@
-name: multiset_test
+name: multido
 broker: localhost
 module: Spimescape
 endpoints:
@@ -15,3 +15,4 @@ endpoints:
         payload_field: value_cal
         get_target: chips
         target_value: 3.
+        no_check: True
