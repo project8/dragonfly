@@ -1,0 +1,14 @@
+name: multiset_test
+broker: localhost
+module: Spimescape
+endpoints:
+  - name: prices
+    module: MultiDo
+    targets:
+      - target: waffles
+        payload_field: value_cal
+      - target: peaches
+        payload_field: value_cal
+        default_set: 2.5
+      - target: chips
+        payload_field: value_cal
