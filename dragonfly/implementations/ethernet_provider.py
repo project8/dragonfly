@@ -135,7 +135,7 @@ class EthernetProvider(Provider):
 
         try:
             all_data += self.send_commands(commands, **kwargs)
-        except socket.error:
+        except (socket.error, exceptions.DriplineHardwareResponselessError):
             self.alock.release()
             self.reconnect()
             self.alock.acquire()
@@ -162,9 +162,10 @@ class EthernetProvider(Provider):
                 else:
                     break
         except socket.timeout:
-            logger.warning('socket.timeout condition met')
+            logger.warning('socket.timeout condition met; received:\n{}'.format(data))
             if blank_command == False and data == "":
                 logger.critical('Cannot Connect to: ' + self.socket_info[0])
+                raise exceptions.DriplineHardwareResponselessError("socket.timeout from {}".format(self.socket_info[0]))
         if self.response_terminator:
             data = data.rsplit(self.response_terminator,1)[0]
         return data
