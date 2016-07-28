@@ -88,7 +88,7 @@ class MultiDo(dripline.core.Endpoint):
                 value_to_set = details['default_set']
             else:
                 value_to_set = value
-
+            logger.info('setting <{}>'.format(a_target))
             result = self._single_set(a_target, value_to_set)
             if result.retcode !=0:
                 logger.warning('unable to set <{}>'.format(a_target))
@@ -98,6 +98,7 @@ class MultiDo(dripline.core.Endpoint):
                 logger.info('no check after set required: skipping!')
                 continue
             else:
+                logger.info('checking <{}>'.format(a_target))
                 value_get,a_rep = self._single_get(details['get_name'], details)
 
             if type(value_get) is unicode:
@@ -113,6 +114,9 @@ class MultiDo(dripline.core.Endpoint):
             # checking a target has been given (else use the endpoint used to set)
             if 'target_value' in details:
                 target_value = details['target_value']
+            elif 'default_set' in details:
+                logger.info('default_set ({}) given for <{}>: using this as target_value'.format(details['default_set'],a_target))
+                target_value = details['default_set']
             else:
                 logger.info('no target_value given: using value ({}) as a target_value to check'.format(value))
                 target_value = value
@@ -122,7 +126,7 @@ class MultiDo(dripline.core.Endpoint):
             # if the value we are checking is a float/int
             if isinstance(value_get, float) or isinstance(value_get, int):
                 if  not isinstance(target_value,float) and not isinstance(target_value,int):
-                    logger.warning('target is not the same type as the value get: going to use the set value ({}) as target_value'.format(value))
+                    logger.warning('target <{}> is not the same type as the value get: going to use the set value ({}) as target_value'.format(a_target,value))
                     target_value = value
                 if isinstance(target_value,float) or isinstance(target_value,int):
                     if 'tolerance' in details:
@@ -141,9 +145,9 @@ class MultiDo(dripline.core.Endpoint):
                             tolerance = 1.
                         logger.info('testing a-t<b<a+t')
                         if target_value -  tolerance <= value_get and value_get <= target_value + tolerance:
-                            logger.info('the value get ({}) is included in the target_value ({}) +- tolerance ({})'.format(value_get,target_value,tolerance))
+                            logger.info('the value get <{}> ({}) is included in the target_value ({}) +- tolerance ({})'.format(a_target,value_get,target_value,tolerance))
                         else:
-                            raise dripline.core.DriplineValueError('the value get ({}) is NOT included in the target_value ({}) +- tolerance ({}): stopping here!'.format(value_get,target_value,tolerance))
+                            raise dripline.core.DriplineValueError('the value get <{}> ({}) is NOT included in the target_value ({}) +- tolerance ({}): stopping here!'.format(a_target,value_get,target_value,tolerance))
                     elif isinstance(tolerance,types.StringType):
                         if '%' not in tolerance:
                             logger.info('absolute tolerance')
@@ -157,9 +161,9 @@ class MultiDo(dripline.core.Endpoint):
                             tolerance = 1.
                         logger.info('testing a-t<b<a+t')
                         if target_value -  tolerance <= value_get and value_get <= target_value + tolerance:
-                            logger.info('the value get ({}) is included in the target_value ({}) +- tolerance ({})'.format(value_get,target_value,tolerance))
+                            logger.info('the value <{}> get ({}) is included in the target_value ({}) +- tolerance ({})'.format(a_target,value_get,target_value,tolerance))
                         else:
-                            raise dripline.core.DriplineValueError('the value get ({}) is NOT included in the target_value ({}) +- tolerance ({}): stopping here!'.format(value_get,target_value,tolerance))
+                            raise dripline.core.DriplineValueError('the value <{}> get ({}) is NOT included in the target_value ({}) +- tolerance ({}): stopping here!'.format(a_target,value_get,target_value,tolerance))
                     else:
                         raise dripline.core.DriplineValueError('tolerance is not a float, int or string: stopping here')
                 else:
@@ -210,7 +214,7 @@ class MultiDo(dripline.core.Endpoint):
 
             logger.info('{} set to {}'.format(a_target,value_get))
 
-        return 'done'
+        return 'set and check successful'
 
     def _single_set(self, endpoint_name, value):
         '''

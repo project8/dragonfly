@@ -69,6 +69,7 @@ set_and_check -> an improved method which sends a list of set requests to change
         - name: NAME
           value: VALUE
           get_name: NAME
+          no_check: True/False
           payload_field: value_raw/value_cal
           target_value: TARGET_OF_SET
           tolerance: TOLERANCE (default: 1.)
@@ -315,6 +316,7 @@ class RunScript(object):
             logger.info('setting {}->{}'.format(this_set['name'], this_set['value']))
             set_kwargs.update({'endpoint':this_set['name'],'value':this_set['value']})
             result = self.interface.set(**set_kwargs)
+            print(result)
             if result.retcode == 0:
                 logger.debug('...set of {}->{} complete'.format(this_set['name'], this_set['value']))
             else:
@@ -330,6 +332,7 @@ class RunScript(object):
             else:
                 logger.info('No get_name provided: checking the set value using {}'.format(this_set['name']))
                 get_kwargs.update({'endpoint':this_set['name']})
+            result = self.interface.get(**get_kwargs)
 
             # choose to use the calibrated or raw value of the get value.
             if 'payload_field' in this_set:
@@ -367,11 +370,14 @@ class RunScript(object):
                 logger.info('value get ({}) is not floatable'.format(value_get))
                 value_get = value_get_temp
 
-            # checking a target_value has been given (else use the endpoint used to set)
+            # checking a target has been given (else use the endpoint used to set)
             if 'target_value' in this_set:
                 target_value = this_set['target_value']
+            elif 'default_set' in this_set:
+                logger.info('default_set ({}) given for <{}>: using this as target_value'.format(this_set['default_set'],a_target))
+                target_value = this_set['default_set']
             else:
-                logger.info('no get_target_value given: using value ({}) as a target_value to check'.format(this_set['value']))
+                logger.info('no target_value given: using value ({}) as a target_value to check'.format(this_set['value']))
                 target_value = this_set['value']
             if value_get==None:
                 raise dripline.core.DriplineValueError('value get is a None')
