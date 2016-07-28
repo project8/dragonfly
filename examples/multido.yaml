@@ -1,0 +1,18 @@
+name: multido
+broker: localhost
+module: Spimescape
+endpoints:
+  - name: prices
+    module: MultiDo
+    targets:
+      - target: waffles
+        payload_field: value_raw
+      - target: peaches
+        payload_field: value_cal
+        default_set: 2.5
+        target_value: 5.0
+      - target: chips
+        payload_field: value_cal
+        get_target: chips
+        target_value: 3.
+        no_check: True
