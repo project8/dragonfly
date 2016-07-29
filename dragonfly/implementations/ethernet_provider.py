@@ -120,7 +120,7 @@ class EthernetProvider(Provider):
             raise
         self.socket.settimeout(self.socket_timeout)
 
-        self.send("")
+        self.get(blank_command=True)
         if self.cmd_at_reconnect!=None:
             self.send(self.cmd_at_reconnect)
 
@@ -136,9 +136,8 @@ class EthernetProvider(Provider):
         try:
             all_data += self.send_commands(commands, **kwargs)
         except (socket.error, exceptions.DriplineHardwareResponselessError):
-            self.alock.release()
+            logger.warning("Attempting socket reconnect")
             self.reconnect()
-            self.alock.acquire()
             all_data += self.send_commands(commands, **kwargs)
         finally:
             self.alock.release()
