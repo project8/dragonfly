@@ -44,7 +44,7 @@ class DSPLockin7265(GPIBInstrument):
         command = "DC. {}".format(key)
         extended = [command] + (pts-1)*[""]
         result = self.send(extended)
-        if len(result.split(';')) != pts:
+        if pts != len(result.split(';')) - result.split(';').count(''):
             raise ValueError("Missing data points")
         return result
 
