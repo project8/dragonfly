@@ -150,14 +150,13 @@ class EthernetProvider(Provider):
         try:
             while True:
                 data += self.socket.recv(1024)
-                if self.response_terminator:
-                    if data not in (self.response_terminator,self.bare_response_terminator):
-                        if data.endswith(self.response_terminator):
-                            data = data[0:data.find(self.response_terminator)]
-                            break
-                        elif data.endswith(self.bare_response_terminator):
-                            data = data[0:data.find(self.bare_response_terminator)]
-                            break
+                if data not in (self.response_terminator, self.bare_response_terminator):
+                    if (self.response_terminator and data.endswith(self.response_terminator)):
+                        data = data[0:data.find(self.response_terminator)]
+                        break
+                    elif (self.bare_response_terminator and data.endswith(self.bare_response_terminator)):
+                        data = data[0:data.find(self.bare_response_terminator)]
+                        break
                 else:
                     break
         except socket.timeout:
