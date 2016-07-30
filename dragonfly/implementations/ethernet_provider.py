@@ -120,9 +120,11 @@ class EthernetProvider(Provider):
             raise
         self.socket.settimeout(self.socket_timeout)
 
-        self.get(blank_command=True)
-        if self.cmd_at_reconnect!=None:
+        if self.cmd_at_reconnect is not None:
             self.send(self.cmd_at_reconnect)
+        else:
+            getbuf = self.get(blank_command=True)
+            logger.info("Reconnect buffer dump: {}".format(repr(getbuf)))
 
     def send(self, commands, **kwargs):
         '''
@@ -160,7 +162,7 @@ class EthernetProvider(Provider):
                 else:
                     break
         except socket.timeout:
-            logger.warning('socket.timeout condition met; received:\n{}'.format(data))
+            logger.warning('socket.timeout condition met; received:\n{}'.format(repr(data)))
             if blank_command == False and data == "":
                 logger.critical('Cannot Connect to: ' + self.socket_info[0])
                 raise exceptions.DriplineHardwareResponselessError("socket.timeout from {}".format(self.socket_info[0]))
