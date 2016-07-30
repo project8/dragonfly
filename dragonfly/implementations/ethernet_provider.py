@@ -120,9 +120,11 @@ class EthernetProvider(Provider):
             raise
         self.socket.settimeout(self.socket_timeout)
 
-        self.send("")
-        if self.cmd_at_reconnect!=None:
+        if self.cmd_at_reconnect is not None:
             self.send(self.cmd_at_reconnect)
+        else:
+            getbuf = self.get(blank_command=True)
+            logger.info("Reconnect buffer dump: {}".format(repr(getbuf)))
 
     def send(self, commands, **kwargs):
         '''
@@ -135,10 +137,9 @@ class EthernetProvider(Provider):
 
         try:
             all_data += self.send_commands(commands, **kwargs)
-        except socket.error:
-            self.alock.release()
+        except (socket.error, exceptions.DriplineHardwareResponselessError):
+            logger.warning("Attempting socket reconnect")
             self.reconnect()
-            self.alock.acquire()
             all_data += self.send_commands(commands, **kwargs)
         finally:
             self.alock.release()
@@ -151,20 +152,20 @@ class EthernetProvider(Provider):
         try:
             while True:
                 data += self.socket.recv(1024)
-                if self.response_terminator:
-                    if data not in (self.response_terminator,self.bare_response_terminator):
-                        if data.endswith(self.response_terminator):
-                            data = data[0:data.find(self.response_terminator)]
-                            break
-                        elif data.endswith(self.bare_response_terminator):
-                            data = data[0:data.find(self.bare_response_terminator)]
-                            break
+                if data not in (self.response_terminator, self.bare_response_terminator):
+                    if (self.response_terminator and data.endswith(self.response_terminator)):
+                        data = data[0:data.find(self.response_terminator)]
+                        break
+                    elif (self.bare_response_terminator and data.endswith(self.bare_response_terminator)):
+                        data = data[0:data.find(self.bare_response_terminator)]
+                        break
                 else:
                     break
         except socket.timeout:
-            logger.warning('socket.timeout condition met')
+            logger.warning('socket.timeout condition met; received:\n{}'.format(repr(data)))
             if blank_command == False and data == "":
                 logger.critical('Cannot Connect to: ' + self.socket_info[0])
+                raise exceptions.DriplineHardwareResponselessError("socket.timeout from {}".format(self.socket_info[0]))
         if self.response_terminator:
             data = data.rsplit(self.response_terminator,1)[0]
         return data
