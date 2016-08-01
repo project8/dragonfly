@@ -57,6 +57,7 @@ class ESR_Measurement(core.Endpoint):
 	self.hf_n_sweep_points = hf_n_sweep_points
 	self.hf_dwell_time = hf_dwell_time
         # Constants and analysis parameters
+        self.shape = 'gaussian'
         self.electron_cyclotron_frequency = 1.758820024e11 # rad s^-1 T^-1
         self.esr_g_factor = 2.0026
         # Output storage
@@ -135,7 +136,7 @@ class ESR_Measurement(core.Endpoint):
         data['amplitude'] = data['lockin_x_data'] + 1j*data['lockin_y_data']
 
         # Weiner filter and analysis
-        filter_data = WeinerFilter(data['frequency'],data['amplitude'],'lorentzian')
+        filter_data = WeinerFilter(data['frequency'], data['amplitude'], self.shape)
             #TODO a fit would be more appropriate to get uncertainty
         max_freq_index = numpy.argmax(filter_data['result'])
         res_freq = filter_data['freqs'][max_freq_index]
@@ -149,10 +150,8 @@ class ESR_Measurement(core.Endpoint):
         fit_field = 4.e6*numpy.pi*fit_freq / (self.esr_g_factor*self.electron_cyclotron_frequency)
         fit_field_e = fit_field * fit_freq_e / fit_freq
         self.data_dict[coil] = { 'raw_data' : { 'frequency' : data['frequency'],
-                                                'amplitude' : data['amplitude'],
                                                 'amp_x' : data['lockin_x_data'],
-                                                'amp_y' : data['lockin_y_data'],
-                                                'amp_t' : data['lockin_mag'] },
+                                                'amp_y' : data['lockin_y_data'] },
                                  'filtered_data' : filter_data,
                                  'fits' : fits }
         fom1 = ( numpy.max(filter_data['result']) - numpy.mean(filter_data['result']) ) / numpy.std(filter_data['result'])
@@ -169,7 +168,6 @@ class ESR_Measurement(core.Endpoint):
             self.data_dict[coil]['result'] = { 'filt_field' : 0 }
 
         logger.info("Coil #{} result: field = {}, res_freq = {}".format(coil,b_field,res_freq))
-        logger.info("G: {}, L: {}, L2: {}".format(max_freq_index,numpy.argmax(filter_data['result3']),numpy.argmax(filter_data['result2'])))
 
         return b_field
 
@@ -199,26 +197,26 @@ class ESR_Measurement(core.Endpoint):
 
         insert = self.raw_get_ept("run_metadata")
         struct1.fStringPot = insert['string_pot']
-#        struct1.fC1Relay = int(insert['trap_coil_1_relay_status'])
-#        struct1.fC1Polarity = int(insert['trap_coil_1_polarity'])
-#        struct1.fC1Output = int(insert['trap_coil_1_output_status'])
-#        struct1.fC1Current = insert['trap_coil_1_current_output']
+        struct1.fC1Relay = int(insert['trap_coil_1_relay_status'])
+        struct1.fC1Polarity = int(insert['trap_coil_1_polarity'])
+        struct1.fC1Output = int(insert['trap_coil_1_output_status'])
+        struct1.fC1Current = insert['trap_coil_1_current_output']
         struct1.fC2Relay = int(insert['trap_coil_2_relay_status'])
         struct1.fC2Polarity = int(insert['trap_coil_2_polarity'])
         struct1.fC2Output = int(insert['trap_coil_2_output_status'])
         struct1.fC2Current = insert['trap_coil_2_current_output']
-#        struct1.fC3Relay = int(insert['trap_coil_3_relay_status'])
-#        struct1.fC3Polarity = int(insert['trap_coil_3_polarity'])
-#        struct1.fC3Output = int(insert['trap_coil_3_output_status'])
-#        struct1.fC3Current = insert['trap_coil_3_current_output']
+        struct1.fC3Relay = int(insert['trap_coil_3_relay_status'])
+        struct1.fC3Polarity = int(insert['trap_coil_3_polarity'])
+        struct1.fC3Output = int(insert['trap_coil_3_output_status'])
+        struct1.fC3Current = insert['trap_coil_3_current_output']
         struct1.fC4Relay = int(insert['trap_coil_4_relay_status'])
         struct1.fC5Polarity = int(insert['trap_coil_4_polarity'])
         struct1.fC4Output = int(insert['trap_coil_4_output_status'])
         struct1.fC4Current = insert['trap_coil_4_current_output']
-#        struct1.fC5Relay = int(insert['trap_coil_5_relay_status'])
-#        struct1.fC5Polarity = int(insert['trap_coil_5_polarity'])
-#        struct1.fC5Output = int(insert['trap_coil_5_output_status'])
-#        struct1.fC5Current = insert['trap_coil_5_current_output']
+        struct1.fC5Relay = int(insert['trap_coil_5_relay_status'])
+        struct1.fC5Polarity = int(insert['trap_coil_5_polarity'])
+        struct1.fC5Output = int(insert['trap_coil_5_output_status'])
+        struct1.fC5Current = insert['trap_coil_5_current_output']
 
         lockin = self.raw_get_ept("lockin_settings")
         struct1.fLNPts = int(lockin['lockin_n_points'])
@@ -252,23 +250,16 @@ class ESR_Measurement(core.Endpoint):
             if pts != self.lockin_n_points:
                 logger.warning("ESR coil #{}: unexpected trace length {}".format(coil, pts))
             dtree = TTree("coil{}".format(coil), "coil {} data".format(coil))
-            dtree.Branch("raw", struct2, "freq/F:amp_x:amp_y:amp_mag")
-            dtree.Branch("filt", AddressOf(struct2, "fF1"), "freq/F:result:target:result2:target2:result3:target3:mag:magx")
+            dtree.Branch("raw", struct2, "freq/F:amp_x:amp_y")
+            dtree.Branch("filt", AddressOf(struct2, "fF1"), "freq/F:result:target")
             
             for i in range(pts):
                 struct2.fR1 = self.data_dict[coil]['raw_data']['frequency'][i]
                 struct2.fR2 = self.data_dict[coil]['raw_data']['amp_x'][i]
                 struct2.fR3 = self.data_dict[coil]['raw_data']['amp_y'][i]
-                struct2.fR4 = self.data_dict[coil]['raw_data']['amp_t'][i]
                 struct2.fF1 = self.data_dict[coil]['filtered_data']['freqs'][i]
                 struct2.fF2 = self.data_dict[coil]['filtered_data']['result'][i]
                 struct2.fF3 = self.data_dict[coil]['filtered_data']['target'][i]
-                struct2.fF4 = self.data_dict[coil]['filtered_data']['result2'][i]
-                struct2.fF5 = self.data_dict[coil]['filtered_data']['target2'][i]
-                struct2.fF6 = self.data_dict[coil]['filtered_data']['result3'][i]
-                struct2.fF7 = self.data_dict[coil]['filtered_data']['target3'][i]
-                struct2.fF8 = self.data_dict[coil]['filtered_data']['mag'][i]
-                struct2.fF9 = self.data_dict[coil]['filtered_data']['magx'][i]
                 dtree.Fill()
             dtree.Write()
 
@@ -388,12 +379,13 @@ class ESR_Measurement(core.Endpoint):
     def root_setup(self):
 
         gROOT.Reset()
-	gStyle.SetOptStat     (0)
-	gStyle.SetOptFit      (0)
-	gStyle.SetTitleSize   (0.045,"xy")
-	gStyle.SetTitleOffset (0.8,  "xy")
-	gStyle.SetPadTickY    (1)
-	gStyle.SetPadTickX    (1)
+        gROOT.SetBatch()
+        gStyle.SetOptStat     (0)
+        gStyle.SetOptFit      (0)
+        gStyle.SetTitleSize   (0.045,"xy")
+        gStyle.SetTitleOffset (0.8,  "xy")
+        gStyle.SetPadTickY    (1)
+        gStyle.SetPadTickX    (1)
 
         gROOT.ProcessLine("struct MyStruct1 {\
                                Float_t fStringPot;\
@@ -438,16 +430,9 @@ class ESR_Measurement(core.Endpoint):
                                Float_t fR1;\
                                Float_t fR2;\
                                Float_t fR3;\
-                               Float_t fR4;\
                                Float_t fF1;\
                                Float_t fF2;\
                                Float_t fF3;\
-                               Float_t fF4;\
-                               Float_t fF5;\
-                               Float_t fF6;\
-                               Float_t fF7;\
-                               Float_t fF8;\
-                               Float_t fF9;\
 	                   };");
         gROOT.ProcessLine("struct MyStruct3 {\
                                Float_t fCRF;\
@@ -467,7 +452,7 @@ class ESR_Measurement(core.Endpoint):
 
     def run_scan(self):
         self.configure_instruments()
-        for i in range(1, 6):
+        for i in range(2, 6):
             self.single_measure(i)
         self.save_data()
         #logger.info(self.data_dict)
@@ -522,8 +507,8 @@ class ESR_Measurement(core.Endpoint):
         return
 
 
-def WeinerFilter(freq_data, amp_data, target='gaussian'):
-    logger.warning('doing filter on target: {}'.format(target))
+def WeinerFilter(freq_data, amp_data, shape='gaussian'):
+    logger.warning('doing filter on target: {}'.format(shape))
     data = zip(freq_data, amp_data)
     data.sort()
     f,v= zip(*data)
@@ -532,32 +517,20 @@ def WeinerFilter(freq_data, amp_data, target='gaussian'):
     width = (frequencies[numpy.argmin(voltages)] - frequencies[numpy.argmax(voltages)]) / 2.
     x1 = (frequencies - frequencies[0])
     x2 = (frequencies - frequencies[-1])
-    gderiv1 = -x1 * numpy.exp(-x1**2 / 2. / width**2) * numpy.exp(0.5) / width
-    gderiv2 = -x2 * numpy.exp(-x2**2 / 2. / width**2) * numpy.exp(0.5) / width
-    lderiv1 = -x1 / (x1**2 + (width * 3.**0.5)**2)**2 * 16. * width**3
-    lderiv2 = -x2 / (x2**2 + (width * 3.**0.5)**2)**2 * 16. * width**3
-    ld1 = -x1 / (x1**2 + width**2) * 2. * width
-    ld2 = -x2 / (x2**2 + width**2) * 2. * width
-    targets = {}
-    targets['gaussian'] = numpy.concatenate((gderiv1[:len(gderiv1)/2], gderiv2[len(gderiv2)/2:]))
-    targets['lorentzian'] = numpy.concatenate((lderiv1[:len(lderiv1)/2], lderiv2[len(lderiv2)/2:]))
-    targets['lorentzish'] = numpy.concatenate((ld1[:len(ld1)/2], ld2[len(ld2)/2:]))
-    target_signal = targets[target]
+    if shape == 'gaussian':
+        deriv1 = -x1 * numpy.exp(-x1**2 / 2. / width**2) * numpy.exp(0.5) / width
+        deriv2 = -x2 * numpy.exp(-x2**2 / 2. / width**2) * numpy.exp(0.5) / width
+    elif shape == 'lorentzian':
+        deriv1 = -x1 / (x1**2 + (width * 3.**0.5)**2)**2 * 16. * width**3
+        deriv2 = -x2 / (x2**2 + (width * 3.**0.5)**2)**2 * 16. * width**3
+    target_signal = numpy.concatenate((deriv1[:len(deriv1)/2], deriv2[len(deriv2)/2:]))
     if not sum(target_signal != 0):
         raise ValueError("target signal identically 0, did you give width in Hz?")
     data_fft = numpy.fft.fft(voltages)
     data_fft[0] = 0
-    filtered = {}
-    for shape in targets:
-        target_fft = numpy.fft.fft(targets[shape])
-        filtered[shape] = numpy.fft.ifft(data_fft * target_fft)
+    target_fft = numpy.fft.fft(target_signal)
+    filtered = numpy.fft.ifft(data_fft * target_fft)
     return {'freqs': frequencies,
-            'mag': numpy.abs(voltages),
-            'magx': numpy.real(voltages),
-            'result': numpy.abs(filtered['gaussian']),
-            'target': targets['gaussian'],
-            'result2': numpy.abs(filtered['lorentzian']),
-            'target2': targets['lorentzian'],
-            'result3': numpy.abs(filtered['lorentzish']),
-            'target3': targets['lorentzish']
+            'result': numpy.abs(filtered),
+            'target': target_signal,
            }
