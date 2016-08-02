@@ -15,6 +15,8 @@ class MultiSet(dripline.core.Endpoint):
     MultiSet is a convenience object allowing a single target to be
     used to set multiple endpoints. The intended use is specifically
     for setting many endpoints, and use cases for other verbs are not considered.
+    This is a very primitive version of MultiDo, since it does not integrate the set_and_check feature.
+    We should keep it because it is working.
     '''
     def __init__(self, targets=[], **kwargs):
         '''
