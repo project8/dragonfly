@@ -214,6 +214,11 @@ class RunScript(object):
                             default = False,
                             help='forcing to restarting the whole execution script, regardless of its completion status',
                            )
+        parser.add_argument('-d','--dry-run',
+                            action='store_true',
+                            default = False,
+                            help='does not effectivey execute the start_timed_run command of the DAQ systems',
+                           )
 
     def __call__(self, kwargs):
         if not 'broker' in kwargs:
@@ -486,7 +491,10 @@ class RunScript(object):
         for daq in daq_targets:
             run_kwargs.update({'endpoint':daq, 'run_name':run_name.format(daq)})
             logger.debug('run_kwargs are: {}'.format(run_kwargs))
-            self.interface.cmd(**run_kwargs)
+            if kwargs.dry_run:
+                logger.info('--dry-run flag: not starting a run')
+            else:
+                self.interface.cmd(**run_kwargs)
         logger.info('daq all started, now wait for requested livetime')
         while (datetime.datetime.now() - start_of_runs).total_seconds() < run_duration:
             logger.info('time remaining >= {:.0f} seconds'.format(run_duration-(datetime.datetime.now()-start_of_runs).total_seconds()))
