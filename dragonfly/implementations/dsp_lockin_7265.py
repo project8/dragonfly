@@ -52,7 +52,7 @@ class DSPLockin7265(GPIBInstrument):
 def acquisition_calibration(value):
     if value[0] == 0:
         status = 'done, {} curve(s) available with {} points'.format(value[1], value[3])
-    elif value[1] == 1:
+    elif value[0] == 1:
         status = 'running, {} points collected'.format(value[3])
     else:
         raise ValueError('unexpected status byte value: {}'.format(value[0]))
