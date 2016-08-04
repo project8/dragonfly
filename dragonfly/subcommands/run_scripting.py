@@ -14,7 +14,11 @@ The file should parse to a list of dictionaries. Each dictionary will define a t
 action to take, in order, with various configurable parameters. Each will specify the
 action with a line:
 
-    action: {pause_for_user, lockout, set, single_run, multi_run}
+    action: {pause_for_user, lockout, set, cmd, do, single_run, multi_run}
+
+Several flags exists:
+    - "--force-restart" (-f): remove the cache and force the execution script to start from the very begining.
+    - "--dry-run" (-d): globally disable the possibility to start a run (in single_run and multi_run).
 
 pause_for_user -> print a message to the user and wait for a response. The content
     of the user's reply will not be stored or used. This allows indefinate pauses
@@ -36,44 +40,60 @@ lockout -> send a lockout command to the specified list of endpoints. If a locko
             - NAME
             ...
 
-set -> send a list of set requests to change/ensure a desired system state. Initially
-    these sets will be somewhat "blind" in the sense that they will only check the
-    return code in the ReplyMessage, but will not further confirm that the system
-    has achieved the requested state. The next iteration should add support for
-    checking the returned value (assuming the endpoint has get_on_set == True) against
-    the value requested, and allowing the user to specify some tolerance. A further
-    enhancement would allow a similar check to be made by sending a "get" request
-    to another endpoint (for example, set the current_limit of some power supply,
-    then ensure that the current_output is close to the value desired). Both of
-    these upgrades should be quite doable, but significantly increase the edge cases
-    that must be considered:
+set -> an improved method which sends a list of set requests to change/ensure a
+    desired system state and make sure that this state has been reached.
+    The check can be done using an other endpoint (for example, the actual
+    current output of trap_coil_X can be check using trap_coil_X_current_output
+    after setting trap_coil_X_current_limit).
+    If no endpoint name is given in "get_name", the check will use the endpoint used to set the value.
+    On can define target_value to be compared with the get_value; if None, the set_value is used.
+    The target_value can be a bool, string, float/int.
+    The check can use the raw or calibrated value of the get_value.
+    The tolerance between a "target_value" and the "value_get" can be set in an
+    absolute scale (ex/default: 1) or a relative one (ex/default: 5%).
+    The automatic check after the set of a specific endpoint can be disabled by
+    adding a "no_check: True" to the endpoint set.
+    Sooner or later, this method should be replaced by a set_and_check within dripline...
 
         - action: set
           sets:
             - name: NAME
               value: VALUE
-            - name: NAME
-              value: VALUE
-            ...
+              get_name: NAME
+              no_check: True/False
+              payload_field: value_raw/value_cal
+              target_value: TARGET_OF_SET
+              tolerance: TOLERANCE (default: 1.)
 
-set_and_check -> an improved method which sends a list of set requests to change/ensure a desired system state and make sure that this state has been reached.
-    The check can be done using an other endpoint (for example, the actual current output of trap_coil_X can be check using trap_coil_X_current_output after setting trap_coil_X_current_limit).
-    If no "get_name" is given, the check will use the endpoint used to set the value.
-    The check can use the raw or calibrated value of the get_value.
-    The tolerance between a "target_value" and the "value_get" can be set in an absolute scale (ex: 1) or a relative one (ex: 5%).
-    The automatic check after the set of a specific endpoint can be disabled by adding a "no_check: True" to the endpoint set.
-    Sooner or later, this method should replace the classical set...
+cmd -> send a cmd requests to an existing endpoint. The paramter "param" is the name
+    of the variable that needs to be given to the method and "vparam" the desired value.
+    For example, one can use "action_cmd" to start_timed_run (even if this is unoptimzed) by assigning:
+    "endpoint: daq_target", "method_name: start_timed_run", "run_name: name_of_the_run",
+    "run_time: duration_of_the_run"
 
-    - action: set_and_check
-      sets:
-        - name: NAME
-          value: VALUE
-          get_name: NAME
-          no_check: True/False
-          payload_field: value_raw/value_cal
-          target_value: TARGET_OF_SET
-          tolerance: TOLERANCE (default: 1.)
+        - action: cmd
+          cmds:
+            - endpoint: ENDPOINT_NAME
+              method_name: method_name
+              (param: vparam)
+          ...
 
+do -> combine the set and cmd actions within one list of "operations". Same deal as above...
+
+        - action: do
+          operations:
+            - sets:
+              - name: NAME
+                value: VALUE
+                ...
+            - cmds:
+              - endpoint: oz
+                method_name: do_a_magic_trick
+                param: 1.3
+            - sets:
+              - name: chips
+                value: 2.4
+                payload_field: value_raw
 
 single_run -> collect a single run using one or more DAQ systems. The value provided
     for the run_duration currently must be number in seconds, it would be nice if
@@ -93,11 +113,11 @@ single_run -> collect a single run using one or more DAQ systems. The value prov
           ...
 
 multi_run -> probably the most useful/sophisticated action, effectively provides
-    a for-loop structure. Each iteration will first go through any provided sets,
-    then collect a single run. The "value" field for sets will be modified in that
-    it can be either dictionary or a string. If it is a dictionary, a vale will
-    be expected to be indexable from the run_iterator (which starts at 0). If a
-    string, then a value will be determiend using eval(VALUE.format(run_count)).
+    a for-loop structure. Each iteration will first go through any sets and/or cmds
+    provided in operations, then collect a single run. The "value" field for sets will be modified in that
+    it can be either a list, a dictionary or a string (it can also be a simple float/int).
+    If it is a dictionary, a value will be expected to be indexable from the run_iterator
+    (which starts at 0). If a string, then a value will be determiend using eval(VALUE.format(run_count)).
     Similarly, the run_name may contain both/either "{run_count}" or {daq_target}
     which will be passed as named replacements to format() (note that there will
     not be any un-named values to unpack). The run_duration may be a value (which
@@ -105,16 +125,20 @@ multi_run -> probably the most useful/sophisticated action, effectively provides
     sets (allowing for runs of variable duration).
 
       - action: multi_run
-        sets:
-          - name: NAME
-            value:
-              0: VALUE
-              1: VALUE
-              2: VALUE
-          - name: NAME
-            value: "EXPRESION*{}"
-          ...
-
+        operations:
+          - sets:
+              - name: NAME
+                value:
+                  0: VALUE
+                  1: VALUE
+                  2: VALUE
+              - name: NAME
+                value: "EXPRESION*{}"
+              ...
+          - cmds:
+              - endpoint: ENDPOINT_NAME
+                method_name: method_name
+                (value: ...)
         runs:
             run_duration: {VALUE | "EXPRESSION" | {RUN_COUNT: VALUE, ...}}
             run_name: STRING_OPTIONALLY_WITH_{daq_target}_AND/OR_{run_count}
@@ -218,7 +242,7 @@ class RunScript(object):
         parser.add_argument('-d','--dry-run',
                             action='store_true',
                             default = False,
-                            help='does not effectivey execute the start_timed_run command of the DAQ systems',
+                            help='flag which disactivates the daq start_timed_run globally (aka for the whole execution script)',
                            )
 
     def __call__(self, kwargs):
@@ -299,21 +323,6 @@ class RunScript(object):
             else:
                 logger.warning('unable to lock <{}>'.format(target))
                 raise dripline.core.exception_map[result.retcode](result.return_msg)
-    # Old way to set endpoint values (depreciated)
-    # def action_set(self, sets, **kwargs):
-    #     logger.info('doing set block')
-    #     set_kwargs = {'endpoint':None, 'value':None}
-    #     if self._lockout_key:
-    #         set_kwargs.update({'lockout_key':self._lockout_key})
-    #     for this_set in sets:
-    #         logger.info('setting {}->{}'.format(this_set['name'], this_set['value']))
-    #         set_kwargs.update({'endpoint':this_set['name'],'value':this_set['value']})
-    #         result = self.interface.set(**set_kwargs)
-    #         if result.retcode == 0:
-    #             logger.debug('...set of {}->{} complete'.format(this_set['name'], this_set['value']))
-    #         else:
-    #             logger.warning('unable to set <{}>'.format(this_set['name']))
-    #             raise dripline.core.exception_map[result.retcode](result.return_msg)
 
     def action_cmd(self, cmds, **kwargs):
         logger.info('doing cmd block')
@@ -549,8 +558,10 @@ class RunScript(object):
                 logger.info('run already complete, skipping')
                 continue
             # compute args for, and call, action_set, based on run_count
-            these_operations = []
-
+            # for sets, we have to format/calculate the value to set using evaluator
+            # this will build a new dictionary "evaluated_operations"
+            # for cmds, we simply add them to the dictionary
+            # then the evaluated_operations dictionary is procceded using the action_do()
             evaluator = asteval.Interpreter()
             evaluated_operations = []
             for i_do,a_do in enumerate(operations):
@@ -614,7 +625,7 @@ class RunScript(object):
             this_run_name = runs['run_name'].format(daq_target='{}', run_count=run_count)
             logger.info('run will be [{}] seconds with name "{}"'.format(this_run_duration, this_run_name))
 
-
+            # here we start each run (if debug_mode exists and is True)
             if 'debug_mode' in runs and isinstance(runs['debug_mode'], bool) and runs['debug_mode']==True:
                 logger.info('debug mode activated: no run will be launched')
             else:
@@ -623,80 +634,6 @@ class RunScript(object):
             # update cache variable with this run being complete and update the cache file
             self._action_cache['last_run'] = run_count
             self.update_cache()
-    #
-    #
-    # def action_multi_run(self, runs, total_runs, sets=[], **kwargs):
-    #     # establish default values for cache (in case of first call)
-    #     # override with any values loaded from file
-    #     # then update the instance variable with the current state
-    #     initial_state = {'last_run': -1,}
-    #     initial_state.update(self._action_cache)
-    #     self._action_cache.update(initial_state)
-    #
-    #     for run_count in range(total_runs):
-    #         # skip runs that were already completed (only relevant if restarting an execution)
-    #         logger.info('doing action [{}] run [{}]'.format(self._last_action+1, run_count))
-    #         if run_count <= self._action_cache['last_run']:
-    #             logger.info('run already complete, skipping')
-    #             continue
-    #         # compute args for, and call, action_set, based on run_count
-    #         these_sets = []
-    #         evaluator = asteval.Interpreter()
-    #         for a_set in sets:
-    #             this_value = None
-    #             logger.info('set type is: {}'.format(type(a_set['value'])))
-    #             if isinstance(a_set['value'], dict):
-    #                 this_value = a_set['value'][run_count]
-    #             elif isinstance(a_set['value'],list):
-    #                 if isinstance(a_set['value'][run_count],float) or isinstance(a_set['value'][run_count],int):
-    #                     this_value = a_set['value'][run_count]
-    #                 else:
-    #                     raise dripline.core.DriplineValueError('set list ({}) does not contain only float or int'.format(a_set['name']))
-    #             elif isinstance(a_set['value'], str):
-    #                 if isinstance(evaluator(a_set['value'].format(run_count)),float) or isinstance(evaluator(a_set['value'].format(run_count)),int):
-    #                     this_value = evaluator(a_set['value'].format(run_count))
-    #                 elif isinstance(evaluator(a_set['value'].format(run_count)),list):
-    #                     this_value = evaluator(a_set['value'].format(run_count))[run_count]
-    #                 else:
-    #                     this_value = evaluator(a_set['value'].format(run_count))
-    #                     if this_value==None:
-    #                         this_value = a_set['value']
-    #                     # print(this_value)
-    #             elif isinstance(a_set['value'], bool):
-    #                 this_value = a_set['value']
-    #             else:
-    #                 logger.info('failed to parse set:\n{}'.format(a_set))
-    #                 raise dripline.core.DriplineValueError('set value not a dictionary or evaluatable expression')
-    #             dict_temp = {'name': a_set['name'], 'value': this_value}
-    #             # these_sets.append({'name': a_set['name'], 'value': this_value})
-    #             for key in a_set:
-    #                 if key != 'name' and key != 'value':
-    #                     dict_temp.update({key: a_set[key]})
-    #             these_sets.append(dict_temp)
-    #
-    #         logger.info('computed sets are:\n{}'.format(these_sets))
-    #         self.action_set(these_sets)
-    #         # compute args for, and call, action_single_run, based on run_count
-    #         this_run_duration = None
-    #         if isinstance(runs['run_duration'], float) or isinstance(runs['run_duration'], int):
-    #             this_run_duration = runs['run_duration']
-    #         elif isinstance(runs['run_duration'], dict):
-    #             this_run_duration = runs['run_duration'][run_count]
-    #         elif isinstance(runs['run_duration'], str):
-    #             this_run_duration = evaluator(runs['run_duration'].format(run_count))
-    #         else:
-    #             logger.info('failed to compute run duration for run: {}'.format(run_count))
-    #             raise dripline.core.DriplineValueError('set value not a dictionary or evaluatable expression')
-    #         this_run_name = runs['run_name'].format(daq_target='{}', run_count=run_count)
-    #         logger.info('run will be [{}] seconds with name "{}"'.format(this_run_duration, this_run_name))
-    #         if isinstance(runs['debug_mode'], bool) and runs['debug_mode']==True:
-    #             logger.info('debug mode activated: no run will be launched')
-    #         else:
-    #             self.action_single_run(this_run_duration, this_run_name, runs['daq_targets'])
-    #         # update cache variable with this run being complete and update the cache file
-    #         self._action_cache['last_run'] = run_count
-    #         self.update_cache()
-
 
     def do_unlocks(self):
         unlocked = []
