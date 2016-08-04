@@ -33,6 +33,7 @@ class ESR_Measurement(core.Endpoint):
                  lockin_ac_gain,
                  lockin_sensitivity,
                  lockin_time_constant,
+                 hf_sweep_order,
                  hf_start_freq,
                  hf_stop_freq,
                  hf_power,
@@ -51,6 +52,7 @@ class ESR_Measurement(core.Endpoint):
 	self.lockin_ac_gain = lockin_ac_gain
 	self.lockin_sensitivity = lockin_sensitivity
 	self.lockin_time_constant = lockin_time_constant
+        self.hf_sweep_order = self.default_hf_sweep_order = hf_sweep_order
 	self.hf_start_freq = float(hf_start_freq)
 	self.hf_stop_freq = float(hf_stop_freq)
 	self.hf_power = hf_power
@@ -84,7 +86,8 @@ class ESR_Measurement(core.Endpoint):
                 break
             logger.warning("Clearing sweeper error queue: {}".format(err_msg))
         self.check_ept('hf_output_status', 0)
-        self.check_ept('hf_freq_mode','LIST')
+        self.check_ept('hf_freq_mode', 'LIST')
+        self.check_ept('hf_sweep_order', self.hf_sweep_order)
         self.check_ept('hf_start_freq', self.hf_start_freq)
         self.check_ept('hf_stop_freq', self.hf_stop_freq)
         self.check_ept('hf_power', self.hf_power)
@@ -129,7 +132,6 @@ class ESR_Measurement(core.Endpoint):
         data['sweep_out'] = lockin_result_to_array(self.drip_cmd('lockin_instrument.grab_data', 'adc'))
         data['lockin_x_data'] = lockin_result_to_array(self.drip_cmd('lockin_instrument.grab_data', 'x'))
         data['lockin_y_data'] = lockin_result_to_array(self.drip_cmd('lockin_instrument.grab_data', 'y'))
-        data['lockin_mag'] = lockin_result_to_array(self.drip_cmd('lockin_instrument.grab_data', 'mag'))
         ten_volts = 10.0
         frequency_span = self.hf_stop_freq - self.hf_start_freq
         data['frequency'] = self.hf_start_freq + frequency_span * data['sweep_out']/ten_volts
@@ -172,7 +174,7 @@ class ESR_Measurement(core.Endpoint):
         return b_field
 
     def save_data(self):
-        outpath = os.environ["HOME"] + "/esr/{:%Y%m%d_%H%M}/".format(datetime.now())
+        outpath = os.environ["HOME"] + "/GoogleDrive/Project8/Data/ESRData/Phase2/{:%Y%m%d_%H%M}/".format(datetime.now())
         if not os.path.exists(outpath):
             logger.info("Creating directory {}".format(outpath))
             os.makedirs(outpath)
@@ -193,7 +195,7 @@ class ESR_Measurement(core.Endpoint):
                                                              :lockin_curve_mask:lockin_srq_mask:lockin_ac_gain_dB/I\
                                                              :lockin_osc_amp_V/F:lockin_osc_freq_Hz:lockin_sensitivity_V:lockin_tc_s")
         htree.Branch("sweeper", AddressOf(struct1, "fSStart"), "sweeper_start_freq_Hz/F:sweeper_stop_freq_Hz:sweeper_power_dBm/F\
-                                                               :sweeper_dwell_time_s:sweeper_n_pts/I:sweeper_mode[10]/C")
+                                                               :sweeper_dwell_time_s:sweeper_n_pts/I:sweeper_mode[8]/C:sweeper_order[8]")
 
         insert = self.raw_get_ept("run_metadata")
         struct1.fStringPot = insert['string_pot']
@@ -237,6 +239,7 @@ class ESR_Measurement(core.Endpoint):
         struct1.fSDwell = float(sweeper['hf_dwell_time'])
         struct1.fSNPts = int(sweeper['hf_n_sweep_points'])
         struct1.fSMode = sweeper['hf_freq_mode']
+        struct1.fSOrder  = sweeper['hf_sweep_order']
 
         htree.Fill()
         htree.Write()
@@ -424,7 +427,8 @@ class ESR_Measurement(core.Endpoint):
                                Float_t fSPower;\
                                Float_t fSDwell;\
                                Int_t fSNPts;\
-                               Char_t fSMode[10];\
+                               Char_t fSMode[8];\
+                               Char_t fSOrder[8];\
                            };");
         gROOT.ProcessLine("struct MyStruct2 {\
                                Float_t fR1;\
@@ -451,8 +455,9 @@ class ESR_Measurement(core.Endpoint):
         self.reset_configure()
 
     def run_scan(self):
+        self.data_dict = {}
         self.configure_instruments()
-        for i in range(2, 6):
+        for i in range(1, 6):
             self.single_measure(i)
         self.save_data()
         #logger.info(self.data_dict)
@@ -467,7 +472,7 @@ class ESR_Measurement(core.Endpoint):
         if a_result.retcode == 0 :
             return a_result.payload['values'][0]
         else:
-            return '{} -> returned error <{}>:{}'.format(endpoint_name, a_result.retcode, a_result.return_msg)
+            return '{} -> returned error <{}>:{}'.format(cmdname, a_result.retcode, a_result.return_msg)
 
     def raw_get_ept(self, endptname):
         request_message = core.RequestMessage(msgop=core.OP_GET)
@@ -475,7 +480,7 @@ class ESR_Measurement(core.Endpoint):
         if a_result.retcode == 0 :
             return a_result.payload['value_raw']
         else:
-            return '{} -> returned error <{}>:{}'.format(endpoint_name, a_result.retcode, a_result.return_msg)
+            return '{} -> returned error <{}>:{}'.format(endptname, a_result.retcode, a_result.return_msg)
 
     def set_ept(self, endptname, val):
         request_message = core.RequestMessage(msgop=core.OP_SET,
@@ -483,7 +488,7 @@ class ESR_Measurement(core.Endpoint):
         a_result=self.portal.send_request(request=request_message,target=endptname)
         if a_result.retcode != 0 :
             ret_val = None
-            ret_rep = '{} -> returned error <{}>:{}'.format(endpoint_name, a_result.retcode, a_result.return_msg)
+            ret_rep = '{} -> returned error <{}>:{}'.format(endptname, a_result.retcode, a_result.return_msg)
             logger.alert("got error "+ret_rep)
         else:
             if 'values' in a_result.payload:
@@ -508,7 +513,7 @@ class ESR_Measurement(core.Endpoint):
 
 
 def WeinerFilter(freq_data, amp_data, shape='gaussian'):
-    logger.warning('doing filter on target: {}'.format(shape))
+    logger.info('doing filter on target: {}'.format(shape))
     data = zip(freq_data, amp_data)
     data.sort()
     f,v= zip(*data)
