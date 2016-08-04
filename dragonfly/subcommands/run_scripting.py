@@ -165,6 +165,7 @@ class RunScript(object):
         self._to_unlock = []
         self.interface = None
         self._cache_file_name = '/tmp/execution_cache.json'
+        self._dry_run_mode = False
 
 
     def init_cache_file(self, execution_file):
@@ -233,6 +234,9 @@ class RunScript(object):
             self.remove_cache()
         else:
             self.update_from_cache_file()
+        if kwargs.dry_run:
+            logger.info('dry run mode activated: no run will be launched!')
+            self._dry_run_mode = True
         try:
             # do each of the actions listed in the execution file
             actions = yaml.load(open(kwargs.execution_file))
@@ -321,6 +325,7 @@ class RunScript(object):
             for key in this_cmd:
                 if key is not 'endpoint' or 'method_name':
                     cmd_kwargs.update({key:this_cmd[key]})
+            logger.info('sending cmd {}.{}'.format(cmd_kwargs['endpoint'],cmd_kwargs['method_name']))
             self.interface.cmd(**cmd_kwargs)
 
     def action_set(self, sets, **kwargs):
@@ -509,7 +514,7 @@ class RunScript(object):
         for daq in daq_targets:
             run_kwargs.update({'endpoint':daq, 'run_name':run_name.format(daq)})
             logger.debug('run_kwargs are: {}'.format(run_kwargs))
-            if kwargs.dry_run:
+            if self._dry_run_mode:
                 logger.info('--dry-run flag: not starting a run')
             else:
                 self.interface.cmd(**run_kwargs)
@@ -529,7 +534,7 @@ class RunScript(object):
             time.sleep(5)
         logger.info('acquistions complete')
 
-    def action_multi_run(self, runs, total_runs, sets=[], **kwargs):
+    def action_multi_run(self, runs, total_runs, operations=[], **kwargs):
         # establish default values for cache (in case of first call)
         # override with any values loaded from file
         # then update the instance variable with the current state
@@ -544,121 +549,57 @@ class RunScript(object):
                 logger.info('run already complete, skipping')
                 continue
             # compute args for, and call, action_set, based on run_count
-            operations = []
+            these_operations = []
+
             evaluator = asteval.Interpreter()
-            for a_do in operations:
+            evaluated_operations = []
+            for i_do,a_do in enumerate(operations):
                 logger.info('doing operation #{}'.format(i_do))
-                for i_key,key in enumerate(this_do):
-                    if key == 'sets':
-                        these_sets = []
-                        for this_set in sets:
-                            logger.info('set type is: {}'.format(type(a_set['value'])))
-                            if isinstance(a_set['value'], dict):
-                                this_value = a_set['value'][run_count]
-                            elif isinstance(a_set['value'],list):
-                                if isinstance(a_set['value'][run_count],float) or isinstance(a_set['value'][run_count],int):
-                                    this_value = a_set['value'][run_count]
-                                else:
-                                    raise dripline.core.DriplineValueError('set list ({}) does not contain only float or int'.format(a_set['name']))
-                            elif isinstance(a_set['value'], str):
-                                if isinstance(evaluator(a_set['value'].format(run_count)),float) or isinstance(evaluator(a_set['value'].format(run_count)),int):
-                                    this_value = evaluator(a_set['value'].format(run_count))
-                                elif isinstance(evaluator(a_set['value'].format(run_count)),list):
-                                    this_value = evaluator(a_set['value'].format(run_count))[run_count]
-                                else:
-                                    this_value = evaluator(a_set['value'].format(run_count))
-                                    if this_value==None:
-                                        this_value = a_set['value']
-                                    # print(this_value)
-                            elif isinstance(a_set['value'], bool):
-                                this_value = a_set['value']
-                            else:
-                                logger.info('failed to parse set:\n{}'.format(a_set))
-                                raise dripline.core.DriplineValueError('set value not a dictionary or evaluatable expression')
-                            dict_temp = {'name': a_set['name'], 'value': this_value}
-                            # these_sets.append({'name': a_set['name'], 'value': this_value})
-                            for key in a_set:
-                                if key != 'name' and key != 'value':
-                                    dict_temp.update({key: a_set[key]})
-                            these_sets.append(dict_temp)
-                        
-                        if key== 'cmds':
-
-            logger.info('computed sets are:\n{}'.format(these_sets))
-            self.action_set(these_sets)
-            # compute args for, and call, action_single_run, based on run_count
-            this_run_duration = None
-            if isinstance(runs['run_duration'], float) or isinstance(runs['run_duration'], int):
-                this_run_duration = runs['run_duration']
-            elif isinstance(runs['run_duration'], dict):
-                this_run_duration = runs['run_duration'][run_count]
-            elif isinstance(runs['run_duration'], str):
-                this_run_duration = evaluator(runs['run_duration'].format(run_count))
-            else:
-                logger.info('failed to compute run duration for run: {}'.format(run_count))
-                raise dripline.core.DriplineValueError('set value not a dictionary or evaluatable expression')
-            this_run_name = runs['run_name'].format(daq_target='{}', run_count=run_count)
-            logger.info('run will be [{}] seconds with name "{}"'.format(this_run_duration, this_run_name))
-            if isinstance(runs['debug_mode'], bool) and runs['debug_mode']==True:
-                logger.info('debug mode activated: no run will be launched')
-            else:
-                self.action_single_run(this_run_duration, this_run_name, runs['daq_targets'])
-            # update cache variable with this run being complete and update the cache file
-            self._action_cache['last_run'] = run_count
-            self.update_cache()
-
-
-    def action_multi_run(self, runs, total_runs, sets=[], **kwargs):
-        # establish default values for cache (in case of first call)
-        # override with any values loaded from file
-        # then update the instance variable with the current state
-        initial_state = {'last_run': -1,}
-        initial_state.update(self._action_cache)
-        self._action_cache.update(initial_state)
-
-        for run_count in range(total_runs):
-            # skip runs that were already completed (only relevant if restarting an execution)
-            logger.info('doing action [{}] run [{}]'.format(self._last_action+1, run_count))
-            if run_count <= self._action_cache['last_run']:
-                logger.info('run already complete, skipping')
-                continue
-            # compute args for, and call, action_set, based on run_count
-            these_sets = []
-            evaluator = asteval.Interpreter()
-            for a_set in sets:
-                this_value = None
-                logger.info('set type is: {}'.format(type(a_set['value'])))
-                if isinstance(a_set['value'], dict):
-                    this_value = a_set['value'][run_count]
-                elif isinstance(a_set['value'],list):
-                    if isinstance(a_set['value'][run_count],float) or isinstance(a_set['value'][run_count],int):
-                        this_value = a_set['value'][run_count]
-                    else:
-                        raise dripline.core.DriplineValueError('set list ({}) does not contain only float or int'.format(a_set['name']))
-                elif isinstance(a_set['value'], str):
-                    if isinstance(evaluator(a_set['value'].format(run_count)),float) or isinstance(evaluator(a_set['value'].format(run_count)),int):
-                        this_value = evaluator(a_set['value'].format(run_count))
-                    elif isinstance(evaluator(a_set['value'].format(run_count)),list):
-                        this_value = evaluator(a_set['value'].format(run_count))[run_count]
-                    else:
-                        this_value = evaluator(a_set['value'].format(run_count))
-                        if this_value==None:
+                these_operations = []
+                key = a_do.keys()[0]
+                if key == 'sets':
+                    these_sets = []
+                    for a_set in a_do[key]:
+                        logger.info('set type is: {}'.format(type(a_set['value'])))
+                        if isinstance(a_set['value'], dict):
+                            this_value = a_set['value'][run_count]
+                        elif isinstance(a_set['value'], float) or isinstance(a_set['value'], int):
                             this_value = a_set['value']
-                        # print(this_value)
-                elif isinstance(a_set['value'], bool):
-                    this_value = a_set['value']
+                        elif isinstance(a_set['value'],list):
+                            if isinstance(a_set['value'][run_count],float) or isinstance(a_set['value'][run_count],int):
+                                this_value = a_set['value'][run_count]
+                            else:
+                                raise dripline.core.DriplineValueError('set list ({}) does not contain only float or int'.format(a_set['name']))
+                        elif isinstance(a_set['value'], str):
+                            if isinstance(evaluator(a_set['value'].format(run_count)),float) or isinstance(evaluator(a_set['value'].format(run_count)),int):
+                                this_value = evaluator(a_set['value'].format(run_count))
+                            elif isinstance(evaluator(a_set['value'].format(run_count)),list):
+                                this_value = evaluator(a_set['value'].format(run_count))[run_count]
+                            else:
+                                this_value = evaluator(a_set['value'].format(run_count))
+                                if this_value==None:
+                                    this_value = a_set['value']
+                                # print(this_value)
+                        elif isinstance(a_set['value'], bool):
+                            this_value = a_set['value']
+                        else:
+                            logger.info('failed to parse set:\n{}'.format(a_set))
+                            raise dripline.core.DriplineValueError('set value not a dictionary or evaluatable expression')
+                        dict_temp = {'name': a_set['name'], 'value': this_value}
+                        # these_sets.append({'name': a_set['name'], 'value': this_value})
+                        for key in a_set:
+                            if key != 'name' and key != 'value':
+                                dict_temp.update({key: a_set[key]})
+                        these_sets.append(dict_temp)
+                    evaluated_operations.append({'sets':these_sets})
+                elif key== 'cmds':
+                    evaluated_operations.append({'cmds':a_do[key]})
+                elif key == 'Runs':
+                    logger.warning('Runs should not be declared in the operations section: skipping!')
                 else:
-                    logger.info('failed to parse set:\n{}'.format(a_set))
-                    raise dripline.core.DriplineValueError('set value not a dictionary or evaluatable expression')
-                dict_temp = {'name': a_set['name'], 'value': this_value}
-                # these_sets.append({'name': a_set['name'], 'value': this_value})
-                for key in a_set:
-                    if key != 'name' and key != 'value':
-                        dict_temp.update({key: a_set[key]})
-                these_sets.append(dict_temp)
-
-            logger.info('computed sets are:\n{}'.format(these_sets))
-            self.action_set(these_sets)
+                    logger.warning('Operation unknown: skipping!')
+            logger.info('computed operations are:\n{}'.format(evaluated_operations))
+            self.action_do(evaluated_operations)
             # compute args for, and call, action_single_run, based on run_count
             this_run_duration = None
             if isinstance(runs['run_duration'], float) or isinstance(runs['run_duration'], int):
@@ -672,13 +613,89 @@ class RunScript(object):
                 raise dripline.core.DriplineValueError('set value not a dictionary or evaluatable expression')
             this_run_name = runs['run_name'].format(daq_target='{}', run_count=run_count)
             logger.info('run will be [{}] seconds with name "{}"'.format(this_run_duration, this_run_name))
-            if isinstance(runs['debug_mode'], bool) and runs['debug_mode']==True:
+
+
+            if 'debug_mode' in runs and isinstance(runs['debug_mode'], bool) and runs['debug_mode']==True:
                 logger.info('debug mode activated: no run will be launched')
             else:
                 self.action_single_run(this_run_duration, this_run_name, runs['daq_targets'])
+
             # update cache variable with this run being complete and update the cache file
             self._action_cache['last_run'] = run_count
             self.update_cache()
+    #
+    #
+    # def action_multi_run(self, runs, total_runs, sets=[], **kwargs):
+    #     # establish default values for cache (in case of first call)
+    #     # override with any values loaded from file
+    #     # then update the instance variable with the current state
+    #     initial_state = {'last_run': -1,}
+    #     initial_state.update(self._action_cache)
+    #     self._action_cache.update(initial_state)
+    #
+    #     for run_count in range(total_runs):
+    #         # skip runs that were already completed (only relevant if restarting an execution)
+    #         logger.info('doing action [{}] run [{}]'.format(self._last_action+1, run_count))
+    #         if run_count <= self._action_cache['last_run']:
+    #             logger.info('run already complete, skipping')
+    #             continue
+    #         # compute args for, and call, action_set, based on run_count
+    #         these_sets = []
+    #         evaluator = asteval.Interpreter()
+    #         for a_set in sets:
+    #             this_value = None
+    #             logger.info('set type is: {}'.format(type(a_set['value'])))
+    #             if isinstance(a_set['value'], dict):
+    #                 this_value = a_set['value'][run_count]
+    #             elif isinstance(a_set['value'],list):
+    #                 if isinstance(a_set['value'][run_count],float) or isinstance(a_set['value'][run_count],int):
+    #                     this_value = a_set['value'][run_count]
+    #                 else:
+    #                     raise dripline.core.DriplineValueError('set list ({}) does not contain only float or int'.format(a_set['name']))
+    #             elif isinstance(a_set['value'], str):
+    #                 if isinstance(evaluator(a_set['value'].format(run_count)),float) or isinstance(evaluator(a_set['value'].format(run_count)),int):
+    #                     this_value = evaluator(a_set['value'].format(run_count))
+    #                 elif isinstance(evaluator(a_set['value'].format(run_count)),list):
+    #                     this_value = evaluator(a_set['value'].format(run_count))[run_count]
+    #                 else:
+    #                     this_value = evaluator(a_set['value'].format(run_count))
+    #                     if this_value==None:
+    #                         this_value = a_set['value']
+    #                     # print(this_value)
+    #             elif isinstance(a_set['value'], bool):
+    #                 this_value = a_set['value']
+    #             else:
+    #                 logger.info('failed to parse set:\n{}'.format(a_set))
+    #                 raise dripline.core.DriplineValueError('set value not a dictionary or evaluatable expression')
+    #             dict_temp = {'name': a_set['name'], 'value': this_value}
+    #             # these_sets.append({'name': a_set['name'], 'value': this_value})
+    #             for key in a_set:
+    #                 if key != 'name' and key != 'value':
+    #                     dict_temp.update({key: a_set[key]})
+    #             these_sets.append(dict_temp)
+    #
+    #         logger.info('computed sets are:\n{}'.format(these_sets))
+    #         self.action_set(these_sets)
+    #         # compute args for, and call, action_single_run, based on run_count
+    #         this_run_duration = None
+    #         if isinstance(runs['run_duration'], float) or isinstance(runs['run_duration'], int):
+    #             this_run_duration = runs['run_duration']
+    #         elif isinstance(runs['run_duration'], dict):
+    #             this_run_duration = runs['run_duration'][run_count]
+    #         elif isinstance(runs['run_duration'], str):
+    #             this_run_duration = evaluator(runs['run_duration'].format(run_count))
+    #         else:
+    #             logger.info('failed to compute run duration for run: {}'.format(run_count))
+    #             raise dripline.core.DriplineValueError('set value not a dictionary or evaluatable expression')
+    #         this_run_name = runs['run_name'].format(daq_target='{}', run_count=run_count)
+    #         logger.info('run will be [{}] seconds with name "{}"'.format(this_run_duration, this_run_name))
+    #         if isinstance(runs['debug_mode'], bool) and runs['debug_mode']==True:
+    #             logger.info('debug mode activated: no run will be launched')
+    #         else:
+    #             self.action_single_run(this_run_duration, this_run_name, runs['daq_targets'])
+    #         # update cache variable with this run being complete and update the cache file
+    #         self._action_cache['last_run'] = run_count
+    #         self.update_cache()
 
 
     def do_unlocks(self):
