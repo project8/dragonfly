@@ -1,20 +1,20 @@
 from __future__ import absolute_import
 
 from dripline.core import Endpoint, exceptions, calibrate
-from .prologix import GPIBInstrument
+from .prologix_provider import PrologixProvider
 
 import logging
 logger = logging.getLogger(__name__)
 
 __all__ = [
-            'DSPLockin7265',
+            'LockinProvider',
             'ProviderProperty',
           ]
 
-class DSPLockin7265(GPIBInstrument):
+class LockinProvider(PrologixProvider):
     
     def __init__(self, **kwargs):
-        GPIBInstrument.__init__(self, **kwargs)
+        PrologixProvider.__init__(self, **kwargs)
 
     def grab_data(self, key):
         pts = int(self.send("LEN"))

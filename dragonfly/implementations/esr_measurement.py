@@ -68,7 +68,7 @@ class ESR_Measurement(core.Endpoint):
 
     # Configure instruments to default settings
     def configure_instruments(self):
-        # dsp_lockin_7265 controls
+        # lockin controls
         self.check_ept('lockin_n_points', self.lockin_n_points)
         self.check_ept('lockin_sampling_interval', self.lockin_sampling_interval)
         self.check_ept('lockin_trigger', self.lockin_trigger)
@@ -129,9 +129,9 @@ class ESR_Measurement(core.Endpoint):
 
         # Get the lockin data
         data = {}
-        data['sweep_out'] = lockin_result_to_array(self.drip_cmd('lockin_instrument.grab_data', 'adc'))
-        data['lockin_x_data'] = lockin_result_to_array(self.drip_cmd('lockin_instrument.grab_data', 'x'))
-        data['lockin_y_data'] = lockin_result_to_array(self.drip_cmd('lockin_instrument.grab_data', 'y'))
+        data['sweep_out'] = lockin_result_to_array(self.drip_cmd('lockin_interface.grab_data', 'adc'))
+        data['lockin_x_data'] = lockin_result_to_array(self.drip_cmd('lockin_interface.grab_data', 'x'))
+        data['lockin_y_data'] = lockin_result_to_array(self.drip_cmd('lockin_interface.grab_data', 'y'))
         ten_volts = 10.0
         frequency_span = self.hf_stop_freq - self.hf_start_freq
         data['frequency'] = self.hf_start_freq + frequency_span * data['sweep_out']/ten_volts
@@ -489,7 +489,7 @@ class ESR_Measurement(core.Endpoint):
         if a_result.retcode != 0 :
             ret_val = None
             ret_rep = '{} -> returned error <{}>:{}'.format(endptname, a_result.retcode, a_result.return_msg)
-            logger.alert("got error "+ret_rep)
+            logger.warning("got error "+ret_rep)
         else:
             if 'values' in a_result.payload:
                 ret_val = a_result.payload['values'][0]
@@ -505,7 +505,7 @@ class ESR_Measurement(core.Endpoint):
         if isinstance(val, int) or isinstance(val, float):
             ret_val = float(ret_val)
         elif not isinstance(val, str):
-            logger.alert("ret_val is of type {} with value {}".format(type(ret_val), ret_val))
+            logger.warning("ret_val is of type {} with value {}".format(type(ret_val), ret_val))
             raise TypeError
         if ret_val != val:
             raise core.exceptions.DriplineValueError("Failure to set endpoint: {}".format(endptname))

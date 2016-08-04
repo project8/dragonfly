@@ -13,12 +13,12 @@ import logging
 logger = logging.getLogger(__name__)
 
 __all__ = [
-           'GPIBInstrument',
+           'PrologixProvider',
            'MuxerGetSpime',
           ]
 
 
-class GPIBInstrument(Provider):
+class PrologixProvider(Provider):
     '''
     A Provider class intended for GPIB devices that implement the full
     IEEE 488.2 (488.1 or 488 need to use some other class).
