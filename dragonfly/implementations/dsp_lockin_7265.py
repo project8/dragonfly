@@ -41,12 +41,14 @@ class DSPLockin7265(GPIBInstrument):
                 raise ValueError("Invalid string key.")
         if not (1<<key) & cbd:
             raise ValueError("Curve {} not available, reconfigure CBD".format(key))
-        command = "DC. {}".format(key)
-        extended = [command] + (pts-1)*[""]
-        result = self.send(extended)
-        if pts != len(result.split(';')) - result.split(';').count(''):
+        command = ["++eot_enable 1\rDC. {}".format(key),
+                   "++eot_enable 0\r++eot_enable\r"]
+        result = self.send(command)
+        delimit = "\r\n*"
+        if pts != result.count(delimit):
             raise ValueError("Missing data points")
-        return result
+        result = result.split(";")[0]
+        return result.replace(delimit, ";").strip(";")
 
 
 def acquisition_calibration(value):
