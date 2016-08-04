@@ -468,7 +468,7 @@ class ESR_Measurement(core.Endpoint):
     def drip_cmd(self, cmdname, val):
         request_message = core.RequestMessage(msgop=core.OP_CMD,
                                               payload={'values':[val]})
-        a_result=self.portal.send_request(request=request_message,target=cmdname)
+        a_result=self.portal.send_request(request=request_message, target=cmdname, timeout=20)
         if a_result.retcode == 0 :
             return a_result.payload['values'][0]
         else:
@@ -476,7 +476,7 @@ class ESR_Measurement(core.Endpoint):
 
     def raw_get_ept(self, endptname):
         request_message = core.RequestMessage(msgop=core.OP_GET)
-        a_result=self.portal.send_request(request=request_message,target=endptname)
+        a_result=self.portal.send_request(request=request_message, target=endptname, timeout=20)
         if a_result.retcode == 0 :
             return a_result.payload['value_raw']
         else:
