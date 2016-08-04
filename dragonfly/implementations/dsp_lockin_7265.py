@@ -1,6 +1,6 @@
 from __future__ import absolute_import
 
-from dripline.core import Endpoint
+from dripline.core import Endpoint, exceptions, calibrate
 from .prologix import GPIBInstrument
 
 import logging
@@ -8,8 +8,6 @@ logger = logging.getLogger(__name__)
 
 __all__ = [
             'DSPLockin7265',
-            'RawSendEndpoint',
-            'CallProviderMethod',
             'ProviderProperty',
           ]
 
@@ -17,110 +15,87 @@ class DSPLockin7265(GPIBInstrument):
     
     def __init__(self, **kwargs):
         GPIBInstrument.__init__(self, **kwargs)
-        self._device_status_cmd = "ST"
 
-    def _confirm_setup(self):
-        # set the external ADC trigger mode
-        value = self.send("TADC 0;TADC")
-        logger.info('trig: {}'.format(value))
-        # select the curves to sample
-        value = self.send("CBD 55;CBD")
-        logger.info('curve buffer: {}'.format(value))
-        # set the status byte to include all options
-        value = self.send("MSK 255;MSK")
-        logger.info('status mask: {}'.format(value))
+    def grab_data(self, key):
+        pts = int(self.send("LEN"))
+        logger.info("expect {} pt data curves".format(pts))
+        cbd = int(self.send("CBD"))
+        logger.info("mask of available data curves is {}".format(cbd))
+        if not cbd & 0b00010000:
+            raise ValueError("No floating point data available, reconfigure CBD")
+        status = self.send("M")
+        status = map(int, status.split(','))
+        logger.info("{} curve(s) available, {} points per curve".format(status[1], status[3]))
+        if status[1] != 1:
+            raise ValueError("No curve available")
+        if status[3] != pts:
+            raise ValueError("Unexpected number of data points")
+        if not isinstance(key, int):
+            key = key.lower()
+            if key == "x": key = 0
+            elif key == "y": key = 1
+            elif key == "mag": key = 2
+            elif key == "phase": key = 3
+            elif key == "adc": key = 5
+            else:
+                raise ValueError("Invalid string key.")
+        if not (1<<key) & cbd:
+            raise ValueError("Curve {} not available, reconfigure CBD".format(key))
+        command = ["++eot_enable 1\rDC. {}".format(key),
+                   "++eot_enable 0\r++eot_enable\r"]
+        result = self.send(command)
+        delimit = "\r\n*"
+        if pts != result.count(delimit):
+            raise ValueError("Missing data points")
+        result = result.split(";")[0]
+        return result.replace(delimit, ";").strip(";")
 
-    def _check_status(self):
-        raw = self.send("ST")
-        if raw:
-            data = int(raw)
-        else:
-            return "No response"
-        status = ""
-        if data & 0b00000010:
-            ";".join([status, "invalid command"])
-        if data & 0b00000100:
-            ";".join([status, "invalid parameter"])
-        return status
 
-    def _taking_data_status(self):
-        result = self.send("M")
-        curve_status = result.split(',')[0]
-        status  = None
-        if curve_status == '0':
-            status = 'done'
-        elif curve_status == '1':
-            status = 'running'
-        else:
-            logger.error("unexpected status byte: {}".format(curve_status))
-            raise ValueError('unexpected status byte value')
-        return status
+def acquisition_calibration(value):
+    if value[0] == 0:
+        status = 'done, {} curve(s) available with {} points'.format(value[1], value[3])
+    elif value[0] == 1:
+        status = 'running, {} points collected'.format(value[3])
+    else:
+        raise ValueError('unexpected status byte value: {}'.format(value[0]))
+    return status
 
-    @property
-    def number_of_points(self):
-        return self.send("LEN")
-    @number_of_points.setter
-    def number_of_points(self, value):
-        if not isinstance(value, int):
-            raise TypeError('value must be an int')
-        status = self.send("len {};ST".format(value))
-        if not status == 1:
-            raise ValueError("got an error status code")
-
-    @property
-    def sampling_interval(self):
-        '''
-        Returns the sampling interval in ms
-        '''
-        return self.send("STR")
-    @sampling_interval.setter
-    def sampling_interval(self, value):
-        '''
-        set the sampling interval in integer ms (must be a multiple of 5)
-        '''
-        if not isinstance(value, int):
-            raise TypeError('value must be an int')
-        status = self.send("STR {};ST".format(value))
-        if not status == 1:
-            raise ValueError("got an error status code")
-
-class RawSendEndpoint(Endpoint):
-
-    def __init__(self, base_str, **kwargs):
-        Endpoint.__init__(self, **kwargs)
-        self.base_str = base_str
-
-    def on_get(self):
-        return self.provider.send(self.base_str)
-    
-    def on_set(self, value):
-        return self.provider.send(self.base_str + " " + value)
-
-class CallProviderMethod(Endpoint):
-    def __init__(self, method_name, **kwargs):
-        Endpoint.__init__(self, **kwargs)
-        self.target_method_name = method_name
-
-    def on_get(self):
-        method = getattr(self.provider, self.target_method_name)
-        logger.debug('method is: {}'.format(method))
-        return method()
-
-    def on_set(self, value):
-        method = getattr(self.provider, self.target_method_name)
-        return method(value)
+def status_calibration(value):
+    lookup = { 0 : "command complete",
+               1 : "invalid command",
+               2 : "command parameter error",
+               3 : "reference unlock",
+               4 : "overload",
+               5 : "new ADC values available after external trigger",
+               6 : "asserted SRQ",
+               7 : "data available" }
+    status = []
+    for i in range(8):
+        if value & 1<<i:
+            status.append(lookup[i])
+    return "; ".join(status)
 
 class ProviderProperty(Endpoint):
-    def __init__(self, property_name, **kwargs):
+    def __init__(self, property_key, disable_set = False, get_float = False, **kwargs):
         Endpoint.__init__(self, **kwargs)
-        self.target_property = property_name
+        self.target_property = property_key
+        self.disable_set = disable_set
+        self.get_float = get_float
 
+    @calibrate([acquisition_calibration, status_calibration])
     def on_get(self):
-        prop = getattr(self.provider, self.target_property)
+        if self.get_float:
+            cmd = self.target_property + "."
+        else:
+            cmd = self.target_property
+        prop = self.provider.send(cmd)
         return prop
 
     def on_set(self, value):
-        if hasattr(self.provider, self.target_property):
-            setattr(self.provider, self.target_property, value)
-        else:
-            raise AttributeError
+        if self.disable_set:
+            raise NameError("Set property unavailable for {}".format(self.target_property))
+        if not isinstance(value, int):
+            raise TypeError("Set value must be an int")
+        cmd = "{} {}; {}".format(self.target_property, value, self.target_property)
+        prop = self.provider.send(cmd)
+        return prop

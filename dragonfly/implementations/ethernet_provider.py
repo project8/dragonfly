@@ -134,15 +134,14 @@ class EthernetProvider(Provider):
         '''
         if isinstance(commands, types.StringType):
             commands = [commands]
-        all_data = []
         self.alock.acquire()
 
         try:
-            all_data += self.send_commands(commands, **kwargs)
+            all_data = self.send_commands(commands, **kwargs)
         except (socket.error, exceptions.DriplineHardwareResponselessError):
             logger.warning("Attempting socket reconnect")
             self.reconnect()
-            all_data += self.send_commands(commands, **kwargs)
+            all_data = self.send_commands(commands, **kwargs)
         finally:
             self.alock.release()
         to_return = ';'.join(all_data)
