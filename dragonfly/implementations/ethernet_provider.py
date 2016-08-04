@@ -32,20 +32,22 @@ class EthernetProvider(Provider):
         bare_response_terminator (str||None): alternate string to strip from responses; depending on provider's reply
         command_terminator (str||None): string to append to commands
         reply_echo_cmd (bool): set to True if command+command_terminator or just command are present in reply
-        cmd_at_start (str||None): command to send to the instrument after the (re)connection to the instrument (must ask for a reply)
+        cmd_at_reconnect (str||None): command to send to the instrument after the (re)connection to the instrument (must ask for a reply)
         '''
         Provider.__init__(self, **kwargs)
         self.alock = threading.Lock()
         self.socket_timeout = float(socket_timeout)
         self.socket_info = socket_info
         self.socket = socket.socket()
+        if response_terminator is None or response_terminator == "":
+            raise ValueError("Invalid response terminator!")
         self.response_terminator = response_terminator
         self.bare_response_terminator = bare_response_terminator
         self.command_terminator = command_terminator
         self.reply_echo_cmd = reply_echo_cmd
-        self.cmd_at_reconnect = cmd_at_reconnect
-        if isinstance(self.cmd_at_reconnect, types.StringType):
+        if isinstance(cmd_at_reconnect, types.StringType):
             cmd_at_reconnect = [cmd_at_reconnect]
+        self.cmd_at_reconnect = cmd_at_reconnect
         if type(self.socket_info) is str:
             import re
             re_str = "\([\"'](\S+)[\"'], ?(\d+)\)"
@@ -154,21 +156,19 @@ class EthernetProvider(Provider):
             while True:
                 data += self.socket.recv(1024)
                 if data not in (self.response_terminator, self.bare_response_terminator):
-                    if (self.response_terminator and data.endswith(self.response_terminator)):
+                    if data.endswith(self.response_terminator):
                         data = data[0:data.find(self.response_terminator)]
                         break
                     elif (self.bare_response_terminator and data.endswith(self.bare_response_terminator)):
                         data = data[0:data.find(self.bare_response_terminator)]
                         break
-                else:
-                    break
+                if data == "":
+                    raise exceptions.DriplineHardwareResponselessError("empty socket.recv packet from {}".format(self.socket_info[0]))
         except socket.timeout:
             logger.warning('socket.timeout condition met; received:\n{}'.format(repr(data)))
             if blank_command == False and data == "":
                 logger.critical('Cannot Connect to: ' + self.socket_info[0])
                 raise exceptions.DriplineHardwareResponselessError("socket.timeout from {}".format(self.socket_info[0]))
-        if self.response_terminator:
-            data = data.rsplit(self.response_terminator,1)[0]
         return data
 
     @property
