@@ -1,3 +1,10 @@
+'''
+All communication with instruments is performed via ethernet, or via an intermediate interface that inherits from EthernetProvider.  This class must be kept general, with specific cases handled in higher-level interfaces.
+
+General rules to observe:
+- All instruments should communicate with a response_terminator (typically \r and/or \n, possibly an additional prompt)
+- All endpoints and communication must be configured to return a response, otherwise nasty timeouts will be incurred
+'''
 from __future__ import absolute_import
 import socket
 import threading
@@ -28,11 +35,13 @@ class EthernetProvider(Provider):
         '''
         socket_timeout (float): time in seconds for the socket to timeout
         socket_info (tuple): (<network_address_as_str>, <port_as_int>)
-        response_terminator (str||None): string to strip from responses
-        bare_response_terminator (str||None): alternate string to strip from responses; depending on provider's reply
+        response_terminator (str||None): string to strip from responses, this MUST exist for get method to function properly!
+        bare_response_terminator (str||None): abbreviated string to strip from responses containing only prompt
+                                            : only used to handle non-standard glenlivet behavior
         command_terminator (str||None): string to append to commands
         reply_echo_cmd (bool): set to True if command+command_terminator or just command are present in reply
-        cmd_at_reconnect (str||None): command to send to the instrument after the (re)connection to the instrument (must ask for a reply)
+        cmd_at_reconnect (str, list||None): (list of) command(s) to send to the instrument following (re)connection to the instrument
+                                          : still must ask for a reply!
         '''
         Provider.__init__(self, **kwargs)
         self.alock = threading.Lock()
@@ -159,9 +168,11 @@ class EthernetProvider(Provider):
                     if data.endswith(self.response_terminator):
                         data = data[0:data.find(self.response_terminator)]
                         break
+                    # Special exception for bad communication with glenlivet
                     elif (self.bare_response_terminator and data.endswith(self.bare_response_terminator)):
                         data = data[0:data.find(self.bare_response_terminator)]
                         break
+                # Special exception for disconnect of prologix box to avoid infinite loop
                 if data == "":
                     raise exceptions.DriplineHardwareResponselessError("empty socket.recv packet from {}".format(self.socket_info[0]))
         except socket.timeout:
