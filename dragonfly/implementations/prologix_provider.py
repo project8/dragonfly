@@ -4,11 +4,7 @@
 
 from __future__ import absolute_import
 
-import itertools
-import json
 import math
-import socket
-import time
 import types
 
 from dripline.core import Spime, Provider, SimpleSCPIGetSpime, calibrate
@@ -17,12 +13,12 @@ import logging
 logger = logging.getLogger(__name__)
 
 __all__ = [
-           'GPIBInstrument',
+           'PrologixProvider',
            'MuxerGetSpime',
           ]
 
 
-class GPIBInstrument(Provider):
+class PrologixProvider(Provider):
     '''
     A Provider class intended for GPIB devices that implement the full
     IEEE 488.2 (488.1 or 488 need to use some other class).
