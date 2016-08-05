@@ -166,11 +166,11 @@ class EthernetProvider(Provider):
                 data += self.socket.recv(1024)
                 if data not in (self.response_terminator, self.bare_response_terminator):
                     if data.endswith(self.response_terminator):
-                        data = data[0:data.find(self.response_terminator)]
+                        data = data[0:data.rfind(self.response_terminator)]
                         break
                     # Special exception for bad communication with glenlivet
                     elif (self.bare_response_terminator and data.endswith(self.bare_response_terminator)):
-                        data = data[0:data.find(self.bare_response_terminator)]
+                        data = data[0:data.rfind(self.bare_response_terminator)]
                         break
                 # Special exception for disconnect of prologix box to avoid infinite loop
                 if data == "":
