@@ -21,7 +21,6 @@ class MultiDo(dripline.core.Endpoint):
         targets (list): list of two element lists where the first elements are endpoint names to set and second elements are themselves dictionaries which must provide a value for 'payload_field'
         '''
         dripline.core.Endpoint.__init__(self, **kwargs)
-
         self._targets = []
         for a_target in targets:
             these_details = {}
@@ -29,7 +28,10 @@ class MultiDo(dripline.core.Endpoint):
             if 'default_set' in a_target:
                 these_details.update({'default_set':a_target['default_set']})
             ## GET options
-            these_details.update({'payload_field':a_target['payload_field']})
+            if 'payload_field' in a_target:
+                these_details.update({'payload_field':a_target['payload_field']})
+            else:
+                these_details.update({'payload_field':'value_cal'})
             if 'units' in a_target and 'formatter' in a_target:
                 raise dripline.core.DriplineValueError('may not specify both "units" and "formatter"')
             if 'formatter' in a_target:
@@ -102,13 +104,13 @@ class MultiDo(dripline.core.Endpoint):
                 value_get,a_rep = self._single_get(details['get_name'], details)
 
             if type(value_get) is unicode:
-                logger.info('result in unicode')
+                logger.debug('result in unicode')
                 value_get = value_get.encode('utf-8')
             value_get_temp = value_get
             try:
                 value_get = float(value_get_temp)
             except:
-                logger.info('value get ({}) is not floatable'.format(value_get))
+                logger.debug('value get ({}) is not floatable'.format(value_get))
                 value_get = value_get_temp
 
             # checking a target has been given (else use the endpoint used to set)
@@ -118,7 +120,7 @@ class MultiDo(dripline.core.Endpoint):
                 logger.info('default_set ({}) given for <{}>: using this as target_value'.format(details['default_set'],a_target))
                 target_value = details['default_set']
             else:
-                logger.info('no target_value given: using value ({}) as a target_value to check'.format(value))
+                logger.debug('no target_value given: using value ({}) as a target_value to check'.format(value))
                 target_value = value
             if value_get==None:
                 raise dripline.core.DriplineValueError('value get is a None')
@@ -134,32 +136,32 @@ class MultiDo(dripline.core.Endpoint):
                     else:
                         tolerance = None
                     if tolerance==None:
-                        logger.info('No tolerance given: assigning an arbitrary tolerance (1.)')
+                        logger.debug('No tolerance given: assigning an arbitrary tolerance (1.)')
                         tolerance = 1.
-                    if not isinstance(tolerance,float) and not isinstance(tolerance,int) and not isinstance(tolerance,types.StringType):
+                    if not isinstance(tolerance,float) and not isinstance(tolerance,int) and not isinstance(tolerance,str):
                         logger.warning('tolerance is not a float or a string: assigning an arbitrary tolerance (1.)')
                         tolerance = 1.
                     if isinstance(tolerance,float) or isinstance(tolerance,int):
                         if tolerance == 0:
-                            logger.info('tolerance zero inacceptable: setting tolerance to 1.')
+                            logger.debug('tolerance zero inacceptable: setting tolerance to 1.')
                             tolerance = 1.
-                        logger.info('testing a-t<b<a+t')
+                        logger.debug('testing a-t<b<a+t')
                         if target_value -  tolerance <= value_get and value_get <= target_value + tolerance:
                             logger.info('the value get <{}> ({}) is included in the target_value ({}) +- tolerance ({})'.format(a_target,value_get,target_value,tolerance))
                         else:
                             raise dripline.core.DriplineValueError('the value get <{}> ({}) is NOT included in the target_value ({}) +- tolerance ({}): stopping here!'.format(a_target,value_get,target_value,tolerance))
-                    elif isinstance(tolerance,types.StringType):
+                    elif isinstance(tolerance,str):
                         if '%' not in tolerance:
-                            logger.info('absolute tolerance')
+                            logger.debug('absolute tolerance')
                             tolerance = float(tolerance)
                         else:
-                            logger.info('relative tolerance')
+                            logger.debug('relative tolerance')
                             match_number = re.compile('-?\ *[0-9]+\.?[0-9]*(?:[Ee]\ *-?\ *[0-9]+)?')
                             tolerance = [float(x) for x in re.findall(match_number, tolerance)][0]*target_value/100.
                         if tolerance == 0:
-                            logger.info('tolerance zero inacceptable: setting tolerance to 1.')
+                            logger.debug('tolerance zero inacceptable: setting tolerance to 1.')
                             tolerance = 1.
-                        logger.info('testing a-t<b<a+t')
+                        logger.debug('testing a-t<b<a+t')
                         if target_value -  tolerance <= value_get and value_get <= target_value + tolerance:
                             logger.info('the value <{}> get ({}) is included in the target_value ({}) +- tolerance ({})'.format(a_target,value_get,target_value,tolerance))
                         else:
@@ -170,30 +172,28 @@ class MultiDo(dripline.core.Endpoint):
                     raise dripline.core.DriplineValueError('Cannot check! value set and target_value are not the same type as value get (float/int): stopping here!')
 
             # if the value we are checking is a string
-            elif isinstance(value_get, types.StringType):
-                if not isinstance(target_value,types.StringType):
-                    logger.warning('target_value is not the same type as the value get: going to use the set value ({}) as target_value'.format(value))
-                    target_value = value
-                if isinstance(target_value,types.StringType):
-                    target_backup = target_value
-                    value_get_backup = value_get
+            elif isinstance(value_get, str):
+                target_backup = target_value
+                value_get_backup = value_get
+
+                if value_get=='on' or value_get=='enable' or value_get=='enabled' or value_get == 'positive':
+                    value_get=1
+                elif value_get=='off' or value_get=='disable' or value_get=='disabled' or value_get == 'negative':
+                    value_get=0
+
+                if isinstance(target_value,str):
                     # changing target in the dictionary
-                    if target_value=='on' or target_value=='enable' or target_value=='enabled' or 'positive':
-                        target_value=='1'
-                    if target_value=='off' or target_value=='disable' or target_value=='disabled' or 'negative':
-                        target_value=='0'
-                    # changing value_get in the dictionary
-                    if value_get=='on' or value_get=='enable' or value_get=='enabled' or 'positive':
-                        value_get=='1'
-                    if value_get=='off' or value_get=='disable' or value_get=='disabled' or 'negative':
-                        value_get=='0'
+                    if target_value=='on' or target_value=='enable' or target_value=='enabled' or target_value == 'positive':
+                        target_value=1
+                    if target_value=='off' or target_value=='disable' or target_value=='disabled' or target_value ==  'negative':
+                        target_value=0
+                    # raise dripline.core.DriplineValueError('Cannot check! value set and target_value are not the same type as value get (string): stopping here!')
                     # checking is target and value_get are the same
-                    if target_value==value_get:
-                        logger.info('value get ({}) corresponds to the target ({}): going on'.format(value_get_backup,target_value))
-                    else:
-                        raise dripline.core.DriplineValueError('value get ({}) DOES NOT correspond to the target_value ({}): stopping here!'.format(value_get_backup,target_value))
+
+                if target_value==value_get:
+                    logger.info('value get ({}) corresponds to the target ({}): going on'.format(value_get_backup,target_backup))
                 else:
-                    raise dripline.core.DriplineValueError('Cannot check! value set and target_value are not the same type as value get (string): stopping here!')
+                    raise dripline.core.DriplineValueError('value get ({}) DOES NOT correspond to the target_value ({}): stopping here!'.format(value_get_backup,target_backup))
 
             # if the value we are checking is a bool
             elif isinstance(value_get, bool):
@@ -222,6 +222,6 @@ class MultiDo(dripline.core.Endpoint):
         '''
         ret_val = None
         ret_rep = ''
-        a_result = self.portal.send_request(request=dripline.core.RequestMessage(msgop=dripline.core.OP_SET, payload={'values':[value]}), target=endpoint_name)
+        a_result = self.portal.send_request(request=dripline.core.RequestMessage(msgop=dripline.core.OP_SET, payload={'values':[value]}), target=endpoint_name,timeout=self._timeout)
 
         return a_result
