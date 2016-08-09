@@ -518,7 +518,7 @@ class RunScript(object):
                 else:
                     logger.info('operation <{}> unknown: skipping!'.format(key))
 
-    def action_single_run(self, run_duration, run_name, daq_targets, **kwargs):
+    def action_single_run(self, run_duration, run_name, daq_targets, timeout=None, **kwargs):
         logger.info('taking single run')
         run_kwargs = {'endpoint':None,
                       'method_name':'start_timed_run',
@@ -530,6 +530,7 @@ class RunScript(object):
         start_of_runs = datetime.datetime.now()
         for daq in daq_targets:
             run_kwargs.update({'endpoint':daq, 'run_name':run_name.format(daq)})
+            run_kwargs.update('timeout': timeout)
             logger.debug('run_kwargs are: {}'.format(run_kwargs))
             if self._dry_run_mode:
                 logger.info('--dry-run flag: not starting a run')
@@ -590,9 +591,12 @@ class RunScript(object):
                             else:
                                 raise dripline.core.DriplineValueError('set list ({}) does not contain only float or int'.format(a_set['name']))
                         elif isinstance(a_set['value'], str):
+                            print('value is a string')
+                            print(a_set['value'],evaluator(a_set['value'].format(run_count)))
                             if isinstance(evaluator(a_set['value'].format(run_count)),float) or isinstance(evaluator(a_set['value'].format(run_count)),int):
                                 this_value = evaluator(a_set['value'].format(run_count))
                             elif isinstance(evaluator(a_set['value'].format(run_count)),list):
+                                print('evaluated value is a list')
                                 this_value = evaluator(a_set['value'].format(run_count))[run_count]
                             else:
                                 this_value = evaluator(a_set['value'].format(run_count))
@@ -605,6 +609,7 @@ class RunScript(object):
                             logger.info('failed to parse set:\n{}'.format(a_set))
                             raise dripline.core.DriplineValueError('set value not a dictionary or evaluatable expression')
                         dict_temp = {'name': a_set['name'], 'value': this_value}
+                        print(dict_temp)
                         # these_sets.append({'name': a_set['name'], 'value': this_value})
                         for key in a_set:
                             if key != 'name' and key != 'value':
@@ -632,12 +637,18 @@ class RunScript(object):
                 raise dripline.core.DriplineValueError('set value not a dictionary or evaluatable expression')
             this_run_name = runs['run_name'].format(daq_target='{}', run_count=run_count)
             logger.info('run will be [{}] seconds with name "{}"'.format(this_run_duration, this_run_name))
+            if 'timeout' in runs:
+                this_timeout = runs['timeout']
+            else:
+                this_timeout = 10.;
+            logger.debug('timeout set to {} s'.format(this_timeout))
+
 
             # here we start each run (if debug_mode exists and is True)
             if 'debug_mode' in runs and isinstance(runs['debug_mode'], bool) and runs['debug_mode']==True:
                 logger.info('debug mode activated: no run will be launched')
             else:
-                self.action_single_run(this_run_duration, this_run_name, runs['daq_targets'])
+                self.action_single_run(this_run_duration, this_run_name,this_timeout, runs['daq_targets'])
 
             # update cache variable with this run being complete and update the cache file
             self._action_cache['last_run'] = run_count
