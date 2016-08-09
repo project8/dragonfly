@@ -513,8 +513,10 @@ class RunScript(object):
             for i_key,key in enumerate(this_do):
                 if key == 'sets':
                     self.action_set(this_do[key])
-                if key== 'cmds':
+                elif key == 'cmds':
                     self.action_cmd(this_do[key])
+                else:
+                    logger.info('operation <{}> unknown: skipping!'.format(key))
 
     def action_single_run(self, run_duration, run_name, daq_targets, **kwargs):
         logger.info('taking single run')
