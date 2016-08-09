@@ -537,8 +537,9 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
         file_directory = "\\".join([self.data_directory_path, '{:09d}'.format(self.run_id)])
         file_base = "{}{:09d}".format(self.filename_prefix, self.run_id)
         self.send('SENS:ACQ:FSAV:LOC "{}";*OPC?'.format(file_directory))
+        self.send('SENS:ACQ:FSAV:NAME:BASE "{}";*OPC?'.format(file_base))
         # ensure the output format is set to mat
-        self.send('TRIGger:SAVE:DATA:FORMat "{}";*OPC?'.format(file_base))
+        self.send('TRIGger:SAVE:DATA:FORMat MAT;*OPC?')
         # ensure their is no limit on the number of saved files
         self.send("TRIGger:SAVE:COUNt 0; *OPC?")
 
