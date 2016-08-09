@@ -331,6 +331,9 @@ class RunScript(object):
                         'endpoint':this_cmd['endpoint'],
                         'method_name':this_cmd['method_name']
                         }
+            if 'timeout' in this_cmd:
+                logger.debug('timeout set to {}'.format(this_cmd['timeout']))
+                cmd_kwargs.update({'timeout':this_cmd['timeout']})
             for key in this_cmd:
                 if key is not 'endpoint' or 'method_name':
                     cmd_kwargs.update({key:this_cmd[key]})
@@ -347,6 +350,9 @@ class RunScript(object):
         for this_set in sets:
             logger.info('setting {}->{}'.format(this_set['name'], this_set['value']))
             set_kwargs.update({'endpoint':this_set['name'],'value':this_set['value']})
+            if 'timeout' in this_set:
+                logger.debug('timeout set to {}'.format(this_set['timeout']))
+                set_kwargs.update({'timeout':this_set['timeout']})
             result = self.interface.set(**set_kwargs)
             if result.retcode == 0:
                 logger.debug('...set of {}->{} complete'.format(this_set['name'], this_set['value']))
