@@ -518,7 +518,7 @@ class RunScript(object):
                 else:
                     logger.info('operation <{}> unknown: skipping!'.format(key))
 
-    def action_single_run(self, run_duration, run_name, daq_targets, **kwargs):
+    def action_single_run(self, run_duration, run_name, daq_targets, timeout=None, **kwargs):
         logger.info('taking single run')
         run_kwargs = {'endpoint':None,
                       'method_name':'start_timed_run',
@@ -530,6 +530,7 @@ class RunScript(object):
         start_of_runs = datetime.datetime.now()
         for daq in daq_targets:
             run_kwargs.update({'endpoint':daq, 'run_name':run_name.format(daq)})
+            run_kwargs.update({'timeout': timeout})
             logger.debug('run_kwargs are: {}'.format(run_kwargs))
             if self._dry_run_mode:
                 logger.info('--dry-run flag: not starting a run')
@@ -598,7 +599,6 @@ class RunScript(object):
                                 this_value = evaluator(a_set['value'].format(run_count))
                                 if this_value==None:
                                     this_value = a_set['value']
-                                # print(this_value)
                         elif isinstance(a_set['value'], bool):
                             this_value = a_set['value']
                         else:
@@ -632,12 +632,16 @@ class RunScript(object):
                 raise dripline.core.DriplineValueError('set value not a dictionary or evaluatable expression')
             this_run_name = runs['run_name'].format(daq_target='{}', run_count=run_count)
             logger.info('run will be [{}] seconds with name "{}"'.format(this_run_duration, this_run_name))
+            if 'timeout' in runs:
+                this_timeout = runs['timeout']
+            logger.debug('timeout set to {} s'.format(this_timeout))
+
 
             # here we start each run (if debug_mode exists and is True)
             if 'debug_mode' in runs and isinstance(runs['debug_mode'], bool) and runs['debug_mode']==True:
                 logger.info('debug mode activated: no run will be launched')
             else:
-                self.action_single_run(this_run_duration, this_run_name, runs['daq_targets'])
+                self.action_single_run(this_run_duration, this_run_name, runs['daq_targets'],this_timeout)
 
             # update cache variable with this run being complete and update the cache file
             self._action_cache['last_run'] = run_count
