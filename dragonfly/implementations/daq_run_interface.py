@@ -460,7 +460,7 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
         logger.info('setting instrument config from file')
         if file_path is None:
             raise core.DriplineInternalError('no file_path was given')
-        self.send('MMEMory:LOAD:STATe "{}"; OPC?'.format(file_path))
+        self.send('MMEMory:LOAD:STATe {}; OPC?'.format(file_path))
 
     def set_trigger_holdoff(self,value):
         logger.info('setting trigger holdoff')
