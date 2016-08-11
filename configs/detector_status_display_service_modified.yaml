@@ -1,0 +1,6 @@
+name: status_multigets
+module: Spimescape
+broker: myrna.p8
+endpoints:
+  - name: run_metadata
+    module: MultiGet
