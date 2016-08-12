@@ -68,6 +68,7 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
                  dest_mac = None,
                  daq_name = None,
                  channel_tag = 'a',
+                 do_adc_ogp_calibration = False,
                  central_freq = 1234e6,
                                   
                  hf_lo_freq=24.2e9,
@@ -93,16 +94,16 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
         self.daq_name = daq_name
         self.channel_tag = channel_tag
         self.central_freq = central_freq
-        self.configurated=False
+        self.configured=False
+        self.calibrated=False
+       # self.do_calibrations=do_adc_ogp_calibration
 
 
   
-    def configure_roach(self, 
-                 do_ogp_cal=False,
-                 do_adcif_cal=False,
-                 boffile='latest-build'):
-                     
-        logger.info('Configuring ROACH2, this will take a while.... no news is good news.')
+    def configure_roach(self, do_ogp_cal=False, do_adcif_cal=False, boffile='latest-build'):
+        if do_ogp_cal==True and do_adcif_cal==True:
+            self.calibrated=True
+        
         if self.source_port != None:
             cfg_a = self.make_interface_config_dictionary(self.source_ip, self.source_port,self.dest_ip,self.dest_port,dest_mac=self.dest_mac,tag='a') 
             #cfg_b = self.make_interface_config_dictionary('192.168.10.101',4000,'192.168.10.64',4001,dest_mac='00:60:dd:44:91:e8',tag='b') 
@@ -110,20 +111,30 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
             self.cfg_list = [cfg_a] 
             logger.info(type(self.cfg_list))
             ArtooDaq.__init__(self, self.roach2_hostname, boffile=boffile, do_ogp_cal=do_ogp_cal, do_adcif_cal=do_adcif_cal, ifcfg=self.cfg_list)
-            self.configurated=True
+            self.configured=True
         else:
             logger.info('Configuring ROACH2 without specific IP settings')
             ArtooDaq.__init__(self, self.roach2_hostname, boffile=boffile, do_ogp_cal=do_ogp_cal, do_adcif_cal=do_adcif_cal)
-            self.configurated=True
-        return self.configurated
+            self.configured=True
+           
         
-
+            
+        return self.configured
+        
+    
+    def get_calibration_status(self):
+        return self.calibrated
+        
+    def get_configuration_status(self):
+        return self.configured
         
     def do_adc_ogp_calibration(self, **kwargs):
-                
+        
+        logger.info('Calibrating ROACH2, this will take a while.... no news is good news.')
+        
         logger.info('Doing adc an ogp calibration')
         ArtooDaq.calibrate_adc_ogp(self, **kwargs)
-            
+        self.calibrated=True    
 
 #    def set_ip_configuration(self, 
 #                 source_ip = None,
@@ -148,12 +159,15 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
         logger.info('Pinging ROACH2')
         response = os.system("ping -c 1 " + self.roach2_hostname)
         #and then check the response...
-        if response == 0 and self.configurated==True:
+        if response == 0:
             logger.info('ROACH2 is switched on')
             to_return = True
             
-        elif response == 0 and self.configurated==False:
-                logger.info('but has not been configured yet.')
+            if not self.get_configuration_status:
+                logger.info('Roach2 is not configured')
+            if not self.get_calibration_status:
+                logger.info('Roach2 is not calibrated')
+                
         return to_return
             
             

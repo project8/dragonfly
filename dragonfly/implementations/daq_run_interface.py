@@ -704,8 +704,23 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
             
     def connect2roach2(self):
         self.roach2_queue = 'roach2_interface'
-        if self.check_on_roach2():
+        result = self.check_on_roach2
+        if result is True:
+            logger.info('The Roach2 is running')
+            
+            logger.info('Configured: {}, Calibrated: {}'.format(self.roach2configured, self.roach2calibrated))
+            return True
+                
+        elif result is False:
+            logger.warning('The Roach2 is not running.')
             self.start_roach2()
+            result=self.check_on_roach2
+            return False
+            
+        else:
+            logger.warning('The Roach2 service is not running or sth. else is wrong')
+            self.roach2_queue=None
+            return False
             
     def check_on_roach2(self):
         request = core.RequestMessage(msgop=core.OP_CMD)
@@ -713,7 +728,22 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
         if result.retcode >= 100:
             logger.warning('retcode indicates an error')
         logger.info('The Roach2 is running: {}'.format(result.payload['values']))
-        return result.payload['values'][0]
+        to_return = result.payload['values'][0]
+        
+        request = core.RequestMessage(msgop=core.OP_CMD)
+        result = self.portal.send_request(target=self.roach2_queue+'.get_calibration_status', request=request)
+        if result.retcode >= 100:
+            logger.warning('retcode indicates an error')
+        self.roach2calibrated=result.payload['values'][0]
+            
+        request = core.RequestMessage(msgop=core.OP_CMD)
+        result = self.portal.send_request(target=self.roach2_queue+'.get_configuration_status', request=request)
+        if result.retcode >= 100:
+            logger.warning('retcode indicates an error')
+        self.roach2configured=result.payload['values'][0]
+
+        return to_return
+        
         
     def start_roach2(self):
         request = core.RequestMessage(msgop=core.OP_CMD)
