@@ -32,7 +32,7 @@ except ImportError:
        
     class ArtooDaq(object):
         def __init__(self, *args, **kwargs):
-            raise RuntimeError("Dependency <ArtooDaq> not found but is required for roach2 support. Maybe check out PYTHONPATH")
+            raise RuntimeError("Dependency <ArtooDaq> not found but is required for ROACH2 support.")
     
 
 
@@ -151,7 +151,7 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
 #        self.dest_mac = dest_mac
 #        logger.info('New ip configuration set. Reconfiguring the ROACH2...')
 #        self.configure_roach(**kwargs)
-        
+        return self.calibrated
 
    
     def is_running(self):
@@ -164,7 +164,7 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
             to_return = True
             
             if not self.get_configuration_status:
-                logger.info('Roach2 is not configured')
+                logger.info('ROACH2 is not configured')
             if not self.get_calibration_status:
                 logger.info('Roach2 is not calibrated')
                 
