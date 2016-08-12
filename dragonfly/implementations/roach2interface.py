@@ -100,7 +100,7 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
     def configure_roach(self, 
                  do_ogp_cal=False,
                  do_adcif_cal=False,
-                 boffile=None):
+                 boffile='latest-build'):
                      
         logger.info('Configuring ROACH2, this will take a while.... no news is good news.')
         if self.source_port != None:

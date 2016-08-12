@@ -488,7 +488,8 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
     A DAQProvider for interacting with Psyllid DAQ
     '''
     def __init__(self,
-                 daq_queue='psyllid',
+                 psyllid_queue='psyllid',
+                 roach2_queue = None,
                  psyllid_preset = 'str-1ch',
                  udp_receiver_port = 4001,
                  lf_lo_endpoint_name=None,
@@ -499,7 +500,8 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
         core.Spime.__init__(self, **kwargs)
         self.alert_routing_key = 'daq_requests'
         
-        self.psyllid_queue = daq_queue
+        self.psyllid_queue = psyllid_queue
+        self.roach2_queue = roach2_queue
         if lf_lo_endpoint_name is None:
             raise core.exceptions.DriplineValueError('the Psyllid interface requires a "lf_lo_endpoint_name"')
         self._lf_lo_endpoint_name = lf_lo_endpoint_name
@@ -580,10 +582,10 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
             logger.warning('retcode indicates an error')   
                 
     def get_udp_port(self):
-#        result = self.portal.send_request(request=core.RequestMessage(msgop=core.OP_GET), target=self.psyllid_queue+'.node.udpr.port')
-#        if result.retcode >= 100:
-#            logger.warning('retcode indicates an error')
-#        logger.info('udp receiver port is: {}'.format(result.payload))
+        result = self.portal.send_request(request=core.RequestMessage(msgop=core.OP_GET), target=self.psyllid_queue+'.node.udpr.port')
+        if result.retcode >= 100:
+            logger.warning('retcode indicates an error')
+        logger.info('udp receiver port is: {}'.format(result.payload))
         return self.udp_receiver_port
 
         
@@ -641,6 +643,7 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
         logger.info('Duration is {}'.format(result.payload))
         return self.acquisition_time
         
+          
         
 
 
@@ -651,6 +654,8 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
     @acquisition_time.setter
     def acquisition_time(self, value):
         self.log_interval = value
+        
+    #other methods    
         
     def configure(self,config=None):        
         if config == None:
@@ -696,11 +701,46 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
             logger.info('Could not deactivate Psyllid')
             return False
             
-
+            
+    def connect2roach2(self):
+        self.roach2_queue = 'roach2_interface'
+        if self.check_on_roach2():
+            self.start_roach2()
+            
+    def check_on_roach2(self):
+        request = core.RequestMessage(msgop=core.OP_CMD)
+        result = self.portal.send_request(target=self.roach2_queue+'.is_running', request=request)
+        if result.retcode >= 100:
+            logger.warning('retcode indicates an error')
+        logger.info('The Roach2 is running: {}'.format(result.payload['values']))
+        return result.payload['values'][0]
+        
+    def start_roach2(self):
+        request = core.RequestMessage(msgop=core.OP_CMD)
+        result = self.portal.send_request(target=self.roach2_queue+'.configure_roach', request=request)
+        if result.retcode >= 100:
+            logger.warning('retcode indicates an error')
+        logger.info('The Roach2 has been programmed succesfully: {}'.format(result.payload['values']))
+        return result.payload['values'][0]
+            
+    def do_roach2_calibrations(self):
+        request = core.RequestMessage(msgop=core.OP_CMD)
+        result = self.portal.send_request(target=self.roach2_queue+'.do_adc_ogp_calibration', request=request)
+        if result.retcode >= 100:
+            logger.warning('retcode indicates an error')
+        logger.info('Doing adc and ogp calibration')
+        return result.payload['values'][0]
+        
         
 
     def start_run(self, run_name):
         logger.info('Starting run. Psyllid status is {}'.format(self.status))
+        
+        if self.roach2_queue!=None:
+            if self.check_on_roach2() is False:
+                logger.error('Psyllid and the Roach2 are not connected')
+                return False
+            
         
         if self.status_value == None:
             logger.warning('Psyllid was not configured')
@@ -708,6 +748,8 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
             if not self._finish_configure():
                 logger.error('Problem could not be solved by (re-)configuring Psyllid')
                 return False
+                
+        
                     
                 
         logger.info('runname is {}'.format(run_name))        

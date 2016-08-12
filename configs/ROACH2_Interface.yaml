@@ -22,7 +22,12 @@ endpoints:
     daq_queue : 'roach2'
     daq_name: 'ROACH2'
     roach2_hostname: led.p8
-
+    dest_port: 127.0.0.1
+    dest_port: 23530
+    # dest_mac: 
+    # source_ip: 
+    # source_port: 
+    # source_mac: 
     
     metadata_state_target: run_metadata
     run_table_endpoint: run_table
