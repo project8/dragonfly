@@ -634,6 +634,8 @@ class RunScript(object):
             logger.info('run will be [{}] seconds with name "{}"'.format(this_run_duration, this_run_name))
             if 'timeout' in runs:
                 this_timeout = runs['timeout']
+            else:
+                this_timeout=None
             logger.debug('timeout set to {} s'.format(this_timeout))
 
 
