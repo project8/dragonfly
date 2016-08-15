@@ -87,7 +87,7 @@ class ESR_Measurement(core.Endpoint):
             logger.warning("Clearing sweeper error queue: {}".format(err_msg))
         self.check_ept('hf_output_status', 0)
         self.check_ept('hf_freq_mode', 'LIST')
-        self.check_ept('hf_sweep_order', self.hf_sweep_order)
+        self.check_ept('hf_sweep_order', str(self.hf_sweep_order))
         self.check_ept('hf_start_freq', self.hf_start_freq)
         self.check_ept('hf_stop_freq', self.hf_stop_freq)
         self.check_ept('hf_power', self.hf_power)
