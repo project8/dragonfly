@@ -194,14 +194,15 @@ class RunScript(object):
 
     def init_cache_file(self, execution_file):
         if execution_file!=None and isinstance(execution_file, types.StringType):
+            cache_file_name=execution_file
             if execution_file.find('.') !=-1:
-                cache_file_name = execution_file[0:execution_file.find('.')]
-            else:
-                logger.info('could not find an extension: using default execution_cache')
-                self._cache_file_name = '/tmp/execution_cache.json'
-                return
+                cache_file_name = cache_file_name[0:execution_file.find('.')]
+            # else:
+            #     logger.info('could not find a file extension: using default execution_cache')
+            #     self._cache_file_name = '/tmp/execution_cache.json'
+            #     return
             while execution_file.find('/') !=-1:
-                cache_file_name = cache_file_name[execution_file.find('/'):len(cache_file_name)]
+                cache_file_name = cache_file_name[cache_file_name.find('/'):len(cache_file_name)]
             if cache_file_name !='':
                 self._cache_file_name = '/tmp/'+cache_file_name+'_cache.json'
                 logger.info('new cache file is {}'.format(self._cache_file_name))
