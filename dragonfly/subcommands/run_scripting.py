@@ -591,9 +591,27 @@ class RunScript(object):
                         elif isinstance(a_set['value'], str):
                             if isinstance(evaluator(a_set['value'].format(run_count)), (int,float,str,bool)):
                                 this_value = evaluator(a_set['value'].format(run_count))
-                            elif isinstance(evaluator(a_set['value'].format(run_count)), (dict,list)) and\
-                                 isinstance(evaluator(a_set['value'].format(run_count))[run_count], (int,float,str,bool)):
-                                this_value = evaluator(a_set['value'].format(run_count))[run_count]
+                            elif isinstance(evaluator(a_set['value'].format(run_count)), list):
+                                old_list = evaluator(a_set['value'].format(run_count)
+                                new_list = []
+                                for i in range(len(old_list)):
+                                    if isinstance(old_list[i],list):
+                                        sub_list = old_list[i]
+                                        for j in range(sub_list):
+                                            new_list.append(sub_list[j])
+                                    elif isinstance(old_list[i], (int,float,str,bool)):
+                                        new_list.append(old_list[i])
+                                    else:
+                                        raise dripline.core.DriplineValueError('run_scripting does not support list of lists')
+                                this_value = new_list[run_count]
+                            elif isinstance(evaluator(a_set['value'].format(run_count)), dict):
+                                if isinstance(evaluator(a_set['value'].format(run_count))[run_count], (int,float,str,bool)):
+                                    this_value = evaluator(a_set['value'].format(run_count))[run_count]
+                                elif isinstance(evaluator(a_set['value'].format(run_count))[run_count], list):
+                                    raise dripline.core.DriplineValueError('run_scripting does not support dict of lists')
+                                else:
+                                    raise dripline.core.DriplineValueError('rmissing value in the dict')
+
                         if this_value is None:
                             logger.info('failed to parse set:\n{}'.format(a_set))
                             raise dripline.core.DriplineValueError('Invalid set value!')
@@ -630,7 +648,6 @@ class RunScript(object):
             else:
                 this_timeout=None
             logger.debug('timeout set to {} s'.format(this_timeout))
-
 
             # here we start each run (if debug_mode exists and is True)
             if 'debug_mode' in runs and isinstance(runs['debug_mode'], bool) and runs['debug_mode']==True:
