@@ -193,20 +193,23 @@ class RunScript(object):
 
 
     def init_cache_file(self, execution_file):
-        if execution_file is not None and isinstance(execution_file, types.StringType):
-            cache_file_name = execution_file
-            if execution_file.find('.') == 1:
-                cache_file_name = cache_file_name[0:cache_file_name.find('.')]
-            else:
-                cache_file_name = ""
-            if cache_file_name.find('/') != -1:
-                cache_file_name = cache_file_name[cache_file_name.rfind('/')+1:len(cache_file_name)]
-            if cache_file_name != '':
-                self._cache_file_name = '/tmp/'+cache_file_name+'_cache.json'
-                logger.info('new cache file is {}'.format(self._cache_file_name))
-                return
-        self._cache_file_name = '/tmp/execution_cache.json'
-        logger.warning('empty cache_file_name: using default {}'.format(self._cache_file_name))
+        if execution_file is None or not isinstance(execution_file, types.StringType):
+            raise DriplineValueError("No valid execution file provided.")
+        cache_file_name = execution_file
+        if execution_file.count('.') == 1:
+            cache_file_name = cache_file_name[0:cache_file_name.find('.')]
+        else:
+            logger.warning('cannot parse execution_file punctuation: {}'.format(execution_file))
+            cache_file_name = ""
+        if cache_file_name.find('/') != -1:
+            cache_file_name = cache_file_name[cache_file_name.rfind('/')+1:len(cache_file_name)]
+
+        if cache_file_name != '':
+            self._cache_file_name = '/tmp/'+cache_file_name+'_cache.json'
+            logger.info('new cache file is {}'.format(self._cache_file_name))
+        else:
+            self._cache_file_name = '/tmp/execution_cache.json'
+            logger.warning('empty cache_file_name: using default {}'.format(self._cache_file_name))
 
     def update_from_cache_file(self):
         try:
