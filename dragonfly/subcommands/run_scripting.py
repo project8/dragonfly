@@ -468,14 +468,14 @@ class RunScript(object):
                     target_value_backup = target_value
                     value_get_backup = value_get
                     # changing target_value in the dictionary
-                    if target_value=='on' or target_value=='enable' or target_value=='enabled' or 'positive':
+                    if target_value=='on' or target_value=='enable' or target_value=='enabled' or target_value=='positive':
                         target_value=='1'
-                    if target_value=='off' or target_value=='disable' or target_value=='disabled' or 'negative':
+                    if target_value=='off' or target_value=='disable' or target_value=='disabled' or target_value=='negative':
                         target_value=='0'
                     # changing value_get in the dictionary
-                    if value_get=='on' or value_get=='enable' or value_get=='enabled' or 'positive':
+                    if value_get=='on' or value_get=='enable' or value_get=='enabled' or value_get=='positive':
                         value_get=='1'
-                    if value_get=='off' or value_get=='disable' or value_get=='disabled' or 'negative':
+                    if value_get=='off' or value_get=='disable' or value_get=='disabled' or value_get=='negative':
                         value_get=='0'
                     # checking is target_value and value_get are the same
                     if target_value==value_get:
