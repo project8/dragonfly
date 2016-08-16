@@ -582,30 +582,21 @@ class RunScript(object):
                 if key == 'sets':
                     these_sets = []
                     for a_set in a_do[key]:
+                        this_value = None
                         logger.info('set type is: {}'.format(type(a_set['value'])))
-                        if isinstance(a_set['value'], dict):
+                        if isinstance(a_set['value'], (dict,list)) and isinstance(a_set['value'][run_count], (int,float,str,bool)):
                             this_value = a_set['value'][run_count]
-                        elif isinstance(a_set['value'], float) or isinstance(a_set['value'], int):
+                        elif isinstance(a_set['value'], (int,float,bool)):
                             this_value = a_set['value']
-                        elif isinstance(a_set['value'],list):
-                            if isinstance(a_set['value'][run_count],float) or isinstance(a_set['value'][run_count],int):
-                                this_value = a_set['value'][run_count]
-                            else:
-                                raise dripline.core.DriplineValueError('set list ({}) does not contain only float or int'.format(a_set['name']))
                         elif isinstance(a_set['value'], str):
-                            if isinstance(evaluator(a_set['value'].format(run_count)),float) or isinstance(evaluator(a_set['value'].format(run_count)),int):
+                            if isinstance(evaluator(a_set['value'].format(run_count)), (int,float,str,bool)):
                                 this_value = evaluator(a_set['value'].format(run_count))
-                            elif isinstance(evaluator(a_set['value'].format(run_count)),list):
+                            elif isinstance(evaluator(a_set['value'].format(run_count)), (dict,list)) and\
+                                 isinstance(evaluator(a_set['value'].format(run_count))[run_count], (int,float,str,bool)):
                                 this_value = evaluator(a_set['value'].format(run_count))[run_count]
-                            else:
-                                this_value = evaluator(a_set['value'].format(run_count))
-                                if this_value==None:
-                                    this_value = a_set['value']
-                        elif isinstance(a_set['value'], bool):
-                            this_value = a_set['value']
-                        else:
+                        if this_value is None:
                             logger.info('failed to parse set:\n{}'.format(a_set))
-                            raise dripline.core.DriplineValueError('set value not a dictionary or evaluatable expression')
+                            raise dripline.core.DriplineValueError('Invalid set value!')
                         dict_temp = {'name': a_set['name'], 'value': this_value}
                         # these_sets.append({'name': a_set['name'], 'value': this_value})
                         for key in a_set:
