@@ -604,7 +604,7 @@ class RunScript(object):
                             if isinstance(evaluator(a_set['value'].format(run_count)), (int,float,str,bool)):
                                 this_value = evaluator(a_set['value'].format(run_count))
                             elif isinstance(evaluator(a_set['value'].format(run_count)), list):
-                                old_list = evaluator(a_set['value'].format(run_count)
+                                old_list = evaluator(a_set['value'].format(run_count))
                                 new_list = []
                                 for i in range(len(old_list)):
                                     if isinstance(old_list[i],list):
@@ -671,7 +671,7 @@ class RunScript(object):
             # compute args for, and call, action_single_run, based on run_count
             elif runs is not None:
                 this_run_duration = None
-                if isinstance(runs['run_duration'], float) or isinstance(runs['run_duration'], int):
+                if isinstance(runs['run_duration'], (float,int)):
                     this_run_duration = runs['run_duration']
                 elif isinstance(runs['run_duration'], dict):
                     this_run_duration = runs['run_duration'][run_count]
