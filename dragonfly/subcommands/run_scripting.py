@@ -520,6 +520,16 @@ class RunScript(object):
                 else:
                     logger.info('operation <{}> unknown: skipping!'.format(key))
 
+    def action_esr_scan(self, esr_endpoint = 'esr_interface', no_instrument_configuration=False, timeout=750, coils=None):
+        logger.info('taking esr scan')
+        esr_kwargs = {  'endpoint': esr_endpoint,
+                        'method_name': 'run_scan',
+                        'no_instrument_configuration': no_instrument_configuration,
+                        'timeout': timeout,
+                        'coils':coils}
+        result = self.interface.cmd(**esr_kwargs)
+        #need a pretty-print like function here for display the result nicely
+
     def action_single_run(self, run_duration, run_name, daq_targets, timeout=None, **kwargs):
         logger.info('taking single run')
         run_kwargs = {'endpoint':None,
@@ -539,9 +549,10 @@ class RunScript(object):
             else:
                 self.interface.cmd(**run_kwargs)
         logger.info('daq all started, now wait for requested livetime')
+        logger.info('time remaining >= {:.0f} seconds'.format(run_duration-(datetime.datetime.now()-start_of_runs).total_seconds()))
         while (datetime.datetime.now() - start_of_runs).total_seconds() < run_duration:
             logger.info('time remaining >= {:.0f} seconds'.format(run_duration-(datetime.datetime.now()-start_of_runs).total_seconds()))
-            time.sleep(5)
+            time.sleep(min(7*60,max(10,run_duration/14.)))
         all_done = False
         logger.info('ideal livetime over, waiting for daq systems to finish')
         while all_done == False:
@@ -554,7 +565,8 @@ class RunScript(object):
             time.sleep(5)
         logger.info('acquistions complete')
 
-    def action_multi_run(self, runs, total_runs, operations=[], **kwargs):
+
+    def action_multi_run(self, runs=None, total_runs, operations=[], esr_runs=None, **kwargs):
         # establish default values for cache (in case of first call)
         # override with any values loaded from file
         # then update the instance variable with the current state
@@ -602,7 +614,7 @@ class RunScript(object):
                                     elif isinstance(old_list[i], (int,float,str,bool)):
                                         new_list.append(old_list[i])
                                     else:
-                                        raise dripline.core.DriplineValueError('run_scripting does not support list of lists')
+                                        raise dripline.core.DriplineValueError('run_scripting does not support list of lists of lists')
                                 this_value = new_list[run_count]
                             elif isinstance(evaluator(a_set['value'].format(run_count)), dict):
                                 if isinstance(evaluator(a_set['value'].format(run_count))[run_count], (int,float,str,bool)):
@@ -630,30 +642,56 @@ class RunScript(object):
                     logger.warning('Operation unknown: skipping!')
             logger.info('computed operations are:\n{}'.format(evaluated_operations))
             self.action_do(evaluated_operations)
-            # compute args for, and call, action_single_run, based on run_count
-            this_run_duration = None
-            if isinstance(runs['run_duration'], float) or isinstance(runs['run_duration'], int):
-                this_run_duration = runs['run_duration']
-            elif isinstance(runs['run_duration'], dict):
-                this_run_duration = runs['run_duration'][run_count]
-            elif isinstance(runs['run_duration'], str):
-                this_run_duration = evaluator(runs['run_duration'].format(run_count))
-            else:
-                logger.info('failed to compute run duration for run: {}'.format(run_count))
-                raise dripline.core.DriplineValueError('set value not a dictionary or evaluatable expression')
-            this_run_name = runs['run_name'].format(daq_target='{}', run_count=run_count)
-            logger.info('run will be [{}] seconds with name "{}"'.format(this_run_duration, this_run_name))
-            if 'timeout' in runs:
-                this_timeout = runs['timeout']
-            else:
-                this_timeout=None
-            logger.debug('timeout set to {} s'.format(this_timeout))
 
-            # here we start each run (if debug_mode exists and is True)
-            if 'debug_mode' in runs and isinstance(runs['debug_mode'], bool) and runs['debug_mode']==True:
-                logger.info('debug mode activated: no run will be launched')
-            else:
-                self.action_single_run(this_run_duration, this_run_name, runs['daq_targets'],this_timeout)
+            #ESR
+            if esr_runs is not None:
+                if 'esr_endpoint' in esr_runs:
+                    if isinstance(esr_runs['esr_endpoint'],str):
+                        this_esr_endpoint = esr_runs['esr_endpoint']
+                    else:
+                        logger.debug('no esr_endpoint given: using default (esr_interface)')
+                        this_esr_endpoint = 'esr_interface'
+                if 'esr_coils' in esr_runs:
+                    if isinstance(esr_runs['esr_coils'],(float,int)):
+                        this_coils = [esr_runs['esr_coils']]
+                    elif isinstance(esr_runs['esr_coils'],list):
+                        this_coils = esr_runs['esr_coils']
+                    else:
+                        this_coils = None
+                if 'timeout' in esr_runs:
+                    this_timeout = esr_runs['timeout']
+                # else:
+                #     this_timeout = 750 #s: default value (might be modified)
+                if 'no_instrument_configuration' in esr_runs and isinstance(esr_runs[no_instrument_configuration],bool) and esr_runs['no_instrument_configuration']==True:
+                    this_esr_no_configuration_option = True
+                else:
+                    this_esr_no_configuration_option = False
+                self.action_esr_scan(esr_endpoint=this_esr_endpoint,timeout=this_timeout,coils=this_coils,no_instrument_configuration=this_esr_no_configuration_option)
+
+            # compute args for, and call, action_single_run, based on run_count
+            elif runs is not None:
+                this_run_duration = None
+                if isinstance(runs['run_duration'], float) or isinstance(runs['run_duration'], int):
+                    this_run_duration = runs['run_duration']
+                elif isinstance(runs['run_duration'], dict):
+                    this_run_duration = runs['run_duration'][run_count]
+                elif isinstance(runs['run_duration'], str):
+                    this_run_duration = evaluator(runs['run_duration'].format(run_count))
+                else:
+                    logger.info('failed to compute run duration for run: {}'.format(run_count))
+                    raise dripline.core.DriplineValueError('set value not a dictionary or evaluatable expression')
+                this_run_name = runs['run_name'].format(daq_target='{}', run_count=run_count)
+                logger.info('run will be [{}] seconds with name "{}"'.format(this_run_duration, this_run_name))
+                if 'timeout' in runs:
+                    this_timeout = runs['timeout']
+                else:
+                    this_timeout=None
+                logger.debug('timeout set to {} s'.format(this_timeout))
+                # here we start each run (if debug_mode exists and is True)
+                if 'debug_mode' in runs and isinstance(runs['debug_mode'], bool) and runs['debug_mode']==True:
+                    logger.info('debug mode activated: no run will be launched')
+                else:
+                    self.action_single_run(this_run_duration, this_run_name, runs['daq_targets'],this_timeout)
 
             # update cache variable with this run being complete and update the cache file
             self._action_cache['last_run'] = run_count
