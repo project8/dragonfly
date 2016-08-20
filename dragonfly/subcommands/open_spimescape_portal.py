@@ -32,7 +32,6 @@ class Serve(object):
         kwargs = vars(kwargs)
         # create the portal:
         this_config = kwargs['config'] or {}
-        module = None
         if 'module' not in this_config:
             module = dripline.core.Service
         else:
@@ -45,7 +44,7 @@ class Serve(object):
                 except IOError:
                     logger.warning('unable to load source from: {}'.format(module_path))
             if hasattr(extra_namespace, module):
-                this_child = getattr(extra_namespace, module)(**conf_dict)
+                this_child = getattr(extra_namespace, module)
             elif hasattr(implementations, module):
                 module = getattr(implementations, module)
             elif hasattr(dripline.core, module):
