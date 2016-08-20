@@ -202,10 +202,9 @@ class DriplineParser(argparse.ArgumentParser):
                     conf_file = yaml.load(file_str)
                     if 'broker' in args_dict and 'broker' in conf_file:
                         if args_dict['broker'] is None:
-                            args_dict['broker'] = conf_file['broker']
+                            del args_dict['broker']
                     conf_file.update(args_dict)
-                    args_dict['config'] = conf_file
-                    these_args = DotAccess(args_dict)
+                    these_args = DotAccess(conf_file)
                 except:
                     print("parsing of config failed")
                     raise

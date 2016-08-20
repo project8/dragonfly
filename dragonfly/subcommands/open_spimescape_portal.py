@@ -29,9 +29,10 @@ class Serve(object):
     def __call__(self, kwargs):
         '''
         '''
-        kwargs = vars(kwargs)
+        if kwargs.config is None:
+            raise KeyError('<config> is required to `dragonfly serve`, use -c flag')
+        this_config = vars(kwargs)
         # create the portal:
-        this_config = kwargs['config'] or {}
         if 'module' not in this_config:
             module = dripline.core.Service
         else:
