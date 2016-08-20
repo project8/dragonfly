@@ -45,13 +45,13 @@ class Serve(object):
                 except IOError:
                     logger.warning('unable to load source from: {}'.format(module_path))
             if hasattr(extra_namespace, module):
-                this_child = getattr(extra_namespace, module)
+                module = getattr(extra_namespace, module)
             elif hasattr(implementations, module):
                 module = getattr(implementations, module)
             elif hasattr(dripline.core, module):
                 module = getattr(dripline.core, module)
             else:
-                raise NameError('no module "{}" in dripline.core or dripline.instruments'.format(module))
+                raise NameError('no module "{}" in dripline.core or dragonfly.implementations'.format(module))
         these_endpoints = this_config.pop('endpoints', [])
         service = module(**this_config)
         logger.info('starting {}'.format(service.name))
