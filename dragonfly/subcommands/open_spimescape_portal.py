@@ -96,7 +96,7 @@ class Serve(object):
         elif hasattr(dripline.core, module):
             this_child = getattr(dripline.core, module)(**conf_dict)
         else:
-            raise NameError('no module "{}" in dripline.core or dripline.implementations'.format(module))
+            raise NameError('no module "{}" in dripline.core or dragonfly.implementations'.format(module))
     
         for child_dict in child_confs:
             this_child.add_endpoint(self.create_child(service, child_dict))
