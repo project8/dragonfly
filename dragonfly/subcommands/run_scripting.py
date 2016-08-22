@@ -645,7 +645,7 @@ class RunScript(object):
             logger.info('computed operations are:\n{}'.format(evaluated_operations))
             self.action_do(evaluated_operations)
 
-            #ESR
+            #ESR Scan
             if esr_runs is not None:
                 if 'esr_endpoint' in esr_runs:
                     if isinstance(esr_runs['esr_endpoint'],str):
@@ -668,7 +668,11 @@ class RunScript(object):
                     this_esr_no_configuration_option = True
                 else:
                     this_esr_no_configuration_option = False
-                self.action_esr_scan(esr_endpoint=this_esr_endpoint,timeout=this_timeout,coils=this_coils,no_instrument_configuration=this_esr_no_configuration_option)
+                self.action_esr_scan(esr_endpoint=this_esr_endpoint,
+                                     timeout=this_timeout,
+                                     coils=this_coils,
+                                     no_instrument_configuration=this_esr_no_configuration_option
+                                     )
 
             # compute args for, and call, action_single_run, based on run_count
             elif runs is not None:
