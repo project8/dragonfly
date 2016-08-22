@@ -95,19 +95,19 @@ do -> combine the set and cmd actions within one list of "operations". Same deal
                 value: 2.4
                 payload_field: value_raw
 
-esr_scan -> send a cmd "run_scan" to the esr service endpoint. All the extra fields are optional.
-    'endpoint' selects the endpoint associated with the service. One can disable
-    the initial instrument configuration ('no_instrument_configuration' field)
-    before taking data (for commissioning mainly). 'timeout' provides the timeout
-    for executing this cmd. 'coils' gives a list of the coils used for the scan,
-    if None is given, the used coils are the default value of the run_scan method in the service.
+esr_scan -> send a cmd <method_name> to the esr service endpoint. First three fields
+    are required by dripline.core.Interface, other three fields correspond to esr run
+    settings and are optional (defaults are predefined in esr service script).
     The general structure of the action block is:
 
         - action: esr_scan
-          endpoint: STRING #endpoint associated with the esr service (default: esr_interface)
-          no_instrument_configuration: BOOL #bool to select not to do esr configuration before running scan (default: False-> do configuration)
-          timeout: TIME_IN_SECONDS # timeout (default: 750)
-          coils: LIST # esr coils to use (default: None)
+          endpoint (str):  endpoint associated with the esr service (recommended setting: esr_interface)
+          method_name (str): method of esr interface called (recommended setting: run_scan)
+          timeout (int||float): (recommended setting: 600)
+         OPTIONAL ARGUMENTS:
+          config_instruments (bool): do not enter instrument config loops (default: True)
+          flash_defaults (bool): reset internal esr variables to default values from config file (default: True)
+          coils (list): esr coils to use (default: [1,2,3,4,5])
 
 
 single_run -> collect a single run using one or more DAQ systems. The value provided
@@ -156,10 +156,12 @@ multi_run -> probably the most useful/sophisticated action, effectively provides
                 method_name: method_name
                 (value: ...)
         esr_runs:
-            endpoint: esr_interface 
-            no_instrument_configuration: BOOL
-            timeout: TIME_IN_SECONDS
-            coils: LIST
+            endpoint (str): esr_interface
+            method_name (str): run_scan
+            timeout (int||float): 600
+            config_instruments (bool)
+            flash_defaults (bool)
+            coils (list)
         runs:
             run_duration: {VALUE | "EXPRESSION" | {RUN_COUNT: VALUE, ...}}
             run_name: STRING_OPTIONALLY_WITH_{daq_target}_AND/OR_{run_count}
@@ -214,8 +216,6 @@ class RunScript(object):
 
 
     def init_cache_file(self, execution_file):
-        if execution_file is None or not isinstance(execution_file, types.StringType):
-            raise DriplineValueError("No valid execution file provided.")
         cache_file_name = execution_file
         if execution_file.count('.') == 1:
             cache_file_name = cache_file_name[0:cache_file_name.find('.')]
@@ -543,19 +543,20 @@ class RunScript(object):
                 else:
                     logger.info('operation <{}> unknown: skipping!'.format(key))
 
-    def action_esr_scan(self, esr_endpoint = 'esr_interface', no_instrument_configuration=False, timeout=750, coils=None):
-        logger.info('taking esr scan')
-        esr_kwargs = {  'endpoint': esr_endpoint,
-                        'method_name': 'run_scan',
-                        'no_instrument_configuration': no_instrument_configuration,
-                        'timeout': timeout,
-                        'coils':coils}
-        result = self.interface.cmd(**esr_kwargs)
-        logger.info('results:')
-        for field_value in result['payload_field']['values']:
-            logger.info('{} T'.format(field_value)) #one day we will be able to add the number of the coil and the associated error for each field value
-
-        #need a pretty-print like function here for display the result nicely
+    def action_esr_scan(self, **kwargs):
+        logger.info('Taking esr scan with args:\n{}'.format(kwargs))
+        if 'endpoint' not in kwargs or not isinstance(kwargs['endpoint'], str):
+            raise dripline.core.DriplineValueError("action_esr_scan requires arg <endpoint>, try default value 'esr_interface'")
+        if 'method_name' not in kwargs or not isinstance(kwargs['method_name'], str):
+            raise dripline.core.DriplineValueError("action_esr_scan requires arg <method_name>, try default value 'run_scan'")
+        # FIXME: method for passing warnings between esr service and run scripting to note that settings are being locked to defaults
+        result = self.interface.cmd(**kwargs)
+        logger.debug('result is:\n{}'.format(result))
+        key_list = sorted(result['payload'].keys())
+        str_result = ['results:']
+        for key in key_list:
+            str_result.append('\t{} : {} T'.format(key, result['payload'][key]))
+        logger.info("\n".join(str_result))
 
     def action_single_run(self, run_duration, run_name, daq_targets, timeout=None, **kwargs):
         logger.info('taking single run')
@@ -597,6 +598,7 @@ class RunScript(object):
         # establish default values for cache (in case of first call)
         # override with any values loaded from file
         # then update the instance variable with the current state
+        logger.info("Starting action_multi_run with operations:\n{}".format(operations))
         initial_state = {'last_run': -1,}
         initial_state.update(self._action_cache)
         self._action_cache.update(initial_state)
@@ -675,32 +677,7 @@ class RunScript(object):
 
             #ESR Scan
             if esr_runs is not None:
-                if 'esr_endpoint' in esr_runs:
-                    if isinstance(esr_runs['esr_endpoint'],str):
-                        this_esr_endpoint = esr_runs['esr_endpoint']
-                    else:
-                        logger.debug('no esr_endpoint given: using default (esr_interface)')
-                        this_esr_endpoint = 'esr_interface'
-                if 'esr_coils' in esr_runs:
-                    if isinstance(esr_runs['esr_coils'],(float,int)):
-                        this_coils = [esr_runs['esr_coils']]
-                    elif isinstance(esr_runs['esr_coils'],list):
-                        this_coils = esr_runs['esr_coils']
-                    else:
-                        this_coils = None
-                if 'timeout' in esr_runs:
-                    this_timeout = esr_runs['timeout']
-                # else:
-                #     this_timeout = 750 #s: default value (might be modified)
-                if 'no_instrument_configuration' in esr_runs and isinstance(esr_runs[no_instrument_configuration],bool) and esr_runs['no_instrument_configuration']==True:
-                    this_esr_no_configuration_option = True
-                else:
-                    this_esr_no_configuration_option = False
-                self.action_esr_scan(esr_endpoint=this_esr_endpoint,
-                                     timeout=this_timeout,
-                                     coils=this_coils,
-                                     no_instrument_configuration=this_esr_no_configuration_option
-                                     )
+                self.action_esr_scan(**esr_runs)
 
             # compute args for, and call, action_single_run, based on run_count
             elif runs is not None:

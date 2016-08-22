@@ -67,7 +67,7 @@ class ESR_Measurement(core.Endpoint):
         self.root_setup()
 
     # Configure instruments to default settings
-    def configure_instruments(self):
+    def configure_instruments(self, reset):
         # lockin controls
         self.check_ept('lockin_n_points', self.lockin_n_points)
         self.check_ept('lockin_sampling_interval', self.lockin_sampling_interval)
@@ -454,18 +454,17 @@ class ESR_Measurement(core.Endpoint):
         #logger.info(self.data_dict[coil])
         self.reset_configure()
 
-    def run_scan(self,no_instrument_configuration=False,coils=None):
+    def run_scan(self, config_instruments=True, flash_defaults=True, coils=[1,2,3,4,5], **kwargs):
+        logger.info(kwargs)
         self.data_dict = {}
-        if no_instrument_configuration==False:
-            self.configure_instruments()
-        if coils==None:
-            coils=[1,2,3,4,5]
+        if config_instruments:
+            self.configure_instruments(flash_defaults)
         for i in coils:
             self.single_measure(i)
         self.save_data()
         #logger.info(self.data_dict)
         self.reset_configure()
-        return [self.data_dict[coil]['result']['filt_field'] for coil in self.data_dict]
+        return { coil : self.data_dict[coil]['result']['filt_field'] for coil in self.data_dict }
 
 
     def drip_cmd(self, cmdname, val):
