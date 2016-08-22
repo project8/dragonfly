@@ -593,13 +593,16 @@ class RunScript(object):
         logger.info('acquistions complete')
 
 
-    def action_multi_run(self, runs=None, total_runs, operations=[], esr_runs=None, **kwargs):
+    def action_multi_run(self, runs=None, total_runs=None, operations=[], esr_runs=None, **kwargs):
         # establish default values for cache (in case of first call)
         # override with any values loaded from file
         # then update the instance variable with the current state
         initial_state = {'last_run': -1,}
         initial_state.update(self._action_cache)
         self._action_cache.update(initial_state)
+
+        if not isinstance(:
+            raise DriplineValueError("action_multi_run requires total_runs to be specified!")
 
         for run_count in range(total_runs):
             # skip runs that were already completed (only relevant if restarting an execution)

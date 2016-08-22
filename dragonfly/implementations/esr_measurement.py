@@ -458,7 +458,7 @@ class ESR_Measurement(core.Endpoint):
         self.data_dict = {}
         if no_instrument_configuration==False:
             self.configure_instruments()
-        if coils=None:
+        if coils==None:
             coils=[1,2,3,4,5]
         for i in coils:
             self.single_measure(i)
