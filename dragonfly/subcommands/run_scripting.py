@@ -365,6 +365,8 @@ class RunScript(object):
                 if this_set['no_check']==True:
                     logger.info('no check requested: skipping!')
                     continue
+            if 'sleep_time_before_check' in this_set:
+                logger.info('sleeping for {} s before check'.format(this_set['sleep_time_before_check']))
             if 'get_name' in this_set:
                 logger.debug('checking the set value using {}'.format(this_set['get_name']))
                 get_kwargs.update({'endpoint':this_set['get_name']})
