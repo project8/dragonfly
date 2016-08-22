@@ -95,6 +95,8 @@ do -> combine the set and cmd actions within one list of "operations". Same deal
                 value: 2.4
                 payload_field: value_raw
 
+esr_scan -> send a cmd "run_scan" to the esr_interface.
+
 single_run -> collect a single run using one or more DAQ systems. The value provided
     for the run_duration currently must be number in seconds, it would be nice if
     in the future we could also accept strings that are mathematical expressions
@@ -530,6 +532,10 @@ class RunScript(object):
                         'timeout': timeout,
                         'coils':coils}
         result = self.interface.cmd(**esr_kwargs)
+        logger.info('results:')
+        for field_value in result['payload_field']['values']:
+            logger.info('{} T'.format(field_value)) #one day we will be able to add the number of the coil and the associated error for each field value
+
         #need a pretty-print like function here for display the result nicely
 
     def action_single_run(self, run_duration, run_name, daq_targets, timeout=None, **kwargs):
