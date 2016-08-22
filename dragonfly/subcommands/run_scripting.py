@@ -95,7 +95,20 @@ do -> combine the set and cmd actions within one list of "operations". Same deal
                 value: 2.4
                 payload_field: value_raw
 
-esr_scan -> send a cmd "run_scan" to the esr_interface.
+esr_scan -> send a cmd "run_scan" to the esr service endpoint. All the extra fields are optional.
+    'endpoint' selects the endpoint associated with the service. One can disable
+    the initial instrument configuration ('no_instrument_configuration' field)
+    before taking data (for commissioning mainly). 'timeout' provides the timeout
+    for executing this cmd. 'coils' gives a list of the coils used for the scan,
+    if None is given, the used coils are the default value of the run_scan method in the service.
+    The general structure of the action block is:
+
+        - action: esr_scan
+          endpoint: STRING #endpoint associated with the esr service (default: esr_interface)
+          no_instrument_configuration: BOOL #bool to select not to do esr configuration before running scan (default: False-> do configuration)
+          timeout: TIME_IN_SECONDS # timeout (default: 750)
+          coils: LIST # esr coils to use (default: None)
+
 
 single_run -> collect a single run using one or more DAQ systems. The value provided
     for the run_duration currently must be number in seconds, it would be nice if
@@ -124,7 +137,8 @@ multi_run -> probably the most useful/sophisticated action, effectively provides
     which will be passed as named replacements to format() (note that there will
     not be any un-named values to unpack). The run_duration may be a value (which
     will be used for all runs), or it may be an expression similar to the above
-    sets (allowing for runs of variable duration).
+    sets (allowing for runs of variable duration). Note that for using esr scan in multi_run,
+    one should give at least one field inside the esr_runs: for example, endpoint: esr_interface
 
       - action: multi_run
         operations:
@@ -141,6 +155,11 @@ multi_run -> probably the most useful/sophisticated action, effectively provides
               - endpoint: ENDPOINT_NAME
                 method_name: method_name
                 (value: ...)
+        esr_runs:
+            endpoint: esr_interface 
+            no_instrument_configuration: BOOL
+            timeout: TIME_IN_SECONDS
+            coils: LIST
         runs:
             run_duration: {VALUE | "EXPRESSION" | {RUN_COUNT: VALUE, ...}}
             run_name: STRING_OPTIONALLY_WITH_{daq_target}_AND/OR_{run_count}
