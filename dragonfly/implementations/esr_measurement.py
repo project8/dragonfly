@@ -255,7 +255,7 @@ class ESR_Measurement(core.Endpoint):
             dtree = TTree("coil{}".format(coil), "coil {} data".format(coil))
             dtree.Branch("raw", struct2, "freq/F:amp_x:amp_y")
             dtree.Branch("filt", AddressOf(struct2, "fF1"), "freq/F:result:target")
-            
+
             for i in range(pts):
                 struct2.fR1 = self.data_dict[coil]['raw_data']['frequency'][i]
                 struct2.fR2 = self.data_dict[coil]['raw_data']['amp_x'][i]
@@ -454,10 +454,13 @@ class ESR_Measurement(core.Endpoint):
         #logger.info(self.data_dict[coil])
         self.reset_configure()
 
-    def run_scan(self):
+    def run_scan(self,no_instrument_configuration=False,coils=None):
         self.data_dict = {}
-        self.configure_instruments()
-        for i in range(1, 6):
+        if no_instrument_configuration==False:
+            self.configure_instruments()
+        if coils=None:
+            coils=[1,2,3,4,5]
+        for i in coils:
             self.single_measure(i)
         self.save_data()
         #logger.info(self.data_dict)
