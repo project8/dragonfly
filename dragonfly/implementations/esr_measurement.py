@@ -69,7 +69,7 @@ class ESR_Measurement(core.Endpoint):
     # Configure instruments to default settings
     def configure_instruments(self, reset):
         if reset:
-            self.flash_presets()
+            self.restore_presets()
         # lockin controls
         self.check_ept('lockin_n_points', self.lockin_n_points)
         self.check_ept('lockin_sampling_interval', self.lockin_sampling_interval)
@@ -104,7 +104,7 @@ class ESR_Measurement(core.Endpoint):
             self.check_ept('esr_coil_{}_switch_status'.format(coil), 0)
 
     # Reset all internal variables to presets loaded from config
-    def flash_presets(self):
+    def restore_presets(self):
         # lockin presets
         self.lockin_n_points = self._default_lockin_n_points
         self.lockin_sampling_interval = self._default_lockin_sampling_interval
@@ -477,11 +477,11 @@ class ESR_Measurement(core.Endpoint):
         #logger.info(self.data_dict[coil])
         self.reset_configure()
 
-    def run_scan(self, config_instruments=True, flash_defaults=True, coils=[1,2,3,4,5], **kwargs):
+    def run_scan(self, config_instruments=True, restore_defaults=True, coils=[1,2,3,4,5], **kwargs):
         logger.info(kwargs)
         self.data_dict = {}
         if config_instruments:
-            self.configure_instruments(flash_defaults)
+            self.configure_instruments(restore_defaults)
         for i in coils:
             self.single_measure(i)
         self.save_data()

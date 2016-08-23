@@ -101,12 +101,10 @@ esr_scan -> send a cmd <method_name> to the esr service endpoint. First three fi
     The general structure of the action block is:
 
         - action: esr_scan
-          endpoint (str):  endpoint associated with the esr service (recommended setting: esr_interface)
-          method_name (str): method of esr interface called (recommended setting: run_scan)
           timeout (int||float): (recommended setting: 600)
          OPTIONAL ARGUMENTS:
-          config_instruments (bool): do not enter instrument config loops (default: True)
-          flash_defaults (bool): reset internal esr variables to default values from config file (default: True)
+          config_instruments (bool): configure lockin, sweeper, and relays (default: True)
+          restore_defaults (bool): reset internal esr variables to default values from config file (default: True)
           coils (list): esr coils to use (default: [1,2,3,4,5])
 
 
@@ -156,12 +154,10 @@ multi_run -> probably the most useful/sophisticated action, effectively provides
                 method_name: method_name
                 (value: ...)
         esr_runs:
-            endpoint (str): esr_interface
-            method_name (str): run_scan
             timeout (int||float): 600
-            config_instruments (bool)
-            flash_defaults (bool)
-            coils (list)
+            config_instruments (bool): True (optional)
+            restore_defaults (bool): True (optional)
+            coils (list): [1,2,3,4,5] (optional)
         runs:
             run_duration: {VALUE | "EXPRESSION" | {RUN_COUNT: VALUE, ...}}
             run_name: STRING_OPTIONALLY_WITH_{daq_target}_AND/OR_{run_count}
@@ -544,11 +540,9 @@ class RunScript(object):
                     logger.info('operation <{}> unknown: skipping!'.format(key))
 
     def action_esr_scan(self, **kwargs):
-        logger.info('Taking esr scan with args:\n{}'.format(kwargs))
-        if 'endpoint' not in kwargs or not isinstance(kwargs['endpoint'], str):
-            raise dripline.core.DriplineValueError("action_esr_scan requires arg <endpoint>, try default value 'esr_interface'")
-        if 'method_name' not in kwargs or not isinstance(kwargs['method_name'], str):
-            raise dripline.core.DriplineValueError("action_esr_scan requires arg <method_name>, try default value 'run_scan'")
+        logger.info('Taking esr scan <esr_interface.run_scan> with args:\n{}'.format(kwargs))
+        kwargs.update({'endpoint':'esr_interface',
+                       'method_name':'run_scan'})
         # FIXME: method for passing warnings between esr service and run scripting to note that settings are being locked to defaults
         result = self.interface.cmd(**kwargs)
         logger.debug('result is:\n{}'.format(result))
