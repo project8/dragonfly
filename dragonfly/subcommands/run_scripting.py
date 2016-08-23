@@ -101,14 +101,12 @@ esr_scan -> send a cmd <method_name> to the esr service endpoint. First three fi
     The general structure of the action block is:
 
         - action: esr_scan
-          endpoint (str):  endpoint associated with the esr service (recommended setting: esr_interface)
-          method_name (str): method of esr interface called (recommended setting: run_scan)
           timeout (int||float): (recommended setting: 600)
          OPTIONAL ARGUMENTS:
-          config_instruments (bool): do not enter instrument config loops (default: True)
-          flash_defaults (bool): reset internal esr variables to default values from config file (default: True)
+          config_instruments (bool): configure lockin, sweeper, and relays (default: True)
+          restore_defaults (bool): reset internal esr variables to default values from config file (default: True)
           coils (list): esr coils to use (default: [1,2,3,4,5])
-
+          n_fits (int): number of fits to attempt on ESR traces (default: 2)
 
 single_run -> collect a single run using one or more DAQ systems. The value provided
     for the run_duration currently must be number in seconds, it would be nice if
@@ -156,12 +154,11 @@ multi_run -> probably the most useful/sophisticated action, effectively provides
                 method_name: method_name
                 (value: ...)
         esr_runs:
-            endpoint (str): esr_interface
-            method_name (str): run_scan
             timeout (int||float): 600
-            config_instruments (bool)
-            flash_defaults (bool)
-            coils (list)
+            config_instruments (bool): True (optional)
+            restore_defaults (bool): True (optional)
+            coils (list): [1,2,3,4,5] (optional)
+            n_fits (int): 2 (optional)
         runs:
             run_duration: {VALUE | "EXPRESSION" | {RUN_COUNT: VALUE, ...}}
             run_name: STRING_OPTIONALLY_WITH_{daq_target}_AND/OR_{run_count}
@@ -544,17 +541,15 @@ class RunScript(object):
                     logger.info('operation <{}> unknown: skipping!'.format(key))
 
     def action_esr_scan(self, **kwargs):
-        logger.info('Taking esr scan with args:\n{}'.format(kwargs))
-        if 'endpoint' not in kwargs or not isinstance(kwargs['endpoint'], str):
-            raise dripline.core.DriplineValueError("action_esr_scan requires arg <endpoint>, try default value 'esr_interface'")
-        if 'method_name' not in kwargs or not isinstance(kwargs['method_name'], str):
-            raise dripline.core.DriplineValueError("action_esr_scan requires arg <method_name>, try default value 'run_scan'")
+        logger.info('Taking esr scan <esr_interface.run_scan> with args:\n{}'.format(kwargs))
+        kwargs.update({'endpoint':'esr_interface',
+                       'method_name':'run_scan'})
         # FIXME: method for passing warnings between esr service and run scripting to note that settings are being locked to defaults
         result = self.interface.cmd(**kwargs)
+        # FIXME: ESR should run in background while sleep loops here pass
         logger.debug('result is:\n{}'.format(result))
-        key_list = sorted(result['payload'].keys())
         str_result = ['results:']
-        for key in key_list:
+        for key in sorted(result['payload'].keys()):
             str_result.append('\t{} : {} T'.format(key, result['payload'][key]))
         logger.info("\n".join(str_result))
 
@@ -594,7 +589,9 @@ class RunScript(object):
         logger.info('acquistions complete')
 
 
-    def action_multi_run(self, total_runs=None, operations=[], esr_runs=None, runs=None, **kwargs):
+    def action_multi_run(self, total_runs=None, operations=[], runs=None, **kwargs):
+        # kwargs will be checked for "esr_runs" dict, but otherwise ignored
+
         # establish default values for cache (in case of first call)
         # override with any values loaded from file
         # then update the instance variable with the current state
@@ -676,15 +673,17 @@ class RunScript(object):
             self.action_do(evaluated_operations)
 
             #ESR Scan
-            if esr_runs is not None:
-                self.action_esr_scan(**esr_runs)
+            if 'esr_runs' in kwargs:
+                if not isinstance(kwargs['esr_runs'], dict):
+                    kwargs['esr_runs'] = {}
+                self.action_esr_scan(**kwargs['esr_runs'])
 
             # compute args for, and call, action_single_run, based on run_count
             elif runs is not None:
                 this_run_duration = None
                 if isinstance(runs['run_duration'], (float,int)):
                     this_run_duration = runs['run_duration']
-                elif isinstance(runs['run_duration'], dict):
+                elif isinstance(runs['run_duration'], (dict,list)):
                     this_run_duration = runs['run_duration'][run_count]
                 elif isinstance(runs['run_duration'], str):
                     this_run_duration = evaluator(runs['run_duration'].format(run_count))

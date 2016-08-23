@@ -69,7 +69,7 @@ class ESR_Measurement(core.Endpoint):
     # Configure instruments to default settings
     def configure_instruments(self, reset):
         if reset:
-            self.flash_presets()
+            self.restore_presets()
         # lockin controls
         self.check_ept('lockin_n_points', self.lockin_n_points)
         self.check_ept('lockin_sampling_interval', self.lockin_sampling_interval)
@@ -104,7 +104,7 @@ class ESR_Measurement(core.Endpoint):
             self.check_ept('esr_coil_{}_switch_status'.format(coil), 0)
 
     # Reset all internal variables to presets loaded from config
-    def flash_presets(self):
+    def restore_presets(self):
         # lockin presets
         self.lockin_n_points = self._default_lockin_n_points
         self.lockin_sampling_interval = self._default_lockin_sampling_interval
@@ -132,7 +132,7 @@ class ESR_Measurement(core.Endpoint):
         for coil in range(1, 6):
             self.check_ept('esr_coil_{}_switch_status'.format(coil), 0)
 
-    def single_measure(self, coil):
+    def single_measure(self, coil, n_fits):
         self.check_ept('hf_output_status', 1)
         self.check_ept('esr_coil_{}_switch_status'.format(coil), 1)
         time = datetime.today().ctime()
@@ -169,7 +169,7 @@ class ESR_Measurement(core.Endpoint):
                          filter_data['freqs'][max_freq_index+1] - filter_data['freqs'][max_freq_index])
         b_field = 4.*numpy.pi*res_freq / (self.esr_g_factor*self.electron_cyclotron_frequency)
         b_field_e = b_field * res_freq_e / res_freq
-        fits = self.root_fits(data)
+        fits = self.root_fits(data, n_fits)
         fit_freq = fits['fit'].GetParameter(1)
         fit_freq_e = fits['fit'].GetParError(1)
         fit_field = 4.e6*numpy.pi*fit_freq / (self.esr_g_factor*self.electron_cyclotron_frequency)
@@ -308,7 +308,7 @@ class ESR_Measurement(core.Endpoint):
         outfile.Close()
 
 
-    def root_fits(self, raw_data):
+    def root_fits(self, raw_data, n_fits):
 
         data = numpy.column_stack((raw_data['frequency']*1e-6,
                                    raw_data['lockin_x_data']*1e6,
@@ -339,18 +339,20 @@ class ESR_Measurement(core.Endpoint):
             ye = numpy.array(len(data['y']) * [numpy.std(data['y'][:50])])
         xye = numpy.concatenate((ye, xe))
 
-        plot1 = TGraphErrors(len(f2), f2, xy, f2e, xye)
-        plot1.Fit("gfit","ME")
+        ct = 0
+        while ct < n_fits:
+            plot1 = TGraphErrors(len(f2), f2, xy, f2e, xye)
+            plot1.Fit("gfit","ME")
+            scale = (gfit.GetChisquare() / gfit.GetNDF())**0.5
+            logger.info("Chi-Square : {} / {}; rescale error by {}".format(gfit.GetChisquare(), gfit.GetNDF(), scale))
+            if scale > 0.95 and scale < 1.05:
+                logger.info("Acceptable error reached, aborting iterative scale and fit")
+            xe = xe * scale
+            ye = ye * scale
+            xye = xye * scale
+            ct += 1
 
-        scale = (gfit.GetChisquare() / gfit.GetNDF())**0.5
-        logger.info("Chi-Square : {} / {}; rescale error by {}".format(gfit.GetChisquare(), gfit.GetNDF(), scale))
-        xe = xe * scale
-        ye = ye * scale
-        xye = xye * scale
-        plot1 = TGraphErrors(len(f2), f2, xy, f2e, xye)
-        plot1.Fit("gfit","ME")
         plot1.SetName("xy_f")
-
         plot2 = TGraphErrors(len(data['f']), data['f']*1., data['y']*1., fe, ye)
         plot2.SetName("y_f")
         plot2.SetLineColor(2)
@@ -470,20 +472,13 @@ class ESR_Measurement(core.Endpoint):
                            };");
 
 
-    def debug_run(self, coil=3):
-        self.configure_instruments()
-        self.single_measure(coil)
-        self.save_data()
-        #logger.info(self.data_dict[coil])
-        self.reset_configure()
-
-    def run_scan(self, config_instruments=True, flash_defaults=True, coils=[1,2,3,4,5], **kwargs):
+    def run_scan(self, config_instruments=True, restore_defaults=True, coils=[1,2,3,4,5], n_fits=2, **kwargs):
         logger.info(kwargs)
         self.data_dict = {}
         if config_instruments:
-            self.configure_instruments(flash_defaults)
+            self.configure_instruments(restore_defaults)
         for i in coils:
-            self.single_measure(i)
+            self.single_measure(i, n_fits)
         self.save_data()
         #logger.info(self.data_dict)
         self.reset_configure()
