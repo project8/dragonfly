@@ -63,6 +63,7 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
                  roach2_hostname = 'led',
                  source_ip = None,
                  source_port = None,
+                 source_mac = None,
                  dest_ip = None,
                  dest_port = None,
                  dest_mac = None,
@@ -87,9 +88,10 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
         self._analysis_bandwidth = analysis_bandwidth
         self.source_ip = str(source_ip)
         self.source_port = source_port
+        self.source_mac = str(source_mac)
         self.dest_ip = str(dest_ip)
         self.dest_port = dest_port
-        self.dest_mac = dest_mac
+        self.dest_mac = str(dest_mac)
         self.cfg_list = None
         self.daq_name = daq_name
         self.channel_tag = channel_tag
@@ -101,11 +103,11 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
 
   
     def configure_roach(self, do_ogp_cal=False, do_adcif_cal=False, boffile='latest-build'):
-        if do_ogp_cal==True and do_adcif_cal==True:
-            self.calibrated=True
+#        if do_ogp_cal==True and do_adcif_cal==True:
+#            self.calibrated=True
         
         if self.source_port != None:
-            cfg_a = self.make_interface_config_dictionary(self.source_ip, self.source_port,self.dest_ip,self.dest_port,dest_mac=self.dest_mac,tag='a') 
+            cfg_a = self.make_interface_config_dictionary(self.source_ip, self.source_port,self.dest_ip, self.dest_port, src_mac=self.source_mac, dest_mac=self.dest_mac) 
             #cfg_b = self.make_interface_config_dictionary('192.168.10.101',4000,'192.168.10.64',4001,dest_mac='00:60:dd:44:91:e8',tag='b') 
             
             self.cfg_list = [cfg_a] 
@@ -120,7 +122,10 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
         
             
         return self.configured
-        
+    
+    def get_ip_configuration(self):
+        logger.info('source ip: {}, source port: {},  \n dest ip: {}, dest port: {}'.format(self.source_ip,self.source_port, self.dest_ip,self.dest_port))
+        return 'source ip: {}, source port: {} \n dest ip: {}, dest port: {}'.format(self.source_ip,self.source_port, self.dest_ip,self.dest_port)
     
     def get_calibration_status(self):
         return self.calibrated
