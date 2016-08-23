@@ -235,7 +235,7 @@ class ESR_Measurement(core.Endpoint):
         struct1.fC3Output = int(insert['trap_coil_3_output_status'])
         struct1.fC3Current = insert['trap_coil_3_current_output']
         struct1.fC4Relay = int(insert['trap_coil_4_relay_status'])
-        struct1.fC5Polarity = int(insert['trap_coil_4_polarity'])
+        struct1.fC4Polarity = int(insert['trap_coil_4_polarity'])
         struct1.fC4Output = int(insert['trap_coil_4_output_status'])
         struct1.fC4Current = insert['trap_coil_4_current_output']
         struct1.fC5Relay = int(insert['trap_coil_5_relay_status'])
