@@ -42,22 +42,22 @@ class ESR_Measurement(core.Endpoint):
                  **kwargs):
         core.Endpoint.__init__(self,**kwargs)
         # Settings for lockin and sweeper
-	self.lockin_n_points = lockin_n_points
-	self.lockin_sampling_interval = lockin_sampling_interval
-	self.lockin_trigger = lockin_trigger
-	self.lockin_curve_mask = lockin_curve_mask
-	self.lockin_srq_mask = lockin_srq_mask
-	self.lockin_osc_amp = lockin_osc_amp
-	self.lockin_osc_freq = lockin_osc_freq
-	self.lockin_ac_gain = lockin_ac_gain
-	self.lockin_sensitivity = lockin_sensitivity
-	self.lockin_time_constant = lockin_time_constant
-        self.hf_sweep_order = self.default_hf_sweep_order = hf_sweep_order
-	self.hf_start_freq = float(hf_start_freq)
-	self.hf_stop_freq = float(hf_stop_freq)
-	self.hf_power = hf_power
-	self.hf_n_sweep_points = hf_n_sweep_points
-	self.hf_dwell_time = hf_dwell_time
+        self.lockin_n_points = self._default_lockin_n_points = lockin_n_points
+        self.lockin_sampling_interval = self._default_lockin_sampling_interval = lockin_sampling_interval
+        self.lockin_trigger = self._default_lockin_trigger = lockin_trigger
+        self.lockin_curve_mask = self._default_lockin_curve_mask = lockin_curve_mask
+        self.lockin_srq_mask = self._default_lockin_srq_mask = lockin_srq_mask
+        self.lockin_osc_amp = self._default_lockin_osc_amp = lockin_osc_amp
+        self.lockin_osc_freq = self._default_lockin_osc_freq = lockin_osc_freq
+        self.lockin_ac_gain = self._default_lockin_ac_gain = lockin_ac_gain
+        self.lockin_sensitivity = self._default_lockin_sensitivity = lockin_sensitivity
+        self.lockin_time_constant = self._default_lockin_time_constant = lockin_time_constant
+        self.hf_sweep_order = self._default_hf_sweep_order = hf_sweep_order
+        self.hf_start_freq = self._default_hf_start_freq = float(hf_start_freq)
+        self.hf_stop_freq = self._default_hf_stop_freq = float(hf_stop_freq)
+        self.hf_power = self._default_hf_power = hf_power
+        self.hf_n_sweep_points = self._default_hf_n_sweep_points = hf_n_sweep_points
+        self.hf_dwell_time = self._default_hf_dwell_time = hf_dwell_time
         # Constants and analysis parameters
         self.shape = 'gaussian'
         self.electron_cyclotron_frequency = 1.758820024e11 # rad s^-1 T^-1
@@ -68,6 +68,8 @@ class ESR_Measurement(core.Endpoint):
 
     # Configure instruments to default settings
     def configure_instruments(self, reset):
+        if reset:
+            self.flash_presets()
         # lockin controls
         self.check_ept('lockin_n_points', self.lockin_n_points)
         self.check_ept('lockin_sampling_interval', self.lockin_sampling_interval)
@@ -100,6 +102,27 @@ class ESR_Measurement(core.Endpoint):
         self.check_ept('esr_tickler_switch', 1)
         for coil in range(1, 6):
             self.check_ept('esr_coil_{}_switch_status'.format(coil), 0)
+
+    # Reset all internal variables to presets loaded from config
+    def flash_presets(self):
+        # lockin presets
+        self.lockin_n_points = self._default_lockin_n_points
+        self.lockin_sampling_interval = self._default_lockin_sampling_interval
+        self.lockin_trigger = self._default_lockin_trigger
+        self.lockin_curve_mask = self._default_lockin_curve_mask
+        self.lockin_srq_mask = self._default_lockin_srq_mask
+        self.lockin_osc_amp = self._default_lockin_osc_amp
+        self.lockin_osc_freq = self._default_lockin_osc_freq
+        self.lockin_ac_gain = self._default_lockin_ac_gain
+        self.lockin_sensitivity = self._default_lockin_sensitivity
+        self.lockin_time_constant = self._default_lockin_time_constant
+        # sweeper presets
+        self.hf_sweep_order = self._default_hf_sweep_order
+        self.hf_start_freq = self._default_hf_start_freq
+        self.hf_stop_freq = self._default_hf_stop_freq
+        self.hf_power = self._default_hf_power
+        self.hf_n_sweep_points = self._default_hf_n_sweep_points
+        self.hf_dwell_time = self._default_hf_dwell_time
 
     # Immutable "safe" configuration for switches and sweeper
     def reset_configure(self):
