@@ -42,22 +42,22 @@ class ESR_Measurement(core.Endpoint):
                  **kwargs):
         core.Endpoint.__init__(self,**kwargs)
         # Settings for lockin and sweeper
-	self.lockin_n_points = lockin_n_points
-	self.lockin_sampling_interval = lockin_sampling_interval
-	self.lockin_trigger = lockin_trigger
-	self.lockin_curve_mask = lockin_curve_mask
-	self.lockin_srq_mask = lockin_srq_mask
-	self.lockin_osc_amp = lockin_osc_amp
-	self.lockin_osc_freq = lockin_osc_freq
-	self.lockin_ac_gain = lockin_ac_gain
-	self.lockin_sensitivity = lockin_sensitivity
-	self.lockin_time_constant = lockin_time_constant
-        self.hf_sweep_order = self.default_hf_sweep_order = hf_sweep_order
-	self.hf_start_freq = float(hf_start_freq)
-	self.hf_stop_freq = float(hf_stop_freq)
-	self.hf_power = hf_power
-	self.hf_n_sweep_points = hf_n_sweep_points
-	self.hf_dwell_time = hf_dwell_time
+        self.lockin_n_points = self._default_lockin_n_points = lockin_n_points
+        self.lockin_sampling_interval = self._default_lockin_sampling_interval = lockin_sampling_interval
+        self.lockin_trigger = self._default_lockin_trigger = lockin_trigger
+        self.lockin_curve_mask = self._default_lockin_curve_mask = lockin_curve_mask
+        self.lockin_srq_mask = self._default_lockin_srq_mask = lockin_srq_mask
+        self.lockin_osc_amp = self._default_lockin_osc_amp = lockin_osc_amp
+        self.lockin_osc_freq = self._default_lockin_osc_freq = lockin_osc_freq
+        self.lockin_ac_gain = self._default_lockin_ac_gain = lockin_ac_gain
+        self.lockin_sensitivity = self._default_lockin_sensitivity = lockin_sensitivity
+        self.lockin_time_constant = self._default_lockin_time_constant = lockin_time_constant
+        self.hf_sweep_order = self._default_hf_sweep_order = hf_sweep_order
+        self.hf_start_freq = self._default_hf_start_freq = float(hf_start_freq)
+        self.hf_stop_freq = self._default_hf_stop_freq = float(hf_stop_freq)
+        self.hf_power = self._default_hf_power = hf_power
+        self.hf_n_sweep_points = self._default_hf_n_sweep_points = hf_n_sweep_points
+        self.hf_dwell_time = self._default_hf_dwell_time = hf_dwell_time
         # Constants and analysis parameters
         self.shape = 'gaussian'
         self.electron_cyclotron_frequency = 1.758820024e11 # rad s^-1 T^-1
@@ -67,7 +67,9 @@ class ESR_Measurement(core.Endpoint):
         self.root_setup()
 
     # Configure instruments to default settings
-    def configure_instruments(self):
+    def configure_instruments(self, reset):
+        if reset:
+            self.restore_presets()
         # lockin controls
         self.check_ept('lockin_n_points', self.lockin_n_points)
         self.check_ept('lockin_sampling_interval', self.lockin_sampling_interval)
@@ -101,6 +103,27 @@ class ESR_Measurement(core.Endpoint):
         for coil in range(1, 6):
             self.check_ept('esr_coil_{}_switch_status'.format(coil), 0)
 
+    # Reset all internal variables to presets loaded from config
+    def restore_presets(self):
+        # lockin presets
+        self.lockin_n_points = self._default_lockin_n_points
+        self.lockin_sampling_interval = self._default_lockin_sampling_interval
+        self.lockin_trigger = self._default_lockin_trigger
+        self.lockin_curve_mask = self._default_lockin_curve_mask
+        self.lockin_srq_mask = self._default_lockin_srq_mask
+        self.lockin_osc_amp = self._default_lockin_osc_amp
+        self.lockin_osc_freq = self._default_lockin_osc_freq
+        self.lockin_ac_gain = self._default_lockin_ac_gain
+        self.lockin_sensitivity = self._default_lockin_sensitivity
+        self.lockin_time_constant = self._default_lockin_time_constant
+        # sweeper presets
+        self.hf_sweep_order = self._default_hf_sweep_order
+        self.hf_start_freq = self._default_hf_start_freq
+        self.hf_stop_freq = self._default_hf_stop_freq
+        self.hf_power = self._default_hf_power
+        self.hf_n_sweep_points = self._default_hf_n_sweep_points
+        self.hf_dwell_time = self._default_hf_dwell_time
+
     # Immutable "safe" configuration for switches and sweeper
     def reset_configure(self):
         self.check_ept('hf_output_status', 0)
@@ -109,7 +132,7 @@ class ESR_Measurement(core.Endpoint):
         for coil in range(1, 6):
             self.check_ept('esr_coil_{}_switch_status'.format(coil), 0)
 
-    def single_measure(self, coil):
+    def single_measure(self, coil, n_fits):
         self.check_ept('hf_output_status', 1)
         self.check_ept('esr_coil_{}_switch_status'.format(coil), 1)
         time = datetime.today().ctime()
@@ -146,7 +169,7 @@ class ESR_Measurement(core.Endpoint):
                          filter_data['freqs'][max_freq_index+1] - filter_data['freqs'][max_freq_index])
         b_field = 4.*numpy.pi*res_freq / (self.esr_g_factor*self.electron_cyclotron_frequency)
         b_field_e = b_field * res_freq_e / res_freq
-        fits = self.root_fits(data)
+        fits = self.root_fits(data, n_fits)
         fit_freq = fits['fit'].GetParameter(1)
         fit_freq_e = fits['fit'].GetParError(1)
         fit_field = 4.e6*numpy.pi*fit_freq / (self.esr_g_factor*self.electron_cyclotron_frequency)
@@ -212,7 +235,7 @@ class ESR_Measurement(core.Endpoint):
         struct1.fC3Output = int(insert['trap_coil_3_output_status'])
         struct1.fC3Current = insert['trap_coil_3_current_output']
         struct1.fC4Relay = int(insert['trap_coil_4_relay_status'])
-        struct1.fC5Polarity = int(insert['trap_coil_4_polarity'])
+        struct1.fC4Polarity = int(insert['trap_coil_4_polarity'])
         struct1.fC4Output = int(insert['trap_coil_4_output_status'])
         struct1.fC4Current = insert['trap_coil_4_current_output']
         struct1.fC5Relay = int(insert['trap_coil_5_relay_status'])
@@ -255,7 +278,7 @@ class ESR_Measurement(core.Endpoint):
             dtree = TTree("coil{}".format(coil), "coil {} data".format(coil))
             dtree.Branch("raw", struct2, "freq/F:amp_x:amp_y")
             dtree.Branch("filt", AddressOf(struct2, "fF1"), "freq/F:result:target")
-            
+
             for i in range(pts):
                 struct2.fR1 = self.data_dict[coil]['raw_data']['frequency'][i]
                 struct2.fR2 = self.data_dict[coil]['raw_data']['amp_x'][i]
@@ -285,7 +308,7 @@ class ESR_Measurement(core.Endpoint):
         outfile.Close()
 
 
-    def root_fits(self, raw_data):
+    def root_fits(self, raw_data, n_fits):
 
         data = numpy.column_stack((raw_data['frequency']*1e-6,
                                    raw_data['lockin_x_data']*1e6,
@@ -316,18 +339,20 @@ class ESR_Measurement(core.Endpoint):
             ye = numpy.array(len(data['y']) * [numpy.std(data['y'][:50])])
         xye = numpy.concatenate((ye, xe))
 
-        plot1 = TGraphErrors(len(f2), f2, xy, f2e, xye)
-        plot1.Fit("gfit","ME")
+        ct = 0
+        while ct < n_fits:
+            plot1 = TGraphErrors(len(f2), f2, xy, f2e, xye)
+            plot1.Fit("gfit","ME")
+            scale = (gfit.GetChisquare() / gfit.GetNDF())**0.5
+            logger.info("Chi-Square : {} / {}; rescale error by {}".format(gfit.GetChisquare(), gfit.GetNDF(), scale))
+            if scale > 0.95 and scale < 1.05:
+                logger.info("Acceptable error reached, aborting iterative scale and fit")
+            xe = xe * scale
+            ye = ye * scale
+            xye = xye * scale
+            ct += 1
 
-        scale = (gfit.GetChisquare() / gfit.GetNDF())**0.5
-        logger.info("Chi-Square : {} / {}; rescale error by {}".format(gfit.GetChisquare(), gfit.GetNDF(), scale))
-        xe = xe * scale
-        ye = ye * scale
-        xye = xye * scale
-        plot1 = TGraphErrors(len(f2), f2, xy, f2e, xye)
-        plot1.Fit("gfit","ME")
         plot1.SetName("xy_f")
-
         plot2 = TGraphErrors(len(data['f']), data['f']*1., data['y']*1., fe, ye)
         plot2.SetName("y_f")
         plot2.SetLineColor(2)
@@ -447,22 +472,17 @@ class ESR_Measurement(core.Endpoint):
                            };");
 
 
-    def debug_run(self, coil=3):
-        self.configure_instruments()
-        self.single_measure(coil)
-        self.save_data()
-        #logger.info(self.data_dict[coil])
-        self.reset_configure()
-
-    def run_scan(self):
+    def run_scan(self, config_instruments=True, restore_defaults=True, coils=[1,2,3,4,5], n_fits=2, **kwargs):
+        logger.info(kwargs)
         self.data_dict = {}
-        self.configure_instruments()
-        for i in range(1, 6):
-            self.single_measure(i)
+        if config_instruments:
+            self.configure_instruments(restore_defaults)
+        for i in coils:
+            self.single_measure(i, n_fits)
         self.save_data()
         #logger.info(self.data_dict)
         self.reset_configure()
-        return [self.data_dict[coil]['result']['filt_field'] for coil in self.data_dict]
+        return { coil : self.data_dict[coil]['result']['filt_field'] for coil in self.data_dict }
 
 
     def drip_cmd(self, cmdname, val):

@@ -95,6 +95,19 @@ do -> combine the set and cmd actions within one list of "operations". Same deal
                 value: 2.4
                 payload_field: value_raw
 
+esr_scan -> send a cmd <method_name> to the esr service endpoint. First three fields
+    are required by dripline.core.Interface, other three fields correspond to esr run
+    settings and are optional (defaults are predefined in esr service script).
+    The general structure of the action block is:
+
+        - action: esr_scan
+          timeout (int||float): (recommended setting: 600)
+         OPTIONAL ARGUMENTS:
+          config_instruments (bool): configure lockin, sweeper, and relays (default: True)
+          restore_defaults (bool): reset internal esr variables to default values from config file (default: True)
+          coils (list): esr coils to use (default: [1,2,3,4,5])
+          n_fits (int): number of fits to attempt on ESR traces (default: 2)
+
 single_run -> collect a single run using one or more DAQ systems. The value provided
     for the run_duration currently must be number in seconds, it would be nice if
     in the future we could also accept strings that are mathematical expressions
@@ -122,7 +135,8 @@ multi_run -> probably the most useful/sophisticated action, effectively provides
     which will be passed as named replacements to format() (note that there will
     not be any un-named values to unpack). The run_duration may be a value (which
     will be used for all runs), or it may be an expression similar to the above
-    sets (allowing for runs of variable duration).
+    sets (allowing for runs of variable duration). Note that for using esr scan in multi_run,
+    one should give at least one field inside the esr_runs: for example, endpoint: esr_interface
 
       - action: multi_run
         operations:
@@ -139,6 +153,12 @@ multi_run -> probably the most useful/sophisticated action, effectively provides
               - endpoint: ENDPOINT_NAME
                 method_name: method_name
                 (value: ...)
+        esr_runs:
+            timeout (int||float): 600
+            config_instruments (bool): True (optional)
+            restore_defaults (bool): True (optional)
+            coils (list): [1,2,3,4,5] (optional)
+            n_fits (int): 2 (optional)
         runs:
             run_duration: {VALUE | "EXPRESSION" | {RUN_COUNT: VALUE, ...}}
             run_name: STRING_OPTIONALLY_WITH_{daq_target}_AND/OR_{run_count}
@@ -193,21 +213,21 @@ class RunScript(object):
 
 
     def init_cache_file(self, execution_file):
-        if execution_file!=None and isinstance(execution_file, types.StringType):
-            if execution_file.find('.') !=-1:
-                cache_file_name = execution_file[0:execution_file.find('.')]
-            else:
-                logger.info('could not find an extension: using default execution_cache')
-                self._cache_file_name = '/tmp/execution_cache.json'
-                return
-            while execution_file.find('/') !=-1:
-                cache_file_name = cache_file_name[execution_file.find('/'):len(cache_file_name)]
-            if cache_file_name !='':
-                self._cache_file_name = '/tmp/'+cache_file_name+'_cache.json'
-                logger.info('new cache file is {}'.format(self._cache_file_name))
-            else:
-                logger.info('empty cache_file_name: using default execution_cache')
-                self._cache_file_name = '/tmp/execution_cache.json'
+        cache_file_name = execution_file
+        if execution_file.count('.') == 1:
+            cache_file_name = cache_file_name[0:cache_file_name.find('.')]
+        else:
+            logger.warning('cannot parse execution_file punctuation: {}'.format(execution_file))
+            cache_file_name = ""
+        if cache_file_name.find('/') != -1:
+            cache_file_name = cache_file_name[cache_file_name.rfind('/')+1:len(cache_file_name)]
+
+        if cache_file_name != '':
+            self._cache_file_name = '/tmp/'+cache_file_name+'_cache.json'
+            logger.info('new cache file is {}'.format(self._cache_file_name))
+        else:
+            self._cache_file_name = '/tmp/execution_cache.json'
+            logger.warning('empty cache_file_name: using default {}'.format(self._cache_file_name))
 
     def update_from_cache_file(self):
         try:
@@ -363,6 +383,8 @@ class RunScript(object):
                 if this_set['no_check']==True:
                     logger.info('no check requested: skipping!')
                     continue
+            if 'sleep_time_before_check' in this_set:
+                logger.info('sleeping for {} s before check'.format(this_set['sleep_time_before_check']))
             if 'get_name' in this_set:
                 logger.debug('checking the set value using {}'.format(this_set['get_name']))
                 get_kwargs.update({'endpoint':this_set['get_name']})
@@ -469,14 +491,14 @@ class RunScript(object):
                     target_value_backup = target_value
                     value_get_backup = value_get
                     # changing target_value in the dictionary
-                    if target_value=='on' or target_value=='enable' or target_value=='enabled' or 'positive':
+                    if target_value=='on' or target_value=='enable' or target_value=='enabled' or target_value=='positive':
                         target_value=='1'
-                    if target_value=='off' or target_value=='disable' or target_value=='disabled' or 'negative':
+                    if target_value=='off' or target_value=='disable' or target_value=='disabled' or target_value=='negative':
                         target_value=='0'
                     # changing value_get in the dictionary
-                    if value_get=='on' or value_get=='enable' or value_get=='enabled' or 'positive':
+                    if value_get=='on' or value_get=='enable' or value_get=='enabled' or value_get=='positive':
                         value_get=='1'
-                    if value_get=='off' or value_get=='disable' or value_get=='disabled' or 'negative':
+                    if value_get=='off' or value_get=='disable' or value_get=='disabled' or value_get=='negative':
                         value_get=='0'
                     # checking is target_value and value_get are the same
                     if target_value==value_get:
@@ -518,6 +540,19 @@ class RunScript(object):
                 else:
                     logger.info('operation <{}> unknown: skipping!'.format(key))
 
+    def action_esr_scan(self, **kwargs):
+        logger.info('Taking esr scan <esr_interface.run_scan> with args:\n{}'.format(kwargs))
+        kwargs.update({'endpoint':'esr_interface',
+                       'method_name':'run_scan'})
+        # FIXME: method for passing warnings between esr service and run scripting to note that settings are being locked to defaults
+        result = self.interface.cmd(**kwargs)
+        # FIXME: ESR should run in background while sleep loops here pass
+        logger.debug('result is:\n{}'.format(result))
+        str_result = ['results:']
+        for key in sorted(result['payload'].keys()):
+            str_result.append('\t{} : {} T'.format(key, result['payload'][key]))
+        logger.info("\n".join(str_result))
+
     def action_single_run(self, run_duration, run_name, daq_targets, timeout=None, **kwargs):
         logger.info('taking single run')
         run_kwargs = {'endpoint':None,
@@ -537,9 +572,10 @@ class RunScript(object):
             else:
                 self.interface.cmd(**run_kwargs)
         logger.info('daq all started, now wait for requested livetime')
+        logger.info('time remaining >= {:.0f} seconds'.format(run_duration-(datetime.datetime.now()-start_of_runs).total_seconds()))
         while (datetime.datetime.now() - start_of_runs).total_seconds() < run_duration:
             logger.info('time remaining >= {:.0f} seconds'.format(run_duration-(datetime.datetime.now()-start_of_runs).total_seconds()))
-            time.sleep(5)
+            time.sleep(min(7*60,max(10,run_duration/14.)))
         all_done = False
         logger.info('ideal livetime over, waiting for daq systems to finish')
         while all_done == False:
@@ -552,13 +588,20 @@ class RunScript(object):
             time.sleep(5)
         logger.info('acquistions complete')
 
-    def action_multi_run(self, runs, total_runs, operations=[], **kwargs):
+
+    def action_multi_run(self, total_runs=None, operations=[], runs=None, **kwargs):
+        # kwargs will be checked for "esr_runs" dict, but otherwise ignored
+
         # establish default values for cache (in case of first call)
         # override with any values loaded from file
         # then update the instance variable with the current state
+        logger.info("Starting action_multi_run with operations:\n{}".format(operations))
         initial_state = {'last_run': -1,}
         initial_state.update(self._action_cache)
         self._action_cache.update(initial_state)
+
+        if not isinstance(total_runs, int):
+            raise DriplineValueError("action_multi_run requires total_runs to be specified as int!")
 
         for run_count in range(total_runs):
             # skip runs that were already completed (only relevant if restarting an execution)
@@ -580,30 +623,39 @@ class RunScript(object):
                 if key == 'sets':
                     these_sets = []
                     for a_set in a_do[key]:
+                        this_value = None
                         logger.info('set type is: {}'.format(type(a_set['value'])))
-                        if isinstance(a_set['value'], dict):
+                        if isinstance(a_set['value'], (dict,list)) and isinstance(a_set['value'][run_count], (int,float,str,bool)):
                             this_value = a_set['value'][run_count]
-                        elif isinstance(a_set['value'], float) or isinstance(a_set['value'], int):
+                        elif isinstance(a_set['value'], (int,float,bool)):
                             this_value = a_set['value']
-                        elif isinstance(a_set['value'],list):
-                            if isinstance(a_set['value'][run_count],float) or isinstance(a_set['value'][run_count],int):
-                                this_value = a_set['value'][run_count]
-                            else:
-                                raise dripline.core.DriplineValueError('set list ({}) does not contain only float or int'.format(a_set['name']))
                         elif isinstance(a_set['value'], str):
-                            if isinstance(evaluator(a_set['value'].format(run_count)),float) or isinstance(evaluator(a_set['value'].format(run_count)),int):
+                            if isinstance(evaluator(a_set['value'].format(run_count)), (int,float,str,bool)):
                                 this_value = evaluator(a_set['value'].format(run_count))
-                            elif isinstance(evaluator(a_set['value'].format(run_count)),list):
-                                this_value = evaluator(a_set['value'].format(run_count))[run_count]
-                            else:
-                                this_value = evaluator(a_set['value'].format(run_count))
-                                if this_value==None:
-                                    this_value = a_set['value']
-                        elif isinstance(a_set['value'], bool):
-                            this_value = a_set['value']
-                        else:
+                            elif isinstance(evaluator(a_set['value'].format(run_count)), list):
+                                old_list = evaluator(a_set['value'].format(run_count))
+                                new_list = []
+                                for i in range(len(old_list)):
+                                    if isinstance(old_list[i],list):
+                                        sub_list = old_list[i]
+                                        for j in range(sub_list):
+                                            new_list.append(sub_list[j])
+                                    elif isinstance(old_list[i], (int,float,str,bool)):
+                                        new_list.append(old_list[i])
+                                    else:
+                                        raise dripline.core.DriplineValueError('run_scripting does not support list of lists of lists')
+                                this_value = new_list[run_count]
+                            elif isinstance(evaluator(a_set['value'].format(run_count)), dict):
+                                if isinstance(evaluator(a_set['value'].format(run_count))[run_count], (int,float,str,bool)):
+                                    this_value = evaluator(a_set['value'].format(run_count))[run_count]
+                                elif isinstance(evaluator(a_set['value'].format(run_count))[run_count], list):
+                                    raise dripline.core.DriplineValueError('run_scripting does not support dict of lists')
+                                else:
+                                    raise dripline.core.DriplineValueError('rmissing value in the dict')
+
+                        if this_value is None:
                             logger.info('failed to parse set:\n{}'.format(a_set))
-                            raise dripline.core.DriplineValueError('set value not a dictionary or evaluatable expression')
+                            raise dripline.core.DriplineValueError('Invalid set value!')
                         dict_temp = {'name': a_set['name'], 'value': this_value}
                         # these_sets.append({'name': a_set['name'], 'value': this_value})
                         for key in a_set:
@@ -619,31 +671,37 @@ class RunScript(object):
                     logger.warning('Operation unknown: skipping!')
             logger.info('computed operations are:\n{}'.format(evaluated_operations))
             self.action_do(evaluated_operations)
+
+            #ESR Scan
+            if 'esr_runs' in kwargs:
+                if not isinstance(kwargs['esr_runs'], dict):
+                    kwargs['esr_runs'] = {}
+                self.action_esr_scan(**kwargs['esr_runs'])
+
             # compute args for, and call, action_single_run, based on run_count
-            this_run_duration = None
-            if isinstance(runs['run_duration'], float) or isinstance(runs['run_duration'], int):
-                this_run_duration = runs['run_duration']
-            elif isinstance(runs['run_duration'], dict):
-                this_run_duration = runs['run_duration'][run_count]
-            elif isinstance(runs['run_duration'], str):
-                this_run_duration = evaluator(runs['run_duration'].format(run_count))
-            else:
-                logger.info('failed to compute run duration for run: {}'.format(run_count))
-                raise dripline.core.DriplineValueError('set value not a dictionary or evaluatable expression')
-            this_run_name = runs['run_name'].format(daq_target='{}', run_count=run_count)
-            logger.info('run will be [{}] seconds with name "{}"'.format(this_run_duration, this_run_name))
-            if 'timeout' in runs:
-                this_timeout = runs['timeout']
-            else:
-                this_timeout=None
-            logger.debug('timeout set to {} s'.format(this_timeout))
-
-
-            # here we start each run (if debug_mode exists and is True)
-            if 'debug_mode' in runs and isinstance(runs['debug_mode'], bool) and runs['debug_mode']==True:
-                logger.info('debug mode activated: no run will be launched')
-            else:
-                self.action_single_run(this_run_duration, this_run_name, runs['daq_targets'],this_timeout)
+            elif runs is not None:
+                this_run_duration = None
+                if isinstance(runs['run_duration'], (float,int)):
+                    this_run_duration = runs['run_duration']
+                elif isinstance(runs['run_duration'], (dict,list)):
+                    this_run_duration = runs['run_duration'][run_count]
+                elif isinstance(runs['run_duration'], str):
+                    this_run_duration = evaluator(runs['run_duration'].format(run_count))
+                else:
+                    logger.info('failed to compute run duration for run: {}'.format(run_count))
+                    raise dripline.core.DriplineValueError('set value not a dictionary or evaluatable expression')
+                this_run_name = runs['run_name'].format(daq_target='{}', run_count=run_count)
+                logger.info('run will be [{}] seconds with name "{}"'.format(this_run_duration, this_run_name))
+                if 'timeout' in runs:
+                    this_timeout = runs['timeout']
+                else:
+                    this_timeout=None
+                logger.debug('timeout set to {} s'.format(this_timeout))
+                # here we start each run (if debug_mode exists and is True)
+                if 'debug_mode' in runs and isinstance(runs['debug_mode'], bool) and runs['debug_mode']==True:
+                    logger.info('debug mode activated: no run will be launched')
+                else:
+                    self.action_single_run(this_run_duration, this_run_name, runs['daq_targets'],this_timeout)
 
             # update cache variable with this run being complete and update the cache file
             self._action_cache['last_run'] = run_count

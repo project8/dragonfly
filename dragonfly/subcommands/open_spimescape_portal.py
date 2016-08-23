@@ -29,10 +29,10 @@ class Serve(object):
     def __call__(self, kwargs):
         '''
         '''
-        kwargs = vars(kwargs)
+        if kwargs.config is None:
+            raise KeyError('<config> is required to `dragonfly serve`, use -c flag')
+        this_config = vars(kwargs)
         # create the portal:
-        this_config = kwargs['config'] or {}
-        module = None
         if 'module' not in this_config:
             module = dripline.core.Service
         else:
@@ -45,13 +45,13 @@ class Serve(object):
                 except IOError:
                     logger.warning('unable to load source from: {}'.format(module_path))
             if hasattr(extra_namespace, module):
-                this_child = getattr(extra_namespace, module)(**conf_dict)
+                module = getattr(extra_namespace, module)
             elif hasattr(implementations, module):
                 module = getattr(implementations, module)
             elif hasattr(dripline.core, module):
                 module = getattr(dripline.core, module)
             else:
-                raise NameError('no module "{}" in dripline.core or dripline.instruments'.format(module))
+                raise NameError('no module "{}" in dripline.core or dragonfly.implementations'.format(module))
         these_endpoints = this_config.pop('endpoints', [])
         service = module(**this_config)
         logger.info('starting {}'.format(service.name))
@@ -96,7 +96,7 @@ class Serve(object):
         elif hasattr(dripline.core, module):
             this_child = getattr(dripline.core, module)(**conf_dict)
         else:
-            raise NameError('no module "{}" in dripline.core or dripline.implementations'.format(module))
+            raise NameError('no module "{}" in dripline.core or dragonfly.implementations'.format(module))
     
         for child_dict in child_confs:
             this_child.add_endpoint(self.create_child(service, child_dict))
