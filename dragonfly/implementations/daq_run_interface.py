@@ -87,22 +87,13 @@ class DAQProvider(core.Provider):
             logger.debug('not going to try to talk to database')
             self.run_id = 0
             return
-        request = core.RequestMessage(msgop=core.OP_CMD,
-                                      payload={'values':[],
-                                               'run_name':value,
-                                              },
-                                     )
-        result = self.portal.send_request(self.run_table_endpoint+'.do_insert',
-                                          request=request,
-                                         )
-        if not result.retcode == 0:
-            raise core.exception_map[result.retcode](result.return_msg)
-        self.run_id = result.payload['run_id']
+        result = self.provider.cmd(self.run_table_endpoint, do_insert, {'run_name':value})
+        self.run_id = result['run_id']
 
     def end_run(self):
         run_was = self.run_id
         if self._stop_handle is not None:
-            self.portal._connection.remove_timeout(self._stop_handle)
+            self.service._connection.remove_timeout(self._stop_handle)
             self._stop_handle = None
         self._run_name = None
         self.run_id = None
@@ -122,10 +113,8 @@ class DAQProvider(core.Provider):
 
     def _do_prerun_gets(self):
         logger.info('doing prerun meta-data gets')
-        query_msg = core.RequestMessage(msgop=core.OP_GET)
-        these_metadata = {}
-        result = self.portal.send_request(request=query_msg, target=self._metadata_state_target, timeout=120)
-        these_metadata = result.payload['value_raw']
+        result = self.provider.get(self._metadata_state_target, timeout=120)
+        these_metadata = result['value_raw']
         self._run_meta.update(these_metadata)
         self.determine_RF_ROI()
 
@@ -147,16 +136,14 @@ class DAQProvider(core.Provider):
                         'filename': filename,
                        }
         this_payload['metadata']['run_id'] = self.run_id
-        request_msg = core.RequestMessage(payload=this_payload, msgop=core.OP_CMD)
-        req_result = self.portal.send_request(request=request_msg, target=self._metadata_target)
-        if not req_result.retcode == 0:
-            raise core.exceptions.DriplineValueError('writing meta-data did not return success')
+        # note, the following line has an empty method/RKS, this shouldn't be the case but is what golang expects
+        req_result = self.provider.cmd(self.metadata_target, '', this_payload) 
         logger.debug('meta sent')
 
     def start_timed_run(self, run_name, run_time):
         '''
         '''
-        self._stop_handle = self.portal._connection.add_timeout(int(run_time), self.end_run)
+        self._stop_handle = self.service._connection.add_timeout(int(run_time), self.end_run)
         self.start_run(run_name)
 
 
@@ -196,9 +183,7 @@ class MantisAcquisitionInterface(DAQProvider, core.Spime):
         self.log_interval = value
 
     def start_run(self, run_name):
-        result = self.portal.send_request(request=core.RequestMessage(msgop=core.OP_SET, payload={'values':[self.acquisition_time*1000.]}), target=self.mantis_queue+'.duration')
-        if result.retcode >= 100:
-            logger.warning('retcode indicates an error')
+        result = self.provider.set(self.mantis_queue+'.duration', self.acquisition_time*1000.)
         super(MantisAcquisitionInterface, self).start_run(run_name)
         self.on_get()
         self.logging_status = 'on'
@@ -210,22 +195,22 @@ class MantisAcquisitionInterface(DAQProvider, core.Spime):
         num_acquisitions = int(run_time // self.acquisition_time)
         last_run_time = run_time % self.acquisition_time
         logger.info("going to request <{}> runs, then one of <{}> [s]".format(num_acquisitions, last_run_time))
-        result = self.portal.send_request(request=core.RequestMessage(msgop=core.OP_SET, payload={'values':[self.acquisition_time*1000]}), target=self.mantis_queue+'.duration')
+        result = self.provider.set(self.mantis_queue'.duration', acquisition_time*1000)
         if result.retcode != 0:
             logger.warning('bad set')
         for acq in range(num_acquisitions):
             self.on_get()
         if last_run_time != 0:
-            self.portal.send_request(request=core.RequestMessage(msgop=core.OP_SET, payload={'values':[last_run_time*1000]}), target=self.mantis_queue+'.duration')
+            self.provider.set(self.mantis_queue+'.duration', last_run_time*1000)
             self.on_get()
-            self.portal.send_request(request=core.RequestMessage(msgop=core.OP_SET, payload={'values':[self.acquisition_time*1000]}), target=self.mantis_queue+'.duration')
+            result = self.provider.set(self.mantis_queue'.duration', acquisition_time*1000)
 
     @property
     def is_running(self):
         logger.info('query mantis server status to see if it is finished')
-        result = self.portal.send_request(request=core.RequestMessage(msgop=core.OP_GET, payload={}), target=self.mantis_queue+'.server-status')
+        result = self.provider.get(self.mantis_queue+'.server-status')
         to_return = True
-        if result.payload['server']['server-worker']['status'] == u'Idle (queue is empty)':
+        if result['server']['server-worker']['status'] == u'Idle (queue is empty)':
             to_return = False
         return to_return
 
@@ -256,9 +241,10 @@ class MantisAcquisitionInterface(DAQProvider, core.Spime):
         request = core.RequestMessage(payload={'values':[], 'file':filepath},
                                       msgop=core.OP_RUN,
                                      )
-        result = self.portal.send_request(self.mantis_queue,
+        result = self.service.send_request(self.mantis_queue,
                                           request=request,
                                          )
+        # todo this case isn't treated in provider currently so we use raw service.send_request
         if not result.retcode == 0:
             msg = ''
             if 'ret_msg' in result.payload:
@@ -271,18 +257,18 @@ class MantisAcquisitionInterface(DAQProvider, core.Spime):
     def end_run(self):
         self.logging_status = 'stop'
         super(MantisAcquisitionInterface, self).end_run()
-        request = core.RequestMessage(msgop=core.OP_CMD)
-        result = self.portal.send_request(target=self.mantis_queue+'.stop-queue', request=request)
+        #request = core.RequestMessage(msgop=core.OP_CMD)
+        result = self.provider.cmd(self.mantis_queue, 'stop-queue')
         if not result.retcode == 0:
             logger.warning('error stoping queue:\n{}'.format(result.return_msg))
         else:
             logger.warning('queue stopped')
-        result = self.portal.send_request(target=self.mantis_queue+'.clear-queue', request=request)
+        result = self.service.send_request(target=self.mantis_queue+'.clear-queue', request=request)
         if not result.retcode == 0:
             logger.warning('error clearing queue:\n{}'.format(result.return_msg))
         else:
             logger.warning('queue cleared')
-        result = self.portal.send_request(target=self.mantis_queue+'.start-queue', request=request)
+        result = self.service.send_request(target=self.mantis_queue+'.start-queue', request=request)
         if not result.retcode == 0:
             logger.warning('error restarting queue:\n{}'.format(result.return_msg))
         else:
