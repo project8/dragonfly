@@ -6,7 +6,10 @@ import numpy
 import logging
 from datetime import datetime
 from time import sleep
-from ROOT import AddressOf, gROOT, gStyle, TCanvas, TF1, TFile, TGraph, TGraphErrors, TMultiGraph, TTree
+try:
+    from ROOT import AddressOf, gROOT, gStyle, TCanvas, TF1, TFile, TGraph, TGraphErrors, TMultiGraph, TTree
+except ImportError
+    pass
 
 from dripline import core
 
@@ -40,6 +43,9 @@ class ESR_Measurement(core.Endpoint):
                  hf_n_sweep_points,
                  hf_dwell_time,
                  **kwargs):
+        # note that if the imports are changed to not include gROOT, change this to test something that is imported
+        if not 'gROOT' in globals():
+            raise ImportError('PyROOT not found, required for ESR_Measurement class')
         core.Endpoint.__init__(self,**kwargs)
         # Settings for lockin and sweeper
         self.lockin_n_points = self._default_lockin_n_points = lockin_n_points
