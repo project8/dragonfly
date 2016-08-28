@@ -8,7 +8,7 @@ from datetime import datetime
 from time import sleep
 try:
     from ROOT import AddressOf, gROOT, gStyle, TCanvas, TF1, TFile, TGraph, TGraphErrors, TMultiGraph, TTree
-except ImportError
+except ImportError:
     pass
 
 from dripline import core
