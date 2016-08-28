@@ -195,7 +195,7 @@ class MantisAcquisitionInterface(DAQProvider, core.Spime):
         num_acquisitions = int(run_time // self.acquisition_time)
         last_run_time = run_time % self.acquisition_time
         logger.info("going to request <{}> runs, then one of <{}> [s]".format(num_acquisitions, last_run_time))
-        result = self.provider.set(self.mantis_queue'.duration', acquisition_time*1000)
+        result = self.provider.set(self.mantis_queue+'.duration', acquisition_time*1000)
         if result.retcode != 0:
             logger.warning('bad set')
         for acq in range(num_acquisitions):
@@ -203,7 +203,7 @@ class MantisAcquisitionInterface(DAQProvider, core.Spime):
         if last_run_time != 0:
             self.provider.set(self.mantis_queue+'.duration', last_run_time*1000)
             self.on_get()
-            result = self.provider.set(self.mantis_queue'.duration', acquisition_time*1000)
+            result = self.provider.set(self.mantis_queue+'.duration', acquisition_time*1000)
 
     @property
     def is_running(self):
