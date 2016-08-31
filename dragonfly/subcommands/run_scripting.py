@@ -14,7 +14,7 @@ The file should parse to a list of dictionaries. Each dictionary will define a t
 action to take, in order, with various configurable parameters. Each will specify the
 action with a line:
 
-    action: {pause_for_user, lockout, set, cmd, do, single_run, multi_run}
+    action: {pause_for_user, lockout, set, cmd, do, esr_run, single_run, multi_run}
 
 Several flags exists:
     - "--force-restart" (-f): remove the cache and force the execution script to start from the very begining.
@@ -95,12 +95,12 @@ do -> combine the set and cmd actions within one list of "operations". Same deal
                 value: 2.4
                 payload_field: value_raw
 
-esr_scan -> send a cmd <method_name> to the esr service endpoint. First three fields
+esr_run -> send a cmd <method_name> to the esr service endpoint. First three fields
     are required by dripline.core.Interface, other three fields correspond to esr run
     settings and are optional (defaults are predefined in esr service script).
     The general structure of the action block is:
 
-        - action: esr_scan
+        - action: esr_run
           timeout (int||float): (recommended setting: 600)
          OPTIONAL ARGUMENTS:
           config_instruments (bool): configure lockin, sweeper, and relays (default: True)
@@ -540,7 +540,7 @@ class RunScript(object):
                 else:
                     logger.info('operation <{}> unknown: skipping!'.format(key))
 
-    def action_esr_scan(self, **kwargs):
+    def action_esr_run(self, **kwargs):
         logger.info('Taking esr scan <esr_interface.run_scan> with args:\n{}'.format(kwargs))
         kwargs.update({'endpoint':'esr_interface',
                        'method_name':'run_scan'})
@@ -676,10 +676,10 @@ class RunScript(object):
             if 'esr_runs' in kwargs:
                 if not isinstance(kwargs['esr_runs'], dict):
                     kwargs['esr_runs'] = {}
-                self.action_esr_scan(**kwargs['esr_runs'])
+                self.action_esr_run(**kwargs['esr_runs'])
 
             # compute args for, and call, action_single_run, based on run_count
-            elif runs is not None:
+            if runs is not None:
                 this_run_duration = None
                 if isinstance(runs['run_duration'], (float,int)):
                     this_run_duration = runs['run_duration']
