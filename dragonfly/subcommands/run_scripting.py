@@ -14,7 +14,7 @@ The file should parse to a list of dictionaries. Each dictionary will define a t
 action to take, in order, with various configurable parameters. Each will specify the
 action with a line:
 
-    action: {pause_for_user, lockout, set, cmd, do, esr_run, single_run, multi_run}
+    action: {pause_for_user, sleep, lockout, set, cmd, do, esr_run, single_run, multi_run}
 
 Several flags exists:
     - "--force-restart" (-f): remove the cache and force the execution script to start from the very begining.
@@ -28,6 +28,11 @@ pause_for_user -> print a message to the user and wait for a response. The conte
 
         - action: pause_for_user
           message: STRING_TO_PRINT_PRIOR_TO_PAUSE
+
+sleep -> wait for specified period of time
+
+        - action: sleep
+          time: (int||float)
 
 lockout -> send a lockout command to the specified list of endpoints. If a lockout
     action is called, all subsequent requests will use the automatically generated
@@ -328,6 +333,10 @@ class RunScript(object):
         # but python2 has something different named input
         raw_input('{}\n(Press return to continue)\n'.format(message))
 
+    def action_sleep(self, time, **kwargs):
+        logger.info("Sleeping for {} sec, ignoring args: {}".format(time, kwargs))
+        sleep(time)
+
     def action_lockout(self, endpoints=[], lockout_key=None, **kwargs):
         if lockout_key is not None:
             self._lockout_key = lockout_key
@@ -544,6 +553,9 @@ class RunScript(object):
         logger.info('Taking esr scan <esr_interface.run_scan> with args:\n{}'.format(kwargs))
         kwargs.update({'endpoint':'esr_interface',
                        'method_name':'run_scan'})
+        if self._dry_run_mode:
+            logger.info('--dry-run flag: not starting an esr scan')
+            return
         # FIXME: method for passing warnings between esr service and run scripting to note that settings are being locked to defaults
         result = self.interface.cmd(**kwargs)
         # FIXME: ESR should run in background while sleep loops here pass

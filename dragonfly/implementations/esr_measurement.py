@@ -391,6 +391,9 @@ class ESR_Measurement(core.Endpoint):
 
     def field_plot(self, outfile, outpath):
         results = { coil : self.data_dict[coil]['result'] for coil in self.data_dict if (self.data_dict[coil]['result']['filt_field']!=0) }
+        if len(results) == 0:
+            logger.warning("No valid ESR measurements, skipping field_plot")
+            return
         x = numpy.array([coil for coil in results], dtype=float)
         xe = numpy.zeros(len(x), dtype=float)
         y1 = numpy.array([results[coil]['filt_field'] for coil in results], dtype=float)
@@ -487,7 +490,8 @@ class ESR_Measurement(core.Endpoint):
             self.single_measure(i, n_fits)
         self.save_data()
         #logger.info(self.data_dict)
-        self.reset_configure()
+        if config_instruments:
+            self.reset_configure()
         return { coil : self.data_dict[coil]['result']['filt_field'] for coil in self.data_dict }
 
 
