@@ -551,11 +551,11 @@ class RunScript(object):
 
     def action_esr_run(self, **kwargs):
         logger.info('Taking esr scan <esr_interface.run_scan> with args:\n{}'.format(kwargs))
-        kwargs.update({'endpoint':'esr_interface',
-                       'method_name':'run_scan'})
         if self._dry_run_mode:
             logger.info('--dry-run flag: not starting an esr scan')
             return
+        kwargs.update({'endpoint':'esr_interface',
+                       'method_name':'run_scan'})
         # FIXME: method for passing warnings between esr service and run scripting to note that settings are being locked to defaults
         result = self.interface.cmd(**kwargs)
         # FIXME: ESR should run in background while sleep loops here pass
@@ -567,6 +567,9 @@ class RunScript(object):
 
     def action_single_run(self, run_duration, run_name, daq_targets, timeout=None, **kwargs):
         logger.info('taking single run')
+        if self._dry_run_mode:
+            logger.info('--dry-run flag: not starting an electron run')
+            return
         run_kwargs = {'endpoint':None,
                       'method_name':'start_timed_run',
                       'run_name':None,
@@ -579,10 +582,7 @@ class RunScript(object):
             run_kwargs.update({'endpoint':daq, 'run_name':run_name.format(daq)})
             run_kwargs.update({'timeout': timeout})
             logger.debug('run_kwargs are: {}'.format(run_kwargs))
-            if self._dry_run_mode:
-                logger.info('--dry-run flag: not starting a run')
-            else:
-                self.interface.cmd(**run_kwargs)
+            self.interface.cmd(**run_kwargs)
         logger.info('daq all started, now wait for requested livetime')
         logger.info('time remaining >= {:.0f} seconds'.format(run_duration-(datetime.datetime.now()-start_of_runs).total_seconds()))
         while (datetime.datetime.now() - start_of_runs).total_seconds() < run_duration:
@@ -709,11 +709,7 @@ class RunScript(object):
                 else:
                     this_timeout=None
                 logger.debug('timeout set to {} s'.format(this_timeout))
-                # here we start each run (if debug_mode exists and is True)
-                if 'debug_mode' in runs and isinstance(runs['debug_mode'], bool) and runs['debug_mode']==True:
-                    logger.info('debug mode activated: no run will be launched')
-                else:
-                    self.action_single_run(this_run_duration, this_run_name, runs['daq_targets'],this_timeout)
+                self.action_single_run(this_run_duration, this_run_name, runs['daq_targets'],this_timeout)
 
             # update cache variable with this run being complete and update the cache file
             self._action_cache['last_run'] = run_count
