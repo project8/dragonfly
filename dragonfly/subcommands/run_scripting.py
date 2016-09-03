@@ -14,7 +14,7 @@ The file should parse to a list of dictionaries. Each dictionary will define a t
 action to take, in order, with various configurable parameters. Each will specify the
 action with a line:
 
-    action: {pause_for_user, lockout, set, cmd, do, single_run, multi_run}
+    action: {pause_for_user, sleep, lockout, set, cmd, do, esr_run, single_run, multi_run}
 
 Several flags exists:
     - "--force-restart" (-f): remove the cache and force the execution script to start from the very begining.
@@ -28,6 +28,11 @@ pause_for_user -> print a message to the user and wait for a response. The conte
 
         - action: pause_for_user
           message: STRING_TO_PRINT_PRIOR_TO_PAUSE
+
+sleep -> wait for specified period of time
+
+        - action: sleep
+          time: (int||float)
 
 lockout -> send a lockout command to the specified list of endpoints. If a lockout
     action is called, all subsequent requests will use the automatically generated
@@ -95,12 +100,12 @@ do -> combine the set and cmd actions within one list of "operations". Same deal
                 value: 2.4
                 payload_field: value_raw
 
-esr_scan -> send a cmd <method_name> to the esr service endpoint. First three fields
+esr_run -> send a cmd <method_name> to the esr service endpoint. First three fields
     are required by dripline.core.Interface, other three fields correspond to esr run
     settings and are optional (defaults are predefined in esr service script).
     The general structure of the action block is:
 
-        - action: esr_scan
+        - action: esr_run
           timeout (int||float): (recommended setting: 600)
          OPTIONAL ARGUMENTS:
           config_instruments (bool): configure lockin, sweeper, and relays (default: True)
@@ -328,6 +333,10 @@ class RunScript(object):
         # but python2 has something different named input
         raw_input('{}\n(Press return to continue)\n'.format(message))
 
+    def action_sleep(self, time, **kwargs):
+        logger.info("Sleeping for {} sec, ignoring args: {}".format(time, kwargs))
+        sleep(time)
+
     def action_lockout(self, endpoints=[], lockout_key=None, **kwargs):
         if lockout_key is not None:
             self._lockout_key = lockout_key
@@ -540,8 +549,11 @@ class RunScript(object):
                 else:
                     logger.info('operation <{}> unknown: skipping!'.format(key))
 
-    def action_esr_scan(self, **kwargs):
+    def action_esr_run(self, **kwargs):
         logger.info('Taking esr scan <esr_interface.run_scan> with args:\n{}'.format(kwargs))
+        if self._dry_run_mode:
+            logger.info('--dry-run flag: not starting an esr scan')
+            return
         kwargs.update({'endpoint':'esr_interface',
                        'method_name':'run_scan'})
         # FIXME: method for passing warnings between esr service and run scripting to note that settings are being locked to defaults
@@ -555,6 +567,9 @@ class RunScript(object):
 
     def action_single_run(self, run_duration, run_name, daq_targets, timeout=None, **kwargs):
         logger.info('taking single run')
+        if self._dry_run_mode:
+            logger.info('--dry-run flag: not starting an electron run')
+            return
         run_kwargs = {'endpoint':None,
                       'method_name':'start_timed_run',
                       'run_name':None,
@@ -567,10 +582,7 @@ class RunScript(object):
             run_kwargs.update({'endpoint':daq, 'run_name':run_name.format(daq)})
             run_kwargs.update({'timeout': timeout})
             logger.debug('run_kwargs are: {}'.format(run_kwargs))
-            if self._dry_run_mode:
-                logger.info('--dry-run flag: not starting a run')
-            else:
-                self.interface.cmd(**run_kwargs)
+            self.interface.cmd(**run_kwargs)
         logger.info('daq all started, now wait for requested livetime')
         logger.info('time remaining >= {:.0f} seconds'.format(run_duration-(datetime.datetime.now()-start_of_runs).total_seconds()))
         while (datetime.datetime.now() - start_of_runs).total_seconds() < run_duration:
@@ -676,10 +688,10 @@ class RunScript(object):
             if 'esr_runs' in kwargs:
                 if not isinstance(kwargs['esr_runs'], dict):
                     kwargs['esr_runs'] = {}
-                self.action_esr_scan(**kwargs['esr_runs'])
+                self.action_esr_run(**kwargs['esr_runs'])
 
             # compute args for, and call, action_single_run, based on run_count
-            elif runs is not None:
+            if runs is not None:
                 this_run_duration = None
                 if isinstance(runs['run_duration'], (float,int)):
                     this_run_duration = runs['run_duration']
@@ -697,11 +709,7 @@ class RunScript(object):
                 else:
                     this_timeout=None
                 logger.debug('timeout set to {} s'.format(this_timeout))
-                # here we start each run (if debug_mode exists and is True)
-                if 'debug_mode' in runs and isinstance(runs['debug_mode'], bool) and runs['debug_mode']==True:
-                    logger.info('debug mode activated: no run will be launched')
-                else:
-                    self.action_single_run(this_run_duration, this_run_name, runs['daq_targets'],this_timeout)
+                self.action_single_run(this_run_duration, this_run_name, runs['daq_targets'],this_timeout)
 
             # update cache variable with this run being complete and update the cache file
             self._action_cache['last_run'] = run_count

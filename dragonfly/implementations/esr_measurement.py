@@ -6,7 +6,10 @@ import numpy
 import logging
 from datetime import datetime
 from time import sleep
-from ROOT import AddressOf, gROOT, gStyle, TCanvas, TF1, TFile, TGraph, TGraphErrors, TMultiGraph, TTree
+try:
+    from ROOT import AddressOf, gROOT, gStyle, TCanvas, TF1, TFile, TGraph, TGraphErrors, TMultiGraph, TTree
+except ImportError:
+    pass
 
 from dripline import core
 
@@ -40,6 +43,9 @@ class ESR_Measurement(core.Endpoint):
                  hf_n_sweep_points,
                  hf_dwell_time,
                  **kwargs):
+        # note that if the imports are changed to not include gROOT, change this to test something that is imported
+        if not 'gROOT' in globals():
+            raise ImportError('PyROOT not found, required for ESR_Measurement class')
         core.Endpoint.__init__(self,**kwargs)
         # Settings for lockin and sweeper
         self.lockin_n_points = self._default_lockin_n_points = lockin_n_points
@@ -385,6 +391,9 @@ class ESR_Measurement(core.Endpoint):
 
     def field_plot(self, outfile, outpath):
         results = { coil : self.data_dict[coil]['result'] for coil in self.data_dict if (self.data_dict[coil]['result']['filt_field']!=0) }
+        if len(results) == 0:
+            logger.warning("No valid ESR measurements, skipping field_plot")
+            return
         x = numpy.array([coil for coil in results], dtype=float)
         xe = numpy.zeros(len(x), dtype=float)
         y1 = numpy.array([results[coil]['filt_field'] for coil in results], dtype=float)
@@ -481,7 +490,8 @@ class ESR_Measurement(core.Endpoint):
             self.single_measure(i, n_fits)
         self.save_data()
         #logger.info(self.data_dict)
-        self.reset_configure()
+        if config_instruments:
+            self.reset_configure()
         return { coil : self.data_dict[coil]['result']['filt_field'] for coil in self.data_dict }
 
 
