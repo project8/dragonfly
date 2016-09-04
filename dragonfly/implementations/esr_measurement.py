@@ -203,7 +203,7 @@ class ESR_Measurement(core.Endpoint):
         return b_field
 
     def save_data(self):
-        outpath = os.environ["HOME"] + "/GoogleDrive/Project8/Data/ESRData/Phase2/{:%Y%m%d_%H%M}/".format(datetime.now())
+        outpath = os.environ["HOME"] + "/GoogleDrive/Project8/Data/ESRData/Phase2/{:%Y%m%d_%H%M%S}/".format(datetime.now())
         if not os.path.exists(outpath):
             logger.info("Creating directory {}".format(outpath))
             os.makedirs(outpath)
