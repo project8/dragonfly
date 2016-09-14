@@ -12,9 +12,8 @@ import logging
 logger = logging.getLogger(__name__)
 
 __all__ = []
-
-
 __all__.append('MuxerProvider')
+
 @fancy_doc
 class MuxerProvider(EthernetProvider):
 
@@ -62,6 +61,9 @@ class MuxerProvider(EthernetProvider):
                 self.start_scan(scan_list_cmd) 
 
         def start_scan(self, scan_list_cmd):
+                '''
+                start_scan sets up the scan list (with all formatted channels), configures the trigger system, and initiates the scan
+                '''                
 
                 self.send([scan_list_cmd])
 
