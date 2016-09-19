@@ -50,6 +50,9 @@ class SQLSnapshot(SQLTable):
                 start_timestamp (str): oldest timestamp for query into database
                 ending_timesamp (str): most recent timestamp for query into database
                 '''    
+
+                logger.debug('start_timestamp is: {}\n'.format(start_timestamp))
+                logger.debug('end_timestamp is: {}\n'.format(end_timestamp))
   
                 # Creating the id map table
                 self.it = sqlalchemy.Table('endpoint_id_map',self.provider.meta, autoload=True, schema=self.schema)                
@@ -103,6 +106,9 @@ class SQLSnapshot(SQLTable):
                 start_timestamp (str): oldest timestamp for query into database. Format must be either date only 'Y-M-D' or date with time 'Y-M-D HH:MM:SS'
                 endpoint_list (list of str): list of endpoint names (str) of interest
                 '''
+
+                logger.debug('timestamp is: {}\n'.format(timestamp))
+                logger.debug('endpoint_list is: {}\n'.format(endpoint_list))
 
                 # Creating the id map table
                 self.it = sqlalchemy.Table('endpoint_id_map',self.provider.meta, autoload=True, schema=self.schema)                
