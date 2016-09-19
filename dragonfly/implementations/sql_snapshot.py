@@ -42,8 +42,6 @@ class SQLSnapshot(SQLTable):
                 '''
                 '''
                 SQLTable.__init__(self, table_name, schema, *args, **kwargs)
-                # Creating the id map table
-                self.it = sqlalchemy.Table('endpoint_id_map',self.provider.meta, autoload=True, schema=self.schema)
 
         def get_logs(self, start_timestamp, end_timestamp):
 
@@ -51,8 +49,11 @@ class SQLSnapshot(SQLTable):
                 Both inputs must be specified as either date only 'Y-M-D' or date with time 'Y-M-D HH:MM:SS'
                 start_timestamp (str): oldest timestamp for query into database
                 ending_timesamp (str): most recent timestamp for query into database
-                '''      
-                
+                '''    
+  
+                # Creating the id map table
+                self.it = sqlalchemy.Table('endpoint_id_map',self.provider.meta, autoload=True, schema=self.schema)                
+
                 # Parsing timestamps
                 self._try_parsing_date(start_timestamp)
                 self._try_parsing_date(end_timestamp)
@@ -102,6 +103,9 @@ class SQLSnapshot(SQLTable):
                 start_timestamp (str): oldest timestamp for query into database. Format must be either date only 'Y-M-D' or date with time 'Y-M-D HH:MM:SS'
                 endpoint_list (list of str): list of endpoint names (str) of interest
                 '''
+
+                # Creating the id map table
+                self.it = sqlalchemy.Table('endpoint_id_map',self.provider.meta, autoload=True, schema=self.schema)                
 
                 # Parsing timestamp
                 self._try_parsing_date(timestamp)
