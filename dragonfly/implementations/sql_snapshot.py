@@ -110,7 +110,7 @@ class SQLSnapshot(SQLTable):
                 '''
 
                 timestamp = str(timestamp)
-                endpoint_list = [str(name) for name in endpoint_list.strip('[]').split(',')]
+                endpoint_list = [name for name in endpoint_list.strip('[]').split(',')]
 
                 # Creating the id map table
                 self.it = sqlalchemy.Table('endpoint_id_map',self.provider.meta, autoload=True, schema=self.schema)                
@@ -142,10 +142,10 @@ class SQLSnapshot(SQLTable):
                         s = s.order_by(t.c.timestamp.desc()).limit(1)
                         result = self.provider.engine.execute(s).fetchall()
                         if not result:
-                                logger.error('no records found before:\n{}\nfor endpoint:\n{}\nin database'.format(timestamp,name))
+                                logger.error('no records found before "{}" for endpoint "{}" in database'.format(timestamp,name))
                                 continue
                         else:
-                                val_raw_dict[name] = result[0]
+                                val_raw_dict[name] = result[0]['value_cal']
                                 val_cal_list.append('{} -> {}'.format(name,val_raw_dict[name]['value_cal']))                       
 
                 result_dict = {'value_raw': val_raw_dict, 'value_cal': '\n'.join(val_cal_list)}
