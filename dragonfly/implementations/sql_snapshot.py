@@ -53,9 +53,6 @@ class SQLSnapshot(SQLTable):
 
                 start_timestamp = str(start_timestamp)
                 end_timestamp = str(end_timestamp)
-
-                logger.debug('start_timestamp is "{}" and of {}\n'.format(start_timestamp,type(start_timestamp)))
-                logger.debug('end_timestamp is "{}" and of {}\n'.format(end_timestamp,type(end_timestamp)))
   
                 # Creating the id map table
                 self.it = sqlalchemy.Table('endpoint_id_map',self.provider.meta, autoload=True, schema=self.schema)                
@@ -114,9 +111,6 @@ class SQLSnapshot(SQLTable):
                 timestamp = str(timestamp)
                 endpoint_list = [str(name) for name in endpoint_list.strip('[]').split(',')]
 
-                logger.debug('timestamp is "{}" and of {}\n'.format(timestamp,type(timestamp)))
-                logger.debug('endpoint_list is "{}" and of {}\n'.format(endpoint_list,type(endpoint_list)))
-
                 # Creating the id map table
                 self.it = sqlalchemy.Table('endpoint_id_map',self.provider.meta, autoload=True, schema=self.schema)                
 
@@ -151,7 +145,8 @@ class SQLSnapshot(SQLTable):
                                 val_raw_dict[name] = result[0]
                                 val_cal_list.append('{} -> {}'.format(name,val_raw_dict[name]['value_cal']))                       
 
-                return {'value_raw': val_raw_dict, 'value_cal': '\n'.join(val_cal_list)}
+                result_dict = {'value_raw': val_raw_dict, 'value_cal': '\n'.join(val_cal_list)}
+                return result_dict
 
         def _try_parsing_date(self, timestamp):
 
