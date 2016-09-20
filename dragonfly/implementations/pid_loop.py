@@ -56,12 +56,13 @@ class PidController(Gogol):
         delta_out_min (float): minimum value by which to change the output_channel; if the PID equation gives a smaller change, the value is left unchanged (no set is attempted)
         '''
         kwargs.update({'keys':['sensor_value.'+input_channel]})
+        print(kwargs)
         Gogol.__init__(self, **kwargs)
 
         self._current_channel = output_channel
         self.input_payload_field = input_payload_field
 
-        self.target_temp = target_value
+        self.target_value = target_value
 
         self.Kproportional = proportional
         self.Kintegral = integral
@@ -87,31 +88,41 @@ class PidController(Gogol):
                                               )
         reply = self.send_request(target=self._current_channel, request=request)
         value = reply.payload['value_cal']
+        print('old current = {}'.format(value))
+
         return float(value)
 
     def this_consume(self, message, basic_deliver=None):
+        logger.info('comsuming message')
         this_value = message.payload[self.input_payload_field]
+        print(message)
+        if this_value is None:
+            logger.info('value is None')
+            return
         self.process_new_value(timestamp=message['timestamp'], value=this_value)
 
     @property
-    def target_temp(self):
-        return self._target_temp
-    @target_temp.setter
-    def target_temp(self, value):
-        self._target_temp = value
+    def target_value(self):
+        return self._target_value
+    @target_value.setter
+    def target_value(self, value):
+        self._target_value = value
         self._integral = 0
         self._last_data = {'delta':None,'time':datetime.datetime(1970,1,1)}
 
     def process_new_value(self, value, timestamp):
         logger.info('value is: {}'.format(value))
-        delta = self.target_temp - float(value)
+        print('value is: {}'.format(value))
+        delta = self.target_value - float(value)
         logger.info("delta is: {}".format(delta))
         this_time = datetime.datetime.strptime(timestamp, constants.TIME_FORMAT)
+        #print(this_time,abs((this_time - self._last_data['time']).seconds))
         if abs((this_time - self._last_data['time']).seconds)<self.minimum_elapsed_time:
             logger.info("not enough time has elasped: {}[{}]".format(abs((this_time - self._last_data['time']).seconds),self.minimum_elapsed_time))
             return
         self._integral += delta * (this_time - self._last_data['time']).seconds
-        if (this_time - self._last_data['time']).seconds < (5 * 60):
+        if (this_time - self._last_data['time']).seconds < (5 * 60) and (this_time - self._last_data['time']).seconds>0:
+            logger.info("not enough time has elasped: {}[{}]".format(abs((this_time - self._last_data['time']).seconds),self.minimum_elapsed_time))
             derivative = (delta - self._last_data['delta']) / (this_time - self._last_data['time']).seconds
         else:
             derivative = 0.
@@ -125,6 +136,7 @@ class PidController(Gogol):
                              self.Kdifferential * derivative
                             )
         new_current = (self._old_current or 0)*self.enable_offset_term + change_to_current
+        #print('new current =  {}'.format(new_current))
         # change_to_current = new_current - self._old_current
         if abs(change_to_current) < self.min_current_change:
             logger.info("current change less than min delta")
@@ -140,15 +152,17 @@ class PidController(Gogol):
         if new_current < 0.:
             logger.info("new current < 0")
             new_current = 0.
+
         self.set_current(new_current)
         logger.info("actual set is: {}".format(new_current))
         self._old_current = new_current
 
     def set_current(self, value):
-        logger.debug('would set new current to: {}'.format(value))
+        print('would set new current to: {}'.format(value))
         m = dripline.core.RequestMessage(msgop=constants.OP_SET,
                                          payload={'values':[value]},
                                         )
         logger.debug('request will be: {}'.format(m))
         reply = self.send_request(self._current_channel, m)
+        #print(reply)
         logger.info('set response was: {}'.format(reply))
