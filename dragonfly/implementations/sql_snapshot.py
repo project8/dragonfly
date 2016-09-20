@@ -132,11 +132,11 @@ class SQLSnapshot(SQLTable):
                         s = sqlalchemy.select([id_t.c.endpoint_id]).where(id_t.c.endpoint_name == name)
                         result = self.provider.engine.execute(s).fetchall()
                         if not result:
-                                logger.error('endpoint with name:\n{}\nnot found in database'.format(name))
+                                logger.error('endpoint with name "{}" not found in database'.format(name))
                                 continue
                         else:
                                 ept_id = result[0]['endpoint_id']
-                        logger.debug('endpoint id:\n{}\nmatched to endpoint with name:\n {}'.format(ept_id,name))
+                        logger.debug('endpoint id "{}" matched to endpoint with name "{}"'.format(ept_id,name))
                         s = sqlalchemy.select([t]).where(sqlalchemy.and_(t.c.endpoint_id == ept_id,t.c.timestamp < timestamp))
                         s = s.order_by(t.c.timestamp.desc()).limit(1)
                         result = self.provider.engine.execute(s).fetchall()
