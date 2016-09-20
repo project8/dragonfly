@@ -69,6 +69,7 @@ class SQLSnapshot(SQLTable):
 
                 # Select query + result
                 s = sqlalchemy.select([id_t.c.endpoint_name,t.c.timestamp,t.c.value_raw,t.c.value_cal]).select_from(t.join(id_t,t.c.endpoint_id == id_t.c.endpoint_id))
+                logger.debug('querying database for entries between "{}" and "{}"'.format(start_timestamp,end_timestamp))
                 s = s.where(sqlalchemy.and_(t.c.timestamp>=start_timestamp,t.c.timestamp<=end_timestamp)).order_by(id_t.c.endpoint_name.asc())
                 query_return = self.provider.engine.execute(s).fetchall()
 
