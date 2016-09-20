@@ -51,8 +51,11 @@ class SQLSnapshot(SQLTable):
                 ending_timesamp (str): most recent timestamp for query into database
                 '''    
 
-                logger.debug('start_timestamp is: {}\n'.format(start_timestamp))
-                logger.debug('end_timestamp is: {}\n'.format(end_timestamp))
+                start_timestamp = str(start_timestamp)
+                end_timestamp = str(end_timestamp)
+
+                logger.debug('start_timestamp is "{}" and of {}\n'.format(start_timestamp,type(start_timestamp)))
+                logger.debug('end_timestamp is "{}" and of {}\n'.format(end_timestamp,type(end_timestamp)))
   
                 # Creating the id map table
                 self.it = sqlalchemy.Table('endpoint_id_map',self.provider.meta, autoload=True, schema=self.schema)                
@@ -80,7 +83,7 @@ class SQLSnapshot(SQLTable):
                 for key,group in groupby(endpoint_name_raw):
                         endpoint_dict[key] = len(list(group))
                 # Ordering according to SQL query return
-                endpoint_dict = collections.OrderedDict(sorted(endpoint_dict.items(),key=lambda pair:(pair[0].casefold(),pair[0].swapcase())))
+                endpoint_dict = collections.OrderedDict(sorted(endpoint_dict.items(),key=lambda pair:pair[0].lower()))
 
                 # Parsing result
                 val_dict = {'timestamp':None,'value_raw':None,'value_cal':None}
@@ -107,8 +110,11 @@ class SQLSnapshot(SQLTable):
                 endpoint_list (list of str): list of endpoint names (str) of interest
                 '''
 
-                logger.debug('timestamp is: {}\n'.format(timestamp))
-                logger.debug('endpoint_list is: {}\n'.format(endpoint_list))
+                timestamp = str(timestamp)
+                endpoint_list = [str(endpoint) for endpoint in endpoint_list]
+
+                logger.debug('timestamp is "{}" and of {}\n'.format(timestamp,type(timestamp)))
+                logger.debug('endpoint_list is "{}" and of {}\n'.format(endpoint_list,type(endpoint_list)))
 
                 # Creating the id map table
                 self.it = sqlalchemy.Table('endpoint_id_map',self.provider.meta, autoload=True, schema=self.schema)                
