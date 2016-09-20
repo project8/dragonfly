@@ -101,7 +101,9 @@ class SQLSnapshot(SQLTable):
                 
                 # JSON formatting
                 results_json = json.dumps(results,indent=4,sort_keys=True,separators=(',',':'))
-                return results_json
+                print(results_json)
+                return
+#                return results_json
 
         def get_latest(self, timestamp, endpoint_list):
 
