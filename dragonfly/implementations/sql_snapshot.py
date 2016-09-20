@@ -128,18 +128,20 @@ class SQLSnapshot(SQLTable):
 
                 for name in endpoint_list:
 
+                        logger.debug('querying database for endpoint with name:\n{}'.format(name))
                         s = sqlalchemy.select([id_t.c.endpoint_id]).where(id_t.c.endpoint_name == name)
                         result = self.provider.engine.execute(s).fetchall()
                         if not result:
-                                print('endpoint with name "{}" not found in database'.format(name))
+                                logger.error('endpoint with name:\n{}\nnot found in database'.format(name))
                                 continue
                         else:
                                 ept_id = result[0]['endpoint_id']
+                        logger.debug('endpoint id:\n{}\nmatched to endpoint with name:\n {}'.format(ept_id,name))
                         s = sqlalchemy.select([t]).where(sqlalchemy.and_(t.c.endpoint_id == ept_id,t.c.timestamp < timestamp))
                         s = s.order_by(t.c.timestamp.desc()).limit(1)
                         result = self.provider.engine.execute(s).fetchall()
                         if not result:
-                                print('no records found before "{}" for endpoint "{}" in database'.format(timestamp,name))
+                                logger.error('no records found before:\n{}\nfor endpoint:\n{}\nin database'.format(timestamp,name))
                                 continue
                         else:
                                 val_raw_dict[name] = result[0]
