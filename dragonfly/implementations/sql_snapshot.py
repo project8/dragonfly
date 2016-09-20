@@ -78,8 +78,8 @@ class SQLSnapshot(SQLTable):
                 # Counting how many times each endpoint is present
                 endpoint_name_raw = []
                 endpoint_dict = {}
-                for i,row in enumerate(query_return):
-                        endpoint_name_raw.append(query_return[i][0])
+                for row in query_return:
+                        endpoint_name_raw.append(str(row['endpoint_name']))
                 for key,group in groupby(endpoint_name_raw):
                         endpoint_dict[key] = len(list(group))
                 # Ordering according to SQL query return
@@ -112,7 +112,7 @@ class SQLSnapshot(SQLTable):
                 '''
 
                 timestamp = str(timestamp)
-                endpoint_list = [str(endpoint) for endpoint in endpoint_list]
+                endpoint_list = [str(name) for name in endpoint_list.strip('[]').split(',')]
 
                 logger.debug('timestamp is "{}" and of {}\n'.format(timestamp,type(timestamp)))
                 logger.debug('endpoint_list is "{}" and of {}\n'.format(endpoint_list,type(endpoint_list)))
@@ -131,6 +131,7 @@ class SQLSnapshot(SQLTable):
                 result_list = []
                 val_cal_list = []
                 val_raw_dict = {}
+
                 for name in endpoint_list:
 
                         s = sqlalchemy.select([id_t.c.endpoint_id]).where(id_t.c.endpoint_name == name)
