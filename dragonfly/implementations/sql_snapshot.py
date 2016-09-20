@@ -145,8 +145,6 @@ class SQLSnapshot(SQLTable):
                                 logger.error('no records found before "{}" for endpoint "{}" in database'.format(timestamp,name))
                                 continue
                         else:
-                                import ipdb
-                                ipdb.set_trace()
                                 val_raw_dict[name] = result[0]['value_cal']
                                 val_cal_list.append('{} -> {}'.format(name,val_raw_dict[name]))                       
 
