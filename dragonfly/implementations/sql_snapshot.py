@@ -52,18 +52,16 @@ class SQLSnapshot(SQLTable):
                 '''    
 
                 start_timestamp = str(start_timestamp)
-                end_timestamp = str(end_timestamp)
-  
-                # Creating the id map table
-                self.it = sqlalchemy.Table('endpoint_id_map',self.provider.meta, autoload=True, schema=self.schema)                
+                end_timestamp = str(end_timestamp)                
 
                 # Parsing timestamps
                 self._try_parsing_date(start_timestamp)
                 self._try_parsing_date(end_timestamp)
                 if not end_timestamp > start_timestamp:
-                        raise Exception('end_timestamp ("{}") must be > start_timestamp ("{}")!'.format(end_timestamp,start_timestamp))          
-
-                # Table aliases
+                        raise Exception('end_timestamp ("{}") must be > start_timestamp ("{}")!'.format(end_timestamp,start_timestamp))
+                
+                # Connect to id map table + assign alises
+                self._connect_id_table()          
                 t = self.table.alias()
                 id_t = self.it.alias()
 
@@ -72,6 +70,8 @@ class SQLSnapshot(SQLTable):
                 logger.debug('querying database for entries between "{}" and "{}"'.format(start_timestamp,end_timestamp))
                 s = s.where(sqlalchemy.and_(t.c.timestamp>=start_timestamp,t.c.timestamp<=end_timestamp)).order_by(id_t.c.endpoint_name.asc())
                 query_return = self.provider.engine.execute(s).fetchall()
+                if not query_return:
+                        logger.debug('no entries found between "{}" and "{}"'.format(start_timestamp,end_timestamp))
 
                 # Counting how many times each endpoint is present
                 endpoint_name_raw = []
@@ -104,7 +104,9 @@ class SQLSnapshot(SQLTable):
                 
                 # JSON formatting
                 val_raw_json = json.dumps(val_raw_dict,indent=4,sort_keys=True,separators=(',',':'))
+
                 return {'value_raw': val_raw_json, 'value_cal': '\n'.join(val_cal_list)}
+
 
         def get_latest(self, timestamp, endpoint_list):
 
@@ -114,15 +116,13 @@ class SQLSnapshot(SQLTable):
                 '''
 
                 timestamp = str(timestamp)
-                endpoint_list = [name for name in endpoint_list.strip('[]').split(',')]
-
-                # Creating the id map table
-                self.it = sqlalchemy.Table('endpoint_id_map',self.provider.meta, autoload=True, schema=self.schema)                
+                endpoint_list = [name for name in endpoint_list.strip('[]').split(',')]              
 
                 # Parsing timestamp
                 self._try_parsing_date(timestamp)
 
-                # Table aliases
+                # Connect to id map table + assign alises
+                self._connect_id_table()
                 t = self.table.alias()
                 id_t = self.it.alias()
 
@@ -151,8 +151,8 @@ class SQLSnapshot(SQLTable):
                                 val_raw_dict[name] = (query_return[0]['value_cal'],query_return[0]['timestamp'].strftime('%Y-%m-%d %H:%M:%S'))
                                 val_cal_list.append('{} -> {} {{{}}}'.format(name,val_raw_dict[name][0],val_raw_dict[name][1]))
                                       
-
                 return {'value_raw': val_raw_dict, 'value_cal': '\n'.join(val_cal_list)}
+
 
         def _try_parsing_date(self, timestamp):
 
@@ -166,4 +166,12 @@ class SQLSnapshot(SQLTable):
                         except ValueError:
                             pass
                 raise ValueError('"{}" is not a valid timestamp format'.format(timestamp))
+
+
+        def _connect_id_table(self):
+                '''
+                Connects to the 'endpoint_id_map' table in database
+                '''
+                
+                self.it = sqlalchemy.Table('endpoint_id_map',self.provider.meta, autoload=True, schema=self.schema)
 
