@@ -123,7 +123,6 @@ class SQLSnapshot(SQLTable):
                 id_t = self.it.alias()
 
                 # Select query + result
-                result_list = []
                 val_cal_list = []
                 val_raw_dict = {}
 
@@ -131,22 +130,23 @@ class SQLSnapshot(SQLTable):
 
                         logger.debug('querying database for endpoint with name:\n{}'.format(name))
                         s = sqlalchemy.select([id_t.c.endpoint_id]).where(id_t.c.endpoint_name == name)
-                        result = self.provider.engine.execute(s).fetchall()
-                        if not result:
+                        query_return = self.provider.engine.execute(s).fetchall()
+                        if not query_return:
                                 logger.error('endpoint with name "{}" not found in database'.format(name))
                                 continue
                         else:
-                                ept_id = result[0]['endpoint_id']
+                                ept_id = query_return[0]['endpoint_id']
                         logger.debug('endpoint id "{}" matched to endpoint with name "{}"'.format(ept_id,name))
                         s = sqlalchemy.select([t]).where(sqlalchemy.and_(t.c.endpoint_id == ept_id,t.c.timestamp < timestamp))
                         s = s.order_by(t.c.timestamp.desc()).limit(1)
-                        result = self.provider.engine.execute(s).fetchall()
-                        if not result:
+                        query_return = self.provider.engine.execute(s).fetchall()
+                        if not query_return:
                                 logger.error('no records found before "{}" for endpoint "{}" in database'.format(timestamp,name))
                                 continue
                         else:
-                                val_raw_dict[name] = result[0]['value_cal']
-                                val_cal_list.append('{} -> {}'.format(name,val_raw_dict[name]))                       
+                                val_raw_dict[name] = query_return[0]['value_cal']
+                                val_cal_list.append('{} -> {}'.format(name,val_raw_dict[name]))
+                                      
 
                 return {'value_raw': val_raw_dict, 'value_cal': '\n'.join(val_cal_list)}
 
