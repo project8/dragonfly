@@ -85,21 +85,26 @@ class SQLSnapshot(SQLTable):
 
                 # Parsing result
                 val_dict = {'timestamp':None,'value_raw':None,'value_cal':None}
-                results= {}
+                val_raw_dict = {}
+                val_cal_list = []
                 index = 0
                 for endpoint,times in endpoint_dict.items():
-                        results[endpoint] = []
+                        val_raw_dict[endpoint] = []
+                        ept_timestamp_list = []
                         for i in range(times):
-                                results[endpoint].append(val_dict.copy())
-                                row = query_return[index]
-                                results[endpoint][i]['timestamp'] = row['timestamp'].strftime('%Y-%m-%d %H:%M:%S')
-                                results[endpoint][i]['value_raw'] = row['value_raw']
-                                results[endpoint][i]['value_cal'] = row['value_cal']
+                                val_raw_dict[endpoint].append(val_dict.copy())
+                                query_row = query_return[index]
+                                val_raw_dict[endpoint][i]['timestamp'] = query_row['timestamp'].strftime('%Y-%m-%d %H:%M:%S')
+                                val_raw_dict[endpoint][i]['value_raw'] = query_row['value_raw']
+                                val_raw_dict[endpoint][i]['value_cal'] = query_row['value_cal']
+                                ept_timestamp_list.append('{} {{{}}}'.format(val_raw_dict[endpoint][i]['value_cal'],val_raw_dict[endpoint][i]['timestamp']))
                                 index += 1
+                        ept_timestamp_results = ', '.join(ept_timestamp_list)
+                        val_cal_list.append('{} -> {}'.format(endpoint,ept_timestamp_results))
                 
                 # JSON formatting
-                results_json = json.dumps(results,indent=4,sort_keys=True,separators=(',',':'))
-                return {'value_raw' : results_json}
+                val_raw_json = json.dumps(val_raw_dict,indent=4,sort_keys=True,separators=(',',':'))
+                return {'value_raw': val_raw_json, 'value_cal': '\n'.join(val_cal_list)}
 
         def get_latest(self, timestamp, endpoint_list):
 
