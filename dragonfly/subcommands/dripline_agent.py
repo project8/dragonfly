@@ -170,6 +170,22 @@ class Cmd(GenericAgent):
     '''
     name = 'cmd'
 
+    def __call__(self, args):
+        result = self._call(args)
+        these_args = args
+        if args.pretty_print:
+            if not 'value_cal' in result:
+                logger.warning('no value cal present, unable to pretty-print')
+            else:
+                print('\n{}\n'.format(result['value_cal']))
+
+    def update_parser(self, parser):
+        super(Cmd, self).update_parser(parser)
+        parser.add_argument('--pretty-print',
+                            action='store_true',
+                            help='attempt to print value_cal in a manor easily read by humans (and pasted into elogs)',
+                           )
+
 __all__.append("Send")
 class Send(GenericAgent):
     '''
