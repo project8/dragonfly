@@ -99,8 +99,7 @@ class SQLSnapshot(SQLTable):
                 
                 # JSON formatting
                 results_json = json.dumps(results,indent=4,sort_keys=True,separators=(',',':'))
-                print(results_json)
-                return
+                return {'value_raw' : results_json}
 
         def get_latest(self, timestamp, endpoint_list):
 
