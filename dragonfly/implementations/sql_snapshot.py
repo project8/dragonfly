@@ -148,8 +148,7 @@ class SQLSnapshot(SQLTable):
                                 val_raw_dict[name] = result[0]['value_cal']
                                 val_cal_list.append('{} -> {}'.format(name,val_raw_dict[name]))                       
 
-                result_dict = {'value_raw': val_raw_dict, 'value_cal': '\n'.join(val_cal_list)}
-                return result_dict
+                return {'value_raw': val_raw_dict, 'value_cal': '\n'.join(val_cal_list)}
 
         def _try_parsing_date(self, timestamp):
 
