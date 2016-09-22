@@ -350,7 +350,7 @@ class ESR_Measurement(core.Endpoint):
                 dtree.Fill()
             dtree.Write()
 
-            rbranch = rtree.Branch("coil{}".format(coil), struct3, "filt_field_Hz/D:filt_field_e_T/D\
+            rbranch = rtree.Branch("coil{}".format(coil), struct3, "filt_field_T/D:filt_field_e_T/D\
                                                                       :fit_field_T:fit_field_e_T")
             struct3.fFiltB = self.data_dict[coil]['result']['filt']
             struct3.fFiltBE = self.data_dict[coil]['result']['filt_e']
