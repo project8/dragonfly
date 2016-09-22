@@ -93,3 +93,4 @@ class kv_store_key(Spime):
             self._value = value - value % .01
         except ValueError:
             self._value = value
+        return self._value

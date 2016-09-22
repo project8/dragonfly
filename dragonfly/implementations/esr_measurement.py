@@ -448,39 +448,23 @@ class ESR_Measurement(core.Endpoint):
         raw = self.drip_cmd('lockin_interface.grab_data', key)
         return numpy.array(raw.replace('\x00','').split(';'), dtype=float)
 
-    def drip_cmd(self, cmdname, val):
-        request_message = core.RequestMessage(msgop=core.OP_CMD,
-                                              payload={'values':[val]})
-        a_result=self.portal.send_request(request=request_message, target=cmdname, timeout=20)
-        if a_result.retcode == 0 :
-            return a_result.payload['values'][0]
-        else:
-            return '{} -> returned error <{}>:{}'.format(cmdname, a_result.retcode, a_result.return_msg)
+    def drip_cmd(self, endptname, mthdname, val):
+        a_result=self.provider.cmd(val, target=endptname, method_name=mthdname, timeout=20)
+        return a_result.payload['values'][0]
 
     def raw_get_ept(self, endptname):
-        request_message = core.RequestMessage(msgop=core.OP_GET)
-        a_result=self.portal.send_request(request=request_message, target=endptname, timeout=20)
-        if a_result.retcode == 0 :
-            return a_result.payload['value_raw']
-        else:
-            return '{} -> returned error <{}>:{}'.format(endptname, a_result.retcode, a_result.return_msg)
+        a_result = self.provider.get(target=endptname, timeout=20)
+        return a_result.payload['value_raw']
 
     def set_ept(self, endptname, val):
-        request_message = core.RequestMessage(msgop=core.OP_SET,
-                                              payload={'values':[val]})
-        a_result=self.portal.send_request(request=request_message,target=endptname)
-        if a_result.retcode != 0 :
-            ret_val = None
-            ret_rep = '{} -> returned error <{}>:{}'.format(endptname, a_result.retcode, a_result.return_msg)
-            logger.warning("got error "+ret_rep)
+        a_result = self.provider.set(target=endptname, value=val)
+        if 'values' in a_result.payload:
+            ret_val = a_result.payload['values'][0]
+        elif 'value_raw' in a_result.payload:
+            ret_val = a_result.payload['value_raw']
         else:
-            if 'values' in a_result.payload:
-                ret_val = a_result.payload['values'][0]
-            elif 'value_raw' in a_result.payload:
-                ret_val = a_result.payload['value_raw']
-            else:
-                logger.info("return payload is {}".format(a_result.payload))
-                ret_val = a_result.payload
+            logger.info("return payload is {}".format(a_result.payload))
+            ret_val = a_result.payload
         return ret_val
 
     def check_ept(self, endptname, val):
