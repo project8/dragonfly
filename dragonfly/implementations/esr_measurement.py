@@ -7,7 +7,8 @@ import logging
 from datetime import datetime
 from time import sleep
 try:
-    from ROOT import AddressOf, gROOT, gStyle, TCanvas, TF1, TFile, TGraph, TGraphErrors, TMultiGraph, TTree
+    from ROOT import AddressOf, gROOT, gStyle, TCanvas, TF1, TFile, TGraph,\
+                     TGraphErrors, TMultiGraph, TTimeStamp, TTree
 except ImportError:
     pass
 
@@ -16,14 +17,12 @@ from dripline import core
 logger = logging.getLogger(__name__)
 
 
-def lockin_result_to_array(result):
-    return numpy.array(result.replace('\x00','').split(';'), dtype=float)
-
 __all__.append('ESR_Measurement')
 #@fancy_doc
 class ESR_Measurement(core.Endpoint):
     """
-        Operate the ESR system
+    Operate the ESR system to measure the B-field off-axis.
+    Methods are sorted by order of call within run_scan.
     """
     def __init__(self,
                  lockin_n_points,
@@ -65,15 +64,47 @@ class ESR_Measurement(core.Endpoint):
         self.hf_n_sweep_points = self._default_hf_n_sweep_points = hf_n_sweep_points
         self.hf_dwell_time = self._default_hf_dwell_time = hf_dwell_time
         # Constants and analysis parameters
-        self.shape = 'gaussian'
-        self.electron_cyclotron_frequency = 1.758820024e11 # rad s^-1 T^-1
-        self.esr_g_factor = 2.0026
+        self.shape = 'gaussian' # functional form of fit/filter
+        self.freq_span = 0 # calculated from sweeper frequency range in capture_settings
+        self._electron_cyclotron_frequency = 1.758820024e11 # rad s^-1 T^-1
+        self._esr_g_factor = 2.0026 # g-factor for BDPA (from literature)
+        self._freq_rescale = 1e-6 # frequency looks better in MHz
+        self._bfield_factor = 4.*numpy.pi / (self._esr_g_factor*self._electron_cyclotron_frequency*self._freq_rescale) # frequency to field conversion factor
+        self._sweep_voltage = 10.0 # voltage range for "SWEEP OUT" from ardbeg
         # Output storage
-        self.data_dict = {}
+        self.data_dict = {} # reset in run_scan 
+        self.root_dict = {} # reset in run_scan
+        self.settings = {} # reset in capture_settings
         self.root_setup()
 
-    # Configure instruments to default settings
+
+    def run_scan(self, config_instruments=True, restore_defaults=True, coils=[1,2,3,4,5], n_fits=2, **kwargs):
+        '''
+        Wraps all ESR functionality into single method call with tunable arguments.
+        This function should interface with run_scripting through the action_esr_run method.
+        '''
+        logger.info(kwargs)
+        self.data_dict = {}
+        self.root_dict = {}
+        if config_instruments:
+            self.configure_instruments(restore_defaults)
+        self.capture_settings()
+        for i in coils:
+            self.single_measure(i)
+            self.single_analysis(i, n_fits)
+            # FIXME: analysis can be spawned and run in background
+        if config_instruments:
+            self.reset_configure()
+            # FIXME: warning to user to reset_configure manually if not performed here
+        self.save_data(n_fits)
+        #logger.info(self.data_dict)
+        return { coil : self.data_dict[coil]['result']['fit'] for coil in self.data_dict }
+
+
     def configure_instruments(self, reset):
+        '''
+        Configure instruments to default settings.
+        '''
         if reset:
             self.restore_presets()
         # lockin controls
@@ -84,7 +115,7 @@ class ESR_Measurement(core.Endpoint):
         self.check_ept('lockin_srq_mask', self.lockin_srq_mask)
         self.check_ept('lockin_osc_amp', self.lockin_osc_amp)
         self.check_ept('lockin_osc_freq', self.lockin_osc_freq)
-        #self.check_ept('lockin_ac_gain', self.lockin_ac_gain)
+        #self.check_ept('lockin_ac_gain', self.lockin_ac_gain) # Lockin settings currently bind ACGAIN to SEN parameter
         self.check_ept('lockin_sensitivity', self.lockin_sensitivity)
         self.check_ept('lockin_time_constant', self.lockin_time_constant)
         # sweeper controls
@@ -109,8 +140,10 @@ class ESR_Measurement(core.Endpoint):
         for coil in range(1, 6):
             self.check_ept('esr_coil_{}_switch_status'.format(coil), 0)
 
-    # Reset all internal variables to presets loaded from config
     def restore_presets(self):
+        '''
+        Reset all internal variables to presets loaded from config
+        '''
         # lockin presets
         self.lockin_n_points = self._default_lockin_n_points
         self.lockin_sampling_interval = self._default_lockin_sampling_interval
@@ -130,18 +163,45 @@ class ESR_Measurement(core.Endpoint):
         self.hf_n_sweep_points = self._default_hf_n_sweep_points
         self.hf_dwell_time = self._default_hf_dwell_time
 
-    # Immutable "safe" configuration for switches and sweeper
     def reset_configure(self):
+        '''
+        Immutable "safe" configuration for switches and sweeper
+        '''
         self.check_ept('hf_output_status', 0)
         self.check_ept('hf_power', -50)
         self.check_ept('esr_tickler_switch', 1)
         for coil in range(1, 6):
             self.check_ept('esr_coil_{}_switch_status'.format(coil), 0)
 
-    def single_measure(self, coil, n_fits):
+    def capture_settings(self):
+        '''
+        Record current status of the insert, lockin, and sweeper
+        FIXME: Endpoints should either be locked here or already
+        '''
+        self.settings = {}
+        self.settings['insert'] = self.raw_get_ept("run_metadata")
+        self.settings['lockin'] = self.raw_get_ept("lockin_settings")
+        self.settings['sweeper'] = self.raw_get_ept("sweeper_settings")
+        self.settings['sweeper']['hf_start_freq'] = float(self.settings['sweeper']['hf_start_freq'])
+        if self.settings['sweeper']['hf_start_freq'] != self.hf_start_freq:
+            logger.warning("Mismatch of sweeper start frequency.  Using {} but internal value is {}".\
+                            format(self.settings['sweeper']['hf_start_freq'], self.hf_start_freq))
+        self.settings['sweeper']['hf_stop_freq'] = float(self.settings['sweeper']['hf_stop_freq'])
+        if self.settings['sweeper']['hf_stop_freq'] != self.hf_stop_freq:
+            logger.warning("Mismatch of sweeper stop frequency.  Using {} but internal value is {}".\
+                            format(self.settings['sweeper']['hf_stop_freq'], self.hf_stop_freq))
+        # FIXME: pass warnings out to run_scripting or some ESR error queue
+        self.freq_span = self.settings['sweeper']['hf_stop_freq'] - self.settings['sweeper']['hf_start_freq']
+
+    def single_measure(self, coil):
+        '''
+        Communicate with lockin, sweeper, and switches to execute single ESR coil scan.
+        Data is retrieved but not analyzed.
+        '''
         self.check_ept('hf_output_status', 1)
         self.check_ept('esr_coil_{}_switch_status'.format(coil), 1)
         time = datetime.today().ctime()
+        timestamp = TTimeStamp()
         self.raw_get_ept('lockin_take_data')
         # HF sweep takes 60 sec
         while True:
@@ -157,62 +217,55 @@ class ESR_Measurement(core.Endpoint):
         self.check_ept('esr_coil_{}_switch_status'.format(coil), 0)
 
         # Get the lockin data
-        data = {}
-        data['sweep_out'] = lockin_result_to_array(self.drip_cmd('lockin_interface.grab_data', 'adc'))
-        data['lockin_x_data'] = lockin_result_to_array(self.drip_cmd('lockin_interface.grab_data', 'x'))
-        data['lockin_y_data'] = lockin_result_to_array(self.drip_cmd('lockin_interface.grab_data', 'y'))
-        ten_volts = 10.0
-        frequency_span = self.hf_stop_freq - self.hf_start_freq
-        data['frequency'] = self.hf_start_freq + frequency_span * data['sweep_out']/ten_volts
-        data['amplitude'] = data['lockin_x_data'] + 1j*data['lockin_y_data']
+        raw = { 'adc' : self.pull_lockin_data('adc'),
+                'x' : self.pull_lockin_data('x'),
+                'y' : self.pull_lockin_data('y') }
+        self.data_dict.update( { coil : { 'raw_data' : raw,
+                                          'time' : time } } )
+        self.root_dict.update( { coil : { 'time' : timestamp } } )
 
-        # Weiner filter and analysis
-        filter_data = WeinerFilter(data['frequency'], data['amplitude'], self.shape)
-            #TODO a fit would be more appropriate to get uncertainty
-        max_freq_index = numpy.argmax(filter_data['result'])
-        res_freq = filter_data['freqs'][max_freq_index]
-        res_freq_e = max(filter_data['freqs'][max_freq_index] - filter_data['freqs'][max_freq_index-1],
-                         filter_data['freqs'][max_freq_index+1] - filter_data['freqs'][max_freq_index])
-        b_field = 4.*numpy.pi*res_freq / (self.esr_g_factor*self.electron_cyclotron_frequency)
-        b_field_e = b_field * res_freq_e / res_freq
-        fits = self.root_fits(data, n_fits)
-        fit_freq = fits['fit'].GetParameter(1)
-        fit_freq_e = fits['fit'].GetParError(1)
-        fit_field = 4.e6*numpy.pi*fit_freq / (self.esr_g_factor*self.electron_cyclotron_frequency)
-        fit_field_e = fit_field * fit_freq_e / fit_freq
-        self.data_dict[coil] = { 'raw_data' : { 'frequency' : data['frequency'],
-                                                'amp_x' : data['lockin_x_data'],
-                                                'amp_y' : data['lockin_y_data'] },
-                                 'filtered_data' : filter_data,
-                                 'fits' : fits }
-        fom1 = ( numpy.max(filter_data['result']) - numpy.mean(filter_data['result']) ) / numpy.std(filter_data['result'])
-        #fom2 = abs(fit_field - b_field) / (fit_field_e**2 + b_field_e**2)**0.5
-        if fom1 > 2.5 :
-            self.data_dict[coil]['result'] = { 'filt_field' : b_field,
-                                               'filt_field_e' : b_field_e,
-                                               'fit_field' : fit_field,
-                                               'fit_field_e' : fit_field_e,
-                                               'res_freq' : res_freq,
-                                               'time' : time }
-        else:
-            logger.warning("Rejecting ESR measurement for coil {}\nFigure of merit is {}".format(coil, fom1))
-            self.data_dict[coil]['result'] = { 'filt_field' : 0 }
+    def single_analysis(self, coil, n_fits):
+        '''
+        Perform analysis on single raw data trace:
+        - Convert sweeper out voltage to frequency
+        - Calculate crossing frequency via Wiener optimal filter
+        - Fit trace with ROOT Minuit
+        '''
+        data = numpy.column_stack((self.data_dict[coil]['raw_data']['adc'],
+                                   self.data_dict[coil]['raw_data']['x']*1e6,
+                                   self.data_dict[coil]['raw_data']['y']*1e6))
+        data = data.ravel().view([('f','float'), ('x','float'), ('y','float')])
+        data['f'] = (self.settings['sweeper']['hf_start_freq'] + self.freq_span*data['f']/self._sweep_voltage) * self._freq_rescale
+        fspan = data['f'][-1] - data['f'][0] + self.freq_span*self._freq_rescale
+        numpy.ndarray.sort(data)
 
-        logger.info("Coil #{} result: field = {}, res_freq = {}".format(coil,b_field,res_freq))
+        # Resonant frequency analysis - Wiener filter and ROOT fit
+        filtered = wiener_filter(data, shape=self.shape)
+        fitted = root_fit(data, fits=n_fits, span=fspan, shape=self.shape)
+        self.data_dict[coil].update( { 'result' : { 'filt' : filtered['result']*self._bfield_factor,
+                                                    'filt_e' : filtered['error']*self._bfield_factor,
+                                                    'fit' : fitted.pop('result')*self._bfield_factor,
+                                                    'fit_e' : fitted.pop('error')*self._bfield_factor } } )
+        self.root_dict[coil].update( { 'fits' : fitted } )
+        # FIXME: Pass warnings back if self.data_dict[coil]['result']['fit'/'filt'] == 0
 
-        return b_field
+        return (self.data_dict[coil]['result']['fit'], self.data_dict[coil]['result']['fit_e'])
 
-    def save_data(self):
+    def save_data(self, n_fits):
+        '''
+        Save data to output file (currently only ROOT)
+        '''
         outpath = os.environ["HOME"] + "/GoogleDrive/Project8/Data/ESRData/Phase2/{:%Y%m%d_%H%M%S}/".format(datetime.now())
         if not os.path.exists(outpath):
             logger.info("Creating directory {}".format(outpath))
             os.makedirs(outpath)
         outfile = TFile(outpath+"esr.root", "recreate")
 
-        from ROOT import MyStruct1, MyStruct2, MyStruct3
+        from ROOT import MyStruct1, MyStruct2, MyStruct3, MyStruct4
         struct1 = MyStruct1()
         struct2 = MyStruct2()
         struct3 = MyStruct3()
+        struct4 = MyStruct4()
 
         htree = TTree("header", "metadata")
         htree.Branch("insert", struct1, "string_pot_mm/F:coil1_relay/I:coil1_polarity:coil1_output:coil1_current_A/F\
@@ -226,192 +279,99 @@ class ESR_Measurement(core.Endpoint):
         htree.Branch("sweeper", AddressOf(struct1, "fSStart"), "sweeper_start_freq_Hz/F:sweeper_stop_freq_Hz:sweeper_power_dBm/F\
                                                                :sweeper_dwell_time_s:sweeper_n_pts/I:sweeper_mode[8]/C:sweeper_order[8]")
 
-        insert = self.raw_get_ept("run_metadata")
-        struct1.fStringPot = insert['string_pot']
-        struct1.fC1Relay = int(insert['trap_coil_1_relay_status'])
-        struct1.fC1Polarity = int(insert['trap_coil_1_polarity'])
-        struct1.fC1Output = int(insert['trap_coil_1_output_status'])
-        struct1.fC1Current = insert['trap_coil_1_current_output']
-        struct1.fC2Relay = int(insert['trap_coil_2_relay_status'])
-        struct1.fC2Polarity = int(insert['trap_coil_2_polarity'])
-        struct1.fC2Output = int(insert['trap_coil_2_output_status'])
-        struct1.fC2Current = insert['trap_coil_2_current_output']
-        struct1.fC3Relay = int(insert['trap_coil_3_relay_status'])
-        struct1.fC3Polarity = int(insert['trap_coil_3_polarity'])
-        struct1.fC3Output = int(insert['trap_coil_3_output_status'])
-        struct1.fC3Current = insert['trap_coil_3_current_output']
-        struct1.fC4Relay = int(insert['trap_coil_4_relay_status'])
-        struct1.fC4Polarity = int(insert['trap_coil_4_polarity'])
-        struct1.fC4Output = int(insert['trap_coil_4_output_status'])
-        struct1.fC4Current = insert['trap_coil_4_current_output']
-        struct1.fC5Relay = int(insert['trap_coil_5_relay_status'])
-        struct1.fC5Polarity = int(insert['trap_coil_5_polarity'])
-        struct1.fC5Output = int(insert['trap_coil_5_output_status'])
-        struct1.fC5Current = insert['trap_coil_5_current_output']
+        struct1.fStringPot = self.settings['insert']['string_pot']
+        struct1.fC1Relay = int(self.settings['insert']['trap_coil_1_relay_status'])
+        struct1.fC1Polarity = int(self.settings['insert']['trap_coil_1_polarity'])
+        struct1.fC1Output = int(self.settings['insert']['trap_coil_1_output_status'])
+        struct1.fC1Current = self.settings['insert']['trap_coil_1_current_output']
+        struct1.fC2Relay = int(self.settings['insert']['trap_coil_2_relay_status'])
+        struct1.fC2Polarity = int(self.settings['insert']['trap_coil_2_polarity'])
+        struct1.fC2Output = int(self.settings['insert']['trap_coil_2_output_status'])
+        struct1.fC2Current = self.settings['insert']['trap_coil_2_current_output']
+        struct1.fC3Relay = int(self.settings['insert']['trap_coil_3_relay_status'])
+        struct1.fC3Polarity = int(self.settings['insert']['trap_coil_3_polarity'])
+        struct1.fC3Output = int(self.settings['insert']['trap_coil_3_output_status'])
+        struct1.fC3Current = self.settings['insert']['trap_coil_3_current_output']
+        struct1.fC4Relay = int(self.settings['insert']['trap_coil_4_relay_status'])
+        struct1.fC4Polarity = int(self.settings['insert']['trap_coil_4_polarity'])
+        struct1.fC4Output = int(self.settings['insert']['trap_coil_4_output_status'])
+        struct1.fC4Current = self.settings['insert']['trap_coil_4_current_output']
+        struct1.fC5Relay = int(self.settings['insert']['trap_coil_5_relay_status'])
+        struct1.fC5Polarity = int(self.settings['insert']['trap_coil_5_polarity'])
+        struct1.fC5Output = int(self.settings['insert']['trap_coil_5_output_status'])
+        struct1.fC5Current = self.settings['insert']['trap_coil_5_current_output']
 
-        lockin = self.raw_get_ept("lockin_settings")
-        struct1.fLNPts = int(lockin['lockin_n_points'])
-        struct1.fLInterval = int(lockin['lockin_sampling_interval'])
-        struct1.fLTrigger = int(lockin['lockin_trigger'])
-        struct1.fLCurve = int(lockin['lockin_curve_mask'])
-        struct1.fLSRQ = int(lockin['lockin_srq_mask'])
-        struct1.fLACGain = lockin['lockin_ac_gain']
-        struct1.fLOAmp = float(lockin['lockin_osc_amp'])
-        struct1.fLOFreq = float(lockin['lockin_osc_freq'])
-        struct1.fLSens = float(lockin['lockin_sensitivity'])
-        struct1.fLTC = float(lockin['lockin_time_constant'])
+        struct1.fLNPts = int(self.settings['lockin']['lockin_n_points'])
+        struct1.fLInterval = int(self.settings['lockin']['lockin_sampling_interval'])
+        struct1.fLTrigger = int(self.settings['lockin']['lockin_trigger'])
+        struct1.fLCurve = int(self.settings['lockin']['lockin_curve_mask'])
+        struct1.fLSRQ = int(self.settings['lockin']['lockin_srq_mask'])
+        struct1.fLACGain = self.settings['lockin']['lockin_ac_gain']
+        struct1.fLOAmp = float(self.settings['lockin']['lockin_osc_amp'])
+        struct1.fLOFreq = float(self.settings['lockin']['lockin_osc_freq'])
+        struct1.fLSens = float(self.settings['lockin']['lockin_sensitivity'])
+        struct1.fLTC = float(self.settings['lockin']['lockin_time_constant'])
 
-        sweeper = self.raw_get_ept("sweeper_settings")
-        struct1.fSStart = float(sweeper['hf_start_freq'])
-        struct1.fSStop = float(sweeper['hf_stop_freq'])
-        struct1.fSPower = float(sweeper['hf_power'])
-        struct1.fSDwell = float(sweeper['hf_dwell_time'])
-        struct1.fSNPts = int(sweeper['hf_n_sweep_points'])
-        struct1.fSMode = sweeper['hf_freq_mode']
-        struct1.fSOrder  = sweeper['hf_sweep_order']
+        struct1.fSStart = self.settings['sweeper']['hf_start_freq']
+        struct1.fSStop = self.settings['sweeper']['hf_stop_freq']
+        struct1.fSPower = float(self.settings['sweeper']['hf_power'])
+        struct1.fSDwell = float(self.settings['sweeper']['hf_dwell_time'])
+        struct1.fSNPts = int(self.settings['sweeper']['hf_n_sweep_points'])
+        struct1.fSMode = self.settings['sweeper']['hf_freq_mode']
+        struct1.fSOrder  = self.settings['sweeper']['hf_sweep_order']
 
         htree.Fill()
         htree.Write()
 
+        atree = TTree("analysis", "global parameters")
+        atree.Branch("constants", struct4, "shape[12]/C:field_factor/D:n_fits/I")
+        struct4.fShape = self.shape
+        struct4.fFactor = self._bfield_factor
+        struct4.fNFit = n_fits
+        atree.Fill()
+        atree.Write()
+
         rtree = TTree("result", "ESR scan results")
+        ttree = TTree("timestamp", "ESR measure start TTimeStamp")
         for coil in range(1, 6):
             if coil not in self.data_dict:
                 logger.warning("ESR coil #{} data not available".format(coil))
                 continue
-            pts = len(self.data_dict[coil]['raw_data']['frequency'])
+            pts = len(self.data_dict[coil]['raw_data']['adc'])
             if pts != self.lockin_n_points:
                 logger.warning("ESR coil #{}: unexpected trace length {}".format(coil, pts))
             dtree = TTree("coil{}".format(coil), "coil {} data".format(coil))
-            dtree.Branch("raw", struct2, "freq/F:amp_x:amp_y")
-            dtree.Branch("filt", AddressOf(struct2, "fF1"), "freq/F:result:target")
+            dtree.Branch("raw", struct2, "adc/D:x:y")
 
             for i in range(pts):
-                struct2.fR1 = self.data_dict[coil]['raw_data']['frequency'][i]
-                struct2.fR2 = self.data_dict[coil]['raw_data']['amp_x'][i]
-                struct2.fR3 = self.data_dict[coil]['raw_data']['amp_y'][i]
-                struct2.fF1 = self.data_dict[coil]['filtered_data']['freqs'][i]
-                struct2.fF2 = self.data_dict[coil]['filtered_data']['result'][i]
-                struct2.fF3 = self.data_dict[coil]['filtered_data']['target'][i]
+                struct2.fRaw1 = self.data_dict[coil]['raw_data']['adc'][i]
+                struct2.fRaw2 = self.data_dict[coil]['raw_data']['x'][i]
+                struct2.fRaw3 = self.data_dict[coil]['raw_data']['y'][i]
                 dtree.Fill()
             dtree.Write()
 
-            if self.data_dict[coil]['result']['filt_field'] != 0:
-                rbranch = rtree.Branch("coil{}".format(coil), struct3, "res_freq_Hz/F:b_field_T:b_field_e_T/F\
-                                                                          :fit_field_T:fit_field_e_T")
-                struct3.fCRF = self.data_dict[coil]['result']['res_freq']
-                struct3.fCB = self.data_dict[coil]['result']['filt_field']
-                struct3.fCBE = self.data_dict[coil]['result']['filt_field_e']
-                struct3.fCFB = self.data_dict[coil]['result']['fit_field']
-                struct3.fCFBE = self.data_dict[coil]['result']['fit_field_e']
-                rbranch.Fill()
+            rbranch = rtree.Branch("coil{}".format(coil), struct3, "filt_field_Hz/D:filt_field_e_T/D\
+                                                                      :fit_field_T:fit_field_e_T")
+            struct3.fFiltB = self.data_dict[coil]['result']['filt']
+            struct3.fFiltBE = self.data_dict[coil]['result']['filt_e']
+            struct3.fFitB = self.data_dict[coil]['result']['fit']
+            struct3.fFitBE = self.data_dict[coil]['result']['fit_e']
+            rbranch.Fill()
+
+            tbranch = ttree.Branch("coil{}".format(coil), self.root_dict[coil]['time'])
+            tbranch.Fill()
+
         rtree.Fill()
         rtree.Write()
+        ttree.Fill()
+        ttree.Write()
 
         outfile.mkdir("Plots")
         outfile.cd("Plots")
-        self.root_plot(outfile, outpath)
-        self.field_plot(outfile, outpath)
+        esr_trace_plots({coil:self.root_dict[coil]['fits'] for coil in self.root_dict}, outfile, outpath)
+        field_plot({coil:self.data_dict[coil]['result'] for coil in self.data_dict}, outfile, outpath)
         outfile.Close()
 
-
-    def root_fits(self, raw_data, n_fits):
-
-        data = numpy.column_stack((raw_data['frequency']*1e-6,
-                                   raw_data['lockin_x_data']*1e6,
-                                   raw_data['lockin_y_data']*1e6))
-        data = data.ravel().view([('f','float'), ('x','float'), ('y','float')])
-        fspan = data['f'][-1] - data['f'][0] + (self.hf_start_freq - self.hf_stop_freq) * 1e-6
-        numpy.ndarray.sort(data)
-
-        p1 = numpy.argmax(data['x'])
-        p2 = numpy.argmin(data['x'])
-        s = (data['f'][p2] - data['f'][p1]) / 2.
-        b = (data['f'][p2] + data['f'][p1]) / 2.
-        a = (data['x'][p1] - data['x'][p2]) / (2. * s * numpy.exp(-0.5))
-        gfit = TF1("gfit","(-(x-[1])*gaus(0)-[3])*(x>0)\
-                              +(-[4]*(x+[1])*exp(-(x+[1])**2/2./[2]**2)-[5])*(x<0)")
-        gfit.SetParameters(a,b,s,0,a/2,0)
-        gfit.SetLineColor(4)
-
-        f2 = numpy.concatenate((-data['f'][::-1], data['f']))
-        xy = numpy.concatenate((data['y'][::-1], data['x']))
-        fe = numpy.array(len(data['f']) * [fspan / (len(data['f']) - 1) / 6.], dtype=float)
-        f2e = numpy.concatenate((fe, fe))
-        if b < (self.hf_start_freq + self.hf_stop_freq) / 2.:
-            xe = numpy.array(len(data['x']) * [numpy.std(data['x'][-50:])])
-            ye = numpy.array(len(data['y']) * [numpy.std(data['y'][-50:])])
-        else:
-            xe = numpy.array(len(data['x']) * [numpy.std(data['x'][:50])])
-            ye = numpy.array(len(data['y']) * [numpy.std(data['y'][:50])])
-        xye = numpy.concatenate((ye, xe))
-
-        ct = 0
-        while ct < n_fits:
-            plot1 = TGraphErrors(len(f2), f2, xy, f2e, xye)
-            plot1.Fit("gfit","ME")
-            scale = (gfit.GetChisquare() / gfit.GetNDF())**0.5
-            logger.info("Chi-Square : {} / {}; rescale error by {}".format(gfit.GetChisquare(), gfit.GetNDF(), scale))
-            if scale > 0.95 and scale < 1.05:
-                logger.info("Acceptable error reached, aborting iterative scale and fit")
-            xe = xe * scale
-            ye = ye * scale
-            xye = xye * scale
-            ct += 1
-
-        plot1.SetName("xy_f")
-        plot2 = TGraphErrors(len(data['f']), data['f']*1., data['y']*1., fe, ye)
-        plot2.SetName("y_f")
-        plot2.SetLineColor(2)
-        gfit2 = TF1("gfit","-(x-[1])*gaus(0)-[3]", self.hf_start_freq*1e-6, self.hf_stop_freq*1e-6)
-        gfit2.SetParameters(-gfit.GetParameter(4), gfit.GetParameter(1), gfit.GetParameter(2), gfit.GetParameter(5))
-        gfit2.SetLineColor(3)
-
-        ymax = max(numpy.max(data['x']), numpy.max(data['y']))
-        ymin = min(numpy.min(data['x']), numpy.min(data['y']))
-        yrng = ymax - ymin
-        ymax += yrng/8.
-        ymin -= yrng/8.
-        plot2.GetYaxis().SetRangeUser(ymin, ymax)
-
-        return { 'graph_xy' : plot1,
-                 'graph_y' : plot2,
-                 'fit' : gfit,
-                 'fit_y': gfit2 }
-
-
-    def root_plot(self, outfile, outpath):
-        for coil in self.data_dict:
-            can = TCanvas("can{}".format(coil), "coil{}".format(coil))
-            self.data_dict[coil]['fits']['graph_y'].SetTitle("Coil {};Frequency (MHz);Amplitude (arb)".format(coil))
-            self.data_dict[coil]['fits']['graph_y'].Draw("AL")
-            self.data_dict[coil]['fits']['fit_y'].Draw("same")
-            self.data_dict[coil]['fits']['graph_xy'].Draw("L")
-            can.Write()
-            can.SaveAs(outpath+"coil{}.pdf".format(coil))
-
-    def field_plot(self, outfile, outpath):
-        results = { coil : self.data_dict[coil]['result'] for coil in self.data_dict if (self.data_dict[coil]['result']['filt_field']!=0) }
-        if len(results) == 0:
-            logger.warning("No valid ESR measurements, skipping field_plot")
-            return
-        x = numpy.array([coil for coil in results], dtype=float)
-        xe = numpy.zeros(len(x), dtype=float)
-        y1 = numpy.array([results[coil]['filt_field'] for coil in results], dtype=float)
-        y1e = numpy.array([results[coil]['filt_field_e'] for coil in results], dtype=float)
-        y2 = numpy.array([results[coil]['fit_field'] for coil in results], dtype=float)
-        y2e = numpy.array([results[coil]['fit_field_e'] for coil in results], dtype=float)
-
-        can = TCanvas("can0", "field")
-        g_filt = TGraphErrors(len(x), x, y1, xe, y1e)
-        g_fit = TGraphErrors(len(x), x, y2, xe, y2e)
-        g_fit.SetLineColor(2)
-        mg = TMultiGraph()
-        mg.Add(g_filt)
-        mg.Add(g_fit)
-        mg.SetTitle("Field Map;ESR Coil Position;Field (T)")
-        mg.Draw("AL")
-        can.Write()
-        can.SaveAs(outpath+"fieldmap.pdf")
 
     def root_setup(self):
 
@@ -465,35 +425,25 @@ class ESR_Measurement(core.Endpoint):
                                Char_t fSOrder[8];\
                            };");
         gROOT.ProcessLine("struct MyStruct2 {\
-                               Float_t fR1;\
-                               Float_t fR2;\
-                               Float_t fR3;\
-                               Float_t fF1;\
-                               Float_t fF2;\
-                               Float_t fF3;\
+                               Double_t fRaw1;\
+                               Double_t fRaw2;\
+                               Double_t fRaw3;\
 	                   };");
         gROOT.ProcessLine("struct MyStruct3 {\
-                               Float_t fCRF;\
-                               Float_t fCB;\
-                               Float_t fCBE;\
-                               Float_t fCFB;\
-                               Float_t fCFBE;\
+                               Double_t fFiltB;\
+                               Double_t fFiltBE;\
+                               Double_t fFitB;\
+                               Double_t fFitBE;\
+                           };");
+        gROOT.ProcessLine("struct MyStruct4 {\
+                               Char_t fShape[12];\
+                               Double_t fFactor;\
+                               Int_t fNFit;\
                            };");
 
-
-    def run_scan(self, config_instruments=True, restore_defaults=True, coils=[1,2,3,4,5], n_fits=2, **kwargs):
-        logger.info(kwargs)
-        self.data_dict = {}
-        if config_instruments:
-            self.configure_instruments(restore_defaults)
-        for i in coils:
-            self.single_measure(i, n_fits)
-        self.save_data()
-        #logger.info(self.data_dict)
-        if config_instruments:
-            self.reset_configure()
-        return { coil : self.data_dict[coil]['result']['filt_field'] for coil in self.data_dict }
-
+    def pull_lockin_data(self, key):
+        raw = self.drip_cmd('lockin_interface.grab_data', key)
+        return numpy.array(raw.replace('\x00','').split(';'), dtype=float)
 
     def drip_cmd(self, cmdname, val):
         request_message = core.RequestMessage(msgop=core.OP_CMD,
@@ -542,16 +492,16 @@ class ESR_Measurement(core.Endpoint):
         return
 
 
-def WeinerFilter(freq_data, amp_data, shape='gaussian'):
+def wiener_filter(data, shape='gaussian'):
+    '''
+    Apply Wiener filter to data to crossing frequency
+    '''
+    freq = data['f']
+    volt = data['x'] + 1j*data['y']
     logger.info('doing filter on target: {}'.format(shape))
-    data = zip(freq_data, amp_data)
-    data.sort()
-    f,v= zip(*data)
-    frequencies = numpy.array(f, dtype=float)
-    voltages = numpy.array(v, dtype=complex)
-    width = (frequencies[numpy.argmin(voltages)] - frequencies[numpy.argmax(voltages)]) / 2.
-    x1 = (frequencies - frequencies[0])
-    x2 = (frequencies - frequencies[-1])
+    width = (freq[numpy.argmin(volt)] - freq[numpy.argmax(volt)]) / 2.
+    x1 = (freq - freq[0])
+    x2 = (freq - freq[-1])
     if shape == 'gaussian':
         deriv1 = -x1 * numpy.exp(-x1**2 / 2. / width**2) * numpy.exp(0.5) / width
         deriv2 = -x2 * numpy.exp(-x2**2 / 2. / width**2) * numpy.exp(0.5) / width
@@ -561,11 +511,137 @@ def WeinerFilter(freq_data, amp_data, shape='gaussian'):
     target_signal = numpy.concatenate((deriv1[:len(deriv1)/2], deriv2[len(deriv2)/2:]))
     if not sum(target_signal != 0):
         raise ValueError("target signal identically 0, did you give width in Hz?")
-    data_fft = numpy.fft.fft(voltages)
+    data_fft = numpy.fft.fft(volt)
     data_fft[0] = 0
     target_fft = numpy.fft.fft(target_signal)
-    filtered = numpy.fft.ifft(data_fft * target_fft)
-    return {'freqs': frequencies,
-            'result': numpy.abs(filtered),
-            'target': target_signal,
-           }
+    filtered = numpy.abs( numpy.fft.ifft(data_fft * target_fft) )
+
+    # Lightly-tuned data-quality checks:
+    fom1 = ( numpy.max(filtered) - numpy.mean(filtered) ) / numpy.std(filtered)
+    #fom2 = abs(fit_field - b_field) / (fit_field_e**2 + b_field_e**2)**0.5
+    if fom1 < 2.5:
+        res_freq = 0
+        res_freq_e = 0
+        logger.warning("Rejecting Wiener filter result with figure-of-merit = {}".format(fom1))
+    else:
+        index = numpy.argmax( numpy.abs(filtered) )
+        res_freq = freq[index]
+        res_freq_e = max(freq[index]-freq[index-1],
+                         freq[index+1]-freq[index])
+
+    return { 'result': res_freq,
+             'error': res_freq_e }
+
+def root_fit(data, fits, span, shape='gaussian'):
+        '''
+        Use ROOT fitting with Minuit to determine crossing frequency
+        '''
+        if shape != 'gaussian':
+            raise NameError("unexpected fit form")
+            # FIXME: expand to include Lorentzian
+
+        # Calculate quick seed values
+        p1 = numpy.argmax(data['x'])
+        p2 = numpy.argmin(data['x'])
+        s = (data['f'][p2] - data['f'][p1]) / 2.
+        b = (data['f'][p2] + data['f'][p1]) / 2.
+        a = (data['x'][p1] - data['x'][p2]) / (2. * s * numpy.exp(-0.5))
+        gfit = TF1("gfit","(-(x-[1])*gaus(0)-[3])*(x>0)\
+                              +(-[4]*(x+[1])*exp(-(x+[1])**2/2./[2]**2)-[5])*(x<0)")
+        gfit.SetParameters(a,b,s,0,a/2,0)
+        gfit.SetLineColor(4)
+
+        f2 = numpy.concatenate((-data['f'][::-1], data['f']))
+        xy = numpy.concatenate((data['y'][::-1], data['x']))
+        fe = numpy.array(len(data['f']) * [span / (len(data['f']) - 1) / 6.], dtype=float)
+        f2e = numpy.concatenate((fe, fe))
+        if b < (data['f'][0] + data['f'][-1]) / 2.:
+            xe = numpy.array(len(data['x']) * [numpy.std(data['x'][-50:])])
+            ye = numpy.array(len(data['y']) * [numpy.std(data['y'][-50:])])
+        else:
+            xe = numpy.array(len(data['x']) * [numpy.std(data['x'][:50])])
+            ye = numpy.array(len(data['y']) * [numpy.std(data['y'][:50])])
+        xye = numpy.concatenate((ye, xe))
+
+        scale = 1
+        for ct in range(fits):
+            xe = xe * scale
+            ye = ye * scale
+            xye = xye * scale
+            plot1 = TGraphErrors(len(f2), f2, xy, f2e, xye)
+            plot1.Fit("gfit","ME")
+            scale = (gfit.GetChisquare() / gfit.GetNDF())**0.5
+            logger.info("Chi-Square : {} / {}; rescale error by {}".format(gfit.GetChisquare(), gfit.GetNDF(), scale))
+            if scale > 0.95 and scale < 1.05:
+                logger.info("Acceptable error reached after fit #{}, aborting iterative scale and fit".format(ct+1))
+                break
+
+        plot1.SetName("xy_f")
+        plot2 = TGraphErrors(len(data['f']), data['f']*1., data['y']*1., fe, ye)
+        plot2.SetName("y_f")
+        plot2.SetLineColor(2)
+        gfit2 = TF1("gfit","-(x-[1])*gaus(0)-[3]", data['f'][0], data['f'][-1])
+        gfit2.SetParameters(-gfit.GetParameter(4), gfit.GetParameter(1), gfit.GetParameter(2), gfit.GetParameter(5))
+        gfit2.SetLineColor(3)
+
+        ymax = max(numpy.max(data['x']), numpy.max(data['y']))
+        ymin = min(numpy.min(data['x']), numpy.min(data['y']))
+        yrng = ymax - ymin
+        ymax += yrng/8.
+        ymin -= yrng/8.
+        plot2.GetYaxis().SetRangeUser(ymin, ymax)
+
+        res_freq = gfit.GetParameter(1)
+        res_freq_e = gfit.GetParError(1)
+        if res_freq < data['f'][0] or res_freq > data['f'][-1]:
+            logger.warning("Rejecting fit result with out-of-range resonant frequency = {} MHz".format(res_freq))
+            res_freq = 0
+            res_freq_e = 0
+        # FIXME: better check of fit failure?
+
+        return { 'graph_xy' : plot1,
+                 'graph_y' : plot2,
+                 'fit' : gfit,
+                 'fit_y': gfit2,
+                 'result' : res_freq,
+                 'error' : res_freq_e }
+
+def esr_trace_plots(fits, outfile, outpath):
+        for coil in fits:
+            can = TCanvas("can{}".format(coil), "coil{}".format(coil))
+            fits[coil]['graph_y'].SetTitle("Coil {};Frequency (MHz);Amplitude (arb)".format(coil))
+            fits[coil]['graph_y'].Draw("AL")
+            fits[coil]['fit_y'].Draw("same")
+            fits[coil]['graph_xy'].Draw("L")
+            can.Write()
+            can.SaveAs(outpath+"coil{}.pdf".format(coil))
+
+def field_plot(results, outfile, outpath):
+        filt = { coil : results[coil] for coil in results if (results[coil]['filt']!=0) }
+        fit = { coil : results[coil] for coil in results if (results[coil]['fit']!=0) }
+        if len(filt)==0 and len(fit)==0:
+            logger.warning("No valid ESR measurements, skipping field_plot")
+            return
+
+        x1 = numpy.array([coil for coil in filt], dtype=float)
+        x1e = numpy.zeros(len(x1), dtype=float)
+        x2 = numpy.array([coil for coil in fit], dtype=float)
+        x2e = numpy.zeros(len(x2), dtype=float)
+        y1 = numpy.array([filt[coil]['filt'] for coil in filt], dtype=float)
+        y1e = numpy.array([filt[coil]['filt_e'] for coil in filt], dtype=float)
+        y2 = numpy.array([fit[coil]['fit'] for coil in fit], dtype=float)
+        y2e = numpy.array([fit[coil]['fit_e'] for coil in fit], dtype=float)
+
+        can = TCanvas("can0", "field")
+        mg = TMultiGraph()
+        if len(x1) != 0:
+            g_filt = TGraphErrors(len(x1), x1, y1, x1e, y1e)
+            mg.Add(g_filt)
+        if len(x2) != 0:
+            g_fit = TGraphErrors(len(x2), x2, y2, x2e, y2e)
+            g_fit.SetLineColor(2)
+            mg.Add(g_fit)
+        mg.SetTitle("Field Map;ESR Coil Position;Field (T)")
+        mg.Draw("AL")
+        can.Write()
+        can.SaveAs(outpath+"fieldmap.pdf")
