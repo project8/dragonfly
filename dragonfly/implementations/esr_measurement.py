@@ -108,37 +108,37 @@ class ESR_Measurement(core.Endpoint):
         if reset:
             self.restore_presets()
         # lockin controls
-        self.check_ept('lockin_n_points', self.lockin_n_points)
-        self.check_ept('lockin_sampling_interval', self.lockin_sampling_interval)
-        self.check_ept('lockin_trigger', self.lockin_trigger)
-        self.check_ept('lockin_curve_mask', self.lockin_curve_mask)
-        self.check_ept('lockin_srq_mask', self.lockin_srq_mask)
-        self.check_ept('lockin_osc_amp', self.lockin_osc_amp)
-        self.check_ept('lockin_osc_freq', self.lockin_osc_freq)
-        #self.check_ept('lockin_ac_gain', self.lockin_ac_gain) # Lockin settings currently bind ACGAIN to SEN parameter
-        self.check_ept('lockin_sensitivity', self.lockin_sensitivity)
-        self.check_ept('lockin_time_constant', self.lockin_time_constant)
+        self.check_endpoint('lockin_n_points', self.lockin_n_points)
+        self.check_endpoint('lockin_sampling_interval', self.lockin_sampling_interval)
+        self.check_endpoint('lockin_trigger', self.lockin_trigger)
+        self.check_endpoint('lockin_curve_mask', self.lockin_curve_mask)
+        self.check_endpoint('lockin_srq_mask', self.lockin_srq_mask)
+        self.check_endpoint('lockin_osc_amp', self.lockin_osc_amp)
+        self.check_endpoint('lockin_osc_freq', self.lockin_osc_freq)
+        #self.check_endpoint('lockin_ac_gain', self.lockin_ac_gain) # Lockin settings currently bind ACGAIN to SEN parameter
+        self.check_endpoint('lockin_sensitivity', self.lockin_sensitivity)
+        self.check_endpoint('lockin_time_constant', self.lockin_time_constant)
         # sweeper controls
         while True:
-            err_msg = self.raw_get_ept('hf_error_check')
+            err_msg = self.raw_get_endpoint('hf_error_check')
             if err_msg == '+0,"No error"':
                 break
             logger.warning("Clearing sweeper error queue: {}".format(err_msg))
-        self.check_ept('hf_output_status', 0)
-        self.check_ept('hf_freq_mode', 'LIST')
-        self.check_ept('hf_sweep_order', str(self.hf_sweep_order))
-        self.check_ept('hf_start_freq', self.hf_start_freq)
-        self.check_ept('hf_stop_freq', self.hf_stop_freq)
-        self.check_ept('hf_power', self.hf_power)
-        self.check_ept('hf_n_sweep_points', self.hf_n_sweep_points)
-        self.check_ept('hf_dwell_time', self.hf_dwell_time)
-        err_msg = self.raw_get_ept('hf_error_check')
+        self.check_endpoint('hf_output_status', 0)
+        self.check_endpoint('hf_freq_mode', 'LIST')
+        self.check_endpoint('hf_sweep_order', str(self.hf_sweep_order))
+        self.check_endpoint('hf_start_freq', self.hf_start_freq)
+        self.check_endpoint('hf_stop_freq', self.hf_stop_freq)
+        self.check_endpoint('hf_power', self.hf_power)
+        self.check_endpoint('hf_n_sweep_points', self.hf_n_sweep_points)
+        self.check_endpoint('hf_dwell_time', self.hf_dwell_time)
+        err_msg = self.raw_get_endpoint('hf_error_check')
         if err_msg != '+0,"No error"':
             raise core.exceptions.DriplineHardwareError("Sweeper error: {}".format(err_msg))
         # relays
-        self.check_ept('esr_tickler_switch', 1)
+        self.check_endpoint('esr_tickler_switch', 1)
         for coil in range(1, 6):
-            self.check_ept('esr_coil_{}_switch_status'.format(coil), 0)
+            self.check_endpoint('esr_coil_{}_switch_status'.format(coil), 0)
 
     def restore_presets(self):
         '''
@@ -167,11 +167,11 @@ class ESR_Measurement(core.Endpoint):
         '''
         Immutable "safe" configuration for switches and sweeper
         '''
-        self.check_ept('hf_output_status', 0)
-        self.check_ept('hf_power', -50)
-        self.check_ept('esr_tickler_switch', 1)
+        self.check_endpoint('hf_output_status', 0)
+        self.check_endpoint('hf_power', -50)
+        self.check_endpoint('esr_tickler_switch', 1)
         for coil in range(1, 6):
-            self.check_ept('esr_coil_{}_switch_status'.format(coil), 0)
+            self.check_endpoint('esr_coil_{}_switch_status'.format(coil), 0)
 
     def capture_settings(self):
         '''
@@ -179,9 +179,9 @@ class ESR_Measurement(core.Endpoint):
         FIXME: Endpoints should either be locked here or already
         '''
         self.settings = {}
-        self.settings['insert'] = self.raw_get_ept("run_metadata")
-        self.settings['lockin'] = self.raw_get_ept("lockin_settings")
-        self.settings['sweeper'] = self.raw_get_ept("sweeper_settings")
+        self.settings['insert'] = self.raw_get_endpoint("run_metadata", timeout=20)
+        self.settings['lockin'] = self.raw_get_endpoint("lockin_settings", timeout=20)
+        self.settings['sweeper'] = self.raw_get_endpoint("sweeper_settings")
         self.settings['sweeper']['hf_start_freq'] = float(self.settings['sweeper']['hf_start_freq'])
         if self.settings['sweeper']['hf_start_freq'] != self.hf_start_freq:
             logger.warning("Mismatch of sweeper start frequency.  Using {} but internal value is {}".\
@@ -198,14 +198,14 @@ class ESR_Measurement(core.Endpoint):
         Communicate with lockin, sweeper, and switches to execute single ESR coil scan.
         Data is retrieved but not analyzed.
         '''
-        self.check_ept('hf_output_status', 1)
-        self.check_ept('esr_coil_{}_switch_status'.format(coil), 1)
+        self.check_endpoint('hf_output_status', 1)
+        self.check_endpoint('esr_coil_{}_switch_status'.format(coil), 1)
         time = datetime.today().ctime()
         timestamp = TTimeStamp()
-        self.raw_get_ept('lockin_take_data')
+        self.raw_get_endpoint('lockin_take_data')
         # HF sweep takes 60 sec
         while True:
-            status = self.raw_get_ept('lockin_curve_status')
+            status = self.raw_get_endpoint('lockin_curve_status')
             logger.info(status)
             if status.split(',')[0] == '0':
                 break
@@ -213,8 +213,8 @@ class ESR_Measurement(core.Endpoint):
                 time_est = min( 5, (self.lockin_n_points-int(status.split(',')[3]))*self.lockin_sampling_interval*1e-3 )
                 logger.info("sleeping for {} sec".format(time_est))
                 sleep(time_est)
-        self.check_ept('hf_output_status', 0)
-        self.check_ept('esr_coil_{}_switch_status'.format(coil), 0)
+        self.check_endpoint('hf_output_status', 0)
+        self.check_endpoint('esr_coil_{}_switch_status'.format(coil), 0)
 
         # Get the lockin data
         raw = { 'adc' : self.pull_lockin_data('adc'),
@@ -445,36 +445,27 @@ class ESR_Measurement(core.Endpoint):
                            };");
 
     def pull_lockin_data(self, key):
-        raw = self.drip_cmd('lockin_interface.grab_data', key)
+        # raw = self.provider.cmd(key, target="lockin_interface", method_name="grab_data", timeout=20)
+        # FIXME: Is it really necessary to do this as below?  Getting error that multiple arguments for target given otherwise
+        raw = self.provider.cmd("lockin_interface", "grab_data", False, 20, False, key)['values'][0]
         return numpy.array(raw.replace('\x00','').split(';'), dtype=float)
 
-    def drip_cmd(self, endptname, mthdname, val):
-        a_result=self.provider.cmd(val, target=endptname, method_name=mthdname, timeout=20)
-        return a_result.payload['values'][0]
+    def raw_get_endpoint(self, endptname, **kwargs):
+        result = self.provider.get(target=endptname, **kwargs)
+        return result['value_raw']
 
-    def raw_get_ept(self, endptname):
-        a_result = self.provider.get(target=endptname, timeout=20)
-        return a_result.payload['value_raw']
-
-    def set_ept(self, endptname, val):
-        a_result = self.provider.set(target=endptname, value=val)
-        if 'values' in a_result.payload:
-            ret_val = a_result.payload['values'][0]
-        elif 'value_raw' in a_result.payload:
-            ret_val = a_result.payload['value_raw']
-        else:
-            logger.info("return payload is {}".format(a_result.payload))
-            ret_val = a_result.payload
-        return ret_val
-
-    def check_ept(self, endptname, val):
-        ret_val = self.set_ept(endptname, val)
-        if isinstance(val, int) or isinstance(val, float):
-            ret_val = float(ret_val)
-        elif not isinstance(val, str):
-            logger.warning("ret_val is of type {} with value {}".format(type(ret_val), ret_val))
+    def check_endpoint(self, endptname, val):
+        if not isinstance(val, (int,float,str,unicode)):
+            logger.warning("set value is of type {} with value {}, cannot process".format(type(val), val))
             raise TypeError
-        if ret_val != val:
+        result = self.provider.set(target=endptname, value=val)
+        if 'values' in result:
+            result = result['values'][0]
+        elif 'value_raw' in result:
+            result = result['value_raw']
+        if isinstance(val, (int,float)):
+            result = float(result)
+        if result != val:
             raise core.exceptions.DriplineValueError("Failure to set endpoint: {}".format(endptname))
         return
 
