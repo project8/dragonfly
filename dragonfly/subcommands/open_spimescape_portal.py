@@ -56,6 +56,7 @@ class Serve(object):
         logger.info('starting {}'.format(service.name))
         ##### need to fix the node class here...
         for provider in these_endpoints:
+            print(provider)
             self.create_child(service, provider)
         logger.info('spimescapes created and populated')
         logger.info('Configuration of {} complete, starting consumption'.format(service.name))
@@ -91,16 +92,21 @@ class Serve(object):
         if hasattr(extra_namespace, module):
             this_child = getattr(extra_namespace, module)(**conf_dict)
         elif hasattr(implementations, module):
+            print('here')
             this_child = getattr(implementations, module)(**conf_dict)
+            print('done')
         elif hasattr(core, module):
             this_child = getattr(core, module)(**conf_dict)
         else:
             raise NameError('no module "{}" in dripline.core or dragonfly.implementations'.format(module))
-    
+
+        print('creating children')
         for child_dict in child_confs:
             self.create_child(service, child_dict, this_child)
 
-        service.add_endpoint(this_child)
+
+        print(service.add_endpoint)
+        service.add_endpoint(this_child) #->>>>>> Le bug est la
         if isinstance(parent, core.Provider):
             parent.add_endpoint(this_child)
 
@@ -112,4 +118,3 @@ class Serve(object):
                             help='amqp binding keys to match against',
                             default='#',
                            )
-

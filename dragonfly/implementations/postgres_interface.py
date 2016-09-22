@@ -41,12 +41,15 @@ class PostgreSQLInterface(Provider):
         database_name (str): name of the database to connect to
         database_server (str): network resolvable hostname of database server
         '''
+        logger.debug('PostgreSQLInterface.__init__')
         Provider.__init__(self, **kwargs)
         self._connect_to_db(database_server, database_name)
+        logger.debug('end PostgreSQLInterface.__init__')
 
     def _connect_to_db(self, database_server, database_name):
         '''
         '''
+        logger.debug('Connecting to the db')
         credentials = json.loads(open(os.path.expanduser('~')+'/.project8_authentications.json').read())['postgresql']
         engine_str = 'postgresql://{}:{}@{}/{}'.format(credentials['username'],
                                                        credentials['password'],
@@ -57,8 +60,10 @@ class PostgreSQLInterface(Provider):
         self.meta = sqlalchemy.MetaData(self.engine)
 
     def add_endpoint(self, endpoint):
+        logger.info('Adding endpoint in PostgreSQLInterface')
         Provider.add_endpoint(self, endpoint)
         if isinstance(endpoint, SQLTable):
+            logger.debug('Adding endpoint {} to the table'.format(endpoint.table_name))
             endpoint.table = sqlalchemy.Table(endpoint.table_name, self.meta, autoload=True, schema=endpoint.schema)
 
 
@@ -82,8 +87,8 @@ class SQLTable(Endpoint):
         optional_insert_names (list): list of names (str) of columns which the user may specify on an insert request, but which may be omitted
         default_insert_values (dict): dictionary of {column_names: values} to serve as defaults when inserting, any values provided explicitly on the insert request will override these values
         '''
+        logger.debug('SQLTable.__init__')
         Endpoint.__init__(self, *args, **kwargs)
-
         self.table = None
         self.table_name = table_name
         self.schema = schema
@@ -91,18 +96,21 @@ class SQLTable(Endpoint):
         self._required_insert_names = required_insert_names
         self._optional_insert_names = optional_insert_names
         self._default_insert_dict = default_insert_values
+        logger.debug('end SQLTable.__init__')
+
 
     def do_select(self, return_cols=[], where_eq_dict={}, where_lt_dict={}, where_gt_dict={}):
         '''
         return_cols (list of str): string names of columns, internally converted to sql reference; if evaluates as false, all columns are returned
-        where_eq_dict (dict): keys are column names (str), and values are tested with '==' 
+        where_eq_dict (dict): keys are column names (str), and values are tested with '=='
         where_lt_dict (dict): keys are column names (str), and values are tested with '<'
         where_gt_dict (dict): keys are column names (str), and values are tested with '>'
-        
+
         Other select "where" statements are not supported
 
         Returns: a tuple, 1st element is list of column names, 2nd is a list of tuples of the rows that matched the select
         '''
+        print(self)
         if not return_cols:
             return_cols = self.table.c
         else:
