@@ -92,20 +92,16 @@ class Serve(object):
         if hasattr(extra_namespace, module):
             this_child = getattr(extra_namespace, module)(**conf_dict)
         elif hasattr(implementations, module):
-            print('here')
             this_child = getattr(implementations, module)(**conf_dict)
-            print('done')
         elif hasattr(core, module):
             this_child = getattr(core, module)(**conf_dict)
         else:
             raise NameError('no module "{}" in dripline.core or dragonfly.implementations'.format(module))
 
-        print('creating children')
         for child_dict in child_confs:
             self.create_child(service, child_dict, this_child)
 
 
-        print(service.add_endpoint)
         service.add_endpoint(this_child) #->>>>>> Le bug est la
         if isinstance(parent, core.Provider):
             parent.add_endpoint(this_child)

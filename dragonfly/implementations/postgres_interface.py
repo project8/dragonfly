@@ -41,10 +41,10 @@ class PostgreSQLInterface(Provider):
         database_name (str): name of the database to connect to
         database_server (str): network resolvable hostname of database server
         '''
-        logger.debug('PostgreSQLInterface.__init__')
+        #logger.debug('PostgreSQLInterface.__init__')
         Provider.__init__(self, **kwargs)
         self._connect_to_db(database_server, database_name)
-        logger.debug('end PostgreSQLInterface.__init__')
+        #logger.debug('end PostgreSQLInterface.__init__')
 
     def _connect_to_db(self, database_server, database_name):
         '''
