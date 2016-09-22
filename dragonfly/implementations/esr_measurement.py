@@ -75,7 +75,7 @@ class ESR_Measurement(core.Endpoint):
         self.data_dict = {} # reset in run_scan 
         self.root_dict = {} # reset in run_scan
         self.settings = {} # reset in capture_settings
-        self.root_setup()
+        self._root_setup()
 
 
     def run_scan(self, config_instruments=True, restore_defaults=True, coils=[1,2,3,4,5], n_fits=2, **kwargs):
@@ -373,8 +373,11 @@ class ESR_Measurement(core.Endpoint):
         outfile.Close()
 
 
-    def root_setup(self):
-
+    def _root_setup(self):
+        '''
+        Method to configure ROOT canvas formatting and create C struct for saving data.
+        Only called once during __init__.
+        '''
         gROOT.Reset()
         gROOT.SetBatch()
         gStyle.SetOptStat     (0)
@@ -607,6 +610,9 @@ def root_fit(data, fits, span, shape='gaussian'):
                  'error' : res_freq_e }
 
 def esr_trace_plots(fits, outfile, outpath):
+        '''
+        Generate and save output plots of ESR traces.
+        '''
         for coil in fits:
             can = TCanvas("can{}".format(coil), "coil{}".format(coil))
             fits[coil]['graph_y'].SetTitle("Coil {};Frequency (MHz);Amplitude (arb)".format(coil))
@@ -617,6 +623,9 @@ def esr_trace_plots(fits, outfile, outpath):
             can.SaveAs(outpath+"coil{}.pdf".format(coil))
 
 def field_plot(results, outfile, outpath):
+        '''
+        Generate and save output plot of B-field values for all coils.
+        '''
         filt = { coil : results[coil] for coil in results if (results[coil]['filt']!=0) }
         fit = { coil : results[coil] for coil in results if (results[coil]['fit']!=0) }
         if len(filt)==0 and len(fit)==0:

@@ -32,7 +32,7 @@ pause_for_user -> print a message to the user and wait for a response. The conte
 sleep -> wait for specified period of time
 
         - action: sleep
-          time: (int||float)
+          duration: (int||float)
 
 lockout -> send a lockout command to the specified list of endpoints. If a lockout
     action is called, all subsequent requests will use the automatically generated
@@ -333,9 +333,9 @@ class RunScript(object):
         # but python2 has something different named input
         raw_input('{}\n(Press return to continue)\n'.format(message))
 
-    def action_sleep(self, time, **kwargs):
-        logger.info("Sleeping for {} sec, ignoring args: {}".format(time, kwargs))
-        sleep(time)
+    def action_sleep(self, duration, **kwargs):
+        logger.info("Sleeping for {} sec, ignoring args: {}".format(duration, kwargs))
+        time.sleep(duration)
 
     def action_lockout(self, endpoints=[], lockout_key=None, **kwargs):
         if lockout_key is not None:
