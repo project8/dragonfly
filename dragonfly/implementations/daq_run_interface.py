@@ -137,7 +137,7 @@ class DAQProvider(core.Provider):
                        }
         this_payload['metadata']['run_id'] = self.run_id
         # note, the following line has an empty method/RKS, this shouldn't be the case but is what golang expects
-        req_result = self.provider.cmd(self.metadata_target, '', this_payload) 
+        req_result = self.provider.cmd(self.metadata_target, '', this_payload)
         logger.debug('meta sent')
 
     def start_timed_run(self, run_name, run_time):
@@ -509,7 +509,7 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
 
     def save_trace(self,trace,path):
         logger.info('saving trace')
-        self.send(['MMEMory:DPX:STORe:TRACe{} {}; *OPC?'.format(trace,path)])
+        self.send(['MMEMory:DPX:STORe:TRACe{} "{}"; *OPC?'.format(trace,path)])
 
     def create_new_auto_mask(self, trace, xmargin, ymargin):
         logger.info('setting the auto mask')
