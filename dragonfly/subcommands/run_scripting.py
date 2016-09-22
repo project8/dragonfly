@@ -333,9 +333,12 @@ class RunScript(object):
         # but python2 has something different named input
         raw_input('{}\n(Press return to continue)\n'.format(message))
 
-    def action_sleep(self, time, **kwargs):
-        logger.info("Sleeping for {} sec, ignoring args: {}".format(time, kwargs))
-        sleep(time)
+    def action_sleep(self, duration, **kwargs):
+        if isinstance(duration,int) or isinstance(duration,float):
+            logger.info("Sleeping for {} sec, ignoring args: {}".format(duration, kwargs))
+        else:
+            raise dripline.core.DriplineValueError('duration is not a float/int')
+        time.sleep(duration)
 
     def action_lockout(self, endpoints=[], lockout_key=None, **kwargs):
         if lockout_key is not None:
@@ -547,7 +550,7 @@ class RunScript(object):
                 elif key == 'cmds':
                     self.action_cmd(this_do[key])
                 elif key == 'sleep':
-                    self.action_sleep(this_do[key])
+                    self.action_sleep(duration=this_do[key][0]['duration'])
                 else:
                     logger.info('operation <{}> unknown: skipping!'.format(key))
 
@@ -566,6 +569,24 @@ class RunScript(object):
         for key in sorted(result['payload'].keys()):
             str_result.append('\t{} : {} T'.format(key, result['payload'][key]))
         logger.info("\n".join(str_result))
+
+    def action_single_trace(self, daq, trace, path, timeout=None,**kwargs):
+        logger.info('taking single trace')
+        if self._dry_run_mode:
+            logger.info('--dry-run flag: not starting an trace acquisition')
+            return
+        trace_kwargs = {'endpoint':daq,
+                      'method_name':'save_trace',
+                      'path':path,
+                      'trace':trace,
+                      'timeout': timeout
+                     }
+        if self._lockout_key:
+            trace_kwargs.update({'lockout_key':self._lockout_key})
+        logger.debug('trace_kwargs are: {}'.format(run_kwargs))
+        self.interface.cmd(**trace_kwargs)
+        logger.debug('trace acquired')
+
 
     def action_single_run(self, run_duration, run_name, daq_targets, timeout=None, **kwargs):
         logger.info('taking single run')
@@ -633,6 +654,7 @@ class RunScript(object):
             for i_do,a_do in enumerate(operations):
                 logger.info('doing operation #{}'.format(i_do))
                 these_operations = []
+                print(a_do)
                 key = a_do.keys()[0]
                 if key == 'sets':
                     these_sets = []
@@ -714,6 +736,20 @@ class RunScript(object):
                     this_timeout=None
                 logger.debug('timeout set to {} s'.format(this_timeout))
                 self.action_single_run(this_run_duration, this_run_name, runs['daq_targets'],this_timeout)
+
+
+            # compute args for, and call, action_single_run, based on run_count
+            if 'trace_save' in kwargs:
+                this_trace_save_name = trace_save['name'].format(run_count=run_count)
+                this_trace_number = trace_save['trace']
+                this_daq = trace_save['daq']
+                logger.info('{} trace save will be on trace {} with name "{}"'.format(this_daq,this_trace_number, this_trace_save_name))
+                if 'timeout' in runs:
+                    this_timeout = trace_save['timeout']
+                else:
+                    this_timeout=None
+                logger.debug('timeout set to {} s'.format(this_timeout))
+                self.action_single_run(daq=this_daq, name=this_run_name, trace = this_trace_number , timeout = this_timeout)
 
             # update cache variable with this run being complete and update the cache file
             self._action_cache['last_run'] = run_count
