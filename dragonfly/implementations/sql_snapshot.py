@@ -16,7 +16,6 @@ import traceback
 # 3rd party libraries
 try:
     import sqlalchemy
-    __all__.append('SQLSnapshot')
 except ImportError:
     pass
 from sqlalchemy import create_engine
@@ -35,12 +34,15 @@ import logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
+__all__.append('SQLSnapshot')
 
 class SQLSnapshot(SQLTable):
 
         def __init__(self, table_name, schema, *args, **kwargs):
                 '''
                 '''
+                if not 'sqlalchemy' in globals():
+                        raise ImportError('SQLAlchemy not found, required for SQLSnapshot class')
                 SQLTable.__init__(self, table_name, schema, *args, **kwargs)
 
         def get_logs(self, start_timestamp, end_timestamp):
