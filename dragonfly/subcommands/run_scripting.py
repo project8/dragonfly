@@ -32,7 +32,7 @@ pause_for_user -> print a message to the user and wait for a response. The conte
 sleep -> wait for specified period of time
 
         - action: sleep
-          time: (int||float)
+          duration: (int||float)
 
 lockout -> send a lockout command to the specified list of endpoints. If a lockout
     action is called, all subsequent requests will use the automatically generated
@@ -87,6 +87,8 @@ do -> combine the set and cmd actions within one list of "operations". Same deal
 
         - action: do
           operations:
+            - sleep:
+                duration: VALUE
             - sets:
               - name: NAME
                 value: VALUE
@@ -112,6 +114,16 @@ esr_run -> send a cmd <method_name> to the esr service endpoint. First three fie
           restore_defaults (bool): reset internal esr variables to default values from config file (default: True)
           coils (list): esr coils to use (default: [1,2,3,4,5])
           n_fits (int): number of fits to attempt on ESR traces (default: 2)
+
+single_trace -> collect the trace using one or more DAQ systems (if implemented).
+    The trace corresponds to the instanteneous or cumulated fourier transform of the signal.
+    The name given should be the absolute path for the daq to save the file.
+
+        - action: single_trace
+          name: 'C:/RSA/myfile'
+          daq:
+            - NAME
+          timeout: X
 
 single_run -> collect a single run using one or more DAQ systems. The value provided
     for the run_duration currently must be number in seconds, it would be nice if
@@ -164,12 +176,19 @@ multi_run -> probably the most useful/sophisticated action, effectively provides
             restore_defaults (bool): True (optional)
             coils (list): [1,2,3,4,5] (optional)
             n_fits (int): 2 (optional)
+        save_trace:
+            trace: X
+            name: 'C:/RSAFolder/myfile'
+            daq:
+                - NAME
+            timeout: 10
         runs:
             run_duration: {VALUE | "EXPRESSION" | {RUN_COUNT: VALUE, ...}}
             run_name: STRING_OPTIONALLY_WITH_{daq_target}_AND/OR_{run_count}
             daq_targets:
               - NAME
               - NAME
+
         total_runs: VALUE
 '''
 
@@ -333,9 +352,12 @@ class RunScript(object):
         # but python2 has something different named input
         raw_input('{}\n(Press return to continue)\n'.format(message))
 
-    def action_sleep(self, time, **kwargs):
-        logger.info("Sleeping for {} sec, ignoring args: {}".format(time, kwargs))
-        sleep(time)
+    def action_sleep(self, duration, **kwargs):
+        if isinstance(duration,int) or isinstance(duration,float):
+            logger.info("Sleeping for {} sec, ignoring args: {}".format(duration, kwargs))
+        else:
+            raise dripline.core.DriplineValueError('duration is not a float/int')
+        time.sleep(duration)
 
     def action_lockout(self, endpoints=[], lockout_key=None, **kwargs):
         if lockout_key is not None:
@@ -546,6 +568,8 @@ class RunScript(object):
                     self.action_set(this_do[key])
                 elif key == 'cmds':
                     self.action_cmd(this_do[key])
+                elif key == 'sleep':
+                    self.action_sleep(duration=this_do[key][0]['duration'])
                 else:
                     logger.info('operation <{}> unknown: skipping!'.format(key))
 
@@ -565,6 +589,27 @@ class RunScript(object):
             str_result.append('\t{} : {} T'.format(key, result['payload'][key]))
         logger.info("\n".join(str_result))
 
+    # if available, this allows to record the trace/noise background on a daq.
+    # this method depends on a method named "save_trace" defined in the associated daq class
+    def action_single_trace(self, daq, trace, name, timeout=None,**kwargs):
+        logger.info('taking single trace')
+        if self._dry_run_mode:
+            logger.info('--dry-run flag: not starting an trace acquisition')
+            return
+        trace_kwargs = {'endpoint':daq,
+                      'method_name':'save_trace',
+                      'path':name,
+                      'trace':trace,
+                      'timeout': timeout
+                     }
+        if self._lockout_key:
+            trace_kwargs.update({'lockout_key':self._lockout_key})
+        logger.debug('trace_kwargs are: {}'.format(run_kwargs))
+        self.interface.cmd(**trace_kwargs)
+        logger.debug('trace acquired')
+
+    # take a single run using one or several daq.
+    # this method depends on a method named "start_timed_run" defined in the associated daq class
     def action_single_run(self, run_duration, run_name, daq_targets, timeout=None, **kwargs):
         logger.info('taking single run')
         if self._dry_run_mode:
@@ -631,6 +676,7 @@ class RunScript(object):
             for i_do,a_do in enumerate(operations):
                 logger.info('doing operation #{}'.format(i_do))
                 these_operations = []
+                print(a_do)
                 key = a_do.keys()[0]
                 if key == 'sets':
                     these_sets = []
@@ -675,8 +721,10 @@ class RunScript(object):
                                 dict_temp.update({key: a_set[key]})
                         these_sets.append(dict_temp)
                     evaluated_operations.append({'sets':these_sets})
-                elif key== 'cmds':
+                elif key == 'cmds':
                     evaluated_operations.append({'cmds':a_do[key]})
+                elif key == 'sleep':
+                    evaluated_operations.append({'sleep':a_do[key]})
                 elif key == 'Runs':
                     logger.warning('Runs should not be declared in the operations section: skipping!')
                 else:
@@ -689,6 +737,19 @@ class RunScript(object):
                 if not isinstance(kwargs['esr_runs'], dict):
                     kwargs['esr_runs'] = {}
                 self.action_esr_run(**kwargs['esr_runs'])
+
+            # compute args for, and call, action_single_run, based on run_count
+            if 'save_trace' in kwargs:
+                this_trace_save_name = save_trace['name'].format(run_count=run_count)
+                this_trace_number = save_trace['trace']
+                logger.info('{} trace save will be on trace {} with name "{}"'.format(this_daq,this_trace_number, this_trace_save_name))
+                if 'timeout' in runs:
+                    this_timeout = save_trace['timeout']
+                else:
+                    this_timeout=None
+                logger.debug('timeout set to {} s'.format(this_timeout))
+                for this_daq in  save_trace['daq']:
+                    self.action_single_trace(daq=this_daq, name=this_run_name, trace = this_trace_number , timeout = this_timeout)
 
             # compute args for, and call, action_single_run, based on run_count
             if runs is not None:

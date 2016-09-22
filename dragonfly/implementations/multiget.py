@@ -58,7 +58,7 @@ class MultiGet(dripline.core.Endpoint):
         '''
         ret_val = None
         ret_rep = ''
-        a_result = self.portal.send_request(request=self._request_message, target=endpoint_name)
+        a_result = self.service.send_request(request=self._request_message, target=endpoint_name)
         if a_result.retcode != 0:
             ret_val = None
             ret_rep = '{} -> returned error <{}>:{}'.format(endpoint_name, a_result.retcode, a_result.return_msg)
