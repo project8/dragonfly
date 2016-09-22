@@ -546,6 +546,8 @@ class RunScript(object):
                     self.action_set(this_do[key])
                 elif key == 'cmds':
                     self.action_cmd(this_do[key])
+                elif key == 'sleep':
+                    self.action_sleep(this_do[key])
                 else:
                     logger.info('operation <{}> unknown: skipping!'.format(key))
 
@@ -675,8 +677,10 @@ class RunScript(object):
                                 dict_temp.update({key: a_set[key]})
                         these_sets.append(dict_temp)
                     evaluated_operations.append({'sets':these_sets})
-                elif key== 'cmds':
+                elif key == 'cmds':
                     evaluated_operations.append({'cmds':a_do[key]})
+                elif key == 'sleep':
+                    evaluated_operations.append({'sleep':a_do[key]})
                 elif key == 'Runs':
                     logger.warning('Runs should not be declared in the operations section: skipping!')
                 else:
