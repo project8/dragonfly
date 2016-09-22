@@ -158,9 +158,9 @@ class ESR_Measurement(core.Endpoint):
 
         # Get the lockin data
         data = {}
-        data['sweep_out'] = lockin_result_to_array(self.drip_cmd('lockin_interface.grab_data', 'adc'))
-        data['lockin_x_data'] = lockin_result_to_array(self.drip_cmd('lockin_interface.grab_data', 'x'))
-        data['lockin_y_data'] = lockin_result_to_array(self.drip_cmd('lockin_interface.grab_data', 'y'))
+        data['sweep_out'] = lockin_result_to_array(self.drip_cmd('lockin_interface', 'grab_data', 'adc'))
+        data['lockin_x_data'] = lockin_result_to_array(self.drip_cmd('lockin_interface', 'grab_data', 'x'))
+        data['lockin_y_data'] = lockin_result_to_array(self.drip_cmd('lockin_interface', 'grab_data', 'y'))
         ten_volts = 10.0
         frequency_span = self.hf_stop_freq - self.hf_start_freq
         data['frequency'] = self.hf_start_freq + frequency_span * data['sweep_out']/ten_volts
@@ -495,39 +495,23 @@ class ESR_Measurement(core.Endpoint):
         return { coil : self.data_dict[coil]['result']['filt_field'] for coil in self.data_dict }
 
 
-    def drip_cmd(self, cmdname, val):
-        request_message = core.RequestMessage(msgop=core.OP_CMD,
-                                              payload={'values':[val]})
-        a_result=self.portal.send_request(request=request_message, target=cmdname, timeout=20)
-        if a_result.retcode == 0 :
-            return a_result.payload['values'][0]
-        else:
-            return '{} -> returned error <{}>:{}'.format(cmdname, a_result.retcode, a_result.return_msg)
+    def drip_cmd(self, endptname, mthdname, val):
+        a_result=self.provider.cmd(val, target=endptname, method_name=mthdname, timeout=20)
+        return a_result.payload['values'][0]
 
     def raw_get_ept(self, endptname):
-        request_message = core.RequestMessage(msgop=core.OP_GET)
-        a_result=self.portal.send_request(request=request_message, target=endptname, timeout=20)
-        if a_result.retcode == 0 :
-            return a_result.payload['value_raw']
-        else:
-            return '{} -> returned error <{}>:{}'.format(endptname, a_result.retcode, a_result.return_msg)
+        a_result = self.provider.get(target=endptname, timeout=20)
+        return a_result.payload['value_raw']
 
     def set_ept(self, endptname, val):
-        request_message = core.RequestMessage(msgop=core.OP_SET,
-                                              payload={'values':[val]})
-        a_result=self.portal.send_request(request=request_message,target=endptname)
-        if a_result.retcode != 0 :
-            ret_val = None
-            ret_rep = '{} -> returned error <{}>:{}'.format(endptname, a_result.retcode, a_result.return_msg)
-            logger.warning("got error "+ret_rep)
+        a_result = self.provider.set(target=endptname, value=val)
+        if 'values' in a_result.payload:
+            ret_val = a_result.payload['values'][0]
+        elif 'value_raw' in a_result.payload:
+            ret_val = a_result.payload['value_raw']
         else:
-            if 'values' in a_result.payload:
-                ret_val = a_result.payload['values'][0]
-            elif 'value_raw' in a_result.payload:
-                ret_val = a_result.payload['value_raw']
-            else:
-                logger.info("return payload is {}".format(a_result.payload))
-                ret_val = a_result.payload
+            logger.info("return payload is {}".format(a_result.payload))
+            ret_val = a_result.payload
         return ret_val
 
     def check_ept(self, endptname, val):
