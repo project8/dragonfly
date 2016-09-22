@@ -18,6 +18,7 @@ __all__ = []
 class Monitor(Service):
     def __init__(self, payload_only, **kwargs):
         Service.__init__(self, **kwargs)
+        self._bindings.append([kwargs['exchange'],kwargs['keys']])
         self._payload_only = payload_only
 
     def on_any_message(self, unused_channel, basic_deliver, properties, body):
@@ -46,7 +47,7 @@ class MessageMonitor(object):
                           payload_only=kwargs.payload_only,
                           broker = kwargs.broker,
                           exchange = kwargs.exchange,
-                          keys = kwargs.keys,
+                          keys = kwargs.keys
                          )
         logger.info('starting to monitor')
         try:
