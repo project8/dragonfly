@@ -26,16 +26,15 @@ class SensorLogger(Gogol, PostgreSQLInterface):
         sensor_type_map_table (str): name of the child endpoint of this instance which provides access to the endpoint_id_map, which stores the sensor type
         data_tables_dict (dict): dictionary mapping types (in the sensor_type_map_table) to child endpoints of this instance which provide access to the data_table for that type
         '''
-        #logger.debug('SensorLogger.__init__')
         Gogol.__init__(self, **kwargs)
         PostgreSQLInterface.__init__(self, **kwargs)
 
         self._sensor_type_map_table = sensor_type_map_table
         self._sensor_types = {}
         self._data_tables = data_tables_dict
-        #logger.debug('end SensorLogger.__init__')
 
     def add_endpoint(self, endpoint):
+        # forcing PostgreSQLInterface add_endpoint usage
         PostgreSQLInterface.add_endpoint(self,endpoint)
 
 

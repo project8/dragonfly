@@ -56,7 +56,6 @@ class Serve(object):
         logger.info('starting {}'.format(service.name))
         ##### need to fix the node class here...
         for provider in these_endpoints:
-            print(provider)
             self.create_child(service, provider)
         logger.info('spimescapes created and populated')
         logger.info('Configuration of {} complete, starting consumption'.format(service.name))
@@ -102,7 +101,7 @@ class Serve(object):
             self.create_child(service, child_dict, this_child)
 
 
-        service.add_endpoint(this_child) #->>>>>> Le bug est la
+        service.add_endpoint(this_child)
         if isinstance(parent, core.Provider):
             parent.add_endpoint(this_child)
 
