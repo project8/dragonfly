@@ -750,7 +750,7 @@ class RunScript(object):
                 logger.debug('timeout set to {} s'.format(this_timeout))
                 for this_daq in  save_trace['daq']:
                     logger.info('{} trace save will be on trace {} with name "{}"'.format(this_daq,this_trace_number, this_trace_save_name))
-                    self.action_single_trace(daq=this_daq, name=this_run_name, trace = this_trace_number , timeout = this_timeout)
+                    self.action_single_trace(daq=this_daq, name=this_trace_save_name, trace = this_trace_number , timeout = this_timeout)
 
             # compute args for, and call, action_single_run, based on run_count
             if runs is not None:
