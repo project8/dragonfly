@@ -740,6 +740,7 @@ class RunScript(object):
 
             # compute args for, and call, action_single_run, based on run_count
             if 'save_trace' in kwargs:
+                save_trace = kwargs['save_trace']
                 this_trace_save_name = save_trace['name'].format(run_count=run_count)
                 this_trace_number = save_trace['trace']
                 logger.info('{} trace save will be on trace {} with name "{}"'.format(this_daq,this_trace_number, this_trace_save_name))
