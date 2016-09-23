@@ -604,7 +604,7 @@ class RunScript(object):
                      }
         if self._lockout_key:
             trace_kwargs.update({'lockout_key':self._lockout_key})
-        logger.debug('trace_kwargs are: {}'.format(run_kwargs))
+        logger.debug('trace_kwargs are: {}'.format(trace_kwargs))
         self.interface.cmd(**trace_kwargs)
         logger.debug('trace acquired')
 
