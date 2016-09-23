@@ -87,7 +87,7 @@ class DAQProvider(core.Provider):
             logger.debug('not going to try to talk to database')
             self.run_id = 0
             return
-        result = self.provider.cmd(self.run_table_endpoint, do_insert, {'run_name':value})
+        result = self.provider.cmd(self.run_table_endpoint, 'do_insert', {'run_name':value})
         self.run_id = result['run_id']
 
     def end_run(self):
