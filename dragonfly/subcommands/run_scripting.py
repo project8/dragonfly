@@ -743,13 +743,13 @@ class RunScript(object):
                 save_trace = kwargs['save_trace']
                 this_trace_save_name = save_trace['name'].format(run_count=run_count)
                 this_trace_number = save_trace['trace']
-                logger.info('{} trace save will be on trace {} with name "{}"'.format(this_daq,this_trace_number, this_trace_save_name))
                 if 'timeout' in runs:
                     this_timeout = save_trace['timeout']
                 else:
                     this_timeout=None
                 logger.debug('timeout set to {} s'.format(this_timeout))
                 for this_daq in  save_trace['daq']:
+                    logger.info('{} trace save will be on trace {} with name "{}"'.format(this_daq,this_trace_number, this_trace_save_name))
                     self.action_single_trace(daq=this_daq, name=this_run_name, trace = this_trace_number , timeout = this_timeout)
 
             # compute args for, and call, action_single_run, based on run_count
