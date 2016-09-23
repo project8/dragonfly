@@ -81,6 +81,7 @@ class DAQProvider(core.Provider):
         return self._run_name
     @run_name.setter
     def run_name(self, value):
+        logger.debug('run_name method')
         self._run_name = value
         self._acquisition_count = 0
         if self._debug_without_db:
@@ -89,6 +90,7 @@ class DAQProvider(core.Provider):
             return
         result = self.provider.cmd(self.run_table_endpoint, 'do_insert', {'run_name':value})
         self.run_id = result['run_id']
+        logger.debug('run_id will be: {}'.format(self.run_id))
 
     def end_run(self):
         run_was = self.run_id
