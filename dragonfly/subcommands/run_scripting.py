@@ -604,7 +604,7 @@ class RunScript(object):
                      }
         if self._lockout_key:
             trace_kwargs.update({'lockout_key':self._lockout_key})
-        logger.debug('trace_kwargs are: {}'.format(run_kwargs))
+        logger.debug('trace_kwargs are: {}'.format(trace_kwargs))
         self.interface.cmd(**trace_kwargs)
         logger.debug('trace acquired')
 
@@ -740,16 +740,17 @@ class RunScript(object):
 
             # compute args for, and call, action_single_run, based on run_count
             if 'save_trace' in kwargs:
+                save_trace = kwargs['save_trace']
                 this_trace_save_name = save_trace['name'].format(run_count=run_count)
                 this_trace_number = save_trace['trace']
-                logger.info('{} trace save will be on trace {} with name "{}"'.format(this_daq,this_trace_number, this_trace_save_name))
-                if 'timeout' in runs:
+                if 'timeout' in save_trace:
                     this_timeout = save_trace['timeout']
                 else:
                     this_timeout=None
                 logger.debug('timeout set to {} s'.format(this_timeout))
                 for this_daq in  save_trace['daq']:
-                    self.action_single_trace(daq=this_daq, name=this_run_name, trace = this_trace_number , timeout = this_timeout)
+                    logger.info('{} trace save will be on trace {} with name "{}"'.format(this_daq,this_trace_number, this_trace_save_name))
+                    self.action_single_trace(daq=this_daq, name=this_trace_save_name, trace = this_trace_number , timeout = this_timeout)
 
             # compute args for, and call, action_single_run, based on run_count
             if runs is not None:
