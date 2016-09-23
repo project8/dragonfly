@@ -324,10 +324,10 @@ class ESR_Measurement(core.Endpoint):
         htree.Write()
 
         atree = TTree("analysis", "global parameters")
-        atree.Branch("constants", struct4, "shape[12]/C:field_factor/D:n_fits/I")
-        struct4.fShape = self.shape
+        atree.Branch("constants", struct4, "field_factor/D:n_fits/I:shape[12]/C")
         struct4.fFactor = self._bfield_factor
         struct4.fNFit = n_fits
+        struct4.fShape = self.shape
         atree.Fill()
         atree.Write()
 
@@ -350,7 +350,7 @@ class ESR_Measurement(core.Endpoint):
                 dtree.Fill()
             dtree.Write()
 
-            rbranch = rtree.Branch("coil{}".format(coil), struct3, "filt_field_Hz/D:filt_field_e_T/D\
+            rbranch = rtree.Branch("coil{}".format(coil), struct3, "filt_field_T/D:filt_field_e_T/D\
                                                                       :fit_field_T:fit_field_e_T")
             struct3.fFiltB = self.data_dict[coil]['result']['filt']
             struct3.fFiltBE = self.data_dict[coil]['result']['filt_e']
@@ -439,9 +439,9 @@ class ESR_Measurement(core.Endpoint):
                                Double_t fFitBE;\
                            };");
         gROOT.ProcessLine("struct MyStruct4 {\
-                               Char_t fShape[12];\
                                Double_t fFactor;\
                                Int_t fNFit;\
+                               Char_t fShape[12];\
                            };");
 
     def pull_lockin_data(self, key):

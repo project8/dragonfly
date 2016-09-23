@@ -96,9 +96,10 @@ class Serve(object):
             this_child = getattr(core, module)(**conf_dict)
         else:
             raise NameError('no module "{}" in dripline.core or dragonfly.implementations'.format(module))
-    
+
         for child_dict in child_confs:
             self.create_child(service, child_dict, this_child)
+
 
         service.add_endpoint(this_child)
         if isinstance(parent, core.Provider):
@@ -112,4 +113,3 @@ class Serve(object):
                             help='amqp binding keys to match against',
                             default='#',
                            )
-
