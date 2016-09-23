@@ -743,7 +743,7 @@ class RunScript(object):
                 save_trace = kwargs['save_trace']
                 this_trace_save_name = save_trace['name'].format(run_count=run_count)
                 this_trace_number = save_trace['trace']
-                if 'timeout' in runs:
+                if 'timeout' in save_trace:
                     this_timeout = save_trace['timeout']
                 else:
                     this_timeout=None
