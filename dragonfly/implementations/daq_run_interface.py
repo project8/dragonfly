@@ -94,7 +94,7 @@ class DAQProvider(core.Provider):
                                        'run_name':value,
                                       },
                              )
-        result = self.portal.send_request(self.run_table_endpoint+'.do_insert',
+        result = self.service.send_request(self.run_table_endpoint+'.do_insert',
                                           request=request,
                                          )
         if not result.retcode == 0:
