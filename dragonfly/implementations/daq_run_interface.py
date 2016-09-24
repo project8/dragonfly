@@ -81,15 +81,25 @@ class DAQProvider(core.Provider):
         return self._run_name
     @run_name.setter
     def run_name(self, value):
-        logger.debug('run_name method')
         self._run_name = value
         self._acquisition_count = 0
         if self._debug_without_db:
             logger.debug('not going to try to talk to database')
             self.run_id = 0
             return
-        result = self.provider.cmd(self.run_table_endpoint, 'do_insert', {'run_name':value})
-        self.run_id = result['run_id']
+        # result = self.provider.cmd(self.run_table_endpoint, 'do_insert', {'run_name':value})
+        # self.run_id = result['run_id']
+        request = core.RequestMessage(msgop=core.OP_CMD,
+                              payload={'values':[],
+                                       'run_name':value,
+                                      },
+                             )
+        result = self.portal.send_request(self.run_table_endpoint+'.do_insert',
+                                          request=request,
+                                         )
+        if not result.retcode == 0:
+            raise core.exception_map[result.retcode](result.return_msg)
+        self.run_id = result.payload['run_id']
         logger.debug('run_id will be: {}'.format(self.run_id))
 
     def end_run(self):
