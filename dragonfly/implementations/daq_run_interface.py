@@ -149,7 +149,7 @@ class DAQProvider(core.Provider):
                        }
         this_payload['metadata']['run_id'] = self.run_id
         # note, the following line has an empty method/RKS, this shouldn't be the case but is what golang expects
-        req_result = self.provider.cmd(self.metadata_target, '', this_payload)
+        req_result = self.provider.cmd(self._metadata_target, '', this_payload)
         logger.debug('meta sent')
 
     def start_timed_run(self, run_name, run_time):
