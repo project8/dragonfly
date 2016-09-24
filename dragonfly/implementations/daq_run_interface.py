@@ -148,8 +148,13 @@ class DAQProvider(core.Provider):
                         'filename': filename,
                        }
         this_payload['metadata']['run_id'] = self.run_id
+        request_msg = core.RequestMessage(payload=this_payload, msgop=core.OP_CMD)
+        req_result = self.service.send_request(request=request_msg, target=self._metadata_target)
+        if not req_result.retcode == 0:
+            raise core.exceptions.DriplineValueError('writing meta-data did not return success')
+
         # note, the following line has an empty method/RKS, this shouldn't be the case but is what golang expects
-        req_result = self.provider.cmd(self._metadata_target, '', this_payload)
+        # req_result = self.provider.cmd(self._metadata_target, '', this_payload)
         logger.debug('meta sent')
 
     def start_timed_run(self, run_name, run_time):
