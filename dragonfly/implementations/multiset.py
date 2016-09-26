@@ -54,6 +54,6 @@ class MultiSet(dripline.core.Endpoint):
         '''
         ret_val = None
         ret_rep = ''
-        a_result = self.portal.send_request(request=dripline.core.RequestMessage(msgop=dripline.core.OP_SET, payload={'values':[value]}), target=endpoint_name)
+        a_result = self.service.send_request(request=dripline.core.RequestMessage(msgop=dripline.core.OP_SET, payload={'values':[value]}), target=endpoint_name)
 
         return a_result

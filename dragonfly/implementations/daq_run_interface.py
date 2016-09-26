@@ -87,22 +87,25 @@ class DAQProvider(core.Provider):
             logger.debug('not going to try to talk to database')
             self.run_id = 0
             return
+        # result = self.provider.cmd(self.run_table_endpoint, 'do_insert', {'run_name':value})
+        # self.run_id = result['run_id']
         request = core.RequestMessage(msgop=core.OP_CMD,
-                                      payload={'values':[],
-                                               'run_name':value,
-                                              },
-                                     )
-        result = self.portal.send_request(self.run_table_endpoint+'.do_insert',
+                              payload={'values':[],
+                                       'run_name':value,
+                                      },
+                             )
+        result = self.service.send_request(self.run_table_endpoint+'.do_insert',
                                           request=request,
                                          )
         if not result.retcode == 0:
             raise core.exception_map[result.retcode](result.return_msg)
         self.run_id = result.payload['run_id']
+        logger.debug('run_id will be: {}'.format(self.run_id))
 
     def end_run(self):
         run_was = self.run_id
         if self._stop_handle is not None:
-            self.portal._connection.remove_timeout(self._stop_handle)
+            self.service._connection.remove_timeout(self._stop_handle)
             self._stop_handle = None
         self._run_name = None
         self.run_id = None
@@ -122,10 +125,8 @@ class DAQProvider(core.Provider):
 
     def _do_prerun_gets(self):
         logger.info('doing prerun meta-data gets')
-        query_msg = core.RequestMessage(msgop=core.OP_GET)
-        these_metadata = {}
-        result = self.portal.send_request(request=query_msg, target=self._metadata_state_target, timeout=120)
-        these_metadata = result.payload['value_raw']
+        result = self.provider.get(self._metadata_state_target, timeout=120)
+        these_metadata = result['value_raw']
         self._run_meta.update(these_metadata)
         self.determine_RF_ROI()
 
@@ -148,15 +149,18 @@ class DAQProvider(core.Provider):
                        }
         this_payload['metadata']['run_id'] = self.run_id
         request_msg = core.RequestMessage(payload=this_payload, msgop=core.OP_CMD)
-        req_result = self.portal.send_request(request=request_msg, target=self._metadata_target)
+        req_result = self.service.send_request(request=request_msg, target=self._metadata_target)
         if not req_result.retcode == 0:
             raise core.exceptions.DriplineValueError('writing meta-data did not return success')
+
+        # note, the following line has an empty method/RKS, this shouldn't be the case but is what golang expects
+        # req_result = self.provider.cmd(self._metadata_target, '', this_payload)
         logger.debug('meta sent')
 
     def start_timed_run(self, run_name, run_time):
         '''
         '''
-        self._stop_handle = self.portal._connection.add_timeout(int(run_time), self.end_run)
+        self._stop_handle = self.service._connection.add_timeout(int(run_time), self.end_run)
         self.start_run(run_name)
 
 
@@ -196,9 +200,7 @@ class MantisAcquisitionInterface(DAQProvider, core.Spime):
         self.log_interval = value
 
     def start_run(self, run_name):
-        result = self.portal.send_request(request=core.RequestMessage(msgop=core.OP_SET, payload={'values':[self.acquisition_time*1000.]}), target=self.mantis_queue+'.duration')
-        if result.retcode >= 100:
-            logger.warning('retcode indicates an error')
+        result = self.provider.set(self.mantis_queue+'.duration', self.acquisition_time*1000.)
         super(MantisAcquisitionInterface, self).start_run(run_name)
         self.on_get()
         self.logging_status = 'on'
@@ -210,22 +212,22 @@ class MantisAcquisitionInterface(DAQProvider, core.Spime):
         num_acquisitions = int(run_time // self.acquisition_time)
         last_run_time = run_time % self.acquisition_time
         logger.info("going to request <{}> runs, then one of <{}> [s]".format(num_acquisitions, last_run_time))
-        result = self.portal.send_request(request=core.RequestMessage(msgop=core.OP_SET, payload={'values':[self.acquisition_time*1000]}), target=self.mantis_queue+'.duration')
+        result = self.provider.set(self.mantis_queue+'.duration', acquisition_time*1000)
         if result.retcode != 0:
             logger.warning('bad set')
         for acq in range(num_acquisitions):
             self.on_get()
         if last_run_time != 0:
-            self.portal.send_request(request=core.RequestMessage(msgop=core.OP_SET, payload={'values':[last_run_time*1000]}), target=self.mantis_queue+'.duration')
+            self.provider.set(self.mantis_queue+'.duration', last_run_time*1000)
             self.on_get()
-            self.portal.send_request(request=core.RequestMessage(msgop=core.OP_SET, payload={'values':[self.acquisition_time*1000]}), target=self.mantis_queue+'.duration')
+            result = self.provider.set(self.mantis_queue+'.duration', acquisition_time*1000)
 
     @property
     def is_running(self):
         logger.info('query mantis server status to see if it is finished')
-        result = self.portal.send_request(request=core.RequestMessage(msgop=core.OP_GET, payload={}), target=self.mantis_queue+'.server-status')
+        result = self.provider.get(self.mantis_queue+'.server-status')
         to_return = True
-        if result.payload['server']['server-worker']['status'] == u'Idle (queue is empty)':
+        if result['server']['server-worker']['status'] == u'Idle (queue is empty)':
             to_return = False
         return to_return
 
@@ -256,9 +258,10 @@ class MantisAcquisitionInterface(DAQProvider, core.Spime):
         request = core.RequestMessage(payload={'values':[], 'file':filepath},
                                       msgop=core.OP_RUN,
                                      )
-        result = self.portal.send_request(self.mantis_queue,
+        result = self.service.send_request(self.mantis_queue,
                                           request=request,
                                          )
+        # todo this case isn't treated in provider currently so we use raw service.send_request
         if not result.retcode == 0:
             msg = ''
             if 'ret_msg' in result.payload:
@@ -271,18 +274,18 @@ class MantisAcquisitionInterface(DAQProvider, core.Spime):
     def end_run(self):
         self.logging_status = 'stop'
         super(MantisAcquisitionInterface, self).end_run()
-        request = core.RequestMessage(msgop=core.OP_CMD)
-        result = self.portal.send_request(target=self.mantis_queue+'.stop-queue', request=request)
+        #request = core.RequestMessage(msgop=core.OP_CMD)
+        result = self.provider.cmd(self.mantis_queue, 'stop-queue')
         if not result.retcode == 0:
             logger.warning('error stoping queue:\n{}'.format(result.return_msg))
         else:
             logger.warning('queue stopped')
-        result = self.portal.send_request(target=self.mantis_queue+'.clear-queue', request=request)
+        result = self.service.send_request(target=self.mantis_queue+'.clear-queue', request=request)
         if not result.retcode == 0:
             logger.warning('error clearing queue:\n{}'.format(result.return_msg))
         else:
             logger.warning('queue cleared')
-        result = self.portal.send_request(target=self.mantis_queue+'.start-queue', request=request)
+        result = self.service.send_request(target=self.mantis_queue+'.start-queue', request=request)
         if not result.retcode == 0:
             logger.warning('error restarting queue:\n{}'.format(result.return_msg))
         else:
@@ -316,6 +319,8 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
                  trig_time_qualification_def_lab=None,
                  internal_attenuator_def_lab=None,
                  internal_attenuator_auto_def_lab=None,
+                 acquisition_mode_def_lab=None,
+                 acquisition_length_def_lab=None,
 		         osc_source_def_lab='EXT',
 		         max_nb_files=10000,
                  **kwargs):
@@ -344,6 +349,8 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
         self.trig_time_qualification_def_lab = trig_time_qualification_def_lab
         self.internal_attenuator_auto_def_lab = internal_attenuator_auto_def_lab
         self.internal_attenuator_def_lab = internal_attenuator_def_lab
+        self.acquisition_mode = acquisition_mode_def_lab
+        self.acquisition_length = acquisition_length_def_lab
         self.osc_source_def_lab = osc_source_def_lab
 
     @property
@@ -369,92 +376,82 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
         logger.info('setting frequencies')
         self.set_central_frequency(self.central_frequency_def_lab)
         self.set_frequency_span(self.span_frequency_def_lab)
-        # self.send(['DPX:FREQ:CENT {};*OPC?'.format(self.central_frequency_def_lab)])
-        # self.send(['DPX:FREQ:SPAN {};*OPC?'.format(self.span_frequency_def_lab)])
 
         logger.info('setting reference level')
         self.set_reference_level(self.ref_level_def_lab)
-        # self.send(['INPUT:RLEVEL {};*OPC?'.format(self.ref_level_def_lab)])
 
         logger.info('setting resolution bandwidths')
         self.set_resolution_bandwidth(self.RBW_def_lab)
-        # self.send(['DPX:BWID:RES {};*OPC?'.format(self.RBW_def_lab)])
 
         logger.info('setting source of events')
         self.set_event_source(self.source_event_def_lab)
-        # self.send(['TRIG:EVEN:SOUR {};*OPC?'.format(self.source_event_def_lab)])
 
         logger.info('setting type of events')
         self.set_event_type(self.type_event_def_lab)
-        # self.send(['TRIG:EVEN:INP:TYPE {};*OPC?'.format(self.type_event_def_lab)])
 
         logger.info('setting trigger violation condition')
         self.set_trig_violation_condition(self.violation_def_lab)
-        # self.send(['TRIG:EVEN:INP:FMASk:VIOL {};*OPC?'.format(self.violation_def_lab)])
 
         logger.info('setting trigger holdoff')
         self.set_trigger_holdoff(self.holdoff_def_lab)
-        # self.send(['TRIG:ADV:HOLD {};*OPC?'.format(self.holdoff_def_lab)])
 
         logger.info('setting trigger holdoff status')
         self.set_trigger_holdoff_status(self.holdoff_status_def_lab)
-        # self.send(['TRIG:ADV:HOLD:ENABle {};*OPC?'.format(self.holdoff_status_def_lab)])
 
         logger.info('setting trigger delay time')
         self.set_trigger_delay_time(self.trig_delay_time_def_lab)
-        # self.send(['TRIGGER:SEQUENCE:TIME:DELAY {};*OPC?'.format(self.trig_delay_time_def_lab)])
 
         logger.info('setting trigger delay position')
         self.set_trigger_delay_position(self.trig_delay_pos_def_lab)
-        # self.send(['TRIGGER:SEQUENCE:TIME:POSITION {};*OPC?'.format(self.trig_delay_pos_def_lab)])
 
         logger.info('setting trigger time qualification')
         self.set_trigger_time_qualification(self.trig_time_qualification_def_lab)
-        # self.send(['TRIGger:SEQuence:TIME:QUALified {};*OPC?'.format(self.trig_time_qualification)])
 
         logger.info('setting internal attenuator auto mode')
         self.set_internal_attenuator_auto(self.internal_attenuator_auto_def_lab)
-        # self.send(['INPUT:RF:ATTENUATION:AUTO {};*OPC?'.format(self.internal_attenuator_auto_def_lab)])
 
         logger.info('setting internal attenuator')
         self.set_internal_attenuator(self.internal_attenuator_def_lab)
-        # self.send(['INPUT:RF:ATTENUATION {};*OPC?'.format(self.internal_attenuator_def_lab)])
+
+        logger.info("setting acquisition mode")
+        self.set_acquisition_mode(self.acquisition_mode_def_lab)
+
+        logger.info("setting acquisition length")
+        self.set_acquisition_mode(self.acquisition_length_def_lab)
 
         logger.info('setting oscillator source')
         self.set_osc_source(self.osc_source_def_lab)
-        # self.send(['SENSE:ROSCILLATOR:SOURCE {};*OPC?'.format(self.osc_source_def_lab)])
 
         logger.info('setting new mask auto')
         self.create_new_auto_mask('TRACE3',self.mask_xmargin_def_lab,self.mask_ymargin_def_lab)
-        # self.send(['TRIG:MASK:NEW:AUTO "dpsa",TRACE3,{},{};*OPC?'.format(self.mask_xmargin_def_lab,self.mask_ymargin_def_lab)])
 
     def set_central_frequency(self,central_frequency):
         logger.info('setting central frequency')
-        self.send(['DPX:FREQ:CENT {};*OPC?'.format(central_frequency)])
+        self.send(['DPX:FREQ:CENT {};DPX:FREQ:CENT?'.format(central_frequency)])
 
     def set_frequency_span(self,frequency_span):
         logger.info('setting frequency span')
-        self.send(['DPX:FREQ:SPAN {};*OPC?'.format(frequency_span)])
+        self.send(['DPX:FREQ:SPAN {};DPX:FREQ:SPAN?'.format(frequency_span)])
 
     def set_reference_level(self,ref_level):
         logger.info('setting reference level')
-        self.send(['INPUT:RLEVEL {};*OPC?'.format(ref_level)])
+        self.send(['INPUT:RLEVEL {};INPUT:RLEVEL?'.format(ref_level)])
 
     def set_event_source(self,event_source):
         logger.info('setting event source')
-        self.send(['TRIG:EVEN:SOUR {};*OPC?'.format(event_source)])
+        self.send(['TRIG:EVEN:SOUR {};TRIG:EVEN:SOUR?'.format(event_source)])
 
     def set_event_type(self,event_type):
         logger.info('setting event type')
-        self.send(['TRIG:EVEN:INP:TYPE {};*OPC?'.format(event_type)])
+        self.send(['TRIG:EVEN:INP:TYPE {};TRIG:EVEN:INP:TYPE?'.format(event_type)])
 
     def set_trig_violation_condition(self,trig_viol):
         logger.info('setting trigger violation')
-        self.send(['TRIG:EVEN:INP:FMASk:VIOL {};*OPC?'.format(trig_viol)])
+        self.send(['TRIG:EVEN:INP:FMASk:VIOL {};TRIG:EVEN:INP:FMASk:VIOL?'.format(trig_viol)])
 
     def set_resolution_bandwidth(self,rbw):
         logger.info('setting resolution bandwidths')
-        self.send(['DPX:BWID:RES {};*OPC?'.format(rbw)])
+        self.send(['DPX:BWID:RES {};DPX:BWID:RES?'.format(rbw)])
 
     def set_config_from_file(self,file_path):
         logger.info('setting instrument config from file')
@@ -464,40 +461,40 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
 
     def set_trigger_holdoff(self,value):
         logger.info('setting trigger holdoff')
-        self.send(['TRIG:ADV:HOLD {};*OPC?'.format(value)])
+        self.send(['TRIG:ADV:HOLD {};TRIG:ADV:HOLD?'.format(value)])
 
     def set_trigger_holdoff_status(self,value):
         logger.info('setting trigger holdoff status')
-        self.send(['TRIG:ADV:HOLD:ENABle {};*OPC?'.format(value)])
+        self.send(['TRIG:ADV:HOLD:ENABle {};TRIG:ADV:HOLD:ENABle?'.format(value)])
 
     def set_trigger_delay_time(self,value):
         logger.info('setting trigger delay time')
-        self.send(['TRIGGER:SEQUENCE:TIME:DELAY {};*OPC?'.format(value)])
+        self.send(['TRIGGER:SEQUENCE:TIME:DELAY {};TRIGGER:SEQUENCE:TIME:DELAY?'.format(value)])
 
     def set_trigger_delay_position(self,value):
         logger.info('setting trigger delay position')
-        self.send(['TRIGGER:SEQUENCE:TIME:POSITION {};*OPC?'.format(value)])
+        self.send(['TRIGGER:SEQUENCE:TIME:POSITION {};TRIGGER:SEQUENCE:TIME:POSITION?'.format(value)])
 
     def set_trigger_status(self,value):
         logger.info('setting trigger status')
         if value == 1 or value == 'on' or value == 'enable':
-            self.send(['TRIG:SEQUENCE:STATUS 1;*OPC?'.format(value)])
+            self.send(['TRIG:SEQUENCE:STATUS 1;TRIG:SEQUENCE:STATUS?'.format(value)])
         elif value == 0 or value == 'off' or value == 'disable':
-            self.send(['TRIG:SEQUENCE:STATUS 0;*OPC?'.format(value)])
+            self.send(['TRIG:SEQUENCE:STATUS 0;TRIG:SEQUENCE:STATUS?'.format(value)])
         else:
             core.DriplineInternalError('invalid given parameter ({}) instead of 1/on/enable/0/off/disable'.format(value))
 
     def set_trigger_time_qualification(self,value):
         logger.info('setting trigger time qulification')
         if value == 'SHOR' or value == 'LONG' or value == 'INS' or value == 'OUT' or value == 'NONE':
-            self.send(['TRIGger:SEQuence:TIME:QUALified {};*OPC?'.format(value)])
+            self.send(['TRIGger:SEQuence:TIME:QUALified {};*TRIGger:SEQuence:TIME:QUALified?'.format(value)])
         else:
             core.DriplineInternalError('invalid given parameter ({}) instead of SHOR/LONG/INS/OUT/NONE'.format(value))
 
     def set_osc_source(self,value):
         logger.info('setting oscillator source')
         if value == 'INT' or value == 'EXT':
-            self.send(['SENSE:ROSCILLATOR:SOURCE {};*OPC?'.format(value)])
+            self.send(['SENSE:ROSCILLATOR:SOURCE {};*SENSE:ROSCILLATOR:SOURCE?'.format(value)])
         else:
             core.DriplineInternalError('invalid given parameter ({}) instead of EXT/INT'.format(value))
 
@@ -506,12 +503,30 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
         self.send(['INPUT:RF:ATTENUATION {};*OPC?'.format(value)])
 
     def set_internal_attenuator_auto(self,value):
+        logger.info('setting internal attenuator auto')
         if value == 1 or value == 'on' or value == 'enable':
-            self.send(['INPUT:RF:ATTENUATION:AUTO 1;*OPC?'.format(value)])
+            self.send(['INPUT:RF:ATTENUATION:AUTO 1;*INPUT:RF:ATTENUATION:AUTO?'.format(value)])
         elif value == 0 or value == 'off' or value == 'disable':
-            self.send(['INPUT:RF:ATTENUATION:AUTO 0;*OPC?'.format(value)])
+            self.send(['INPUT:RF:ATTENUATION:AUTO 0;*INPUT:RF:ATTENUATION:AUTO?'.format(value)])
         else:
             core.DriplineInternalError('invalid given parameter ({}) instead of 1/on/enable/0/off/disable'.format(value))
+
+    def set_acquisition_length(self,value):
+        # if isinstance(value, types.StringType):
+        #     convert into seconds -> optional
+        logger.info('setting acquisition length')
+        if value >=0 :
+            core.DriplineInternalError('invalid given parameter ({}): should be positive'.format(value))
+        else:
+            self.send(['SENSe:ACQuisition:SEConds {};SENSe:ACQuisition:SEConds?'.format(value)])
+
+    def set_acquisition_mode(self,value):
+        logger.info('setting acquisition mode')
+        self.send(['SENSe:ACQuisition:MODE {};SENSe:ACQuisition:MODE?'.format(value)])
+
+    def save_trace(self,trace,path):
+        logger.info('saving trace')
+        self.send(['MMEMory:DPX:STORe:TRACe{} "{}"; *OPC?'.format(trace,path)])
 
     def create_new_auto_mask(self, trace, xmargin, ymargin):
         logger.info('setting the auto mask')
@@ -531,7 +546,7 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
             raise core.exceptions.DriplineHardwareError('RSA system has {} error(s) in the queue: check them with <dragonfly get rsa_system_error_queue -b myrna.p8>'.format(Nerrors))
 
         super(RSAAcquisitionInterface, self).start_run(run_name)
-        # # ensure the output format is set to mat
+        # # ensure the output format is set to mat (depreciated)
         # self.send(["SENS:ACQ:FSAV:FORM MAT;*OPC?"])
         # build strings for output directory and file prefix, then set those
         file_directory = "\\".join([self.data_directory_path, '{:09d}'.format(self.run_id)])
@@ -571,14 +586,16 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
     def end_run(self):
         # something to stop FastSave (depreciated)
         # self.send(['SENS:ACQ:FSAV:ENAB 0;*OPC?'])
+
+        # disable the trigger mode
         self.send(['TRIG:SEQ:STAT 0;*OPC?'])
+        # disable the save dacq data on trigger mode
         self.send("TRIGger:SAVE:DATA 0;*OPC?")
 
         super(RSAAcquisitionInterface, self).end_run()
 
     def determine_RF_ROI(self):
         logger.info('trying to determine roi')
-        # logger.warning('RSA does not support proper determination of RF ROI yet')
 
         self._run_meta['RF_HF_MIXING'] = float(self._hf_lo_freq)
         logger.debug('RF High stage mixing: {}'.format(self._run_meta['RF_HF_MIXING']))

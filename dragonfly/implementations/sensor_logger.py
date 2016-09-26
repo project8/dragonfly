@@ -33,6 +33,11 @@ class SensorLogger(Gogol, PostgreSQLInterface):
         self._sensor_types = {}
         self._data_tables = data_tables_dict
 
+    def add_endpoint(self, endpoint):
+        # forcing PostgreSQLInterface add_endpoint usage
+        PostgreSQLInterface.add_endpoint(self,endpoint)
+
+
     def this_consume(self, message, basic_deliver):
         ### Get the sensor name
         sensor_name = None
@@ -42,7 +47,7 @@ class SensorLogger(Gogol, PostgreSQLInterface):
         # note that the following is deprecated in dripline 2.x, retained for compatibility
         else:
             raise exceptions.DriplineValueError('unknown sensor name')
-        
+
         ### Get the type and table for the sensor
         this_type = None
         if sensor_name not in self._sensor_types.keys():
@@ -52,7 +57,7 @@ class SensorLogger(Gogol, PostgreSQLInterface):
                                             )
             self._sensor_types[sensor_name] = this_type[1][0][0]
         this_data_table = self.endpoints[self._data_tables[self._sensor_types[sensor_name]]]
-        
+
         ### Log the sensor value
         insert_data = {'endpoint_name': sensor_name,
                        'timestamp': message['timestamp'],
