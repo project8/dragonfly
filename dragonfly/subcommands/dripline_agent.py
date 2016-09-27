@@ -84,6 +84,12 @@ class GenericAgent(object):
             if a_reply.return_msg and not a_reply.retcode == 0:
                 logger.log(25, 'return message: {}'.format(a_reply.return_msg))
         return reply[0].payload
+        if args.pretty_print:
+            if not 'value_cal' in result:
+                logger.warning('no value cal present, unable to pretty-print')
+            else:
+                print('\n{}\n'.format(result['value_cal']))
+
     
     @staticmethod
     def cast_arg(value):
@@ -121,7 +127,10 @@ class GenericAgent(object):
                             type=str,
                             help='string to provide in the RequestMessage.lockout_key, for locking endpoints or using locked endpoints',
                            )
-
+        parser.add_argument('--pretty-print',
+                            action='store_true',
+                            help='attempt to print value_cal in a manner easily read by humans (and pasted into elogs)',
+                           )
 
 __all__.append("Get")
 class Get(GenericAgent):
@@ -129,22 +138,6 @@ class Get(GenericAgent):
     return the value of an endpoint or a property of an endpoint if specified
     '''
     name = 'get'
-
-    def __call__(self, args):
-        result = self._call(args)
-        these_args = args
-        if args.pretty_print:
-            if not 'value_cal' in result:
-                logger.warning('no value cal present, unable to pretty-print')
-            else:
-                print('\n{}\n'.format(result['value_cal']))
-
-    def update_parser(self, parser):
-        super(Get, self).update_parser(parser)
-        parser.add_argument('--pretty-print',
-                            action='store_true',
-                            help='attempt to print value_cal in a manor easily read by humans (and pasted into elogs)',
-                           )
 
 
 __all__.append("Set")
@@ -170,21 +163,6 @@ class Cmd(GenericAgent):
     '''
     name = 'cmd'
 
-    def __call__(self, args):
-        result = self._call(args)
-        these_args = args
-        if args.pretty_print:
-            if not 'value_cal' in result:
-                logger.warning('no value cal present, unable to pretty-print')
-            else:
-                print('\n{}\n'.format(result['value_cal']))
-
-    def update_parser(self, parser):
-        super(Cmd, self).update_parser(parser)
-        parser.add_argument('--pretty-print',
-                            action='store_true',
-                            help='attempt to print value_cal in a manor easily read by humans (and pasted into elogs)',
-                           )
 
 __all__.append("Send")
 class Send(GenericAgent):
