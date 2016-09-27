@@ -25,8 +25,7 @@ from itertools import groupby
 import collections
 
 # local imports
-from dripline.core import Provider, Endpoint
-from dripline.core.exceptions import *
+from dripline.core import Provider, Endpoint, exceptions
 from dripline.core.utilities import fancy_doc
 from dragonfly.implementations import PostgreSQLInterface, SQLTable
 
@@ -60,7 +59,7 @@ class SQLSnapshot(SQLTable):
         self._try_parsing_date(start_timestamp)
         self._try_parsing_date(end_timestamp)
         if not end_timestamp > start_timestamp:
-            raise Exception('end_timestamp ("{}") must be > start_timestamp ("{}")!'.format(end_timestamp,start_timestamp))
+            raise exceptions.DriplineValueError('end_timestamp ("{}") must be > start_timestamp ("{}")!'.format(end_timestamp,start_timestamp))
         
         # Connect to id map table + assign alises
         self._connect_id_table()          
@@ -71,9 +70,13 @@ class SQLSnapshot(SQLTable):
         s = sqlalchemy.select([id_t.c.endpoint_name,t.c.timestamp,t.c.value_raw,t.c.value_cal]).select_from(t.join(id_t,t.c.endpoint_id == id_t.c.endpoint_id))
         logger.debug('querying database for entries between "{}" and "{}"'.format(start_timestamp,end_timestamp))
         s = s.where(sqlalchemy.and_(t.c.timestamp>=start_timestamp,t.c.timestamp<=end_timestamp)).order_by(id_t.c.endpoint_name.asc())
-        query_return = self.provider.engine.execute(s).fetchall()
+        try:
+            query_return = self.provider.engine.execute(s).fetchall()
+        except exceptions.DriplineDatabaseError as dripline_error:
+            logger.error('{}; in executing SQLAlchemy select statement'.format(dripline_error.message))
+            return
         if not query_return:
-            logger.debug('no entries found between "{}" and "{}"'.format(start_timestamp,end_timestamp))
+            logger.warning('no entries found between "{}" and "{}"'.format(start_timestamp,end_timestamp))
 
         # Counting how many times each endpoint is present
         endpoint_name_raw = []
@@ -134,18 +137,26 @@ class SQLSnapshot(SQLTable):
 
         for name in endpoint_list:
 
-            logger.debug('querying database for endpoint with name:\n{}'.format(name))
+            logger.debug('querying database for endpoint with name "{}"'.format(name))
             s = sqlalchemy.select([id_t.c.endpoint_id]).where(id_t.c.endpoint_name == name)
-            query_return = self.provider.engine.execute(s).fetchall()
+            try:
+                query_return = self.provider.engine.execute(s).fetchall()
+            except exceptions.DriplineDatabaseError as dripline_error:
+                logger.error('{}; in executing SQLAlchemy select statement to obtain endpoint_id for endpoint "{}"'.format(dripline_error.message,name))
+                return
             if not query_return:
                 logger.error('endpoint with name "{}" not found in database'.format(name))
                 continue
             else:
                 ept_id = query_return[0]['endpoint_id']
-            logger.debug('endpoint id "{}" matched to endpoint with name "{}"'.format(ept_id,name))
+            logger.debug('endpoint id "{}" matched to endpoint "{}"'.format(ept_id,name))
             s = sqlalchemy.select([t]).where(sqlalchemy.and_(t.c.endpoint_id == ept_id,t.c.timestamp < timestamp))
             s = s.order_by(t.c.timestamp.desc()).limit(1)
-            query_return = self.provider.engine.execute(s).fetchall()
+            try:
+                query_return = self.provider.engine.execute(s).fetchall()
+            except exceptions.DriplineDatabaseError as dripline_error:
+                logger.error('{}; in executing SQLAlchemy select statement for endpoint "{}"'.format(dripline_error.message,name))
+                return
             if not query_return:
                 logger.error('no records found before "{}" for endpoint "{}" in database'.format(timestamp,name))
                 continue
@@ -167,7 +178,7 @@ class SQLSnapshot(SQLTable):
                 return datetime.strptime(timestamp, fmt)
             except ValueError:
                 pass
-        raise ValueError('"{}" is not a valid timestamp format'.format(timestamp))
+        raise exceptions.DriplineDatabaseError('"{}" is not a valid timestamp format'.format(timestamp))
 
 
     def _connect_id_table(self):
@@ -176,5 +187,8 @@ class SQLSnapshot(SQLTable):
         Connects to the 'endpoint_id_map' table in database
         '''
         
-        self.it = sqlalchemy.Table('endpoint_id_map',self.provider.meta, autoload=True, schema=self.schema)
+        try:
+            self.it = sqlalchemy.Table('endpoint_id_map',self.provider.meta, autoload=True, schema=self.schema)
+        except exceptions.DriplineDatabaseError as dripline_error:
+            logger.error('{}; when establishing connection to the "endpoint_id_map" table'.format(dripline_error.message))
 
