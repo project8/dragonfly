@@ -83,12 +83,12 @@ class GenericAgent(object):
             print('{color}{}(ret:{}): [{}]-> {}\033[0m'.format(print_prefix, a_reply.retcode, a_reply.sender_info['service_name'], a_reply.payload, color=color))
             if a_reply.return_msg and not a_reply.retcode == 0:
                 logger.log(25, 'return message: {}'.format(a_reply.return_msg))
-        return reply[0].payload
         if args.pretty_print:
-            if not 'value_cal' in result:
+            if 'value_cal' not in reply[0].payload:
                 logger.warning('no value cal present, unable to pretty-print')
             else:
-                print('\n{}\n'.format(result['value_cal']))
+                print('\n{}\n'.format(reply[0].payload['value_cal']))
+        return reply[0].payload
 
     
     @staticmethod
