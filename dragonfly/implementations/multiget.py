@@ -41,7 +41,6 @@ class MultiGet(dripline.core.Endpoint):
                 these_details['formatter'] = '{} -> {}'.format(a_target['target'], '{}')
             self._targets.append([a_target['target'], these_details])
 
-        self._request_message = dripline.core.RequestMessage(msgop=dripline.core.OP_GET)
 
     def on_get(self):
         result_vals = {}
@@ -56,14 +55,12 @@ class MultiGet(dripline.core.Endpoint):
         '''
         attempt to get a single endpoint and return a tuple of (desired_value, string_rep)
         '''
-        ret_val = None
-        ret_rep = ''
-        a_result = self.service.send_request(request=self._request_message, target=endpoint_name)
-        if a_result.retcode != 0:
-            ret_val = None
-            ret_rep = '{} -> returned error <{}>:{}'.format(endpoint_name, a_result.retcode, a_result.return_msg)
-        else:
-            ret_val = a_result.payload[details['payload_field']]
+        try:
+            a_result = self.provider.get(target=endpoint_name)
+            ret_val = a_result[details['payload_field']]
             ret_rep = details['formatter'].format(ret_val)
+        except core.exceptions.DriplineException as err:
+            ret_val = None
+            ret_rep = '{} -> returned error <{}>:{}'.format(endpoint_name, err.retcode, a_result.return_msg)
         
         return ret_val,ret_rep

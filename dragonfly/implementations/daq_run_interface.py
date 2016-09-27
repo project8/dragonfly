@@ -338,23 +338,15 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
 
     @property
     def is_running(self):
-        logger.info('query RSA trigger status')
-        result = self.send(['TRIG:SEQ:STAT?'])
-        to_return = None
-        if result== '0':
-            to_return = False
-        elif result == '1':
-            to_return = True
-        else:
-            raise ValueError('unrecognized return value')
-        logger.info('trigger status is <{}>'.format(to_return))
-        return to_return
+        result = self.provider.get("rsa_trigger_status")['value_cal']
+        logger.info('RSA trigger status is <{}>'.format(result))
+        return result
 
     def set_default_config(self):
         logger.info('setting default config for data taking')
 
         logger.info('getting all the lastest errors in the system and purging the queue')
-        errors = self.send(['SYSTEM:ERROR:ALL?'])
+        errors = self.provider.get("rsa_system_error_queue")
 
         logger.info('setting frequencies')
         self.set_central_frequency(self.central_frequency_def_lab)
@@ -408,104 +400,93 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
         logger.info('setting new mask auto')
         self.create_new_auto_mask('TRACE3',self.mask_xmargin_def_lab,self.mask_ymargin_def_lab)
 
-    def set_central_frequency(self,central_frequency):
+    def set_central_frequency(self, value):
         logger.info('setting central frequency')
-        self.send(['DPX:FREQ:CENT {};DPX:FREQ:CENT?'.format(central_frequency)])
+        self.provider.set('rsa_central_frequency', value_raw)
 
-    def set_frequency_span(self,frequency_span):
+    def set_frequency_span(self, value):
         logger.info('setting frequency span')
-        self.send(['DPX:FREQ:SPAN {};DPX:FREQ:SPAN?'.format(frequency_span)])
+        self.provider.set('rsa_frequency_span', value)
 
-    def set_reference_level(self,ref_level):
+    def set_reference_level(self, value):
         logger.info('setting reference level')
-        self.send(['INPUT:RLEVEL {};INPUT:RLEVEL?'.format(ref_level)])
+        self.provider.set('rsa_reference_level', value)
 
-    def set_event_source(self,event_source):
+    def set_event_source(self, value):
         logger.info('setting event source')
-        self.send(['TRIG:EVEN:SOUR {};TRIG:EVEN:SOUR?'.format(event_source)])
+        self.provider.set('rsa_event_source', value)
 
-    def set_event_type(self,event_type):
+    def set_event_type(self, value):
         logger.info('setting event type')
-        self.send(['TRIG:EVEN:INP:TYPE {};TRIG:EVEN:INP:TYPE?'.format(event_type)])
+        self.provider.set('rsa_event_type', value)
 
-    def set_trig_violation_condition(self,trig_viol):
+    def set_trig_violation_condition(self, value):
         logger.info('setting trigger violation')
-        self.send(['TRIG:EVEN:INP:FMASk:VIOL {};TRIG:EVEN:INP:FMASk:VIOL?'.format(trig_viol)])
+        self.provider.set('rsa_trigger_violation_condition', value)
 
-    def set_resolution_bandwidth(self,rbw):
+    def set_resolution_bandwidth(self, value):
         logger.info('setting resolution bandwidths')
-        self.send(['DPX:BWID:RES {};DPX:BWID:RES?'.format(rbw)])
+        self.provider.set('rsa_resolution_bandwidth', value)
 
-    def set_config_from_file(self,file_path):
+    def set_config_from_file(self, value):
         logger.info('setting instrument config from file')
-        if file_path is None:
-            raise core.DriplineInternalError('no file_path was given')
-        self.send('MMEMory:LOAD:STATe "{}"; *OPC?'.format(file_path))
+        if not isinstance(file_path, (str,unicode)):
+            raise core.exceptions.DriplineValueError('invalid file_path given: {}'.format(value))
+        self.send('MMEMory:LOAD:STATe "{}"; *OPC?'.format(value))
 
     def set_trigger_holdoff(self,value):
         logger.info('setting trigger holdoff')
-        self.send(['TRIG:ADV:HOLD {};TRIG:ADV:HOLD?'.format(value)])
+        self.provider.set('rsa_trigger_holdoff', value)
 
     def set_trigger_holdoff_status(self,value):
         logger.info('setting trigger holdoff status')
-        self.send(['TRIG:ADV:HOLD:ENABle {};TRIG:ADV:HOLD:ENABle?'.format(value)])
+        self.provider.set('rsa_trigger_holdoff_status', value)
 
     def set_trigger_delay_time(self,value):
         logger.info('setting trigger delay time')
-        self.send(['TRIGGER:SEQUENCE:TIME:DELAY {};TRIGGER:SEQUENCE:TIME:DELAY?'.format(value)])
+        self.provider.set('rsa_trigger_delay_time', value)
 
     def set_trigger_delay_position(self,value):
         logger.info('setting trigger delay position')
-        self.send(['TRIGGER:SEQUENCE:TIME:POSITION {};TRIGGER:SEQUENCE:TIME:POSITION?'.format(value)])
+        self.provider.set('rsa_trigger_delay_position', value)
 
     def set_trigger_status(self,value):
         logger.info('setting trigger status')
-        if value == 1 or value == 'on' or value == 'enable':
-            self.send(['TRIG:SEQUENCE:STATUS 1;TRIG:SEQUENCE:STATUS?'.format(value)])
-        elif value == 0 or value == 'off' or value == 'disable':
-            self.send(['TRIG:SEQUENCE:STATUS 0;TRIG:SEQUENCE:STATUS?'.format(value)])
-        else:
-            core.DriplineInternalError('invalid given parameter ({}) instead of 1/on/enable/0/off/disable'.format(value))
+        self.provider.set('rsa_trigger_status', value)
 
     def set_trigger_time_qualification(self,value):
         logger.info('setting trigger time qulification')
         if value == 'SHOR' or value == 'LONG' or value == 'INS' or value == 'OUT' or value == 'NONE':
-            self.send(['TRIGger:SEQuence:TIME:QUALified {};*TRIGger:SEQuence:TIME:QUALified?'.format(value)])
+            self.provider.set('rsa_trigger_time_qualification', value)
         else:
-            core.DriplineInternalError('invalid given parameter ({}) instead of SHOR/LONG/INS/OUT/NONE'.format(value))
+            raise core.exceptions.DriplineValueError('invalid given parameter ({}) instead of SHOR/LONG/INS/OUT/NONE'.format(value))
 
     def set_osc_source(self,value):
         logger.info('setting oscillator source')
         if value == 'INT' or value == 'EXT':
-            self.send(['SENSE:ROSCILLATOR:SOURCE {};*SENSE:ROSCILLATOR:SOURCE?'.format(value)])
+            self.provider.set('rsa_osc_source', value)
         else:
-            core.DriplineInternalError('invalid given parameter ({}) instead of EXT/INT'.format(value))
+            raise core.exceptions.DriplineValueError('invalid given parameter ({}) instead of EXT/INT'.format(value))
 
     def set_internal_attenuator(self,value):
         logger.info('setting internal attenuator')
-        self.send(['INPUT:RF:ATTENUATION {};*OPC?'.format(value)])
+        self.provider.set('rsa_internal_attenuator', value)
 
     def set_internal_attenuator_auto(self,value):
         logger.info('setting internal attenuator auto')
-        if value == 1 or value == 'on' or value == 'enable':
-            self.send(['INPUT:RF:ATTENUATION:AUTO 1;*INPUT:RF:ATTENUATION:AUTO?'.format(value)])
-        elif value == 0 or value == 'off' or value == 'disable':
-            self.send(['INPUT:RF:ATTENUATION:AUTO 0;*INPUT:RF:ATTENUATION:AUTO?'.format(value)])
-        else:
-            core.DriplineInternalError('invalid given parameter ({}) instead of 1/on/enable/0/off/disable'.format(value))
+        self.provider.set('rsa_internal_attenuator_auto', value)
 
     def set_acquisition_length(self,value):
         # if isinstance(value, types.StringType):
         #     convert into seconds -> optional
         logger.info('setting acquisition length')
-        if value >=0 :
-            core.DriplineInternalError('invalid given parameter ({}): should be positive'.format(value))
-        else:
-            self.send(['SENSe:ACQuisition:SEConds {};SENSe:ACQuisition:SEConds?'.format(value)])
+        if value <= 0 :
+            raise core.exceptions.DriplineValueError('invalid given parameter ({}): should be positive'.format(value))
+        self.provider.set('rsa_acquisition_length', value)
 
     def set_acquisition_mode(self,value):
         logger.info('setting acquisition mode')
-        self.send(['SENSe:ACQuisition:MODE {};SENSe:ACQuisition:MODE?'.format(value)])
+        self.provider.set('rsa_acquisition_mode', value)
 
     def save_trace(self,trace,path):
         logger.info('saving trace')
@@ -513,19 +494,17 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
 
     def create_new_auto_mask(self, trace, xmargin, ymargin):
         logger.info('setting the auto mask')
-        # if trace == 'TRACE1' or trace == 'trace1':
-        self.send(['TRIG:MASK:NEW:AUTO "dpsa",{},{},{};*OPC?'.format(trace,xmargin,ymargin)])
+        self.provider.set('rsa_new_auto_mask','{},{},{}'.format(trace,xmargin,ymargin))
 
     def start_run(self, run_name):
         # try to force external reference
-        self.send(['SENS:ROSC:SOUR EXT;*OPC?'])
-        the_ref = self.send(['SENS:ROSC:SOUR?'])
-        if the_ref != 'EXT\n' and the_ref != 'EXT':
+        the_ref = self.provider.set('rsa_osc_source', 'EXT')['value_raw']
+        if the_ref != 'EXT':
             raise core.exceptions.DriplineHardwareError('RSA external ref found to be <{}> (!="EXT")'.format(the_ref))
 
         # counting the number of errors in the RSA system queue and aborting the data taking if Nerrors>0
-        Nerrors = self.send(['SYSTEM:ERROR:COUNT?'])
-        if Nerrors!='0':
+        Nerrors = self.provider.get('rsa_system_error_count')['value_raw']
+        if Nerrors != '0':
             raise core.exceptions.DriplineHardwareError('RSA system has {} error(s) in the queue: check them with <dragonfly get rsa_system_error_queue -b myrna.p8>'.format(Nerrors))
 
         super(RSAAcquisitionInterface, self).start_run(run_name)
@@ -562,7 +541,7 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
         # enable the save dacq data on trigger mode
         self.send("TRIGger:SAVE:DATA 1;*OPC?")
         # ensure in triggered mode
-        self.send(['TRIG:SEQ:STAT 1;*OPC?'])
+        self.provider.set('rsa_trigger_status', 1)
         # actually start to FastSave (depreciated)
         # self.send(['SENS:ACQ:FSAV:ENAB 1;*OPC?'])
 
@@ -571,7 +550,7 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
         # self.send(['SENS:ACQ:FSAV:ENAB 0;*OPC?'])
 
         # disable the trigger mode
-        self.send(['TRIG:SEQ:STAT 0;*OPC?'])
+        self.provider.set('rsa_trigger_status', 0)
         # disable the save dacq data on trigger mode
         self.send("TRIGger:SAVE:DATA 0;*OPC?")
 
@@ -583,10 +562,10 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
         self._run_meta['RF_HF_MIXING'] = float(self._hf_lo_freq)
         logger.debug('RF High stage mixing: {}'.format(self._run_meta['RF_HF_MIXING']))
 
-        result = self.send(['DPX:FREQ:START?'])
+        result = self.provider.get('rsa_min_frequency')['value_raw']
         self._run_meta['RF_ROI_MIN'] = float(result) + float(self._hf_lo_freq)
         logger.debug('RF Min: {}'.format(self._run_meta['RF_ROI_MIN']))
 
-        result = self.send(['DPX:FREQ:STOP?'])
+        result = self.provider.get('rsa_max_frequency')['value_raw']
         self._run_meta['RF_ROI_MAX'] = float(result) + float(self._hf_lo_freq)
         logger.debug('RF Max: {}'.format(self._run_meta['RF_ROI_MAX']))
