@@ -87,20 +87,8 @@ class DAQProvider(core.Provider):
             logger.debug('not going to try to talk to database')
             self.run_id = 0
             return
-        # result = self.provider.cmd(self.run_table_endpoint, 'do_insert', {'run_name':value})
-        # self.run_id = result['run_id']
-        request = core.RequestMessage(msgop=core.OP_CMD,
-                              payload={'values':[],
-                                       'run_name':value,
-                                      },
-                             )
-        result = self.service.send_request(self.run_table_endpoint+'.do_insert',
-                                          request=request,
-                                         )
-        if not result.retcode == 0:
-            raise core.exception_map[result.retcode](result.return_msg)
-        self.run_id = result.payload['run_id']
-        logger.debug('run_id will be: {}'.format(self.run_id))
+        result = self.provider.cmd(self.run_table_endpoint, 'do_insert', payload={'run_name':value})
+        self.run_id = result['run_id']
 
     def end_run(self):
         run_was = self.run_id
@@ -148,13 +136,8 @@ class DAQProvider(core.Provider):
                         'filename': filename,
                        }
         this_payload['metadata']['run_id'] = self.run_id
-        request_msg = core.RequestMessage(payload=this_payload, msgop=core.OP_CMD)
-        req_result = self.service.send_request(request=request_msg, target=self._metadata_target)
-        if not req_result.retcode == 0:
-            raise core.exceptions.DriplineValueError('writing meta-data did not return success')
-
         # note, the following line has an empty method/RKS, this shouldn't be the case but is what golang expects
-        # req_result = self.provider.cmd(self._metadata_target, '', this_payload)
+        req_result = self.provider.cmd(self._metadata_target, '', payload=this_payload)
         logger.debug('meta sent')
 
     def start_timed_run(self, run_name, run_time):

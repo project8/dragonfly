@@ -445,10 +445,9 @@ class ESR_Measurement(core.Endpoint):
                            };");
 
     def pull_lockin_data(self, key):
-        # raw = self.provider.cmd(key, target="lockin_interface", method_name="grab_data", timeout=20)
-        # FIXME: Is it really necessary to do this as below?  Getting error that multiple arguments for target given otherwise
-        raw = self.provider.cmd("lockin_interface", "grab_data", False, 20, False, key)['values'][0]
-        return numpy.array(raw.replace('\x00','').split(';'), dtype=float)
+        result = self.provider.cmd(target="lockin_interface", method_name="grab_data", value=key, timeout=20)
+        result = result['values'][0]
+        return numpy.array(result.replace('\x00','').split(';'), dtype=float)
 
     def raw_get_endpoint(self, endptname, **kwargs):
         result = self.provider.get(target=endptname, **kwargs)
