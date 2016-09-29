@@ -25,7 +25,7 @@ from itertools import groupby
 import collections
 
 # local imports
-from dripline.core import Provider, Endpoint, exceptions
+from dripline.core import Provider, Endpoint, exceptions, constants
 from dripline.core.utilities import fancy_doc
 from dragonfly.implementations import PostgreSQLInterface, SQLTable
 
@@ -47,7 +47,7 @@ class SQLSnapshot(SQLTable):
 
     def get_logs(self, start_timestamp, end_timestamp):
         '''
-        Both inputs must be specified as either date only 'Y-M-D' or date with time 'Y-M-D HH:MM:SS'
+        Both inputs must be follow the format of constants.TIME_FORMAT, i.e. YYYY-MM-DDThh:mm:ssZ
         start_timestamp (str): oldest timestamp for query into database
         ending_timesamp (str): most recent timestamp for query into database
         '''    
@@ -98,7 +98,7 @@ class SQLSnapshot(SQLTable):
             for i in range(times):
                 val_raw_dict[endpoint].append(val_dict.copy())
                 query_row = query_return[index]
-                val_raw_dict[endpoint][i]['timestamp'] = query_row['timestamp'].isoformat()
+                val_raw_dict[endpoint][i]['timestamp'] = query_row['timestamp'].strftime(constants.TIME_FORMAT)
                 val_raw_dict[endpoint][i]['value_raw'] = query_row['value_raw']
                 val_raw_dict[endpoint][i]['value_cal'] = query_row['value_cal']
                 ept_timestamp_list.append('{} {{{}}}'.format(val_raw_dict[endpoint][i]['value_cal'],val_raw_dict[endpoint][i]['timestamp']))
@@ -114,7 +114,7 @@ class SQLSnapshot(SQLTable):
 
     def get_latest(self, timestamp, endpoint_list):
         '''
-        start_timestamp (str): oldest timestamp for query into database. Format must be either date only 'Y-M-D' or date with time 'Y-M-D HH:MM:SS'
+        start_timestamp (str): oldest timestamp for query into database. Format must follow constants.TIME_FORMAT, i.e. YYYY-MM-DDThh:mm:ssZ
         endpoint_list (list of str): list of endpoint names (str) of interest
         '''
         timestamp = str(timestamp)
@@ -158,7 +158,7 @@ class SQLSnapshot(SQLTable):
                 logger.error('no records found before "{}" for endpoint "{}" in database'.format(timestamp,name))
                 continue
             else:
-                val_raw_dict[name] = (query_return[0]['value_cal'],query_return[0]['timestamp'].isoformat())
+                val_raw_dict[name] = (query_return[0]['value_cal'],query_return[0]['timestamp'].strftime(constants.TIME_FORMAT))
                 val_cal_list.append('{} -> {} {{{}}}'.format(name,val_raw_dict[name][0],val_raw_dict[name][1]))
                               
         return {'value_raw': val_raw_dict, 'value_cal': '\n'.join(val_cal_list)}
@@ -168,12 +168,11 @@ class SQLSnapshot(SQLTable):
         '''
         Checks if timestamp (str) is in correct format for database query
         '''        
-        for fmt in ('%Y-%m-%d', '%Y-%m-%d %H:%M:%S'):
-            try:
-                return datetime.strptime(timestamp, fmt)
-            except ValueError:
-                pass
-        raise exceptions.DriplineDatabaseError('"{}" is not a valid timestamp format'.format(timestamp))
+        try:
+            return datetime.strptime(timestamp, constants.TIME_FORMAT)
+        except ValueError:
+            pass
+        raise exceptions.DriplineValueError('"{}" is not a valid timestamp format'.format(timestamp))
 
 
     def _connect_id_table(self):
