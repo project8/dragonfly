@@ -35,6 +35,7 @@ logger.setLevel(logging.DEBUG)
 
 __all__.append('SQLSnapshot')
 
+@fancy_doc
 class SQLSnapshot(SQLTable):
 
     def __init__(self, table_name, schema, *args, **kwargs):
