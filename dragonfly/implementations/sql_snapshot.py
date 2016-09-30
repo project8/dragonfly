@@ -115,10 +115,14 @@ class SQLSnapshot(SQLTable):
     def get_latest(self, timestamp, endpoint_list):
         '''
         start_timestamp (str): oldest timestamp for query into database. Format must follow constants.TIME_FORMAT, i.e. YYYY-MM-DDThh:mm:ssZ
-        endpoint_list (list of str): list of endpoint names (str) of interest
+        endpoint_list (list of str): list of endpoint names (str) of interest. Usage for dragonfly CLI e.g. endpoint_list='["endpoint_name1","endpoint_name_2",...]'
         '''
         timestamp = str(timestamp)
-        endpoint_list = [name for name in endpoint_list.strip('[]').split(',')]              
+        if isinstance(endpoint_list,types.ListType):
+            endpoint_list = [str(item) for item in endpoint_list]
+        else:
+            logger.error('Received type "{}" for argument endpoint_list instead of Python list'.format(type(endpoint_list).__name__))
+            raise exceptions.DriplineValueError('expecting a list but received type {}'.format(type(endpoint_list).__name__))                       
 
         # Parsing timestamp
         self._try_parsing_date(timestamp)
@@ -183,4 +187,3 @@ class SQLSnapshot(SQLTable):
             self.it = sqlalchemy.Table('endpoint_id_map',self.provider.meta, autoload=True, schema=self.schema)
         except exceptions.DriplineDatabaseError as dripline_error:
             logger.error('{}; when establishing connection to the "endpoint_id_map" table'.format(dripline_error.message))
-
