@@ -6,6 +6,7 @@ from __future__ import absolute_import
 
 import types
 import uuid
+import ast
 
 from dripline.core import message, constants, Service, Message, exceptions
 
@@ -98,9 +99,8 @@ class GenericAgent(object):
         '''
         temp_val = value
         try:
-            temp_val = float(value)
-            temp_val = int(value)
-        except ValueError:
+            temp_val = ast.literal_eval(value)
+        except (ValueError,SyntaxError):
             if isinstance(temp_val, types.StringType):
                 try:
                     if value.lower() == 'true':
