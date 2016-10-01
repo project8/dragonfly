@@ -148,64 +148,28 @@ class DAQProvider(core.Provider):
 
 
 __all__.append('RSAAcquisitionInterface')
-class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
+class RSAAcquisitionInterface(DAQProvider):
     '''
     A DAQProvider for interacting with the RSA
     '''
     def __init__(self,
-                 rsa_config_target='',
+                 daq_target=None,
+                 hf_lo_freq=None,
                  instrument_setup_filename_prefix=None,
                  mask_filename_prefix=None,
-                 hf_lo_freq=None,
-                 span_frequency_def_lab=None,
-		         central_frequency_def_lab=None,
-		         mask_ymargin_def_lab=None,
-		         mask_xmargin_def_lab=None,
-		         ref_level_def_lab=None,
-		         source_event_def_lab=None,
-		         type_event_def_lab=None,
-		         violation_def_lab=None,
-		         RBW_def_lab=None,
-		         holdoff_def_lab=None,
-		         holdoff_status_def_lab=None,
-                 trig_delay_time_def_lab=None,
-                 trig_delay_pos_def_lab=None,
-                 trig_time_qualification_def_lab=None,
-                 internal_attenuator_def_lab=None,
-                 internal_attenuator_auto_def_lab=None,
-                 acquisition_mode_def_lab=None,
-                 acquisition_length_def_lab=None,
-		         osc_source_def_lab='EXT',
-		         max_nb_files=10000,
                  **kwargs):
         DAQProvider.__init__(self, **kwargs)
-        EthernetProvider.__init__(self, **kwargs)
-        self.rsa_config_target=rsa_config_target
 
+        if daq_target is None:
+            raise core.exceptions.DriplineValueError('the rsa acquisition interface requires a valid "daq_target" in its config file')
+        self._daq_target = daq_target
         if hf_lo_freq is None:
-            raise core.exceptions.DriplineValueError('the rsa interface requires a "hf_lo_freq" in its config file')
+            raise core.exceptions.DriplineValueError('the rsa acquisition interface requires a "hf_lo_freq" in its config file')
         self._hf_lo_freq = hf_lo_freq
 
-        self.max_nb_files = max_nb_files
-        self.span_frequency_def_lab = span_frequency_def_lab
-        self.central_frequency_def_lab = central_frequency_def_lab
-        self.mask_ymargin_def_lab = mask_ymargin_def_lab
-        self.mask_xmargin_def_lab = mask_xmargin_def_lab
-        self.ref_level_def_lab = ref_level_def_lab
-        self.source_event_def_lab = source_event_def_lab
-        self.type_event_def_lab = type_event_def_lab
-        self.violation_def_lab = violation_def_lab
-        self.RBW_def_lab = RBW_def_lab
-        self.holdoff_def_lab = holdoff_def_lab
-        self.holdoff_status_def_lab = holdoff_status_def_lab
-        self.trig_delay_time_def_lab = trig_delay_time_def_lab
-        self.trig_delay_pos_def_lab = trig_delay_pos_def_lab
-        self.trig_time_qualification_def_lab = trig_time_qualification_def_lab
-        self.internal_attenuator_auto_def_lab = internal_attenuator_auto_def_lab
-        self.internal_attenuator_def_lab = internal_attenuator_def_lab
-        self.acquisition_mode = acquisition_mode_def_lab
-        self.acquisition_length = acquisition_length_def_lab
-        self.osc_source_def_lab = osc_source_def_lab
+        # naming prefixes are not currently implemented, but maintained in code for consistency
+        #self.instrument_setup_filename_prefix = instrument_setup_filename_prefix
+        #self.mask_filename_prefix = mask_filename_prefix
 
     @property
     def is_running(self):
@@ -213,218 +177,19 @@ class RSAAcquisitionInterface(DAQProvider, EthernetProvider):
         logger.info('RSA trigger status is <{}>'.format(result))
         return result
 
-    def set_default_config(self):
-        logger.info('setting default config for data taking')
-
-        logger.info('getting all the lastest errors in the system and purging the queue')
-        errors = self.provider.get("rsa_system_error_queue")
-
-        logger.info('setting frequencies')
-        self.set_central_frequency(self.central_frequency_def_lab)
-        self.set_frequency_span(self.span_frequency_def_lab)
-
-        logger.info('setting reference level')
-        self.set_reference_level(self.ref_level_def_lab)
-
-        logger.info('setting resolution bandwidths')
-        self.set_resolution_bandwidth(self.RBW_def_lab)
-
-        logger.info('setting source of events')
-        self.set_event_source(self.source_event_def_lab)
-
-        logger.info('setting type of events')
-        self.set_event_type(self.type_event_def_lab)
-
-        logger.info('setting trigger violation condition')
-        self.set_trig_violation_condition(self.violation_def_lab)
-
-        logger.info('setting trigger holdoff')
-        self.set_trigger_holdoff(self.holdoff_def_lab)
-
-        logger.info('setting trigger holdoff status')
-        self.set_trigger_holdoff_status(self.holdoff_status_def_lab)
-
-        logger.info('setting trigger delay time')
-        self.set_trigger_delay_time(self.trig_delay_time_def_lab)
-
-        logger.info('setting trigger delay position')
-        self.set_trigger_delay_position(self.trig_delay_pos_def_lab)
-
-        logger.info('setting trigger time qualification')
-        self.set_trigger_time_qualification(self.trig_time_qualification_def_lab)
-
-        logger.info('setting internal attenuator auto mode')
-        self.set_internal_attenuator_auto(self.internal_attenuator_auto_def_lab)
-
-        logger.info('setting internal attenuator')
-        self.set_internal_attenuator(self.internal_attenuator_def_lab)
-
-        logger.info("setting acquisition mode")
-        self.set_acquisition_mode(self.acquisition_mode_def_lab)
-
-        logger.info("setting acquisition length")
-        self.set_acquisition_mode(self.acquisition_length_def_lab)
-
-        logger.info('setting oscillator source')
-        self.set_osc_source(self.osc_source_def_lab)
-
-        logger.info('setting new mask auto')
-        self.create_new_auto_mask('TRACE3',self.mask_xmargin_def_lab,self.mask_ymargin_def_lab)
-
-    def set_central_frequency(self, value):
-        logger.info('setting central frequency')
-        self.provider.set('rsa_central_frequency', value_raw)
-
-    def set_frequency_span(self, value):
-        logger.info('setting frequency span')
-        self.provider.set('rsa_frequency_span', value)
-
-    def set_reference_level(self, value):
-        logger.info('setting reference level')
-        self.provider.set('rsa_reference_level', value)
-
-    def set_event_source(self, value):
-        logger.info('setting event source')
-        self.provider.set('rsa_event_source', value)
-
-    def set_event_type(self, value):
-        logger.info('setting event type')
-        self.provider.set('rsa_event_type', value)
-
-    def set_trig_violation_condition(self, value):
-        logger.info('setting trigger violation')
-        self.provider.set('rsa_trigger_violation_condition', value)
-
-    def set_resolution_bandwidth(self, value):
-        logger.info('setting resolution bandwidths')
-        self.provider.set('rsa_resolution_bandwidth', value)
-
-    def set_config_from_file(self, value):
-        logger.info('setting instrument config from file')
-        if not isinstance(file_path, (str,unicode)):
-            raise core.exceptions.DriplineValueError('invalid file_path given: {}'.format(value))
-        self.send('MMEMory:LOAD:STATe "{}"; *OPC?'.format(value))
-
-    def set_trigger_holdoff(self,value):
-        logger.info('setting trigger holdoff')
-        self.provider.set('rsa_trigger_holdoff', value)
-
-    def set_trigger_holdoff_status(self,value):
-        logger.info('setting trigger holdoff status')
-        self.provider.set('rsa_trigger_holdoff_status', value)
-
-    def set_trigger_delay_time(self,value):
-        logger.info('setting trigger delay time')
-        self.provider.set('rsa_trigger_delay_time', value)
-
-    def set_trigger_delay_position(self,value):
-        logger.info('setting trigger delay position')
-        self.provider.set('rsa_trigger_delay_position', value)
-
-    def set_trigger_status(self,value):
-        logger.info('setting trigger status')
-        self.provider.set('rsa_trigger_status', value)
-
-    def set_trigger_time_qualification(self,value):
-        logger.info('setting trigger time qulification')
-        if value == 'SHOR' or value == 'LONG' or value == 'INS' or value == 'OUT' or value == 'NONE':
-            self.provider.set('rsa_trigger_time_qualification', value)
-        else:
-            raise core.exceptions.DriplineValueError('invalid given parameter ({}) instead of SHOR/LONG/INS/OUT/NONE'.format(value))
-
-    def set_osc_source(self,value):
-        logger.info('setting oscillator source')
-        if value == 'INT' or value == 'EXT':
-            self.provider.set('rsa_osc_source', value)
-        else:
-            raise core.exceptions.DriplineValueError('invalid given parameter ({}) instead of EXT/INT'.format(value))
-
-    def set_internal_attenuator(self,value):
-        logger.info('setting internal attenuator')
-        self.provider.set('rsa_internal_attenuator', value)
-
-    def set_internal_attenuator_auto(self,value):
-        logger.info('setting internal attenuator auto')
-        self.provider.set('rsa_internal_attenuator_auto', value)
-
-    def set_acquisition_length(self,value):
-        # if isinstance(value, types.StringType):
-        #     convert into seconds -> optional
-        logger.info('setting acquisition length')
-        if value <= 0 :
-            raise core.exceptions.DriplineValueError('invalid given parameter ({}): should be positive'.format(value))
-        self.provider.set('rsa_acquisition_length', value)
-
-    def set_acquisition_mode(self,value):
-        logger.info('setting acquisition mode')
-        self.provider.set('rsa_acquisition_mode', value)
-
-    def save_trace(self,trace,path):
-        logger.info('saving trace')
-        self.send(['MMEMory:DPX:STORe:TRACe{} "{}"; *OPC?'.format(trace,path)])
-
-    def create_new_auto_mask(self, trace, xmargin, ymargin):
-        logger.info('setting the auto mask')
-        self.provider.set('rsa_new_auto_mask','{},{},{}'.format(trace,xmargin,ymargin))
-
     def start_run(self, run_name):
-        # try to force external reference
-        the_ref = self.provider.set('rsa_osc_source', 'EXT')['value_raw']
-        if the_ref != 'EXT':
-            raise core.exceptions.DriplineHardwareError('RSA external ref found to be <{}> (!="EXT")'.format(the_ref))
-
-        # counting the number of errors in the RSA system queue and aborting the data taking if Nerrors>0
-        Nerrors = self.provider.get('rsa_system_error_count')['value_raw']
-        if Nerrors != '0':
-            raise core.exceptions.DriplineHardwareError('RSA system has {} error(s) in the queue: check them with <dragonfly get rsa_system_error_queue -b myrna.p8>'.format(Nerrors))
+        # call ensure_ready_state method in daq_target to check for errors and force reference
+        self.provider.cmd(_daq_target, ensure_ready_state)
 
         super(RSAAcquisitionInterface, self).start_run(run_name)
-        # # ensure the output format is set to mat (depreciated)
-        # self.send(["SENS:ACQ:FSAV:FORM MAT;*OPC?"])
-        # build strings for output directory and file prefix, then set those
-        file_directory = "\\".join([self.data_directory_path, '{:09d}'.format(self.run_id)])
-        file_base = "{}{:09d}".format(self.filename_prefix, self.run_id)
-        self.send('SENS:ACQ:FSAV:LOC "{}";*OPC?'.format(file_directory))
-        self.send('SENS:ACQ:FSAV:NAME:BASE "{}";*OPC?'.format(file_base))
-        # ensure the output format is set to mat
-        self.send('TRIGger:SAVE:DATA:FORMat MAT;*OPC?')
-        # ensure their is no limit on the number of saved files
-        self.send("TRIGger:SAVE:COUNt 0; *OPC?")
 
-        # Set the maximum number of events (note that the default is 10k)
-        self.send(['SENS:ACQ:FSAV:FILE:MAX {:d};*OPC?'.format(self.max_nb_files)])
-
-        # saving the instrument status in hot
-        instrument_status_full_name = '{directory}/{prefix}{runN:09d}'.format(
-                                                        directory=file_directory,
-                                                        prefix=self.filename_prefix,
-                                                        runN=self.run_id
-                                                                               )
-        self.send(['MMEM:STOR:STAT "{}";*OPC?'.format(instrument_status_full_name)])
-        # saving the frequency mask in hot
-        mask_full_name = '{directory}/{prefix}{runN:09d}'.format(
-                                                        directory=file_directory,
-                                                        prefix=self.filename_prefix,
-                                                        runN=self.run_id
-                                                                               )
-        self.send(['TRIG:MASK:SAVE "{}";*OPC?'.format(mask_full_name)])
-
-        # enable the save dacq data on trigger mode
-        self.send("TRIGger:SAVE:DATA 1;*OPC?")
-        # ensure in triggered mode
-        self.provider.set('rsa_trigger_status', 1)
-        # actually start to FastSave (depreciated)
-        # self.send(['SENS:ACQ:FSAV:ENAB 1;*OPC?'])
+        # call start_run method in daq_target
+        self.provider.cmd(_daq_target, start_run, [directory, filename])
 
     def end_run(self):
-        # something to stop FastSave (depreciated)
-        # self.send(['SENS:ACQ:FSAV:ENAB 0;*OPC?'])
-
-        # disable the trigger mode
-        self.provider.set('rsa_trigger_status', 0)
-        # disable the save dacq data on trigger mode
-        self.send("TRIGger:SAVE:DATA 0;*OPC?")
-
+        # call end_run method in daq_target
+        self.provider.cmd(_daq_target, end_run)
+        # call global DAQ end_run method
         super(RSAAcquisitionInterface, self).end_run()
 
     def determine_RF_ROI(self):
