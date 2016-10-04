@@ -35,7 +35,8 @@ class PidController(Gogol):
     def __init__(self,
                  input_channel,
                  output_channel,
-                 input_payload_field='value_cal',
+                 payload_field='value_cal',
+                 tolerance = 0.01,
                  target_value=110,
                  proportional=0.0, integral=0.0, differential=0.0,
                  maximum_out=1.0, minimum_out=1.0, delta_out_min= 0.001,
@@ -53,12 +54,14 @@ class PidController(Gogol):
         differential (float): coefficient for the D term in the PID equation
         maximum_out (float): max value to which the output_channel may be set; if the PID equation gives a larger value this value is used instead
         delta_out_min (float): minimum value by which to change the output_channel; if the PID equation gives a smaller change, the value is left unchanged (no set is attempted)
+        tolerance (float): acceptable difference between the set and get values (default: 0.01)
         '''
         kwargs.update({'keys':['sensor_value.'+input_channel]})
         Gogol.__init__(self, **kwargs)
 
         self._current_channel = output_channel
-        self.input_payload_field = input_payload_field
+        self.payload_field = payload_field
+        self.tolerance = tolerance
 
         self.target_value = target_value
 
@@ -75,24 +78,22 @@ class PidController(Gogol):
         self.enable_offset_term = enable_offset_term
         self.minimum_elapsed_time = minimum_elapsed_time
 
-
-
-        self._old_current = self.__get_old_current()
+        self._old_current = self.__get_current()
         logger.info('starting current is: {}'.format(self._old_current))
 
-    def __get_old_current(self):
+    def __get_current(self):
         request = dripline.core.RequestMessage(msgop=dripline.core.OP_GET,
                                                payload={}
                                               )
         reply = self.send_request(target=self._current_channel, request=request)
-        value = reply.payload['value_cal']
+        value = reply.payload[self.payload_field]
         logger.info('old current = {}'.format(value))
 
-        return float(value)
+        return float(value.encode('utf-8'))
 
     def this_consume(self, message, basic_deliver=None):
         logger.info('comsuming message')
-        this_value = message.payload[self.input_payload_field]
+        this_value = message.payload[self.payload_field]
         if this_value is None:
             logger.info('value is None')
             return
@@ -106,6 +107,15 @@ class PidController(Gogol):
         self._target_value = value
         self._integral = 0
         self._last_data = {'delta':None,'time':datetime.datetime(1970,1,1)}
+
+    def set_current(self, value):
+        logger.info('going to set new current to: {}'.format(value))
+        m = dripline.core.RequestMessage(msgop=constants.OP_SET,
+                                         payload={'values':[value]},
+                                        )
+        logger.debug('request will be: {}'.format(m))
+        reply = self.send_request(self._current_channel, m)
+        logger.info('set response was: {}'.format(reply))
 
     def process_new_value(self, value, timestamp):
         this_time = datetime.datetime.strptime(timestamp, constants.TIME_FORMAT)
@@ -133,8 +143,7 @@ class PidController(Gogol):
                              self.Kdifferential * derivative
                             )
         new_current = (self._old_current or 0)*self.enable_offset_term + change_to_current
-        #logger.info('new current =  {}'.format(new_current))
-        # change_to_current = new_current - self._old_current
+
         if abs(change_to_current) < self.min_current_change:
             logger.info("current change less than min delta")
             logger.info("old[new] are: {}[{}]".format(self._old_current,new_current))
@@ -151,15 +160,12 @@ class PidController(Gogol):
             new_current = 0.
 
         self.set_current(new_current)
-        logger.info("actual set is: {}".format(new_current))
-        self._old_current = new_current
+        logger.debug("checking the current value")
+        current_get = self.__get_current()
+        if abs(current_get-new_current) <self.tolerance:
+            logger.info("current set is equal to current get")
+        else:
+            raise  dripline.core.DriplineValueError("set value ({}) is not equal to checked value ({})".format(new_current,current_get))
 
-    def set_current(self, value):
-        logger.info('going to set new current to: {}'.format(value))
-        m = dripline.core.RequestMessage(msgop=constants.OP_SET,
-                                         payload={'values':[value]},
-                                        )
-        logger.debug('request will be: {}'.format(m))
-        reply = self.send_request(self._current_channel, m)
-        # logger.info(reply)
-        logger.info('set response was: {}'.format(reply))
+        logger.info("current set is: {}".format(new_current))
+        self._old_current = new_current
