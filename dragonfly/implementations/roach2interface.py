@@ -27,13 +27,13 @@ try:
 
     from .r2daq import ArtooDaq
     logger.info('Imported ArtooDaq')
-    
+
 except ImportError:
-       
+
     class ArtooDaq(object):
         def __init__(self, *args, **kwargs):
             raise RuntimeError("Dependency <ArtooDaq> not found but is required for ROACH2 support.")
-    
+
 
 
 __all__ = []
@@ -48,15 +48,15 @@ class Roach2Provider(ArtooDaq, core.Provider):
     '''
     def __init__(self, **kwargs):
 
-                 
+
         for i in kwargs:
             print(i)
 
-        
+
         core.Provider.__init__(self, **kwargs)
-        
-        
-        
+
+
+
 __all__.append('Roach2Interface')
 class Roach2Interface(Roach2Provider, EthernetProvider):
     def __init__(self,
@@ -71,18 +71,19 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
                  channel_tag = 'a',
                  do_adc_ogp_calibration = False,
                  central_freq = 1234e6,
-                                  
+                 gain = 7.0,
+
                  hf_lo_freq=24.2e9,
                  analysis_bandwidth=50e6,
-                 
+
                  **kwargs):
 
 
-        
+
         Roach2Provider.__init__(self, **kwargs)
-      
-        
-        
+
+
+
         self.roach2_hostname = roach2_hostname
         self._hf_lo_freq = hf_lo_freq
         self._analysis_bandwidth = analysis_bandwidth
@@ -96,21 +97,22 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
         self.daq_name = daq_name
         self.channel_tag = channel_tag
         self.central_freq = central_freq
+        self.gain = gain
         self.configured=False
         self.calibrated=False
        # self.do_calibrations=do_adc_ogp_calibration
 
 
-  
+
     def configure_roach(self, do_ogp_cal=False, do_adcif_cal=False, boffile='latest-build'):
 #        if do_ogp_cal==True and do_adcif_cal==True:
 #            self.calibrated=True
-        
+
         if self.source_port != None:
-            cfg_a = self.make_interface_config_dictionary(self.source_ip, self.source_port,self.dest_ip, self.dest_port, src_mac=self.source_mac, dest_mac=self.dest_mac) 
-            #cfg_b = self.make_interface_config_dictionary('192.168.10.101',4000,'192.168.10.64',4001,dest_mac='00:60:dd:44:91:e8',tag='b') 
-            
-            self.cfg_list = [cfg_a] 
+            cfg_a = self.make_interface_config_dictionary(self.source_ip, self.source_port,self.dest_ip, self.dest_port, src_mac=self.source_mac, dest_mac=self.dest_mac)
+            #cfg_b = self.make_interface_config_dictionary('192.168.10.101',4000,'192.168.10.64',4001,dest_mac='00:60:dd:44:91:e8',tag='b')
+
+            self.cfg_list = [cfg_a]
             logger.info(type(self.cfg_list))
             ArtooDaq.__init__(self, self.roach2_hostname, boffile=boffile, do_ogp_cal=do_ogp_cal, do_adcif_cal=do_adcif_cal, ifcfg=self.cfg_list)
             self.configured=True
@@ -118,37 +120,40 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
             logger.info('Configuring ROACH2 without specific IP settings')
             ArtooDaq.__init__(self, self.roach2_hostname, boffile=boffile, do_ogp_cal=do_ogp_cal, do_adcif_cal=do_adcif_cal)
             self.configured=True
-           
-        
-            
+
+        self.set_central_frequency(self.central_freq)
+        self.set_gain(self.gain)
+
+
+
         return self.configured
-    
+
     def get_ip_configuration(self):
         logger.info('source ip: {}, source port: {},  \n dest ip: {}, dest port: {}'.format(self.source_ip,self.source_port, self.dest_ip,self.dest_port))
         return 'source ip: {}, source port: {} \n dest ip: {}, dest port: {}'.format(self.source_ip,self.source_port, self.dest_ip,self.dest_port)
-    
+
     def get_calibration_status(self):
         return self.calibrated
-        
+
     def get_configuration_status(self):
         return self.configured
-        
+
     def do_adc_ogp_calibration(self, **kwargs):
-        
+
         logger.info('Calibrating ROACH2, this will take a while.... no news is good news.')
-        
+
         logger.info('Doing adc an ogp calibration')
         ArtooDaq.calibrate_adc_ogp(self, **kwargs)
-        self.calibrated=True    
+        self.calibrated=True
 
-#    def set_ip_configuration(self, 
+#    def set_ip_configuration(self,
 #                 source_ip = None,
 #                 source_port = None,
 #                 dest_ip = None,
 #                 dest_port = None,
 #                 dest_mac = None,
 #                 **kwargs):
-#        
+#
 #        self.source_ip = str(source_ip)
 #        self.source_port = source_port
 #        self.dest_ip = str(dest_ip)
@@ -158,38 +163,38 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
 #        self.configure_roach(**kwargs)
         return self.calibrated
 
-   
+
     def is_running(self):
-        to_return = False        
+        to_return = False
         logger.info('Pinging ROACH2')
         response = os.system("ping -c 1 " + self.roach2_hostname)
         #and then check the response...
         if response == 0:
             logger.info('ROACH2 is switched on')
             to_return = True
-            
+
             if not self.get_configuration_status:
                 logger.info('ROACH2 is not configured')
             if not self.get_calibration_status:
                 logger.info('Roach2 is not calibrated')
-                
-        return to_return
-            
-            
-            
 
-        
-        
-        
+        return to_return
+
+
+
+
+
+
+
     def set_central_frequency(self, cf):
         logger.info('setting central frequency of channel {} to {}'.format(self.channel_tag, cf))
         ArtooDaq.tune_ddc_1st_to_freq(self, cf, tag=self.channel_tag)
-        
+
     def get_ddc_config(self):
         cfg = self.read_ddc_1st_config(tag=self.channel_tag)
         logger.info('Configuration information of 1st stage DDC is {}'.format(self.channel_tag, cfg['digital']))
-        
-        
+
+
     def set_gain(self, gain):
         if gain>-8 and gain <7.93:
             logger.info('setting gain of channel {} to {}'.format(self.channel_tag, gain))
@@ -198,9 +203,9 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
         else:
             logger.error('Only gain values between -8 and 7.93 are allowed')
             return False
-        
+
     def set_fft_shift(self, shift, tag):
         logger.info('setting fft shift of channel {} to {}'.format(tag, shift))
         ArtooDaq.set_fft_shift(self, str(shift), tag=tag)
-        
+
 
