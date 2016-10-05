@@ -208,7 +208,7 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
         logger.info('setting fft shift of channel {} to {}'.format(tag, shift))
         ArtooDaq.set_fft_shift(self, str(shift), tag=tag)
 
-    def grab_pakets(self,n=1,dsoc_desc=None,close_soc=False):
+    def get_pakets(self,n=1,dsoc_desc=None,close_soc=False):
         if dsoc_desc == None:
             dsoc_desc = (str(self.dest_ip),str(self.dest_port))
 
