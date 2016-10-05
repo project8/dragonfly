@@ -208,4 +208,13 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
         logger.info('setting fft shift of channel {} to {}'.format(tag, shift))
         ArtooDaq.set_fft_shift(self, str(shift), tag=tag)
 
+    def grab_pakets(self,n=1,dsoc_desc=None,close_soc=False):
+        logger.info('grabbing packets')
+        pkts=ArtooDaq.grab_packets(self,n,dsoc_desc,close_soc)
+        logger.info(pkts[0].freq_not_time)
+        x = pkts[0].interpret_data()
+        logger.info('first 10 entries are:')
+        logger.info(x[0:10])
+
+
 
