@@ -146,21 +146,6 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
         ArtooDaq.calibrate_adc_ogp(self, **kwargs)
         self.calibrated=True
 
-#    def set_ip_configuration(self,
-#                 source_ip = None,
-#                 source_port = None,
-#                 dest_ip = None,
-#                 dest_port = None,
-#                 dest_mac = None,
-#                 **kwargs):
-#
-#        self.source_ip = str(source_ip)
-#        self.source_port = source_port
-#        self.dest_ip = str(dest_ip)
-#        self.dest_port = dest_port
-#        self.dest_mac = dest_mac
-#        logger.info('New ip configuration set. Reconfiguring the ROACH2...')
-#        self.configure_roach(**kwargs)
         return self.calibrated
 
 
@@ -177,6 +162,9 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
                 logger.info('ROACH2 is not configured')
             if not self.get_calibration_status:
                 logger.info('Roach2 is not calibrated')
+        else:
+            self.configured=False
+            self.calibrated=False
 
         return to_return
 
@@ -208,7 +196,7 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
         logger.info('setting fft shift of channel {} to {}'.format(tag, shift))
         ArtooDaq.set_fft_shift(self, str(shift), tag=tag)
 
-    def get_pakets(self,n=1,dsoc_desc=None,close_soc=False):
+    def get_packets(self,n=1,dsoc_desc=None,close_soc=False):
         if dsoc_desc == None:
             dsoc_desc = (str(self.dest_ip),str(self.dest_port))
 
@@ -218,6 +206,21 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
         x = pkts[0].interpret_data()
         logger.info('first 10 entries are:')
         logger.info(x[0:10])
+        return 0
 
 
-
+#    def set_ip_configuration(self,
+#                 source_ip = None,
+#                 source_port = None,
+#                 dest_ip = None,
+#                 dest_port = None,
+#                 dest_mac = None,
+#                 **kwargs):
+#
+#        self.source_ip = str(source_ip)
+#        self.source_port = source_port
+#        self.dest_ip = str(dest_ip)
+#        self.dest_port = dest_port
+#        self.dest_mac = dest_mac
+#        logger.info('New ip configuration set. Reconfiguring the ROACH2...')
+#        self.configure_roach(**kwargs)
