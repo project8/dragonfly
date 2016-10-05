@@ -137,7 +137,7 @@ class DAQProvider(core.Provider):
                        }
         this_payload['metadata']['run_id'] = self.run_id
         # note, the following line has an empty method/RKS, this shouldn't be the case but is what golang expects
-        req_result = self.provider.cmd(self._metadata_target, '', payload=this_payload)
+        req_result = self.provider.cmd(self._metadata_target, None, payload=this_payload)
         logger.debug('meta sent')
 
     def start_timed_run(self, run_name, run_time):
@@ -178,17 +178,26 @@ class RSAAcquisitionInterface(DAQProvider):
         return result
 
     def start_run(self, run_name):
-        # call ensure_ready_state method in daq_target to check for errors and force reference
-        self.provider.cmd(_daq_target, ensure_ready_state)
+        # try to force external reference
+        the_ref = self.provider.set('rsa_osc_source', 'EXT')['value_raw']
+        if the_ref != 'EXT':
+            raise core.exceptions.DriplineHardwareError('RSA external ref found to be <{}> (!="EXT")'.format(the_ref))
+
+        # counting the number of errors in the RSA system queue and aborting the data taking if Nerrors>0
+        Nerrors = self.provider.get('rsa_system_error_count')['value_raw']
+        if Nerrors != '0':
+            raise core.exceptions.DriplineHardwareError('RSA system has {} error(s) in the queue: check them with <dragonfly get rsa_system_error_queue -b myrna.p8>'.format(Nerrors))
 
         super(RSAAcquisitionInterface, self).start_run(run_name)
 
         # call start_run method in daq_target
-        self.provider.cmd(_daq_target, start_run, [directory, filename])
+        directory = "\\".join([self.data_directory_path, '{:09d}'.format(self.run_id)])
+        filename = "{}{:09d}".format(self.filename_prefix, self.run_id)
+        self.provider.cmd(self._daq_target, 'start_run', [directory, filename])
 
     def end_run(self):
         # call end_run method in daq_target
-        self.provider.cmd(_daq_target, end_run)
+        self.provider.cmd(self._daq_target, 'end_run')
         # call global DAQ end_run method
         super(RSAAcquisitionInterface, self).end_run()
 

@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 
 __all__.append('ESR_Measurement')
-#@fancy_doc
+@core.fancy_doc
 class ESR_Measurement(core.Endpoint):
     """
     Operate the ESR system to measure the B-field off-axis.
@@ -72,7 +72,7 @@ class ESR_Measurement(core.Endpoint):
         self._bfield_factor = 4.*numpy.pi / (self._esr_g_factor*self._electron_cyclotron_frequency*self._freq_rescale) # frequency to field conversion factor
         self._sweep_voltage = 10.0 # voltage range for "SWEEP OUT" from ardbeg
         # Output storage
-        self.data_dict = {} # reset in run_scan 
+        self.data_dict = {} # reset in run_scan
         self.root_dict = {} # reset in run_scan
         self.settings = {} # reset in capture_settings
         self._root_setup()
@@ -445,7 +445,7 @@ class ESR_Measurement(core.Endpoint):
                            };");
 
     def pull_lockin_data(self, key):
-        result = self.provider.cmd(target="lockin_interface", method_name="grab_data", value=key, timeout=20)
+        result = self.provider.cmd(target="lockin_interface", method_name="grab_data", value=[key], timeout=20)
         result = result['values'][0]
         return numpy.array(result.replace('\x00','').split(';'), dtype=float)
 
