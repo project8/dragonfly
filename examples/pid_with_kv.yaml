@@ -3,7 +3,8 @@ broker: myrna.p8
 module: PidController
 input_channel: waffles
 output_channel: waffles
-input_payload_field: value_raw
+check_channel: waffles
+payload_field: value_raw
 target_value: 6.7
 proportional: .8
 integral: 0
@@ -12,3 +13,4 @@ maximum_out: 10
 delta_out_min: 0.01
 minimum_elapsed_time: 30
 enable_offset_term: true
+tolerance: 0.01

@@ -6,6 +6,7 @@ from __future__ import absolute_import
 
 import types
 import uuid
+import ast
 
 from dripline.core import message, constants, Service, Message, exceptions
 
@@ -83,7 +84,13 @@ class GenericAgent(object):
             print('{color}{}(ret:{}): [{}]-> {}\033[0m'.format(print_prefix, a_reply.retcode, a_reply.sender_info['service_name'], a_reply.payload, color=color))
             if a_reply.return_msg and not a_reply.retcode == 0:
                 logger.log(25, 'return message: {}'.format(a_reply.return_msg))
+        if args.pretty_print:
+            if 'value_cal' not in reply[0].payload:
+                logger.warning('no value cal present, unable to pretty-print')
+            else:
+                print('\n{}\n'.format(reply[0].payload['value_cal']))
         return reply[0].payload
+
     
     @staticmethod
     def cast_arg(value):
@@ -92,9 +99,8 @@ class GenericAgent(object):
         '''
         temp_val = value
         try:
-            temp_val = float(value)
-            temp_val = int(value)
-        except ValueError:
+            temp_val = ast.literal_eval(value)
+        except (ValueError,SyntaxError):
             if isinstance(temp_val, types.StringType):
                 try:
                     if value.lower() == 'true':
@@ -121,7 +127,10 @@ class GenericAgent(object):
                             type=str,
                             help='string to provide in the RequestMessage.lockout_key, for locking endpoints or using locked endpoints',
                            )
-
+        parser.add_argument('--pretty-print',
+                            action='store_true',
+                            help='attempt to print value_cal in a manner easily read by humans (and pasted into elogs)',
+                           )
 
 __all__.append("Get")
 class Get(GenericAgent):
@@ -129,22 +138,6 @@ class Get(GenericAgent):
     return the value of an endpoint or a property of an endpoint if specified
     '''
     name = 'get'
-
-    def __call__(self, args):
-        result = self._call(args)
-        these_args = args
-        if args.pretty_print:
-            if not 'value_cal' in result:
-                logger.warning('no value cal present, unable to pretty-print')
-            else:
-                print('\n{}\n'.format(result['value_cal']))
-
-    def update_parser(self, parser):
-        super(Get, self).update_parser(parser)
-        parser.add_argument('--pretty-print',
-                            action='store_true',
-                            help='attempt to print value_cal in a manor easily read by humans (and pasted into elogs)',
-                           )
 
 
 __all__.append("Set")
@@ -169,6 +162,7 @@ class Cmd(GenericAgent):
     have an endpoint execute an internal function
     '''
     name = 'cmd'
+
 
 __all__.append("Send")
 class Send(GenericAgent):
