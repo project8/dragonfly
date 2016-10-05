@@ -3,6 +3,7 @@ broker: myrna.p8
 module: PidController
 input_channel: waffles
 output_channel: waffles
+check_channel: waffles
 payload_field: value_raw
 target_value: 6.7
 proportional: .8

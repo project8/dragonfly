@@ -35,6 +35,7 @@ class PidController(Gogol):
     def __init__(self,
                  input_channel,
                  output_channel,
+                 check_channel,
                  payload_field='value_cal',
                  tolerance = 0.01,
                  target_value=110,
@@ -47,6 +48,7 @@ class PidController(Gogol):
         '''
         input_channel (str): name of the logging sensor to use as input to PID (this will override any provided values for keys)
         output_channel (str): name of the endpoint to be set() based on PID
+        check_channel (str): name of the endpoint to be checked() after a set()
         input_payload_field (str): name of the field in the payload when the sensor logs (default is 'value_cal' and 'value_raw' is the only other expected value)
         target_value (float): numerical value to which the loop will try to lock the input_channel
         proportional (float): coefficient for the P term in the PID equation
@@ -59,7 +61,8 @@ class PidController(Gogol):
         kwargs.update({'keys':['sensor_value.'+input_channel]})
         Gogol.__init__(self, **kwargs)
 
-        self._current_channel = output_channel
+        self._set_channel = output_channel
+        self._check_channel = check_channel
         self.payload_field = payload_field
         self.tolerance = tolerance
 
@@ -85,7 +88,7 @@ class PidController(Gogol):
         request = dripline.core.RequestMessage(msgop=dripline.core.OP_GET,
                                                payload={}
                                               )
-        reply = self.send_request(target=self._current_channel, request=request)
+        reply = self.send_request(target=self._check_channel, request=request)
         value = reply.payload[self.payload_field]
         logger.info('old current = {}'.format(value))
 
@@ -114,7 +117,7 @@ class PidController(Gogol):
                                          payload={'values':[value]},
                                         )
         logger.debug('request will be: {}'.format(m))
-        reply = self.send_request(self._current_channel, m)
+        reply = self.send_request(self._set_channel, m)
         logger.info('set response was: {}'.format(reply))
 
     def process_new_value(self, value, timestamp):
