@@ -198,7 +198,7 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
 
     def get_packets(self,n=1,dsoc_desc=None,close_soc=False):
         if dsoc_desc == None:
-            dsoc_desc = (str(self.dest_ip),str(self.dest_port))
+            dsoc_desc = (str(self.dest_ip),self.dest_port)
 
         logger.info('grabbing packets from {}'.format(dsoc_desc))
         pkts=ArtooDaq.grab_packets(self,n,dsoc_desc,close_soc)
