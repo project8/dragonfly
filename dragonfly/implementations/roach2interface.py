@@ -209,7 +209,10 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
         ArtooDaq.set_fft_shift(self, str(shift), tag=tag)
 
     def grab_pakets(self,n=1,dsoc_desc=None,close_soc=False):
-        logger.info('grabbing packets')
+        if dsoc_desc == None:
+            dsoc_desc = (str(self.dest_ip),str(self.dest_port))
+
+        logger.info('grabbing packets from {}'.format(dsoc_desc))
         pkts=ArtooDaq.grab_packets(self,n,dsoc_desc,close_soc)
         logger.info(pkts[0].freq_not_time)
         x = pkts[0].interpret_data()
