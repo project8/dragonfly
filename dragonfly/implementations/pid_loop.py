@@ -25,7 +25,8 @@ class PidController(Gogol):
     exchange (using the standard sensor_value.<name> routing key format). Usually
     this would be a temperature sensor, but it could be anything. Similarly, the
     output is anything that can be set to a float value, though a current output
-    is probably most common.
+    is probably most common. After setting the new value of current, this value is checked
+    to be within a range around the desired value.
 
     **NOTE**
     The "exchange" and "keys" arguments list below come from the Service class but
