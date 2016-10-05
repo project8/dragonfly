@@ -93,7 +93,14 @@ class PidController(Gogol):
         value = reply.payload[self.payload_field]
         logger.info('old current = {}'.format(value))
 
-        return float(value.encode('utf-8'))
+        if type(value) is unicode:
+            logger.debug('result in unicode')
+            value = value.encode('utf-8')
+        try:
+            value = float(value)
+        except:
+            raise DriplineValueError('value get ({}) is not floatable'.format(value))
+        return value
 
     def this_consume(self, message, basic_deliver=None):
         logger.info('comsuming message')
