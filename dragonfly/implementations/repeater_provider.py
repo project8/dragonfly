@@ -55,10 +55,3 @@ class RepeaterProvider(Provider):
         payload = {'values':[value]}
         request = message.RequestMessage(msgop=constants.OP_SET, payload=payload)
         return self.send_request(self._repeat_target, request)
-
-    def on_config(self, attribute, value=None):
-        payload = {'values': [attribute]}
-        if value is not None:
-            payload['values'].append(value)
-        request = message.RequestMessage(msgop=constants.OP_CONFIG, payload=payload)
-        return self.send_request(self._repeat_target, request)

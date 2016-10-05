@@ -71,15 +71,13 @@ class MultiDo(dripline.core.Endpoint):
         '''
         attempt to get a single endpoint and return a tuple of (desired_value, string_rep)
         '''
-        ret_val = None
-        ret_rep = ''
-        a_result = self.service.send_request(request=dripline.core.RequestMessage(msgop=dripline.core.OP_GET), target=endpoint_name)
-        if a_result.retcode != 0:
-            ret_val = None
-            ret_rep = '{} -> returned error <{}>:{}'.format(endpoint_name, a_result.retcode, a_result.return_msg)
-        else:
-            ret_val = a_result.payload[details['payload_field']]
+        try:
+            a_result = self.provider.get(target=endpoint_name)
+            ret_val = a_result[details['payload_field']]
             ret_rep = details['formatter'].format(ret_val)
+        except dripline.core.exceptions.DriplineException as err:
+            ret_val = None
+            ret_rep = '{} -> returned error <{}>:{}'.format(endpoint_name, err.retcode, a_result.return_msg)
         return ret_val,ret_rep
 
     def on_set(self, value):
@@ -91,10 +89,7 @@ class MultiDo(dripline.core.Endpoint):
             else:
                 value_to_set = value
             logger.info('setting <{}>'.format(a_target))
-            result = self._single_set(a_target, value_to_set)
-            if result.retcode !=0:
-                logger.warning('unable to set <{}>'.format(a_target))
-                raise dripline.core.exception_map[result.retcode](result.return_msg)
+            result = self.provider.set(a_target, value_to_set)
             # checking the value of the endpoint
             if details['no_check']==True:
                 logger.info('no check after set required: skipping!')
@@ -215,13 +210,3 @@ class MultiDo(dripline.core.Endpoint):
             logger.info('{} set to {}'.format(a_target,value_get))
 
         return 'set and check successful'
-
-    def _single_set(self, endpoint_name, value):
-        '''
-        attempt to set a single endpoint
-        '''
-        ret_val = None
-        ret_rep = ''
-        a_result = self.service.send_request(request=dripline.core.RequestMessage(msgop=dripline.core.OP_SET, payload={'values':[value]}), target=endpoint_name)
-
-        return a_result

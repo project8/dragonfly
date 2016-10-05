@@ -41,19 +41,7 @@ class MultiSet(dripline.core.Endpoint):
             else:
                 value_to_set = value
 
-            result = self._single_set(a_target, value_to_set)
-            if result.retcode !=0:
-                logger.warning('unable to set <{}>'.format(a_target))
-                raise dripline.core.exception_map[result.retcode](result.return_msg)
+            result = self.provider.set(a_target, value_to_set)
 
         return 'done'
 
-    def _single_set(self, endpoint_name, value):
-        '''
-        attempt to set a single endpoint
-        '''
-        ret_val = None
-        ret_rep = ''
-        a_result = self.service.send_request(request=dripline.core.RequestMessage(msgop=dripline.core.OP_SET, payload={'values':[value]}), target=endpoint_name)
-
-        return a_result
