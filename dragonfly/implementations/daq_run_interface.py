@@ -173,9 +173,9 @@ class RSAAcquisitionInterface(DAQProvider):
 
     @property
     def is_running(self):
-        result = self.provider.get("rsa_trigger_status")['value_cal']
-        logger.info('RSA trigger status is <{}>'.format(result))
-        return result
+        result = self.provider.get("rsa_trigger_status")
+        logger.info('RSA trigger status is <{}>'.format(result['value_cal']))
+        return bool(int(result['value_raw']))
 
     def start_run(self, run_name):
         # try to force external reference
