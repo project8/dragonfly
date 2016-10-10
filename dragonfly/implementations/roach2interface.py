@@ -125,7 +125,6 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
         self.set_gain(self.gain)
 
 
-
         return self.configured
 
     def get_ip_configuration(self):

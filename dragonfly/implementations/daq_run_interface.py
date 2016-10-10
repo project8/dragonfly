@@ -78,7 +78,7 @@ class DAQProvider(core.Provider):
         self._run_name = None
         self.run_id = None
         self._acquisition_count = None
-        
+
         print('no errors from DAQ Provider')
 
     @property
@@ -86,7 +86,7 @@ class DAQProvider(core.Provider):
         return self._run_name
     @run_name.setter
     def run_name(self, value):
-        
+
         self._run_name = value
         self._acquisition_count = 0
         if self._debug_without_db:
@@ -117,11 +117,11 @@ class DAQProvider(core.Provider):
     def start_run(self, run_name):
         '''
         '''
-        
+
         self.run_name = run_name
         self._run_meta = {'DAQ': self.daq_name,
                          }
-        
+
         self._do_prerun_gets()
         if not self._debug_without_meta_broadcast:
             self._send_metadata()
@@ -489,74 +489,70 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
     '''
     def __init__(self,
                  psyllid_queue='psyllid',
-                 roach2_queue = None,
+                 roach2_queue = 'roach2_interface',
                  psyllid_preset = 'str-1ch',
                  udp_receiver_port = 4001,
-                 lf_lo_endpoint_name=None,
                  **kwargs
                 ):
-        
+
         DAQProvider.__init__(self, **kwargs)
         core.Spime.__init__(self, **kwargs)
         self.alert_routing_key = 'daq_requests'
-        
+
         self.psyllid_queue = psyllid_queue
         self.roach2_queue = roach2_queue
-        if lf_lo_endpoint_name is None:
-            raise core.exceptions.DriplineValueError('the Psyllid interface requires a "lf_lo_endpoint_name"')
-        self._lf_lo_endpoint_name = lf_lo_endpoint_name
-       
+
+
         self.status = None
         self.status_value = None
         self.psyllid_preset = psyllid_preset
         self.udp_receiver_port = udp_receiver_port
-        
-        
 
-       
+
+
+
     def _finish_configure(self):
-        logger.debug('Configuring Psyllid') 
+        logger.debug('Configuring Psyllid')
         if self.is_running():
-            if self.status_value == 4:                      
+            if self.status_value == 4:
                 self.deactivate()
-                self.is_running()         
-                    
+                self.is_running()
+
             elif self.status_value!=0:
                 raise core.DriplineInternalError('Status of psyllid must be "initialized", status is {}'.format(self.status))
-             
-            #set daq presets      
-            self.configure(self.psyllid_preset)            
-                
-            #set udp receiver port    
+
+            #set daq presets
+            self.configure(self.psyllid_preset)
+
+            #set udp receiver port
             self.set_udp_port(self.udp_receiver_port)
-            
+
             #activate
             self.activate()
             return True
-            
+
         else:
-            logger.error('Could not configure Psyllid') 
+            logger.error('Could not configure Psyllid')
             return False
-        
-                    
-    
+
+
+
     def is_running(self):
         logger.info('Checking Psyllid status')
         query_msg = core.RequestMessage(msgop=core.OP_GET)
-        
+
         try:
             result = self.portal.send_request(request=query_msg, target=self.psyllid_queue+'.daq-status', timeout=120)
-            to_return = True
-        
+
             if result.retcode >= 100:
                 logger.warning('retcode indicates an error')
-                to_return = False
-        
+                return False
+
             self.status = result.payload['server']['status']
             self.status_value = result.payload['server']['status-value']
             logger.info('Status is {}'.format(self.status))
             return True
-            
+
         except:
             logger.warning('Psyllid is not running or sth. else is wrong')
             self.status=None
@@ -565,22 +561,22 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
             return False
 
 
-        
-    
 
-    
-                      
 
-            
-    # set and get   
-            
+
+
+
+
+
+    # set and get
+
     def set_udp_port(self, new_port):
         self.udp_receiver_port = new_port
         logger.info('Setting udp receiver port to {}'.format(new_port))
         result = self.portal.send_request(request=core.RequestMessage(msgop=core.OP_SET, payload={'values':[new_port]}), target=self.psyllid_queue+'.node.udpr.port')
         if result.retcode >= 100:
-            logger.warning('retcode indicates an error')   
-                
+            logger.warning('retcode indicates an error')
+
     def get_udp_port(self):
         result = self.portal.send_request(request=core.RequestMessage(msgop=core.OP_GET), target=self.psyllid_queue+'.node.udpr.port')
         if result.retcode >= 100:
@@ -588,87 +584,87 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
         logger.info('udp receiver port is: {}'.format(result.payload))
         return self.udp_receiver_port
 
-        
+
     def set_path(self, filepath):
-                
+
         result = self.portal.send_request(request=core.RequestMessage(msgop=core.OP_SET, payload={'values':[filepath]}), target=self.psyllid_queue+'.filename')
-        
+
         if result.retcode >= 100:
             logger.warning('retcode indicates an error')
         logger.info('Egg file path is {}'.format(filepath))
-        
-        
+
+
     def get_path(self):
         result = self.portal.send_request(request=core.RequestMessage(msgop=core.OP_GET), target=self.psyllid_queue+'.filename')
         if result.retcode >= 100:
             logger.warning('retcode indicates an error')
         logger.info('Egg filename is {} path is {}'.format(result.payload['values'], self.egg_file_location))
         return result.payload
-        
+
 #    def get_node(self):
 #        result = self.portal.send_request(request=core.RequestMessage(msgop=core.OP_GET, target=self.psyllid_queue+'.node'))
 #        if result.retcode >= 100:
 #            logger.warning('retcode indicates an error')
 #        logger.info('node is {}'.format(result))
-    
+
 #    def set_node(self, node):
 #        result = self.portal.send_request(request=core.RequestMessage(msgop=core.OP_SET, payload={'values':[node]}), target=self.psyllid_queue+'.node'))
 #        if result.retcode >= 100:
 #            logger.warning('retcode indicates an error')
 #        logger.info('node is {}'.format(result))
-    
+
     def set_description(self, description):
         result = self.portal.send_request(request=core.RequestMessage(msgop=core.OP_SET, payload={'values':[description]}), target=self.psyllid_queue+'.description')
         if result.retcode >= 100:
             logger.warning('retcode indicates an error')
         logger.info('Description set to:'.format(description))
-        
-    def get_description(self):        
+
+    def get_description(self):
         result = self.portal.send_request(request=core.RequestMessage(msgop=core.OP_GET), target=self.psyllid_queue+'.description')
         if result.retcode >= 100:
             logger.warning('retcode indicates an error')
         logger.info('Description is {}:'.format(result.payload))
-        
+
     def set_duration(self, duration):
         self.acquisition_time(duration)
         result = self.portal.send_request(request=core.RequestMessage(msgop=core.OP_SET, payload={'values':[duration]}), target=self.psyllid_queue+'.duration')
         if result.retcode >= 100:
             logger.warning('retcode indicates an error')
         logger.info('Duration is {}'.format(result.payload))
-        
+
     def get_duration(self):
         result = self.portal.send_request(request=core.RequestMessage(msgop=core.OP_GET), target=self.psyllid_queue+'.duration')
         if result.retcode >= 100:
             logger.warning('retcode indicates an error')
         logger.info('Duration is {}'.format(result.payload))
         return self.acquisition_time
-        
-          
-        
 
 
-    
+
+
+
+
     @property
     def acquisition_time(self):
         return self.log_interval
     @acquisition_time.setter
     def acquisition_time(self, value):
         self.log_interval = value
-        
-    #other methods    
-        
-    def configure(self,config=None):        
+
+    #other methods
+
+    def configure(self,config=None):
         if config == None:
             config = self.psyllid_preset
         logger.info('Configuring Psyllid with {}'.format(config))
         result = self.portal.send_request(request=core.RequestMessage(msgop=core.OP_SET, payload={'values':['str-1ch']}), target=self.psyllid_queue+'.daq-preset')
-        
+
         if result.retcode >= 100:
             logger.warning('retcode indicates an error')
-            
-    def activate(self):            
+
+    def activate(self):
         if self.status_value == 6:
-            self.is_running()            
+            self.is_running()
         elif self.status_value == 0:
             logger.info('Activating Psyllid')
             request = core.RequestMessage(msgop=core.OP_CMD)
@@ -679,14 +675,14 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
             time.sleep(1)
             self.is_running()
             return True
-                        
+
         else:
             logger.warning('Could not activate Psyllid')
             return False
-              
-             
-        
-    def deactivate(self):            
+
+
+
+    def deactivate(self):
         if self.status != 0:
             logger.info('Deactivating Psyllid')
             request = core.RequestMessage(msgop=core.OP_CMD)
@@ -694,23 +690,23 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
             if result.retcode >= 100:
                 logger.warning('retcode indicates an error')
             time.sleep(1)
-            self.is_running()  
+            self.is_running()
             return True
-            
+
         else:
             logger.info('Could not deactivate Psyllid')
             return False
-            
-            
+
+
     def connect2roach2(self):
 
         result = self.check_on_roach2()
 
         if result is True:
-                
+
             if self.roach2configured is False:
                 self.start_roach2()
-     
+
             return True
 
         elif result==False:
@@ -725,7 +721,7 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
 
     def check_on_roach2(self):
         self.roach2_queue='roach2_interface'
-        
+
         #call is_running
         request = core.RequestMessage(msgop=core.OP_CMD)
         result = self.portal.send_request(target=self.roach2_queue+'.is_running', request=request)
@@ -740,7 +736,7 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
         if result.retcode >= 100:
             logger.warning('retcode indicates an error')
         self.roach2calibrated=result.payload['values'][0]
- 
+
         request = core.RequestMessage(msgop=core.OP_CMD)
         result = self.portal.send_request(target=self.roach2_queue+'.get_configuration_status', request=request)
         if result.retcode >= 100:
@@ -754,22 +750,22 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
 
 
 
-    def start_roach2(self):
-        request = core.RequestMessage(msgop=core.OP_CMD)
-        result = self.portal.send_request(target=self.roach2_queue+'.configure_roach', request=request)
-        if result.retcode >= 100:
-            logger.warning('retcode indicates an error')
-        logger.info('The ROACH2 has been programmed succesfully: {}'.format(result.payload['values']))
-        return result.payload['values'][0]
-            
-    def do_roach2_calibrations(self):
-        request = core.RequestMessage(msgop=core.OP_CMD)
-        result = self.portal.send_request(target=self.roach2_queue+'.do_adc_ogp_calibration', request=request)
-        if result.retcode >= 100:
-            logger.warning('retcode indicates an error')
-        logger.info('Doing adc and ogp calibration')
-        self.roach2calibrated=result.payload['values'][0]
-        return result.payload['values'][0]
+#    def start_roach2(self):
+#        request = core.RequestMessage(msgop=core.OP_CMD)
+#        result = self.portal.send_request(target=self.roach2_queue+'.configure_roach', request=request)
+#        if result.retcode >= 100:
+#            logger.warning('retcode indicates an error')
+#        logger.info('The ROACH2 has been programmed succesfully: {}'.format(result.payload['values']))
+#        return result.payload['values'][0]
+
+#    def do_roach2_calibrations(self):
+#        request = core.RequestMessage(msgop=core.OP_CMD)
+#        result = self.portal.send_request(target=self.roach2_queue+'.do_adc_ogp_calibration', request=request)
+#        if result.retcode >= 100:
+#            logger.warning('retcode indicates an error')
+#        logger.info('Doing adc and ogp calibration')
+#        self.roach2calibrated=result.payload['values'][0]
+#        return result.payload['values'][0]
 
 
 
@@ -777,15 +773,15 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
 
     def start_run(self, run_name):
         logger.info('Starting run. Psyllid status is {}'.format(self.status))
-        
+
         #checking psyllid
         if self.status_value == None:
             logger.warning('Psyllid was not configured')
-            
+
             if not self._finish_configure():
                 logger.error('Problem could not be solved by (re-)configuring Psyllid')
                 return 'Psyllid is not running'
-                
+
         #checking roach
         if self.roach2_queue!=None:
             result=self.connect2roach2()
@@ -795,9 +791,9 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
             elif self.roach2calibrated == False:
                 logger.warning('adc and ogp calibration has not been performed yet.')
 
-                
-        logger.info('runname is {}'.format(run_name))        
-        
+
+        logger.info('runname is {}'.format(run_name))
+
         result = self.portal.send_request(request=core.RequestMessage(msgop=core.OP_SET, payload={'values':[self.acquisition_time*1000.]}), target=self.psyllid_queue+'.duration')
         if result.retcode >= 100:
             logger.warning('retcode indicates an error')
@@ -810,6 +806,29 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
     def start_timed_run(self, run_name, run_time):
         '''
         '''
+        logger.info('Starting run. Psyllid status is {}'.format(self.status))
+
+        #checking psyllid
+        if self.status_value == None:
+            logger.warning('Psyllid was not configured')
+
+            if not self._finish_configure():
+                logger.error('Problem could not be solved by (re-)configuring Psyllid')
+                return 'Psyllid is not running'
+
+        #checking roach
+        if self.roach2_queue!=None:
+            result=self.connect2roach2()
+            if result == False:
+                logger.error('Psyllid and the ROACH2 are not connected')
+                return 'The ROACH2 is not running'
+            elif self.roach2calibrated == False:
+                logger.warning('adc and ogp calibration has not been performed yet.')
+
+
+        logger.info('runname is {}'.format(run_name))
+
+
         super(PsyllidAcquisitionInterface, self).start_run(run_name)
         num_acquisitions = int(run_time // self.acquisition_time)
         last_run_time = run_time % self.acquisition_time
@@ -826,9 +845,9 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
 
 
 
-    def determine_RF_ROI(self):
-        logger.info('trying to determine roi')
-        logger.warning('Psyllid interface does not support proper determination of RF ROI yet. Probably more a roach thing')
+#    def determine_RF_ROI(self):
+#        logger.info('trying to determine roi')
+#        logger.warning('Psyllid interface does not support proper determination of RF ROI yet. Probably more a roach thing')
 
     def on_get(self):
         '''
@@ -844,7 +863,7 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
                                         acqN=self._acquisition_count
                                                   )
         self.set_path(filepath)
-        
+
         request = core.RequestMessage(msgop=core.OP_CMD)
         result = self.portal.send_request(self.psyllid_queue+'.start-run',
                                           request=request,
@@ -855,7 +874,7 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
                 msg = result.payload['ret_msg']
             logger.warning('got an error from psyllid: {}'.format(msg))
             self.end_run()
-                        
+
         else:
             self._acquisition_count += 1
             return "acquisition of [{}] requested".format(filepath)
@@ -875,7 +894,7 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
         self.activate()
         if not result.retcode == 0:
             logger.warning('error restarting queue:\n{}'.format(result.return_msg))
-        
+
         self._acquisition_count = 0
 
 
@@ -884,9 +903,9 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
         request = core.RequestMessage(msgop=core.OP_CMD)
         result = self.portal.send_request(target=self.psyllid_queue+'.stop-all', request=request)
         logger.info('all stopped')
-        
+
     def quit_psyllid(self):
         request = core.RequestMessage(msgop=core.OP_CMD)
         result = self.portal.send_request(target=self.psyllid_queue+'.quit-psyllid', request=request)
         logger.info('psyllid quit')
-        
+

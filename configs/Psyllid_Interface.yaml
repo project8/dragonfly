@@ -15,10 +15,8 @@ endpoints:
     # daq_run_interface params
     run_table_endpoint: run_table
     filename_prefix: 'rid'
-    directory_path: "/fs01/ma08/homes/claessen/test"
-    #meta_data_directory_path: "/data/hot"
-    #metadata_target: "/home/cclaesse/test_files/"
-    #metadata_gets:
+    directory_path: "/home/cclaesse/psyllid_test_data"
+
     metadata_state_target: run_metadata
     
     daq_queue : 'psyllid'
@@ -27,7 +25,7 @@ endpoints:
     udp_receiver_port : 23530
     
     
-    lf_lo_endpoint_name: lf_lo_lower_cw_freq
+    #lf_lo_endpoint_name: lf_lo_lower_cw_freq
     log_interval: 1
     max_nb_files: 10
 #setup_calls:
