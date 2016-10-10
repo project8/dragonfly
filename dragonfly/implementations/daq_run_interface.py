@@ -48,6 +48,7 @@ class DAQProvider(core.Provider):
         metadata_target (str): target to send metadata to
         debug_mode_without_database (bool): if True, forces a run_id of 0, rather that making a query (should only be True as part of debugging)
         debug_mode_without_metadata_broadcast (bool): if True, skips the step of sending metadata to the metadata receiver (should only be True as part of debugging)
+        debug_more_without_snapshot_broadcast (bool): if True, skips the step of sending snapshot data to the metadata receiver (should only be True as part of debugging)
         '''
         core.Provider.__init__(self, **kwargs)
 
