@@ -106,10 +106,7 @@ class SQLSnapshot(SQLTable):
             ept_timestamp_results = ', '.join(ept_timestamp_list)
             val_cal_list.append('{} -> {}'.format(endpoint,ept_timestamp_results))
         
-        # JSON formatting
-        val_raw_json = json.dumps(val_raw_dict,indent=4,sort_keys=True,separators=(',',':'))
-
-        return {'value_raw': val_raw_json, 'value_cal': '\n'.join(val_cal_list)}
+        return {'value_raw': val_raw_dict, 'value_cal': '\n'.join(val_cal_list)}
 
 
     def get_latest(self, timestamp, endpoint_list):
