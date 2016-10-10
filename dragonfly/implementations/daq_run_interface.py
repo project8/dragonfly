@@ -162,7 +162,7 @@ class DAQProvider(core.Provider):
         '''
         '''
         logger.info('snapshot of the slow control database should broadcast')
-        filename = '{directory}/{runN:09d}/{prefix}{runN:09d}_snapshot.json'.format(
+        filename = '{directory}/{runN:09d}/{prefix}{runN:09d}_latest_snapshot.json'.format(
                                                         directory=self.meta_data_directory_path,
                                                         prefix=self.filename_prefix,
                                                         runN=self.run_id,
