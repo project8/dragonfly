@@ -491,7 +491,8 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
                  psyllid_queue='psyllid',
                  roach2_queue = 'roach2_interface',
                  psyllid_preset = 'str-1ch',
-                 udp_receiver_port = 4001,
+                 udp_receiver_port = 23530,
+                 timeout = 10,
                  **kwargs
                 ):
 
@@ -501,6 +502,7 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
 
         self.psyllid_queue = psyllid_queue
         self.roach2_queue = roach2_queue
+        self.timeout = timeout
 
 
         self.status = None
@@ -542,7 +544,7 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
         query_msg = core.RequestMessage(msgop=core.OP_GET)
 
         try:
-            result = self.portal.send_request(request=query_msg, target=self.psyllid_queue+'.daq-status', timeout=120)
+            result = self.portal.send_request(request=query_msg, target=self.psyllid_queue+'.daq-status', timeout=self.timeout)
 
             if result.retcode >= 100:
                 logger.warning('retcode indicates an error')
