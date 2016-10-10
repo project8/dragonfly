@@ -43,7 +43,7 @@ class DAQProvider(core.Provider):
         directory_path (str): absolute path to "hot" storage (as seen from the DAQ software, not a network path)
         meta_data_directory_path (str): path where the metadata file should be written
         filename_prefix (str): prefix for unique filenames
-        snapshot_target_items (dict): keys are SQLSnapshot table endpoints, values are lists of items (str) to take snapshot of 
+        snapshot_target_items (dict): keys are SQLSnapshot table endpoint names, values are lists of items (str) to take snapshot of 
         metadata_state_target (str): multiget endpoint to Get() for system state
         metadata_target (str): target to send metadata to
         debug_mode_without_database (bool): if True, forces a run_id of 0, rather that making a query (should only be True as part of debugging)
@@ -162,7 +162,7 @@ class DAQProvider(core.Provider):
                                                         acqN=self._acquisition_count
                                                                                )
         logger.debug('should request metadatafile: {}'.format(filename))
-        this_payload = {'metadata': self._run_meta,
+        this_payload = {'contents': self._run_meta,
                         'filename': filename,
                        }
         this_payload['metadata']['run_id'] = self.run_id
@@ -183,7 +183,7 @@ class DAQProvider(core.Provider):
                                                             acqN=self._acquisition_count
                                                                                     )
             logger.debug('should request snapshot file: {}'.format(filename))
-            this_payload = {'snap_data': self._prerun_snapshot,
+            this_payload = {'contents': self._prerun_snapshot,
                             'filename': filename}
             req_result = self.provider.cmd(self._metadata_target, None, payload=this_payload)
             logger.debug('prerun snapshot sent')
@@ -196,7 +196,7 @@ class DAQProvider(core.Provider):
                                                             acqN=self._acquisition_count
                                                                                     )
             logger.debug('should request snapshot file: {}'.format(filename))
-            this_payload = {'snap_data': self._postrun_snapshot,
+            this_payload = {'contents': self._postrun_snapshot,
                             'filename': filename}
             req_result = self.provider.cmd(self._metadata_target, None, payload=this_payload)
             logger.debug('postrun snapshot sent')
