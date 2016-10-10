@@ -30,7 +30,7 @@ class DAQProvider(core.Provider):
                  data_directory_path=None,
                  meta_data_directory_path=None,
                  filename_prefix='',
-                 snapshot_table_targets=None,
+                 snapshot_target_items=None,
                  metadata_state_target='',
                  metadata_target='',
                  debug_mode_without_database=False,
@@ -43,7 +43,7 @@ class DAQProvider(core.Provider):
         directory_path (str): absolute path to "hot" storage (as seen from the DAQ software, not a network path)
         meta_data_directory_path (str): path where the metadata file should be written
         filename_prefix (str): prefix for unique filenames
-        snapshot_target_itmes (dict): keys are SQLSnapshot table endpoints, values are lists of items (str) to take snapshot of 
+        snapshot_target_items (dict): keys are SQLSnapshot table endpoints, values are lists of items (str) to take snapshot of 
         metadata_state_target (str): multiget endpoint to Get() for system state
         metadata_target (str): target to send metadata to
         debug_mode_without_database (bool): if True, forces a run_id of 0, rather that making a query (should only be True as part of debugging)
