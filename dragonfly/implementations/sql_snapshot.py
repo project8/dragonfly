@@ -162,8 +162,8 @@ class SQLSnapshot(SQLTable):
                 logger.error('no records found before "{}" for endpoint "{}" in database'.format(timestamp,name))
                 continue
             else:
-                val_raw_dict[name] = {'timestamp':query_return[0]['timestamp'].strftime(constants.TIME_FORMAT),
-                                      'value_cal':query_return[0]['value_cal']}
+                val_raw_dict[name] = {'timestamp' : query_return[0]['timestamp'].strftime(constants.TIME_FORMAT),
+                                      'value_cal' : query_return[0]['value_cal']}
                 val_cal_list.append('{} -> {} {{{}}}'.format(name,val_raw_dict[name]['value_cal'],val_raw_dict[name]['timestamp']))
                               
         return {'value_raw': val_raw_dict, 'value_cal': '\n'.join(val_cal_list)}
