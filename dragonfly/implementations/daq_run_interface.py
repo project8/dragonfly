@@ -6,10 +6,13 @@ from __future__ import absolute_import
 # standard imports
 import logging
 import uuid
+import types
 
 # internal imports
 from dripline import core
 from .ethernet_provider import EthernetProvider
+
+import datetime
 
 __all__ = []
 
@@ -27,10 +30,12 @@ class DAQProvider(core.Provider):
                  data_directory_path=None,
                  meta_data_directory_path=None,
                  filename_prefix='',
+                 snapshot_table_targets=None,
                  metadata_state_target='',
                  metadata_target='',
                  debug_mode_without_database=False,
                  debug_mode_without_metadata_broadcast=False,
+                 debug_mode_without_snapshot_broadcast=False,
                  **kwargs):
         '''
         daq_name (str): name of the DAQ (used with the run table and in metadata)
@@ -38,6 +43,7 @@ class DAQProvider(core.Provider):
         directory_path (str): absolute path to "hot" storage (as seen from the DAQ software, not a network path)
         meta_data_directory_path (str): path where the metadata file should be written
         filename_prefix (str): prefix for unique filenames
+        snapshot_target_itmes (dict): keys are SQLSnapshot table endpoints, values are lists of items (str) to take snapshot of 
         metadata_state_target (str): multiget endpoint to Get() for system state
         metadata_target (str): target to send metadata to
         debug_mode_without_database (bool): if True, forces a run_id of 0, rather that making a query (should only be True as part of debugging)
@@ -66,10 +72,12 @@ class DAQProvider(core.Provider):
 
         #self._metadata_gets = metadata_gets
         self._metadata_state_target = metadata_state_target
+        self._snapshot_target_items = snapshot_target_items
         self._metadata_target = metadata_target
         self.filename_prefix = filename_prefix
         self._debug_without_db = debug_mode_without_database
         self._debug_without_meta_broadcast = debug_mode_without_metadata_broadcast
+        self._debug_without_snapshot_broadcast = debug_mode_without_snapshot_broadcast
 
         self._stop_handle = None
         self._run_name = None
@@ -105,17 +113,26 @@ class DAQProvider(core.Provider):
         self.run_name = run_name
         self._run_meta = {'DAQ': self.daq_name,
                          }
+        self._run_snapshot = {}
         self._do_prerun_gets()
         if not self._debug_without_meta_broadcast:
             self._send_metadata()
+        if not self._debug_without_snapshot_broadcast:
+            self._send_snapshot()
         logger.debug('these meta will be {}'.format(self._run_meta))
+        logger.debug('this snapshot will be {}'.format(self._run_snapshot))
         logger.info('start_run finished')
 
     def _do_prerun_gets(self):
-        logger.info('doing prerun meta-data gets')
-        result = self.provider.get(self._metadata_state_target, timeout=120)
-        these_metadata = result['value_raw']
+        logger.info('doing prerun meta-data and snapshot gets')
+        meta_result = self.provider.get(self._metadata_state_target, timeout=120)
+        these_metadata = meta_result['value_raw']
         self._run_meta.update(these_metadata)
+        time_now = datetime.datetime.now().strftime(core.constants.TIME_FORMAT)
+        for target,item_list in self._snapshot_target_items.items():
+            snapshot_result = self.provider.cmd(target,'get_latest', [time_now,item_list], timeout=120)
+            these_snaps = snapshot_result['value_raw']
+            self._run_snapshot.update(these_snaps)
         self.determine_RF_ROI()
 
     def determine_RF_ROI(self):
@@ -139,6 +156,22 @@ class DAQProvider(core.Provider):
         # note, the following line has an empty method/RKS, this shouldn't be the case but is what golang expects
         req_result = self.provider.cmd(self._metadata_target, None, payload=this_payload)
         logger.debug('meta sent')
+
+    def _send_snapshot(self):
+        '''
+        '''
+        logger.info('snapshot of the slow control database should broadcast')
+        filename = '{directory}/{runN:09d}/{prefix}{runN:09d}_snapshot.json'.format(
+                                                        directory=self.meta_data_directory_path,
+                                                        prefix=self.filename_prefix,
+                                                        runN=self.run_id,
+                                                        acqN=self._acquisition_count
+                                                                                )
+        logger.debug('should request snapshot file: {}'.format(filename))
+        this_payload = {'snap_data': self._run_snapshot,
+                        'filename': filename}
+        req_result = self.provider.cmd(self._metadata_target, None, payload=this_payload)
+        logger.debug('snapshot sent')
 
     def start_timed_run(self, run_name, run_time):
         '''
