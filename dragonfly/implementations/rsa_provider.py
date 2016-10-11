@@ -45,6 +45,7 @@ class RSAProvider(EthernetProvider):
                 self.trace_path = trace_path + "\"
         else:
             logger.info("No trace_path given in the config file: save_trace feature disabled")
+            self.trace_path = None
         self.max_nb_files = max_nb_files
 
     def save_trace(self, trace, additional_text):
