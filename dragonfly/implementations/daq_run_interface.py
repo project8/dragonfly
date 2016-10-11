@@ -882,10 +882,10 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
                                          )
         if not result.retcode == 0:
             msg = ''
-            if 'Return message' in result.payload:
-                msg = result.payload['Return message']
+            if 'ret_mes' in result.payload:
+                msg = result.payload['ret_mes']
             logger.warning('Got an error from psyllid. Return code: {}, Return message: {}, stopping run.'.format(result.retcode, msg))
-            self.end_run()
+            #self.end_run()
 
         else:
             self._acquisition_count += 1
