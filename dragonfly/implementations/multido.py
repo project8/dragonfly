@@ -77,7 +77,7 @@ class MultiDo(dripline.core.Endpoint):
             ret_rep = details['formatter'].format(ret_val)
         except dripline.core.exceptions.DriplineException as err:
             ret_val = None
-            ret_rep = '{} -> returned error <{}>:{}'.format(endpoint_name, err.retcode, a_result.return_msg)
+            ret_rep = '{} -> returned error <{}>:{}'.format(endpoint_name, err.retcode, err)
         return ret_val,ret_rep
 
     def on_set(self, value):
