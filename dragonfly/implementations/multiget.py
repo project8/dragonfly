@@ -14,7 +14,7 @@ class MultiGet(dripline.core.Endpoint):
     '''
     MultiGet is a convenience object allowing a single target to be
     used to access the result of "get"ting multiple endpoints. The
-    intended use is specifically for collecting the current value of 
+    intended use is specifically for collecting the current value of
     many endpoints, and use cases for other verbs are not considered.
 
     The calibrated value returned is intended to be a nicely formatted
@@ -59,8 +59,8 @@ class MultiGet(dripline.core.Endpoint):
             a_result = self.provider.get(target=endpoint_name)
             ret_val = a_result[details['payload_field']]
             ret_rep = details['formatter'].format(ret_val)
-        except core.exceptions.DriplineException as err:
+        except dripline.core.exceptions.DriplineException as err:
             ret_val = None
-            ret_rep = '{} -> returned error <{}>:{}'.format(endpoint_name, err.retcode, a_result.return_msg)
-        
+            ret_rep = '{} -> returned error <{}>:{}'.format(endpoint_name, err.retcode, err)
+
         return ret_val,ret_rep

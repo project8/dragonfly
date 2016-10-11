@@ -569,7 +569,7 @@ class RunScript(object):
                 elif key == 'cmds':
                     self.action_cmd(this_do[key])
                 elif key == 'sleep':
-                    self.action_sleep(duration=this_do[key][0]['duration'])
+                    self.action_sleep(duration=this_do[key]['duration'])
                 else:
                     logger.info('operation <{}> unknown: skipping!'.format(key))
 
