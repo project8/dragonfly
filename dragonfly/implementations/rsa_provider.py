@@ -18,6 +18,9 @@ from __future__ import absolute_import
 from dripline.core import exceptions, fancy_doc
 from dragonfly.implementations import EthernetProvider
 
+from datetime import datetime
+# from time import sleep
+
 import logging
 logger = logging.getLogger(__name__)
 
@@ -32,14 +35,26 @@ class RSAProvider(EthernetProvider):
     '''
     def __init__(self,
                  max_nb_files=10000,
+                 trace_path=None,
                  **kwargs):
         EthernetProvider.__init__(self, **kwargs)
-
+        if isinstance(trace_path,str):
+            if trace_path.endswith("\"):
+                self.trace_path = trace_path
+            else:
+                self.trace_path = trace_path + "\"
+        else:
+            logger.info("No trace_path given in the config file: save_trace feature disabled")
         self.max_nb_files = max_nb_files
 
-    def save_trace(self, trace, path):
-        logger.info('saving trace')
-        self.send(['MMEMory:DPX:STORe:TRACe{} "{}"; *OPC?'.format(trace,path)])
+    def save_trace(self, trace, additional_text):
+        if self.trace_path is not None:
+            logger.info('saving trace')
+            filename = "{:%Y%m%d_%H%M%S}_Trace{}_{}".format(datetime.now(),trace,additional_text)
+            path = self.trace_path + filename
+            self.send(['MMEMory:DPX:STORe:TRACe{} "{}"; *OPC?'.format(trace,path)])
+        else:
+            logger.info("No trace_path given in the config file: save_trace feature disabled!")
 
     def create_new_auto_mask(self, trace, xmargin, ymargin):
         #This convenience method is currently broken
