@@ -170,8 +170,12 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
 
 
     def set_central_frequency(self, cf):
+        self.central_freq = cf
         logger.info('setting central frequency of channel {} to {}'.format(self.channel_tag, cf))
         ArtooDaq.tune_ddc_1st_to_freq(self, cf, tag=self.channel_tag)
+
+    def get_central_frequency(self):
+        return self.central_freq
 
     def get_ddc_config(self):
         cfg = self.read_ddc_1st_config(tag=self.channel_tag)

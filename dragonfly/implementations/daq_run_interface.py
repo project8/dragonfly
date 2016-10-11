@@ -518,10 +518,10 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
         if self.is_running():
             if self.status_value == 4:
                 self.deactivate()
-                self.is_running()
+                #self.is_running()
 
             elif self.status_value!=0:
-                raise core.DriplineInternalError('Status of psyllid must be "initialized", status is {}'.format(self.status))
+                raise core.DriplineInternalError('Status of psyllid must be "Initialized", status is {}'.format(self.status))
 
             #set daq presets
             self.configure(self.psyllid_preset)
@@ -775,7 +775,14 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
 
     def determine_RF_ROI(self):
         logger.info('trying to determine roi')
-        logger.warning('Psyllid interface does not support proper determination of RF ROI yet. Probably more a roach thing')
+        logger.warning('Psyllid interface does not support proper determination of RF ROI yet. Getting central frequency of ROACH2')
+        request = core.RequestMessage(msgop=core.OP_CMD)
+        result = self.portal.send_request(target=self.roach2_queue+'.get_central_frequency', request=request)
+        if result.retcode >= 100:
+            logger.warning('retcode indicates an error')
+
+        logger.info('Central frequency is: {}'.format(result.payload['values'][0]))
+        return result.payload['values'][0]
 
 
     def start_run(self, run_name):
@@ -875,9 +882,9 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
                                          )
         if not result.retcode == 0:
             msg = ''
-            if 'ret_msg' in result.payload:
-                msg = result.payload['ret_msg']
-            logger.warning('got an error from psyllid: {}'.format(msg))
+            if 'Return message' in result.payload:
+                msg = result.payload['Return message']
+            logger.warning('Got an error from psyllid. Return code: {}, Return message: {}, stopping run.'.format(result.retcode, msg))
             self.end_run()
 
         else:
