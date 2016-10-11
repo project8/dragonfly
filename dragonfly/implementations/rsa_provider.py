@@ -39,10 +39,10 @@ class RSAProvider(EthernetProvider):
                  **kwargs):
         EthernetProvider.__init__(self, **kwargs)
         if isinstance(trace_path,str):
-            if trace_path.endswith("\"):
+            if trace_path.endswith("/"):
                 self.trace_path = trace_path
             else:
-                self.trace_path = trace_path + "\"
+                self.trace_path = trace_path + "/"
         else:
             logger.info("No trace_path given in the config file: save_trace feature disabled")
             self.trace_path = None
