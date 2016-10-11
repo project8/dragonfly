@@ -207,17 +207,23 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
         x = pkts[0].interpret_data()
         logger.info('first 10 entries are:')
         logger.info(x[0:10])
-        return pkts
+        return True 
 
-    def monitor(self, tag='a'):
+    def monitor(self,dsoc_desc=None,close_soc=False, tag='a'):
+	if dsoc_desc == None:
+            dsoc_desc = (str(self.dest_ip),self.dest_port)
 
-        pkts = self.get_packets(n=2)
-        if pkts[0].freq_not_time:
+        logger.info('grabbing packets from {}'.format(dsoc_desc))
+        pkts=ArtooDaq.grab_packets(self,2,dsoc_desc,close_soc)
+
+	if pkts[0].freq_not_time==False:
+	    x = pkts[0].interpret_data()
             plt.figure()
-            plt.plot(np.fft.ffshift(np.fft.fft(pkts[1].interpret_data())))
-        else:
+            plt.plot(np.fft.fftshift(np.fft.fftfreq(np.size(x), 1.0/1.6e9)),np.fft.fftshift(np.fft.fft(x)))
+        elif pkts[1].freq_not_time==False:
+            x = pkts[1].interpret_data()
             plt.figure()
-            plt.plot(np.fft.ffshift(np.fft.fft(pkts[1].interpret_data())))
+            plt.plot(np.fft.fftshift(np.fft.fftfreq(np.size(x), 1.0/1.6e9)),np.fft.fftshift(np.fft.fft(x)))
         plt.savefig('/home/cclaesse/monitor/freq_plot.png')
 
 
