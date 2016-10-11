@@ -19,7 +19,6 @@ from dripline.core import exceptions, fancy_doc
 from dragonfly.implementations import EthernetProvider
 
 from datetime import datetime
-# from time import sleep
 
 import logging
 logger = logging.getLogger(__name__)
@@ -48,10 +47,10 @@ class RSAProvider(EthernetProvider):
             self.trace_path = None
         self.max_nb_files = max_nb_files
 
-    def save_trace(self, trace, additional_text):
+    def save_trace(self, trace, comment):
         if self.trace_path is not None:
             logger.info('saving trace')
-            filename = "{:%Y%m%d_%H%M%S}_Trace{}_{}".format(datetime.now(),trace,additional_text)
+            filename = "{:%Y%m%d_%H%M%S}_Trace{}_{}".format(datetime.now(),trace,comment)
             path = self.trace_path + filename
             self.send(['MMEMory:DPX:STORe:TRACe{} "{}"; *OPC?'.format(trace,path)])
         else:
