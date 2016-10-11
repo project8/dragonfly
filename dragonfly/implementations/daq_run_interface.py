@@ -700,37 +700,40 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
             return False
 
 
-    def connect2roach2(self):
+#    def connect2roach2(self):
+#
+#        result = self.check_on_roach2()
+#
+#        if result is True:
+#
+#            if self.roach2configured is False:
+#                self.start_roach2()
+#
+#            return True
+#
+#        elif result==False:
+#            logger.info('Could not connect to the ROACH2')
+#            return False
+#
+#        else:
+#            logger.warning('The ROACH2 service is not running or sth. else is wrong')
+##            self.roach2_queue=None
+#            return False
 
-        result = self.check_on_roach2()
 
-        if result is True:
-
-            if self.roach2configured is False:
-                self.start_roach2()
-
-            return True
-
-        elif result==False:
-            logger.info('Could not connect to the ROACH2')
-            return False
-
-        else:
-            logger.warning('The ROACH2 service is not running or sth. else is wrong')
-#            self.roach2_queue=None
-            return False
-
-
-    def check_on_roach2(self):
-        self.roach2_queue='roach2_interface'
+    def check_roach2_status(self):
 
         #call is_running
         request = core.RequestMessage(msgop=core.OP_CMD)
         result = self.portal.send_request(target=self.roach2_queue+'.is_running', request=request)
         if result.retcode >= 100:
             logger.warning('retcode indicates an error')
-        logger.info('The ROACH2 is running: {}'.format(result.payload['values']))
+
+        if result.payload['values'][0]==False:
+            logger.warning('The ROACH2 is not running!')
+
         to_return = result.payload['values'][0]
+
 
         #get calibration and configuration status
         request = core.RequestMessage(msgop=core.OP_CMD)
@@ -770,7 +773,9 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
 #        return result.payload['values'][0]
 
 
-
+    def determine_RF_ROI(self):
+        logger.info('trying to determine roi')
+        logger.warning('Psyllid interface does not support proper determination of RF ROI yet. Probably more a roach thing')
 
 
     def start_run(self, run_name):
@@ -786,10 +791,10 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
 
         #checking roach
         if self.roach2_queue!=None:
-            result=self.connect2roach2()
-            if result == False:
+            result=self.check_roach2_status()
+            if result != True:
                 logger.error('Psyllid and the ROACH2 are not connected')
-                return 'The ROACH2 is not running'
+                return 'False'
             elif self.roach2calibrated == False:
                 logger.warning('adc and ogp calibration has not been performed yet.')
 
@@ -820,10 +825,10 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
 
         #checking roach
         if self.roach2_queue!=None:
-            result=self.connect2roach2()
-            if result == False:
+            result=self.check_roach2_status()
+            if result != True:
                 logger.error('Psyllid and the ROACH2 are not connected')
-                return 'The ROACH2 is not running'
+                return 'False'
             elif self.roach2calibrated == False:
                 logger.warning('adc and ogp calibration has not been performed yet.')
 
@@ -847,9 +852,7 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
 
 
 
-#    def determine_RF_ROI(self):
-#        logger.info('trying to determine roi')
-#        logger.warning('Psyllid interface does not support proper determination of RF ROI yet. Probably more a roach thing')
+
 
     def on_get(self):
         '''

@@ -49,10 +49,6 @@ class Roach2Provider(ArtooDaq, core.Provider):
     def __init__(self, **kwargs):
 
 
-        for i in kwargs:
-            print(i)
-
-
         core.Provider.__init__(self, **kwargs)
 
 
@@ -70,7 +66,7 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
                  daq_name = None,
                  channel_tag = 'a',
                  do_adc_ogp_calibration = False,
-                 central_freq = 1234e6,
+                 central_freq = 800e6,
                  gain = 7.0,
 
                  hf_lo_freq=24.2e9,
