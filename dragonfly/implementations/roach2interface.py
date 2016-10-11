@@ -10,6 +10,8 @@ import logging
 #import uuid
 #import signal
 import os
+import matplotlib.pyplot as plt
+import numpy as np
 
 
 # internal imports
@@ -201,11 +203,26 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
 
         logger.info('grabbing packets from {}'.format(dsoc_desc))
         pkts=ArtooDaq.grab_packets(self,n,dsoc_desc,close_soc)
-        logger.info(pkts[0].freq_not_time)
+        logger.info('Freq not time: {}'.format(pkts[0].freq_not_time))
         x = pkts[0].interpret_data()
         logger.info('first 10 entries are:')
         logger.info(x[0:10])
-        return 0
+        return pkts
+
+    def monitor(self, tag='a'):
+
+        pkts = self.get_packets(n=2)
+        if pkts[0].freq_not_time:
+            plt.figure()
+            plt.plot(np.fft.ffshift(np.fft.fft(pkts[1].interpret_data())))
+        else:
+            plt.figure()
+            plt.plot(np.fft.ffshift(np.fft.fft(pkts[1].interpret_data())))
+        plt.savefig('/home/cclaesse/monitor/freq_plot.png')
+
+
+
+
 
 
 #    def set_ip_configuration(self,
