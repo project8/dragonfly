@@ -1,3 +1,10 @@
+'''
+All communication with instruments is performed via ethernet, or via an intermediate interface that inherits from EthernetProvider.  This class must be kept general, with specific cases handled in higher-level interfaces.
+
+General rules to observe:
+- All instruments should communicate with a response_terminator (typically \r and/or \n, possibly an additional prompt)
+- All endpoints and communication must be configured to return a response, otherwise nasty timeouts will be incurred
+'''
 from __future__ import absolute_import
 import socket
 import threading
@@ -22,25 +29,34 @@ class EthernetProvider(Provider):
                  bare_response_terminator=None,
                  command_terminator=None,
                  reply_echo_cmd=False,
+                 cmd_at_reconnect=None,
                  **kwargs
                  ):
         '''
         socket_timeout (float): time in seconds for the socket to timeout
         socket_info (tuple): (<network_address_as_str>, <port_as_int>)
-        response_terminator (str||None): string to strip from responses
-        bare_response_terminator (str||None): alternate string to strip from responses; depending on provider's reply
+        response_terminator (str||None): string to strip from responses, this MUST exist for get method to function properly!
+        bare_response_terminator (str||None): abbreviated string to strip from responses containing only prompt
+                                            : only used to handle non-standard glenlivet behavior
         command_terminator (str||None): string to append to commands
         reply_echo_cmd (bool): set to True if command+command_terminator or just command are present in reply
+        cmd_at_reconnect (str, list||None): (list of) command(s) to send to the instrument following (re)connection to the instrument
+                                          : still must ask for a reply!
         '''
         Provider.__init__(self, **kwargs)
         self.alock = threading.Lock()
         self.socket_timeout = float(socket_timeout)
         self.socket_info = socket_info
         self.socket = socket.socket()
+        if response_terminator is None or response_terminator == "":
+            raise ValueError("Invalid response terminator!")
         self.response_terminator = response_terminator
         self.bare_response_terminator = bare_response_terminator
         self.command_terminator = command_terminator
         self.reply_echo_cmd = reply_echo_cmd
+        if isinstance(cmd_at_reconnect, types.StringType):
+            cmd_at_reconnect = [cmd_at_reconnect]
+        self.cmd_at_reconnect = cmd_at_reconnect
         if type(self.socket_info) is str:
             import re
             re_str = "\([\"'](\S+)[\"'], ?(\d+)\)"
@@ -48,6 +64,7 @@ class EthernetProvider(Provider):
             self.socket_info = (ip,int(port))
         logger.debug('socket info is {}'.format(self.socket_info))
         self.reconnect()
+
 
     def send_commands(self, commands, **kwargs):
         all_data=[]
@@ -65,7 +82,7 @@ class EthernetProvider(Provider):
             command += self.command_terminator
             logger.debug('sending: {}'.format(repr(command)))
             self.socket.send(command)
-            if command == self.command_terminator or command.startswith("++"):
+            if command == self.command_terminator:
                 blank_command = True
             else:
                 blank_command = False
@@ -115,7 +132,12 @@ class EthernetProvider(Provider):
             logger.warning('connection with info: {} refused'.format(self.socket_info))
             raise
         self.socket.settimeout(self.socket_timeout)
-        self.send("")
+
+        if self.cmd_at_reconnect is not None:
+            self.send_commands(self.cmd_at_reconnect)
+        else:
+            getbuf = self.get(blank_command=True)
+            logger.info("Reconnect buffer dump: {}".format(repr(getbuf)))
 
     def send(self, commands, **kwargs):
         '''
@@ -123,18 +145,14 @@ class EthernetProvider(Provider):
         '''
         if isinstance(commands, types.StringType):
             commands = [commands]
-        all_data = []
         self.alock.acquire()
 
         try:
-            all_data += self.send_commands(commands, **kwargs)
-
-        except socket.error:
-            self.alock.release()
+            all_data = self.send_commands(commands, **kwargs)
+        except (socket.error, exceptions.DriplineHardwareResponselessError):
+            logger.warning("Attempting socket reconnect")
             self.reconnect()
-            self.alock.acquire()
-            all_data += self.send_commands(commands, **kwargs)
-
+            all_data = self.send_commands(commands, **kwargs)
         finally:
             self.alock.release()
         to_return = ';'.join(all_data)
@@ -146,21 +164,22 @@ class EthernetProvider(Provider):
         try:
             while True:
                 data += self.socket.recv(1024)
-                if self.response_terminator:
-                    if data not in (self.response_terminator,self.bare_response_terminator):
-                        if data.endswith(self.response_terminator):
-                            data = data[0:data.find(self.response_terminator)]
-                            break
-                        elif data.endswith(self.bare_response_terminator):
-                            data = data[0:data.find(self.bare_response_terminator)]
-                            break
-                else:
-                    break
+                if data not in (self.response_terminator, self.bare_response_terminator):
+                    if data.endswith(self.response_terminator):
+                        data = data[0:data.rfind(self.response_terminator)]
+                        break
+                    # Special exception for bad communication with glenlivet
+                    elif (self.bare_response_terminator and data.endswith(self.bare_response_terminator)):
+                        data = data[0:data.rfind(self.bare_response_terminator)]
+                        break
+                # Special exception for disconnect of prologix box to avoid infinite loop
+                if data == "":
+                    raise exceptions.DriplineHardwareResponselessError("empty socket.recv packet from {}".format(self.socket_info[0]))
         except socket.timeout:
-            if blank_command == False:
+            logger.warning('socket.timeout condition met; received:\n{}'.format(repr(data)))
+            if blank_command == False and data == "":
                 logger.critical('Cannot Connect to: ' + self.socket_info[0])
-        if self.response_terminator:
-            data = data.rsplit(self.response_terminator,1)[0]
+                raise exceptions.DriplineHardwareResponselessError("socket.timeout from {}".format(self.socket_info[0]))
         return data
 
     @property

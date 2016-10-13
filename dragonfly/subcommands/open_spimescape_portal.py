@@ -8,8 +8,7 @@ from __future__ import print_function
 import imp
 import traceback
 
-import dripline
-
+from dripline import core
 from .. import implementations
 
 import logging
@@ -29,12 +28,12 @@ class Serve(object):
     def __call__(self, kwargs):
         '''
         '''
-        kwargs = vars(kwargs)
+        if kwargs.config is None:
+            raise KeyError('<config> is required to `dragonfly serve`, use -c flag')
+        this_config = vars(kwargs)
         # create the portal:
-        this_config = kwargs['config'] or {}
-        module = None
         if 'module' not in this_config:
-            module = dripline.core.Service
+            module = core.Service
         else:
             module = this_config.pop('module')
             module_path = this_config.pop('module_path', False)
@@ -45,19 +44,19 @@ class Serve(object):
                 except IOError:
                     logger.warning('unable to load source from: {}'.format(module_path))
             if hasattr(extra_namespace, module):
-                this_child = getattr(extra_namespace, module)(**conf_dict)
+                module = getattr(extra_namespace, module)
             elif hasattr(implementations, module):
                 module = getattr(implementations, module)
-            elif hasattr(dripline.core, module):
-                module = getattr(dripline.core, module)
+            elif hasattr(core, module):
+                module = getattr(core, module)
             else:
-                raise NameError('no module "{}" in dripline.core or dripline.instruments'.format(module))
+                raise NameError('no module "{}" in dripline.core or dragonfly.implementations'.format(module))
         these_endpoints = this_config.pop('endpoints', [])
         service = module(**this_config)
         logger.info('starting {}'.format(service.name))
         ##### need to fix the node class here...
         for provider in these_endpoints:
-            service.add_endpoint(self.create_child(service, provider))
+            self.create_child(service, provider)
         logger.info('spimescapes created and populated')
         logger.info('Configuration of {} complete, starting consumption'.format(service.name))
         try:
@@ -78,7 +77,7 @@ class Serve(object):
             logger.critical('service <{}> crashing due to unexpected error:\n{}'.format(this_service_name, this_exception))
             logger.error('traceback is:\n{}'.format(traceback.format_exc()))
 
-    def create_child(self, service, conf_dict):
+    def create_child(self, service, conf_dict, parent=None):
         module = conf_dict.pop('module')
         child_confs = conf_dict.pop('endpoints', [])
         module_path = conf_dict.pop('module_path', False)
@@ -93,16 +92,19 @@ class Serve(object):
             this_child = getattr(extra_namespace, module)(**conf_dict)
         elif hasattr(implementations, module):
             this_child = getattr(implementations, module)(**conf_dict)
-        elif hasattr(dripline.core, module):
-            this_child = getattr(dripline.core, module)(**conf_dict)
+        elif hasattr(core, module):
+            this_child = getattr(core, module)(**conf_dict)
         else:
-            raise NameError('no module "{}" in dripline.core or dripline.implementations'.format(module))
-    
+            raise NameError('no module "{}" in dripline.core or dragonfly.implementations'.format(module))
+
         for child_dict in child_confs:
-            this_child.add_endpoint(self.create_child(service, child_dict))
-        if isinstance(this_child, dripline.core.Provider):
-            for grandchild in this_child.endpoints:
-                service.add_endpoint(this_child.endpoints[grandchild])
+            self.create_child(service, child_dict, this_child)
+
+
+        service.add_endpoint(this_child)
+        if isinstance(parent, core.Provider):
+            parent.add_endpoint(this_child)
+
         return this_child
 
     def update_parser(self, parser):
@@ -111,4 +113,3 @@ class Serve(object):
                             help='amqp binding keys to match against',
                             default='#',
                            )
-

@@ -26,7 +26,7 @@ class RepeaterProvider(Provider):
         self._broker_info = broker
 
     def send_request(self, target, request):
-        result = self.portal.send_request(self._repeat_target, request, timeout=self._timeout)
+        result = self.service.send_request(self._repeat_target, request, timeout=self._timeout)
         if not 'retcode' in result:
             raise core.exceptions.DriplineInternalError('no return code in reply')
         if not result.retcode == 0:
@@ -54,11 +54,4 @@ class RepeaterProvider(Provider):
     def on_set(self, value):
         payload = {'values':[value]}
         request = message.RequestMessage(msgop=constants.OP_SET, payload=payload)
-        return self.send_request(self._repeat_target, request)
-
-    def on_config(self, attribute, value=None):
-        payload = {'values': [attribute]}
-        if value is not None:
-            payload['values'].append(value)
-        request = message.RequestMessage(msgop=constants.OP_CONFIG, payload=payload)
         return self.send_request(self._repeat_target, request)

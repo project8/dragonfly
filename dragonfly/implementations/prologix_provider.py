@@ -4,11 +4,7 @@
 
 from __future__ import absolute_import
 
-import itertools
-import json
 import math
-import socket
-import time
 import types
 
 from dripline.core import Spime, Provider, SimpleSCPIGetSpime, calibrate
@@ -17,12 +13,12 @@ import logging
 logger = logging.getLogger(__name__)
 
 __all__ = [
-           'GPIBInstrument',
+           'PrologixProvider',
            'MuxerGetSpime',
           ]
 
 
-class GPIBInstrument(Provider):
+class PrologixProvider(Provider):
     '''
     A Provider class intended for GPIB devices that implement the full
     IEEE 488.2 (488.1 or 488 need to use some other class).
@@ -58,12 +54,12 @@ class GPIBInstrument(Provider):
     def send(self, cmd):
         if isinstance(cmd, types.StringType):
             cmd = [cmd]
-        to_send = ['++addr {}\r'.format(self.addr)] + cmd
+        to_send = ['++addr {}\r++addr'.format(self.addr)] + cmd
         result = self.provider.send(to_send)
         logger.debug('raw result:\n{}'.format(result))
-        if isinstance(result, list):
-            result = ';'.join(result)
-        result = result.lstrip(';')
+        addr, result = result[0].split(";", 1)
+        if int(addr) != self.addr:
+            raise DriplineValueError("Unable to set GPIB address at prologix")
         logger.debug("instr got back: {}".format(result))
         return result
 
