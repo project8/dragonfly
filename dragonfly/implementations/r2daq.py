@@ -1028,7 +1028,7 @@ class ArtooDaq(object):
         w_pass = f_pass/(self.ADC_SAMPLE_RATE/2)
         w_stop = f_stop/(self.ADC_SAMPLE_RATE/2)
         filt_gain = array([0,0,1,1,0,0])
-        filt_freq = concatenate(([0],[w_stop[0]], w_pass, [w_pass[1]], [1.0]))
+        filt_freq = concatenate(([0],[w_stop[0]], w_pass, [w_stop[1]], [1.0]))
         B = firwin2(128,filt_freq,filt_gain,window='boxcar')
         # normalize to absolute maximum of 0.5
         B = 0.5*B/(abs(B).max())
