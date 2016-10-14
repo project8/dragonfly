@@ -632,10 +632,12 @@ class ArtooDaq(object):
         self._make_assignment(assign_ddc1)
         # update local config
         self._ddc_1st[tag] = {
-            'f_c':f_c,
-            'f_ch':f_ch,
-            'f_lo':f_lo if f_lo < self.ADC_SAMPLE_RATE/2 else -self.ADC_SAMPLE_RATE+f_lo,
-            'B':B
+            'analog':{
+                'f_c':f_c,
+                'f_ch':f_ch,
+                'f_lo':f_lo if f_lo < self.ADC_SAMPLE_RATE/2 else -self.ADC_SAMPLE_RATE+f_lo,
+                'B':B
+            }
         }
     
     def read_ddc_1st_config(self,tag='a'):
@@ -669,13 +671,16 @@ class ArtooDaq(object):
             f_ch_est0 = w[abs(h).argmax()]/(2*pi) * self.ADC_SAMPLE_RATE
             f_ch_est1 = round((f_ch_est0+50e6)/100e6) * 100e6 - 50e6
             cfg = {
-                'f_c':-1,
-                'f_ch':f_ch_est1,
-                'f_lo':-1,
-                'B':-1*ones(128)
+                'analog':{
+                    'f_c':-1,
+                    'f_ch':f_ch_est1,
+                    'f_lo':-1,
+                    'B':-1*ones(128)
+                }
             }
         cfg['digital'] = {
-            'f_c': cfg['f_ch'] - d_lo,
+            'f_c': cfg['analog']['f_ch'] - d_lo,
+            'f_ch': cfg['analog']['f_ch'],
             'f_lo': d_lo,
             'B': d_B
         }
