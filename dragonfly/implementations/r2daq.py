@@ -608,6 +608,13 @@ class ArtooDaq(object):
         tag : string
             Tag associated with the digital channel, should be one of
             {'a','b','c','d','e','f'}. Default is 'a'.
+        
+        Returns
+        -------
+        fc_d : float
+            Actual center frequency of the 100MHz digital channel, 
+            taking into account the finite frequency resolution of the
+            digitally synthesized LO in the first downconversion stage.
         """
         self._check_valid_digital_channel(tag)
         # position the digital channel at f_c
@@ -639,6 +646,8 @@ class ArtooDaq(object):
                 'B':B
             }
         }
+        cfg = self.read_ddc_1st_config(tag=tag)
+        return cfg['digital']['f_c']
     
     def read_ddc_1st_config(self,tag='a'):
         """
