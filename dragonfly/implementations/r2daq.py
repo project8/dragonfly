@@ -20,6 +20,7 @@ from numpy import (
     float32, 
     floor, 
     int8, 
+    ones, 
     pi, 
     uint32, 
     uint64, 
@@ -27,7 +28,7 @@ from numpy import (
     zeros,
     )
 import re
-from scipy.signal import firwin2
+from scipy.signal import firwin2, freqz
 from socket import inet_aton, socket, AF_INET, SOCK_DGRAM
 from struct import unpack
 from time import sleep, time
@@ -657,7 +658,24 @@ class ArtooDaq(object):
         cfg = deepcopy(self._ddc_1st[tag])
         d_lo,d_phi0,d_dphi_demux,d_dphi = self._extract_synth_assignments(tag)
         d_B = self._extract_filterbank_assignments(tag)
+        if cfg is None:
+            # precise 'analog' (or 'ideal') values are not available, so
+            # we determine the filter response magnitude maximum to the 
+            # nearest 50MHz (using actual filter coefficients set in the 
+            # roach2 registers), subtract from it the digital LO frequency
+            # (also using the actual LO setting in the roach2 register)
+            # and assign that as the center frequency.
+            w,h = freqz(d_B,[1],1024)
+            f_ch_est0 = w[abs(h).argmax()]/(2*pi) * self.ADC_SAMPLE_RATE
+            f_ch_est1 = round((f_ch_est0+50e6)/100e6) * 100e6 - 50e6
+            cfg = {
+                'f_c':-1,
+                'f_ch':f_ch_est1,
+                'f_lo':-1,
+                'B':-1*ones(128)
+            }
         cfg['digital'] = {
+            'f_c': cfg['f_ch'] - d_lo,
             'f_lo': d_lo,
             'B': d_B
         }
