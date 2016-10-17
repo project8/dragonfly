@@ -35,6 +35,7 @@ class RSAProvider(EthernetProvider):
     def __init__(self,
                  max_nb_files=10000,
                  trace_path=None,
+                 insert_status_endpoint,
                  **kwargs):
         EthernetProvider.__init__(self, **kwargs)
         if isinstance(trace_path,str):
@@ -46,6 +47,7 @@ class RSAProvider(EthernetProvider):
             logger.info("No trace_path given in the config file: save_trace feature disabled")
             self.trace_path = None
         self.max_nb_files = max_nb_files
+        self._insert_status_endpoint = insert_status_endpoint
 
     def save_trace(self, trace, comment):
         if self.trace_path is not None:
@@ -53,8 +55,13 @@ class RSAProvider(EthernetProvider):
             filename = "{:%Y%m%d_%H%M%S}_Trace{}_{}".format(datetime.now(),trace,comment)
             path = self.trace_path + filename
             self.send(['MMEMory:DPX:STORe:TRACe{} "{}"; *OPC?'.format(trace,path)])
+            logger.info('saving additional info')
+            result = self.provider.get(self._insert_status_endpoint)
+            #here save the result in a json file.
+
         else:
             logger.info("No trace_path given in the config file: save_trace feature disabled!")
+
 
     def create_new_auto_mask(self, trace, xmargin, ymargin):
         #This convenience method is currently broken
