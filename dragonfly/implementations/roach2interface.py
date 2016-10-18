@@ -172,9 +172,10 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
 
 
     def set_central_frequency(self, cf):
-        self.central_freq = cf
         logger.info('setting central frequency of channel {} to {}'.format(self.channel_tag, cf))
-        ArtooDaq.tune_ddc_1st_to_freq(self, cf, tag=self.channel_tag)
+        cf = ArtooDaq.tune_ddc_1st_to_freq(self, cf, tag=self.channel_tag)
+        self.central_freq = cf
+        return cf
 
     def get_central_frequency(self):
         return self.central_freq
@@ -197,33 +198,39 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
         logger.info('setting fft shift of channel {} to {}'.format(tag, shift))
         ArtooDaq.set_fft_shift(self, str(shift), tag=tag)
 
-    def get_packets(self,n=1,dsoc_desc=None,close_soc=False):
+    def get_packets(self,n=1,dsoc_desc=None,close_soc=True):
         if dsoc_desc == None:
             dsoc_desc = (str(self.dest_ip),self.dest_port)
+        try:
+            logger.info('grabbing packets from {}'.format(dsoc_desc))
+            pkts=ArtooDaq.grab_packets(self,n,dsoc_desc,close_soc)
+            logger.info('Freq not time: {}'.format(pkts[0].freq_not_time))
+            x = pkts[0].interpret_data()
+            logger.info('first 10 entries are:')
+            logger.info(x[0:10])
+            return True
+        except:
+            logger.warning('cannot grab packets')
+            return False
 
-        logger.info('grabbing packets from {}'.format(dsoc_desc))
-        pkts=ArtooDaq.grab_packets(self,n,dsoc_desc,close_soc)
-        logger.info('Freq not time: {}'.format(pkts[0].freq_not_time))
-        x = pkts[0].interpret_data()
-        logger.info('first 10 entries are:')
-        logger.info(x[0:10])
-        return True 
 
-    def monitor(self,dsoc_desc=None,close_soc=False, tag='a'):
-	if dsoc_desc == None:
+    def monitor(self,dsoc_desc=None,close_soc=True, tag='a'):
+        if dsoc_desc == None:
             dsoc_desc = (str(self.dest_ip),self.dest_port)
 
         logger.info('grabbing packets from {}'.format(dsoc_desc))
         pkts=ArtooDaq.grab_packets(self,2,dsoc_desc,close_soc)
 
-	if pkts[0].freq_not_time==False:
-	    x = pkts[0].interpret_data()
-            plt.figure()
-            plt.plot(np.fft.fftshift(np.fft.fftfreq(np.size(x), 1.0/1.6e9)),np.fft.fftshift(np.fft.fft(x)))
+        if pkts[0].freq_not_time==False:
+            x = pkts[0].interpret_data()
+            f = pkts[1].interpret_data()
         elif pkts[1].freq_not_time==False:
             x = pkts[1].interpret_data()
-            plt.figure()
-            plt.plot(np.fft.fftshift(np.fft.fftfreq(np.size(x), 1.0/1.6e9)),np.fft.fftshift(np.fft.fft(x)))
+            f = pkts[0].interpret_data()
+        plt.figure()
+        plt.plot(np.linspace(self.central_freq*10**-6-50,self.central_freq*10**-6+50,np.shape(x)[0]),(np.fft.fft(x)))
+        plt.plot(np.linspace(self.central_freq*10**-6-50,self.central_freq*10**-6+50,np.shape(x)[0]),f)
+        plt.xlabel('frequency [MHz]')
         plt.savefig('/home/cclaesse/monitor/freq_plot.png')
 
 
