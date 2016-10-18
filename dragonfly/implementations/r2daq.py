@@ -20,6 +20,7 @@ from numpy import (
     float32, 
     floor, 
     int8, 
+    ones, 
     pi, 
     uint32, 
     uint64, 
@@ -27,7 +28,7 @@ from numpy import (
     zeros,
     )
 import re
-from scipy.signal import firwin2
+from scipy.signal import firwin2, freqz
 from socket import inet_aton, socket, AF_INET, SOCK_DGRAM
 from struct import unpack
 from time import sleep, time
@@ -423,6 +424,7 @@ class ArtooDaq(object):
                 do_adcif_cal=do_adcif_cal
             )
         # initialize some data structures
+        self._populate_digital_channels()
         self._ddc_1st = dict()
         for did in self.DIGITAL_CHANNELS:
             self._ddc_1st[did] = None
@@ -606,6 +608,13 @@ class ArtooDaq(object):
         tag : string
             Tag associated with the digital channel, should be one of
             {'a','b','c','d','e','f'}. Default is 'a'.
+        
+        Returns
+        -------
+        fc_d : float
+            Actual center frequency of the 100MHz digital channel, 
+            taking into account the finite frequency resolution of the
+            digitally synthesized LO in the first downconversion stage.
         """
         self._check_valid_digital_channel(tag)
         # position the digital channel at f_c
@@ -630,11 +639,15 @@ class ArtooDaq(object):
         self._make_assignment(assign_ddc1)
         # update local config
         self._ddc_1st[tag] = {
-            'f_c':f_c,
-            'f_ch':f_ch,
-            'f_lo':f_lo if f_lo < self.ADC_SAMPLE_RATE/2 else -self.ADC_SAMPLE_RATE+f_lo,
-            'B':B
+            'analog':{
+                'f_c':f_c,
+                'f_ch':f_ch,
+                'f_lo':f_lo if f_lo < self.ADC_SAMPLE_RATE/2 else -self.ADC_SAMPLE_RATE+f_lo,
+                'B':B
+            }
         }
+        cfg = self.read_ddc_1st_config(tag=tag)
+        return cfg['digital']['f_c']
     
     def read_ddc_1st_config(self,tag='a'):
         """
@@ -656,7 +669,27 @@ class ArtooDaq(object):
         cfg = deepcopy(self._ddc_1st[tag])
         d_lo,d_phi0,d_dphi_demux,d_dphi = self._extract_synth_assignments(tag)
         d_B = self._extract_filterbank_assignments(tag)
+        if cfg is None:
+            # precise 'analog' (or 'ideal') values are not available, so
+            # we determine the filter response magnitude maximum to the 
+            # nearest 50MHz (using actual filter coefficients set in the 
+            # roach2 registers), subtract from it the digital LO frequency
+            # (also using the actual LO setting in the roach2 register)
+            # and assign that as the center frequency.
+            w,h = freqz(d_B,[1],1024)
+            f_ch_est0 = w[abs(h).argmax()]/(2*pi) * self.ADC_SAMPLE_RATE
+            f_ch_est1 = round((f_ch_est0+50e6)/100e6) * 100e6 - 50e6
+            cfg = {
+                'analog':{
+                    'f_c':-1,
+                    'f_ch':f_ch_est1,
+                    'f_lo':-1,
+                    'B':-1*ones(128)
+                }
+            }
         cfg['digital'] = {
+            'f_c': cfg['analog']['f_ch'] - d_lo,
+            'f_ch': cfg['analog']['f_ch'],
             'f_lo': d_lo,
             'B': d_B
         }
@@ -1009,7 +1042,7 @@ class ArtooDaq(object):
         w_pass = f_pass/(self.ADC_SAMPLE_RATE/2)
         w_stop = f_stop/(self.ADC_SAMPLE_RATE/2)
         filt_gain = array([0,0,1,1,0,0])
-        filt_freq = concatenate(([0],[w_stop[0]], w_pass, [w_pass[1]], [1.0]))
+        filt_freq = concatenate(([0],[w_stop[0]], w_pass, [w_stop[1]], [1.0]))
         B = firwin2(128,filt_freq,filt_gain,window='boxcar')
         # normalize to absolute maximum of 0.5
         B = 0.5*B/(abs(B).max())
@@ -1176,6 +1209,29 @@ class ArtooDaq(object):
             B[bb] = b_int8
         B = B/128.0
         return B
+    
+    def _populate_digital_channels(self):
+        """
+        Add digital channels available in running bitcode.
+        """
+        # build channel-list
+        ch_list = ['a','b','c','d','e','f']
+        self._implemented_digital_channels = []
+        for ch in ch_list:
+            try:
+                self.roach2.read_int("tengbe_{0}_ctrl".format(ch))
+                self._implemented_digital_channels.append(ch)
+                # for each channel, deactivate the network interface
+                #~ self._tengbe_reset_hi(tag=ch)
+                ### -------
+                ### This portion to be removed after bitcode changes to
+                ### enable arbitrary changes to network interfaces
+                if ch in self._tmp_iface_dict.keys():
+                    self._config_channel_net(**self._tmp_iface_dict[ch])
+                ### -------
+            except RuntimeError:
+                pass
+        logger.info("Valid channels in this build: {0}".format(self.implemented_digital_channels))
     
     def _check_valid_digital_channel(self,tag):
         """
@@ -1370,24 +1426,6 @@ class ArtooDaq(object):
         #~ self.roach2.write_int('master_ctrl',0x00000001 | 0x00000002)
         #~ master_ctrl = self.roach2.read_int('master_ctrl')
         
-        # build channel-list
-        ch_list = ['a','b','c','d','e','f']
-        self._implemented_digital_channels = []
-        for ch in ch_list:
-            try:
-                self.roach2.read_int("tengbe_{0}_ctrl".format(ch))
-                self._implemented_digital_channels.append(ch)
-                # for each channel, deactivate the network interface
-                #~ self._tengbe_reset_hi(tag=ch)
-                ### -------
-                ### This portion to be removed after bitcode changes to
-                ### enable arbitrary changes to network interfaces
-                if ch in self._tmp_iface_dict.keys():
-                    self._config_channel_net(**self._tmp_iface_dict[ch])
-                ### -------
-            except RuntimeError:
-                pass
-        logger.info("Valid channels in this build: {0}".format(self.implemented_digital_channels))
         
         self._load_time()
         
