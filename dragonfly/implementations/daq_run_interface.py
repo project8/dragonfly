@@ -123,7 +123,9 @@ class DAQProvider(core.Provider):
     def _do_prerun_gets(self):
         logger.info(self._metadata_state_target)
         logger.info('doing prerun meta-data gets')
-        result = self.provider.get(self._metadata_state_target, timeout=120)
+        #result = self.provider.get(self._metadata_state_target, timeout=120)
+        query_msg = core.RequestMessage(msgop=core.OP_GET)
+        result = self.portal.send_request(request=query_msg, target=self._metadata_state_target, timeout=100)
         these_metadata = result['value_raw']
         self._run_meta.update(these_metadata)
         self.determine_RF_ROI()
@@ -286,10 +288,10 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
 
     def is_running(self):
         logger.info('Checking Psyllid status')
-        #query_msg = core.RequestMessage(msgop=core.OP_GET)
+        query_msg = core.RequestMessage(msgop=core.OP_GET)
 
         try:
-            #result = self.portal.send_request(request=query_msg, target=self.psyllid_queue+'.daq-status', timeout=self.timeout)
+            result = self.portal.send_request(request=query_msg, target=self.psyllid_queue+'.daq-status', timeout=self.timeout)
             result = self.provider.cmd(self.psyllid_queue, 'daq-status', payload={})
 
             if result.retcode >= 100:
