@@ -19,6 +19,7 @@ from dripline.core import exceptions, fancy_doc
 from dragonfly.implementations import EthernetProvider
 
 from datetime import datetime
+import json
 
 import logging
 logger = logging.getLogger(__name__)
@@ -35,7 +36,8 @@ class RSAProvider(EthernetProvider):
     def __init__(self,
                  max_nb_files=10000,
                  trace_path=None,
-                 insert_status_endpoint,
+                 trace_metadata_path=None,
+                 insert_status_endpoint=None,
                  **kwargs):
         EthernetProvider.__init__(self, **kwargs)
         if isinstance(trace_path,str):
@@ -46,6 +48,13 @@ class RSAProvider(EthernetProvider):
         else:
             logger.info("No trace_path given in the config file: save_trace feature disabled")
             self.trace_path = None
+        if isinstance(trace_metadata_path,str):
+            if trace_metadata_path.endswith("/"):
+                self.trace_metadata_path = trace_metadata_path
+            else:
+                self.trace_metadata_path = trace_metadata_path + "/"
+        else:
+            self.trace_metadata_path = None
         self.max_nb_files = max_nb_files
         self._insert_status_endpoint = insert_status_endpoint
 
@@ -56,8 +65,32 @@ class RSAProvider(EthernetProvider):
             path = self.trace_path + filename
             self.send(['MMEMory:DPX:STORe:TRACe{} "{}"; *OPC?'.format(trace,path)])
             logger.info('saving additional info')
-            result = self.provider.get(self._insert_status_endpoint)
-            #here save the result in a json file.
+            if self._insert_status_endpoint is not None:
+                # result = self.provider.get("cell_temp",timeout=100)
+                result = self.provider.get(self._insert_status_endpoint,timeout=100)
+                logger.debug("getting {} endpoint: successful".format(self._insert_status_endpoint))
+
+                #here save the result in a json file.
+                # try:
+                if self.trace_metadata_path is not None:
+                    filename = "{:%Y%m%d_%H%M%S}_Trace{}_{}_insert_status.json".format(datetime.now(),trace,comment)
+                    path = self.trace_metadata_path + filename
+                    logger.debug("opening file")
+                    with open(path, "w") as outfile:
+                        logger.debug("things are about to be dumped in file")
+                        json.dump(result, outfile, indent=4)
+                        logger.debug("things have been dumped in file")
+                    # fileobject = open(path, 'rw')
+                    # logger.debug("ile is open/created")
+                    # json.dump(result,fileobject)
+                    # fileobject.close()
+                    logger.info("saving {}: successful".format(path))
+                # except IOError:
+                    # logger.warning("could not save {} into {}".format(self._insert_status_endpoint,path))
+                    # pass
+            else:
+                logger.info("No insert_status_endpoint given in the config file: metadata file saving  disabled!")
+
 
         else:
             logger.info("No trace_path given in the config file: save_trace feature disabled!")
