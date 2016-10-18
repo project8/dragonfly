@@ -66,12 +66,9 @@ class RSAProvider(EthernetProvider):
             self.send(['MMEMory:DPX:STORe:TRACe{} "{}"; *OPC?'.format(trace,path)])
             logger.info('saving additional info')
             if self._insert_status_endpoint is not None:
-                # result = self.provider.get("cell_temp",timeout=100)
                 result = self.provider.get(self._insert_status_endpoint,timeout=100)
                 logger.debug("getting {} endpoint: successful".format(self._insert_status_endpoint))
 
-                #here save the result in a json file.
-                # try:
                 if self.trace_metadata_path is not None:
                     filename = "{:%Y%m%d_%H%M%S}_Trace{}_{}_insert_status.json".format(datetime.now(),trace,comment)
                     path = self.trace_metadata_path + filename
@@ -80,18 +77,9 @@ class RSAProvider(EthernetProvider):
                         logger.debug("things are about to be dumped in file")
                         json.dump(result, outfile, indent=4)
                         logger.debug("things have been dumped in file")
-                    # fileobject = open(path, 'rw')
-                    # logger.debug("ile is open/created")
-                    # json.dump(result,fileobject)
-                    # fileobject.close()
                     logger.info("saving {}: successful".format(path))
-                # except IOError:
-                    # logger.warning("could not save {} into {}".format(self._insert_status_endpoint,path))
-                    # pass
             else:
                 logger.info("No insert_status_endpoint given in the config file: metadata file saving  disabled!")
-
-
         else:
             logger.info("No trace_path given in the config file: save_trace feature disabled!")
 
