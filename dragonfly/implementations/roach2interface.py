@@ -173,11 +173,12 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
 
     def set_central_frequency(self, cf):
         logger.info('setting central frequency of channel {} to {}'.format(self.channel_tag, cf))
-        cf = ArtooDaq.tune_ddc_1st_to_freq(self, cf, tag=self.channel_tag)
-        self.central_freq = cf
-        return cf
+        cf1 = ArtooDaq.tune_ddc_1st_to_freq(self, cf, tag=self.channel_tag)
+        self.central_freq = cf1
+        return self.central_freq
 
     def get_central_frequency(self):
+	#self.central_frequency = ArtooDaq.read_ddc_1st_config(self, tag=self.channel_tag)['f_c']
         return self.central_freq
 
     def get_ddc_config(self):
@@ -227,10 +228,25 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
         elif pkts[1].freq_not_time==False:
             x = pkts[1].interpret_data()
             f = pkts[0].interpret_data()
+
+	n = np.shape(x)[0]
+	logger.info('array length {}'.format(n))
+	p = np.abs(np.fft.fftshift(np.fft.fft(x)))/n
+	p = p**2
+	p = p*2
+
+	#f1 = np.abs(f)/n
+	#f1 = f1**2
+	
+
+	cf = self.central_freq*10**-6
         plt.figure()
-        plt.plot(np.linspace(self.central_freq*10**-6-50,self.central_freq*10**-6+50,np.shape(x)[0]),(np.fft.fft(x)))
-        plt.plot(np.linspace(self.central_freq*10**-6-50,self.central_freq*10**-6+50,np.shape(x)[0]),f)
-        plt.xlabel('frequency [MHz]')
+        plt.plot(np.linspace(cf-50,cf+50,np.shape(x)[0]),10.0*np.log10(p), color='b')
+	#plt.plot(np.linspace(cf-50,cf+50,np.shape(x)[0]),10.0*np.log10(f1), color='r')
+	plt.plot(np.linspace(cf-50,cf+50,np.shape(x)[0]),10.0*np.log10(np.abs(f)/n), color='g')
+        #plt.plot(np.linspace(cf-50,cf+50,np.shape(x)[0]),10.0*np.log10(p), color='b')
+	plt.xlabel('frequency [MHz]')
+	plt.ylabel('Power [dB]')
         plt.savefig('/home/cclaesse/monitor/freq_plot.png')
 
 
