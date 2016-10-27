@@ -749,6 +749,7 @@ class ArtooDaq(object):
         s_13bit = int(shift_vec,2) & 0x1FFF
         masked_val = self.registers[regname] & uint32(~(0x1FFF<<idx*13))
         self._make_assignment({regname: masked_val | uint32(s_13bit<<(idx*13))})
+	print(shift_vec)
 
     def calibrate_adc_ogp(self,zdok=0,
             oiter=10,otol=0.005,

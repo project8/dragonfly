@@ -10,6 +10,7 @@ import logging
 #import uuid
 #import signal
 import os
+import adc5g
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -102,7 +103,7 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
 
 
 
-    def configure_roach(self, do_ogp_cal=False, do_adcif_cal=False, boffile='latest-build'):
+    def configure(self, do_ogp_cal=False, do_adcif_cal=True, boffile=None):
 #        if do_ogp_cal==True and do_adcif_cal==True:
 #            self.calibrated=True
 
@@ -139,9 +140,10 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
 
         logger.info('Calibrating ROACH2, this will take a while.... no news is good news.')
 
-        logger.info('Doing adc an ogp calibration')
-        ArtooDaq.calibrate_adc_ogp(self, **kwargs)
-        self.calibrated=True
+        logger.info('Doing adc ogp calibration')
+        d = ArtooDaq.calibrate_adc_ogp(self, **kwargs)
+        logger.info(d)
+	self.calibrated=True
 
         return self.calibrated
 
@@ -209,10 +211,22 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
             x = pkts[0].interpret_data()
             logger.info('first 10 entries are:')
             logger.info(x[0:10])
-            return True
+		
+            #return True
         except:
             logger.warning('cannot grab packets')
             return False
+        if_ids, digital_ids = [], []
+        for i in range(n):
+            if_ids.append(pkts[i].if_id)
+            digital_ids.append(pkts[i].digital_id)
+        logger.info(if_ids)
+        logger.info(digital_ids)
+        plt.figure()
+        plt.plot(if_ids)
+        plt.plot(digital_ids)
+        plt.savefig('/home/cclaesse/monitor/ids.png')
+
 
 
     def monitor(self,dsoc_desc=None,close_soc=True, tag='a'):
@@ -231,29 +245,35 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
 
 	n = np.shape(x)[0]
 	logger.info('array length {}'.format(n))
-	p = np.abs(np.fft.fftshift(np.fft.fft(x)))/n
-	p = p**2
-	p = p*2
-
-	#f1 = np.abs(f)/n
-	#f1 = f1**2
-	
-
+	p = np.abs(np.fft.fftshift(np.fft.fft(x)))
+	logger.info(x[0:10])
+	logger.info(f[0:10])
+	p = p/np.max(p) 	
+	logger.info(np.min(np.min(f)), np.max(np.abs(f)))
 	cf = self.central_freq*10**-6
         plt.figure()
-        plt.plot(np.linspace(cf-50,cf+50,np.shape(x)[0]),10.0*np.log10(p), color='b')
-	#plt.plot(np.linspace(cf-50,cf+50,np.shape(x)[0]),10.0*np.log10(f1), color='r')
-	plt.plot(np.linspace(cf-50,cf+50,np.shape(x)[0]),10.0*np.log10(np.abs(f)/n), color='g')
-        #plt.plot(np.linspace(cf-50,cf+50,np.shape(x)[0]),10.0*np.log10(p), color='b')
+        plt.plot(np.linspace(cf-50,cf+50,np.shape(x)[0]),10.0*np.log10(p), color='b', label='fft(T-Packet')
+	#plt.plot(np.linspace(cf-50,cf+50,np.shape(x)[0]),np.abs(p), color='b')
+	plt.plot(np.linspace(cf-50,cf+50,np.shape(x)[0]),10.0*np.log10(np.abs(f)), color='g',label='F-Packet')
+        #plt.plot(np.linspace(cf-50,cf+50,np.shape(x)[0]),np.abs(f), color='g')
 	plt.xlabel('frequency [MHz]')
-	plt.ylabel('Power [dB]')
+	plt.ylabel('relativ amplitude [dB]')
+	#plt.legend()
         plt.savefig('/home/cclaesse/monitor/freq_plot.png')
 
 
 
+    def calibrate_manually(self, gain1=0.0, gain2=0.42, gain3=0.42, gain4=1.55, off1=3.14, off2=-0.39, off3=2.75, off4=-1.18):
+	adc5g.set_spi_gain(self.roach2,0, 1, gain1)
+	adc5g.set_spi_gain(self.roach2,0, 2, gain2)
+	adc5g.set_spi_gain(self.roach2,0, 3, gain3)
+	adc5g.set_spi_gain(self.roach2,0, 4, gain4)
+	adc5g.set_spi_offset(self.roach2,0, 1, off1)
+	adc5g.set_spi_offset(self.roach2,0, 2, off2)
+	adc5g.set_spi_offset(self.roach2,0, 3, off3)
+	adc5g.set_spi_offset(self.roach2,0, 4, off4)
 
-
-
+	return True
 #    def set_ip_configuration(self,
 #                 source_ip = None,
 #                 source_port = None,

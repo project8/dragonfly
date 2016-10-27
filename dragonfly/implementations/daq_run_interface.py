@@ -556,15 +556,16 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
         filepath = '{directory}/'.format(
                                         directory=self.data_directory_path)
 
-        filename = '{prefix}{runN:09d}_{acqN:09d}_{runname}.egg'.format(prefix=self.filename_prefix,
-                                        runN=self.run_id,
-                                        acqN=self._acquisition_count,
-					runname=run_name)
-
+        #filename = '{prefix}{runN:09d}_{acqN:09d}_{runname}.egg'.format(prefix=self.filename_prefix,
+        #                                runN=self.run_id,
+        #                                acqN=self._acquisition_count,
+	#
+	#			runname=run_name)
+	filename = str(run_name)+'.egg'
         if not os.path.exists(filepath):
             os.makedirs(filepath)
         self.set_path(filepath+filename)
-	time.sleep(1)
+	#time.sleep(1)
 
         request = core.RequestMessage(msgop=core.OP_CMD)
         result = self.portal.send_request(self.psyllid_queue+'.start-run',
@@ -594,6 +595,7 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
         filename = '{prefix}{runN:09d}_{acqN:09d}.egg'.format(prefix=self.filename_prefix,
                                         runN=self.run_id,
                                         acqN=self._acquisition_count)
+	 
 
         if not os.path.exists(filepath):
             os.makedirs(filepath)
