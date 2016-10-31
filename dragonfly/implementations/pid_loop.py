@@ -140,9 +140,10 @@ class PidController(Gogol):
         #logger.info(this_time,abs((this_time - self._last_data['time']).seconds))
 
         self._integral += delta * (this_time - self._last_data['time']).seconds
-        if (this_time - self._last_data['time']).seconds < (5 * 60) and (this_time - self._last_data['time']).seconds>0:
+        if (this_time - self._last_data['time']).seconds < 2*self.minimum_elapsed_time:
             derivative = (delta - self._last_data['delta']) / (this_time - self._last_data['time']).seconds
         else:
+            logger.warning("invalid time for calculating derivative")
             derivative = 0.
         self._last_data = {'delta': delta, 'time': this_time}
 
