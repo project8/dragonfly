@@ -142,11 +142,14 @@ class MultiDo(Endpoint):
                 raise exceptions.DriplineValueError('value get is a None')
 
             # if the value we are checking is a float/int
-            if isinstance(value_get, float) or isinstance(value_get, int):
-                if  not isinstance(target_value,float) and not isinstance(target_value,int):
-                    logger.warning('target <{}> is not the same type as the value get: going to use the set value ({}) as target_value'.format(a_target,value))
-                    target_value = value
-                if isinstance(target_value,float) or isinstance(target_value,int):
+            if isinstance(value_get, (int,float)):
+                if not isinstance(target_value, (int,float)):
+                    try:
+                        target_value = float(target_value)
+                    except ValueError:
+                        logger.warning('target <{}> is not the same type as the value get: going to use the set value ({}) as target_value'.format(a_target,value))
+                        target_value = value
+                if isinstance(target_value, (int,float)):
                     if 'tolerance' in details:
                         tolerance = details['tolerance']
                     else:
@@ -243,6 +246,7 @@ class MultiGet(MultiDo):
         MultiDo.__init__(self, **kwargs)
 
     def on_set(self, value):
+        logger.warning("Disallowed method: attempt to set MultiGet endpoint {}".format(self.name))
         raise exceptions.DriplineMethodNotSupportedError('setting not available for {}'.format(self.name))
 
 
@@ -257,4 +261,5 @@ class MultiSet(MultiDo):
         MultiDo.__init__(self, **kwargs)
 
     def on_get(self):
+        logger.warning("Disallowed method: attempt to get MultiSet endpoint {}".format(self.name))
         raise exceptions.DriplineMethodNotSupportedError('getting not available for {}'.format(self.name))
