@@ -84,19 +84,13 @@ class RSAProvider(EthernetProvider):
             logger.info("No trace_path given in the config file: save_trace feature disabled!")
 
 
-    def create_new_auto_mask(self, trace, xmargin, ymargin):
-        #This convenience method is currently broken
-        logger.info('setting the auto mask')
-        raise exceptions.DriplineError("convenience method <create_new_auto_mask> not yet implemented")
-        self.provider.set('rsa_new_auto_mask','{},{},{}'.format(trace,xmargin,ymargin))
-
     @property
     def trigger_status(self):
         return self.send("TRIG:SEQUENCE:STATUS?")
     @trigger_status.setter
     def trigger_status(self, value):
         self.send("TRIG:SEQUENCE:STATUS {}; *OPC?".format(value))
-        return self.send("TRIG:SEQUENCE:STATUS?")
+        return getattr(self, "trigger_status")
 
 
     def start_run(self, directory, filename):
