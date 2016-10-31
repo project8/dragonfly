@@ -1,7 +1,7 @@
 from __future__ import absolute_import
 __all__ = []
 
-import dripline
+from dripline.core import Endpoint, fancy_doc, exceptions
 
 import logging
 
@@ -9,18 +9,39 @@ logger = logging.getLogger(__name__)
 
 
 __all__.append('MultiDo')
-@dripline.core.fancy_doc
-class MultiDo(dripline.core.Endpoint):
+@fancy_doc
+class MultiDo(Endpoint):
     '''
-    MultiSet is a convenience object allowing a single target to be
-    used to set multiple endpoints. The intended use is specifically
-    for setting many endpoints, and use cases for other verbs are not considered.
+    MultiDo is a convenience object allowing a single target to interact with
+    multiple endpoints. MultiDo serves as the generic implementation with both
+    get and set methods, specific implementations of MultiGet or MultiSet will
+    limit this functionality for particular use cases.
+
+    For get, the calibrated value returned is intended to be a nicely formatted
+    string representation of the result, while the raw value will retain the
+    types of those values returned. A "payload_field" should be specified for
+    each target. Either a "formatter" or "units" specifier may be given for each
+    target for further detailing the calibrated return value.
+
+    For set, each target can have a "default_set" or adopt the given value.  The
+    set_and_check feature is implemented, which can be bypassed with the
+    "no_check" option, or loosened with a "tolerance" value.  For endpoints
+    requiring a separate endpoint to be checked, the "get_name" and
+    "target_value" arguments are provided.
     '''
     def __init__(self, targets=[], **kwargs):
         '''
-        targets (list): list of two element lists where the first elements are endpoint names to set and second elements are themselves dictionaries which must provide a value for 'payload_field'
+        targets (list): list of dictionaries which must provide a value for 'target', other optional fields:
+          default_set: always set endpoint to this value
+          payload_field (str): return payload field to get (value_cal, value_raw, or values)
+          units (str): display units for 'calibrated' return value
+          formatter (str): special formatting for 'calibrated' return string
+          tolerance: check tolerance
+          no_check (bool): disable set_and_check; necessary for set-only endpoints!
+          get_target (str): endpoint to get for check (default is 'target')
+          target_value: alternate value to check against
         '''
-        dripline.core.Endpoint.__init__(self, **kwargs)
+        Endpoint.__init__(self, **kwargs)
         self._targets = []
         for a_target in targets:
             these_details = {}
@@ -33,7 +54,7 @@ class MultiDo(dripline.core.Endpoint):
             else:
                 these_details.update({'payload_field':'value_cal'})
             if 'units' in a_target and 'formatter' in a_target:
-                raise dripline.core.DriplineValueError('may not specify both "units" and "formatter"')
+                raise exceptions.DriplineValueError('may not specify both "units" and "formatter"')
             if 'formatter' in a_target:
                 these_details['formatter'] = a_target['formatter']
             elif 'units' in a_target:
@@ -75,7 +96,7 @@ class MultiDo(dripline.core.Endpoint):
             a_result = self.provider.get(target=endpoint_name)
             ret_val = a_result[details['payload_field']]
             ret_rep = details['formatter'].format(ret_val)
-        except dripline.core.exceptions.DriplineException as err:
+        except exceptions.DriplineException as err:
             ret_val = None
             ret_rep = '{} -> returned error <{}>:{}'.format(endpoint_name, err.retcode, err)
         return ret_val,ret_rep
@@ -118,14 +139,17 @@ class MultiDo(dripline.core.Endpoint):
                 logger.debug('no target_value given: using value ({}) as a target_value to check'.format(value))
                 target_value = value
             if value_get==None:
-                raise dripline.core.DriplineValueError('value get is a None')
+                raise exceptions.DriplineValueError('value get is a None')
 
             # if the value we are checking is a float/int
-            if isinstance(value_get, float) or isinstance(value_get, int):
-                if  not isinstance(target_value,float) and not isinstance(target_value,int):
-                    logger.warning('target <{}> is not the same type as the value get: going to use the set value ({}) as target_value'.format(a_target,value))
-                    target_value = value
-                if isinstance(target_value,float) or isinstance(target_value,int):
+            if isinstance(value_get, (int,float)):
+                if not isinstance(target_value, (int,float)):
+                    try:
+                        target_value = float(target_value)
+                    except ValueError:
+                        logger.warning('target <{}> is not the same type as the value get: going to use the set value ({}) as target_value'.format(a_target,value))
+                        target_value = value
+                if isinstance(target_value, (int,float)):
                     if 'tolerance' in details:
                         tolerance = details['tolerance']
                     else:
@@ -144,7 +168,7 @@ class MultiDo(dripline.core.Endpoint):
                         if target_value -  tolerance <= value_get and value_get <= target_value + tolerance:
                             logger.info('the value get <{}> ({}) is included in the target_value ({}) +- tolerance ({})'.format(a_target,value_get,target_value,tolerance))
                         else:
-                            raise dripline.core.DriplineValueError('the value get <{}> ({}) is NOT included in the target_value ({}) +- tolerance ({}): stopping here!'.format(a_target,value_get,target_value,tolerance))
+                            raise exceptions.DriplineValueError('the value get <{}> ({}) is NOT included in the target_value ({}) +- tolerance ({}): stopping here!'.format(a_target,value_get,target_value,tolerance))
                     elif isinstance(tolerance,str):
                         if '%' not in tolerance:
                             logger.debug('absolute tolerance')
@@ -160,11 +184,11 @@ class MultiDo(dripline.core.Endpoint):
                         if target_value -  tolerance <= value_get and value_get <= target_value + tolerance:
                             logger.info('the value <{}> get ({}) is included in the target_value ({}) +- tolerance ({})'.format(a_target,value_get,target_value,tolerance))
                         else:
-                            raise dripline.core.DriplineValueError('the value <{}> get ({}) is NOT included in the target_value ({}) +- tolerance ({}): stopping here!'.format(a_target,value_get,target_value,tolerance))
+                            raise exceptions.DriplineValueError('the value <{}> get ({}) is NOT included in the target_value ({}) +- tolerance ({}): stopping here!'.format(a_target,value_get,target_value,tolerance))
                     else:
-                        raise dripline.core.DriplineValueError('tolerance is not a float, int or string: stopping here')
+                        raise exceptions.DriplineValueError('tolerance is not a float, int or string: stopping here')
                 else:
-                    raise dripline.core.DriplineValueError('Cannot check! value set and target_value are not the same type as value get (float/int): stopping here!')
+                    raise exceptions.DriplineValueError('Cannot check! value set and target_value are not the same type as value get (float/int): stopping here!')
 
             # if the value we are checking is a string
             elif isinstance(value_get, str):
@@ -182,13 +206,13 @@ class MultiDo(dripline.core.Endpoint):
                         target_value=1
                     if target_value=='off' or target_value=='disable' or target_value=='disabled' or target_value ==  'negative':
                         target_value=0
-                    # raise dripline.core.DriplineValueError('Cannot check! value set and target_value are not the same type as value get (string): stopping here!')
+                    # raise exceptions.DriplineValueError('Cannot check! value set and target_value are not the same type as value get (string): stopping here!')
                     # checking is target and value_get are the same
 
                 if target_value==value_get:
                     logger.info('value get ({}) corresponds to the target ({}): going on'.format(value_get_backup,target_backup))
                 else:
-                    raise dripline.core.DriplineValueError('value get ({}) DOES NOT correspond to the target_value ({}): stopping here!'.format(value_get_backup,target_backup))
+                    raise exceptions.DriplineValueError('value get ({}) DOES NOT correspond to the target_value ({}): stopping here!'.format(value_get_backup,target_backup))
 
             # if the value we are checking is a bool
             elif isinstance(value_get, bool):
@@ -199,14 +223,43 @@ class MultiDo(dripline.core.Endpoint):
                     if value_get==target_value:
                         logger.info('value get ({}) corresponds to the target ({}): going on'.format(value_get,target_value))
                     else:
-                        raise dripline.core.DriplineValueError('value get ({}) DOES NOT correspond to the target ({}): stopping here!'.format(value_get,target_value))
+                        raise exceptions.DriplineValueError('value get ({}) DOES NOT correspond to the target ({}): stopping here!'.format(value_get,target_value))
                 else:
-                    raise dripline.core.DriplineValueError('Cannot check! value set and target are not the same type as value get (string): stopping here!')
+                    raise exceptions.DriplineValueError('Cannot check! value set and target are not the same type as value get (string): stopping here!')
 
             # if you are in this "else", this means that you either wanted to mess up with us or you are not viligant enough
             else:
-                raise dripline.core.DriplineValueError('value get ({}) is not a float, int, string, bool, None ({}): SUPER WEIRD!'.format(value_get,type(value_get)))
+                raise exceptions.DriplineValueError('value get ({}) is not a float, int, string, bool, None ({}): SUPER WEIRD!'.format(value_get,type(value_get)))
 
             logger.info('{} set to {}'.format(a_target,value_get))
 
         return 'set and check successful'
+
+
+__all__.append('MultiGet')
+@fancy_doc
+class MultiGet(MultiDo):
+    '''
+    Identical to MultiDo, but with an explicit exception if on_set is attempted.
+    '''
+    def __init__(self, **kwargs):
+        MultiDo.__init__(self, **kwargs)
+
+    def on_set(self, value):
+        logger.warning("Disallowed method: attempt to set MultiGet endpoint {}".format(self.name))
+        raise exceptions.DriplineMethodNotSupportedError('setting not available for {}'.format(self.name))
+
+
+__all__.append('MultiSet')
+@fancy_doc
+class MultiSet(MultiDo):
+    '''
+    Identical to MultiDo, but with an explicit exception if on_get is attempted.
+    MultiDo's on_get method has error handling, so this method may be unnecessary as even set-only endpoints can be included in a MultiDo.
+    '''
+    def __init__(self, **kwargs):
+        MultiDo.__init__(self, **kwargs)
+
+    def on_get(self):
+        logger.warning("Disallowed method: attempt to get MultiSet endpoint {}".format(self.name))
+        raise exceptions.DriplineMethodNotSupportedError('getting not available for {}'.format(self.name))
