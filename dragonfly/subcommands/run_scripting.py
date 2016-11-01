@@ -449,13 +449,13 @@ class RunScript(object):
                     raise DriplineInternalError('no payload matching!')
 
             # sometimes the value get is in unicode (value_raw) -> switch to a readable value
-            if type(value_get) is unicode:
+            if isinstance(value_get, unicode):
                 logger.debug('result in unicode -> formatting to utf-8')
                 value_get = value_get.encode('utf-8')
             value_get_temp = value_get
             try:
                 value_get = float(value_get_temp)
-            except:
+            except ValueError:
                 logger.debug('value get ({}) is not floatable'.format(value_get))
                 value_get = value_get_temp
 
@@ -472,11 +472,14 @@ class RunScript(object):
                 raise dripline.core.DriplineValueError('value get is a None')
 
             # if the value we are checking is a float/int
-            if isinstance(value_get, float) or isinstance(value_get, int):
-                if  not isinstance(target_value,float) and not isinstance(target_value,int):
-                    logger.warning('target_value is not the same type as the value get: going to use the set value ({}) as target_value'.format(this_set['value']))
-                    target_value==this_set['value']
-                if isinstance(target_value,float) or isinstance(target_value,int):
+            if isinstance(value_get, (int,float)):
+                if not isinstance(target_value, (int,float)):
+                    try:
+                        target_value = float(target_value)
+                    except ValueError:
+                        logger.warning('target_value is not the same type as the value get: going to use the set value ({}) as target_value'.format(this_set['value']))
+                        target_value==this_set['value']
+                if isinstance(target_value, (int,float)):
                     if 'tolerance' in this_set:
                         tolerance = this_set['tolerance']
                     else:
@@ -569,7 +572,7 @@ class RunScript(object):
                 elif key == 'cmds':
                     self.action_cmd(this_do[key])
                 elif key == 'sleep':
-                    self.action_sleep(duration=this_do[key][0]['duration'])
+                    self.action_sleep(duration=this_do[key]['duration'])
                 else:
                     logger.info('operation <{}> unknown: skipping!'.format(key))
 
