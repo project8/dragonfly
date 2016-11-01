@@ -131,17 +131,17 @@ class PidController(Gogol):
     def process_new_value(self, value, timestamp):
         this_time = datetime.datetime.strptime(timestamp, constants.TIME_FORMAT)
 
-        if abs((this_time - self._last_data['time']).seconds)<self.minimum_elapsed_time:
-            logger.info("not enough time has elasped: {}[{}]".format(abs((this_time - self._last_data['time']).seconds),self.minimum_elapsed_time))
+        if (this_time - self._last_data['time']).total_seconds() < self.minimum_elapsed_time:
+            logger.info("not enough time has elasped: {}[{}]".format((this_time - self._last_data['time']).total_seconds(),self.minimum_elapsed_time))
             return
         logger.info('value is: {}'.format(value))
         delta = self.target_value - float(value)
         logger.info("delta is: {}".format(delta))
         #logger.info(this_time,abs((this_time - self._last_data['time']).seconds))
 
-        self._integral += delta * (this_time - self._last_data['time']).seconds
-        if (this_time - self._last_data['time']).seconds < 2*self.minimum_elapsed_time:
-            derivative = (delta - self._last_data['delta']) / (this_time - self._last_data['time']).seconds
+        self._integral += delta * (this_time - self._last_data['time']).total_seconds()
+        if (this_time - self._last_data['time']).total_seconds() < 2*self.minimum_elapsed_time:
+            derivative = (delta - self._last_data['delta']) / (this_time - self._last_data['time']).total_seconds()
         else:
             logger.warning("invalid time for calculating derivative")
             derivative = 0.
