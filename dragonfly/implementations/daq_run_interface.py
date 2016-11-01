@@ -104,7 +104,7 @@ class DAQProvider(core.Provider):
         self._postrun_snapshot = {}
         self._do_postrun_gets()
         if not self._debug_without_snapshot_broadcast:
-            self._send_snapshot(flag='post')
+            self._send_snapshot(snap_flag='post')
         run_was = self.run_id
         if self._stop_handle is not None:
             self.service._connection.remove_timeout(self._stop_handle)
@@ -124,7 +124,7 @@ class DAQProvider(core.Provider):
         if not self._debug_without_meta_broadcast:
             self._send_metadata()
         if not self._debug_without_snapshot_broadcast:
-            self._send_snapshot(flag='pre')
+            self._send_snapshot(snap_flag='pre')
         logger.debug('these meta will be {}'.format(self._run_meta))
         logger.debug('this snapshot will be {}'.format(self._run_snapshot))
         logger.info('start_run finished')
@@ -170,11 +170,11 @@ class DAQProvider(core.Provider):
         req_result = self.provider.cmd(self._metadata_target, None, payload=this_payload)
         logger.debug('meta sent')
 
-    def _send_snapshot(self, flag):
+    def _send_snapshot(self, snap_flag):
         '''
-        flag (str): 'pre' for pre-run snapshot file and 'post' for post-run snapshot file
+        snap_flag (str): 'pre' for pre-run snapshot file and 'post' for post-run snapshot file
         '''
-        if flag == 'pre':
+        if snap_flag == 'pre':
             logger.info('prerun snapshot of the slow control database should broadcast')
             filename = '{directory}/{runN:09d}/{prefix}{runN:09d}_latest_snapshot.json'.format(
                                                             directory=self.meta_data_directory_path,
@@ -187,7 +187,7 @@ class DAQProvider(core.Provider):
                             'filename': filename}
             req_result = self.provider.cmd(self._metadata_target, None, payload=this_payload)
             logger.debug('prerun snapshot sent')
-        elif flag == 'post':
+        elif snap_flag == 'post':
             logger.info('postrun snapshot of the slow control database should broadcast')
             filename = '{directory}/{runN:09d}/{prefix}{runN:09d}_logs_snapshot.json'.format(
                                                             directory=self.meta_data_directory_path,
