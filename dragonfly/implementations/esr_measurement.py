@@ -57,8 +57,7 @@ class ESR_Measurement(core.Endpoint):
         self.hf_n_sweep_points = self._default_hf_n_sweep_points = hf_n_sweep_points
         self.hf_dwell_time = self._default_hf_dwell_time = hf_dwell_time
         # Output storage
-        self.output_dict{}
-        self._root_setup()
+        self.output_dict = {}
 
 
     def run_scan(self, config_instruments=True, restore_defaults=True, coils=[1,2,3,4,5], n_fits=2, **kwargs):
@@ -77,7 +76,7 @@ class ESR_Measurement(core.Endpoint):
             self.reset_configure()
             # FIXME: warning to user to reset_configure manually if not performed here
         outfile = self.save_data()
-        return "ESR data file created:\n{}".format(outfile)
+        return "ESR data file created: {}".format(outfile)
 
 
     def configure_instruments(self, reset):
@@ -106,8 +105,8 @@ class ESR_Measurement(core.Endpoint):
         self.check_endpoint('hf_output_status', 0)
         self.check_endpoint('hf_freq_mode', 'LIST')
         self.check_endpoint('hf_sweep_order', str(self.hf_sweep_order))
-        self.check_endpoint('hf_start_freq', self.hf_start_freq)
-        self.check_endpoint('hf_stop_freq', self.hf_stop_freq)
+        self.check_endpoint('hf_start_freq', float(self.hf_start_freq))
+        self.check_endpoint('hf_stop_freq', float(self.hf_stop_freq))
         self.check_endpoint('hf_power', self.hf_power)
         self.check_endpoint('hf_n_sweep_points', self.hf_n_sweep_points)
         self.check_endpoint('hf_dwell_time', self.hf_dwell_time)
@@ -170,7 +169,7 @@ class ESR_Measurement(core.Endpoint):
         '''
         self.check_endpoint('hf_output_status', 1)
         self.check_endpoint('esr_coil_{}_switch_status'.format(coil), 1)
-        time = time()
+        starttime = time()
         self.raw_get_endpoint('lockin_take_data')
         # HF sweep takes 60 sec
         while True:
@@ -190,7 +189,7 @@ class ESR_Measurement(core.Endpoint):
                 'x' : self.pull_lockin_data('x'),
                 'y' : self.pull_lockin_data('y') }
         self.output_dict.update( { 'coil{}'.format(coil) : { 'data' : raw,
-                                                             'time' : time } } )
+                                                             'time' : starttime } } )
 
     def save_data(self):
         '''
@@ -202,7 +201,7 @@ class ESR_Measurement(core.Endpoint):
             os.makedirs(outpath)
         fp = open(outpath+"esr.json", "w")
         json.dump(obj=self.output_dict, fp=fp, indent=4)
-        fp.Close()
+        fp.close()
         return outpath+"esr.json"
 
 

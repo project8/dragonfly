@@ -586,7 +586,7 @@ class RunScript(object):
         # FIXME: method for passing warnings between esr service and run scripting to note that settings are being locked to defaults
         result = self.interface.cmd(**kwargs)
         # FIXME: ESR should run in background while sleep loops here pass
-        logger.info(result)
+        logger.info(result['payload']['values'][0])
 
     # if available, this allows to record the trace/noise background on a daq.
     # this method depends on a method named "save_trace" defined in the associated daq class
