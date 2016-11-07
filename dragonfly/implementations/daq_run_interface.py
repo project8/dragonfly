@@ -98,7 +98,7 @@ class DAQProvider(core.Provider):
             return
         result = self.provider.cmd(self.run_table_endpoint, 'do_insert', payload={'run_name':value})
         self.run_id = result['run_id']
-        self._start_time = result['start_timestamp'].strftime(constants.TIME_FORMAT)
+        self._start_time = result['start_timestamp'].strftime(core.constants.TIME_FORMAT)
 
     def end_run(self):
         self._postrun_snapshot = {}
@@ -142,7 +142,7 @@ class DAQProvider(core.Provider):
 
     def _do_postrun_gets(self):
         logger.info('doing postrun snapshot gets')
-        time_now = datetime.datetime.utcnow().strftime(constants.TIME_FORMAT)
+        time_now = datetime.datetime.utcnow().strftime(core.constants.TIME_FORMAT)
         for target in self._snapshot_target_items:
             snapshot_result = self.provider.cmd(target, 'get_logs', [self._start_time,time_now], timeout=120)
             these_snaps = snapshot_result['value_raw']
