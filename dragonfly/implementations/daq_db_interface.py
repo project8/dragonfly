@@ -71,7 +71,7 @@ class RunDBInterface(Provider):
             logger.debug('insert_result is: {}'.format(insert_result))
             if return_col_names_list:
                 return_values = insert_result.first()
-                logger.debug('return_values is: {}'.format(return_values))
+                logger.debug('return_values is: {}\nwith type: {}'.format(return_values,type(return_values)))
             else:
                 return_values = []
         except Exception as err:
