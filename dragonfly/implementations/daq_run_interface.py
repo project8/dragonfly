@@ -132,6 +132,8 @@ class DAQProvider(core.Provider):
     def _do_prerun_gets(self):
         logger.info('doing prerun meta-data and snapshot gets')
         meta_result = self.provider.get(self._metadata_state_target, timeout=120)
+        logger.debug('meta_result is: {}'.format(meta_result))
+        logger.debug('meta_result is of type: {}'.format(type(meta_result)))
         these_metadata = meta_result['value_raw']
         self._run_meta.update(these_metadata)
         for target,item_list in self._snapshot_target_items.items():
