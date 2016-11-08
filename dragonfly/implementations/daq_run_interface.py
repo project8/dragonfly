@@ -145,6 +145,7 @@ class DAQProvider(core.Provider):
         '''
         self._stop_handle = self.service._connection.add_timeout(int(run_time), self.end_run)
         self.start_run(run_name)
+        return self.run_id
 
 
 __all__.append('RSAAcquisitionInterface')
