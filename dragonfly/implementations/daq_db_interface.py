@@ -68,8 +68,10 @@ class RunDBInterface(Provider):
             if return_col_names_list:
                 ins = ins.returning(*[self.tables[table_name].c[col_name] for col_name in return_col_names_list])
             insert_result = ins.execute()
+            logger.debug('insert_result is: {}'.format(insert_result))
             if return_col_names_list:
                 return_values = insert_result.first()
+                logger.debug('return_values is: {}'.format(return_values))
             else:
                 return_values = []
         except Exception as err:
