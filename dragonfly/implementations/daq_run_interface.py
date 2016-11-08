@@ -98,7 +98,7 @@ class DAQProvider(core.Provider):
             return
         result = self.provider.cmd(self.run_table_endpoint, 'do_insert', payload={'run_name':value})
         self.run_id = result['run_id']
-        self._start_time = result['start_timestamp'].strftime(core.constants.TIME_FORMAT)
+        self._start_time = result['start_timestamp']
 
     def end_run(self):
         self._postrun_snapshot = {}
