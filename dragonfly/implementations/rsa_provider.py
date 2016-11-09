@@ -37,7 +37,7 @@ class RSAProvider(EthernetProvider):
                  max_nb_files=10000,
                  trace_path=None,
                  trace_metadata_path=None,
-                 insert_status_endpoint=None,
+                 metadata_endpoints=None,
                  **kwargs):
         EthernetProvider.__init__(self, **kwargs)
         if isinstance(trace_path,str):
@@ -56,21 +56,38 @@ class RSAProvider(EthernetProvider):
         else:
             self.trace_metadata_path = None
         self.max_nb_files = max_nb_files
-        self._insert_status_endpoint = insert_status_endpoint
+        self._metadata_endpoints = metadata_endpoints
 
     def save_trace(self, trace, comment):
         if self.trace_path is not None:
             logger.info('saving trace')
-            filename = "{:%Y%m%d_%H%M%S}_Trace{}_{}".format(datetime.now(),trace,comment)
+            datenow = datetime.now()
+            filename = "{:%Y%m%d_%H%M%S}/{:%Y%m%d_%H%M%S}_Trace{}_{}_data".format(datenow,datenow,trace,comment)
             path = self.trace_path + filename
             self.send(['MMEMory:DPX:STORe:TRACe{} "{}"; *OPC?'.format(trace,path)])
-            logger.info('saving additional info')
-            if self._insert_status_endpoint is not None:
-                result = self.provider.get(self._insert_status_endpoint,timeout=100)
-                logger.debug("getting {} endpoint: successful".format(self._insert_status_endpoint))
 
+            logger.info('saving additional info')
+            result_meta = {}
+
+            if isinstance(self._metadata_endpoints,list):
+                for endpoint_name in self._metadata_endpoints:
+                    result_meta.update(self.provider.get(endpoint_name,timeout=100))
+                    logger.debug("getting {} endpoint: successful".format(endpoint_name))
                 if self.trace_metadata_path is not None:
-                    filename = "{:%Y%m%d_%H%M%S}_Trace{}_{}_insert_status.json".format(datetime.now(),trace,comment)
+                    filename = "{:%Y%m%d_%H%M%S}_Trace{}_{}_metadata.json".format(datenow,trace,comment)
+                    path = self.trace_metadata_path + filename
+                    logger.debug("opening file")
+                    with open(path, "w") as outfile:
+                        logger.debug("things are about to be dumped in file")
+                        json.dump(result_meta, outfile, indent=4)
+                        logger.debug("things have been dumped in file")
+                    logger.info("saving {}: successful".format(path))
+
+            elif isinstance(self._metadata_endpoints,str):
+                result.update(self.provider.get(self._metadata_endpoints,timeout=100))
+                logger.debug("getting {} endpoint: successful".format(self._metadata_endpoints))
+                if self.trace_metadata_path is not None:
+                    filename = "{:%Y%m%d_%H%M%S}_Trace{}_{}_metadata.json".format(datenow,trace,comment)
                     path = self.trace_metadata_path + filename
                     logger.debug("opening file")
                     with open(path, "w") as outfile:
