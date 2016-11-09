@@ -157,6 +157,9 @@ class RSAAcquisitionInterface(DAQProvider):
                  hf_lo_freq=None,
                  instrument_setup_filename_prefix=None,
                  mask_filename_prefix=None,
+                 trace_path=None,
+                 trace_metadata_path=None,
+                 metadata_endpoints=None,
                  **kwargs):
         DAQProvider.__init__(self, **kwargs)
 
@@ -166,6 +169,23 @@ class RSAAcquisitionInterface(DAQProvider):
         if hf_lo_freq is None:
             raise core.exceptions.DriplineValueError('the rsa acquisition interface requires a "hf_lo_freq" in its config file')
         self._hf_lo_freq = hf_lo_freq
+
+        if isinstance(trace_path,str):
+            if trace_path.endswith("/"):
+                self.trace_path = trace_path
+            else:
+                self.trace_path = trace_path + "/"
+        else:
+            logger.info("No trace_path given in the config file: save_trace feature disabled")
+            self.trace_path = None
+        if isinstance(trace_metadata_path,str):
+            if trace_metadata_path.endswith("/"):
+                self.trace_metadata_path = trace_metadata_path
+            else:
+                self.trace_metadata_path = trace_metadata_path + "/"
+        else:
+            self.trace_metadata_path = None
+        self._metadata_endpoints = metadata_endpoints
 
         # naming prefixes are not currently implemented, but maintained in code for consistency
         #self.instrument_setup_filename_prefix = instrument_setup_filename_prefix
@@ -214,3 +234,40 @@ class RSAAcquisitionInterface(DAQProvider):
         result = self.provider.get('rsa_max_frequency')['value_raw']
         self._run_meta['RF_ROI_MAX'] = float(result) + float(self._hf_lo_freq)
         logger.debug('RF Max: {}'.format(self._run_meta['RF_ROI_MAX']))
+
+
+    def save_trace(self, trace, comment):
+        if self.trace_path is None:
+            raise DriplineValueError("No trace_path in RSA config file: save_trace feature disabled!")
+
+        if isinstance(comment,(str,unicode)):
+            comment = comment.replace(" ","_")
+        datenow = datetime.now()
+        filename = "{:%Y%m%d_%H%M%S}/{:%Y%m%d_%H%M%S}_Trace{}_{}".format(datenow,datenow,trace,comment)
+
+        logger.info('saving trace')
+        path = self.trace_path + "{}_data".format(filename)
+        self.send(['MMEMory:DPX:STORe:TRACe{} "{}"; *OPC?'.format(trace,path)])
+
+        logger.info('saving additional info')
+        result_meta = {}
+        if isinstance(self._metadata_endpoints,list):
+            for endpoint_name in self._metadata_endpoints:
+                result_meta.update(self.provider.get(endpoint_name,timeout=100)['value_raw'])
+                logger.debug("getting {} endpoint: successful".format(endpoint_name))
+        elif isinstance(self._metadata_endpoints,str):
+            result_meta.update(self.provider.get(self._metadata_endpoints,timeout=100)['value_raw'])
+            logger.debug("getting {} endpoint: successful".format(self._metadata_endpoints))
+        else:
+            raise DriplineValueError("No valid metadata_endpoints in RSA config.")
+
+        if self.trace_metadata_path is not None:
+            path = self.trace_metadata_path + "{}_metadata.json".format(filename)
+            logger.debug("opening file")
+            with open(path, "w") as outfile:
+                logger.debug("things are about to be dumped in file")
+                json.dump(result_meta, outfile, indent=4)
+                logger.debug("things have been dumped in file")
+            logger.info("saving {}: successful".format(path))
+        else:
+            logger.warning("No trace_metadata_path given in the config file: metadata file saving disabled!")

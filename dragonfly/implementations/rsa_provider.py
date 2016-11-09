@@ -35,64 +35,9 @@ class RSAProvider(EthernetProvider):
     '''
     def __init__(self,
                  max_nb_files=10000,
-                 trace_path=None,
-                 trace_metadata_path=None,
-                 metadata_endpoints=None,
                  **kwargs):
         EthernetProvider.__init__(self, **kwargs)
-        if isinstance(trace_path,str):
-            if trace_path.endswith("/"):
-                self.trace_path = trace_path
-            else:
-                self.trace_path = trace_path + "/"
-        else:
-            logger.info("No trace_path given in the config file: save_trace feature disabled")
-            self.trace_path = None
-        if isinstance(trace_metadata_path,str):
-            if trace_metadata_path.endswith("/"):
-                self.trace_metadata_path = trace_metadata_path
-            else:
-                self.trace_metadata_path = trace_metadata_path + "/"
-        else:
-            self.trace_metadata_path = None
         self.max_nb_files = max_nb_files
-        self._metadata_endpoints = metadata_endpoints
-
-    def save_trace(self, trace, comment):
-        if self.trace_path is None:
-            raise DriplineValueError("No trace_path in RSA config file: save_trace feature disabled!")
-
-        if isinstance(comment,(str,unicode)):
-            comment = comment.replace(" ","_")
-        datenow = datetime.now()
-        filename = "{:%Y%m%d_%H%M%S}/{:%Y%m%d_%H%M%S}_Trace{}_{}".format(datenow,datenow,trace,comment)
-
-        logger.info('saving trace')
-        path = self.trace_path + "{}_data".format(filename)
-        self.send(['MMEMory:DPX:STORe:TRACe{} "{}"; *OPC?'.format(trace,path)])
-
-        logger.info('saving additional info')
-        result_meta = {}
-        if isinstance(self._metadata_endpoints,list):
-            for endpoint_name in self._metadata_endpoints:
-                result_meta.update(self.provider.get(endpoint_name,timeout=100))
-                logger.debug("getting {} endpoint: successful".format(endpoint_name))
-        elif isinstance(self._metadata_endpoints,str):
-            result_meta.update(self.provider.get(self._metadata_endpoints,timeout=100))
-            logger.debug("getting {} endpoint: successful".format(self._metadata_endpoints))
-        else:
-            raise DriplineValueError("No valid metadata_endpoints in RSA config.")
-
-        if self.trace_metadata_path is not None:
-            path = self.trace_metadata_path + "{}_metadata.json".format(filename)
-            logger.debug("opening file")
-            with open(path, "w") as outfile:
-                logger.debug("things are about to be dumped in file")
-                json.dump(result_meta, outfile, indent=4)
-                logger.debug("things have been dumped in file")
-            logger.info("saving {}: successful".format(path))
-        else:
-            logger.warning("No trace_metadata_path given in the config file: metadata file saving disabled!")
 
 
     @property
