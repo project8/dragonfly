@@ -59,46 +59,40 @@ class RSAProvider(EthernetProvider):
         self._metadata_endpoints = metadata_endpoints
 
     def save_trace(self, trace, comment):
-        if self.trace_path is not None:
-            logger.info('saving trace')
-            datenow = datetime.now()
-            filename = "{:%Y%m%d_%H%M%S}/{:%Y%m%d_%H%M%S}_Trace{}_{}_data".format(datenow,datenow,trace,comment)
-            path = self.trace_path + filename
-            self.send(['MMEMory:DPX:STORe:TRACe{} "{}"; *OPC?'.format(trace,path)])
+        if self.trace_path is None:
+            raise DriplineValueError("No trace_path in RSA config file: save_trace feature disabled!")
 
-            logger.info('saving additional info')
-            result_meta = {}
+        if isinstance(comment,(str,unicode)):
+            comment = comment.replace(" ","_")
+        datenow = datetime.now()
+        filename = "{:%Y%m%d_%H%M%S}/{:%Y%m%d_%H%M%S}_Trace{}_{}".format(datenow,datenow,trace,comment)
 
-            if isinstance(self._metadata_endpoints,list):
-                for endpoint_name in self._metadata_endpoints:
-                    result_meta.update(self.provider.get(endpoint_name,timeout=100))
-                    logger.debug("getting {} endpoint: successful".format(endpoint_name))
-                if self.trace_metadata_path is not None:
-                    filename = "{:%Y%m%d_%H%M%S}_Trace{}_{}_metadata.json".format(datenow,trace,comment)
-                    path = self.trace_metadata_path + filename
-                    logger.debug("opening file")
-                    with open(path, "w") as outfile:
-                        logger.debug("things are about to be dumped in file")
-                        json.dump(result_meta, outfile, indent=4)
-                        logger.debug("things have been dumped in file")
-                    logger.info("saving {}: successful".format(path))
+        logger.info('saving trace')
+        path = self.trace_path + "{}_data".format(filename)
+        self.send(['MMEMory:DPX:STORe:TRACe{} "{}"; *OPC?'.format(trace,path)])
 
-            elif isinstance(self._metadata_endpoints,str):
-                result.update(self.provider.get(self._metadata_endpoints,timeout=100))
-                logger.debug("getting {} endpoint: successful".format(self._metadata_endpoints))
-                if self.trace_metadata_path is not None:
-                    filename = "{:%Y%m%d_%H%M%S}_Trace{}_{}_metadata.json".format(datenow,trace,comment)
-                    path = self.trace_metadata_path + filename
-                    logger.debug("opening file")
-                    with open(path, "w") as outfile:
-                        logger.debug("things are about to be dumped in file")
-                        json.dump(result, outfile, indent=4)
-                        logger.debug("things have been dumped in file")
-                    logger.info("saving {}: successful".format(path))
-            else:
-                logger.info("No insert_status_endpoint given in the config file: metadata file saving  disabled!")
+        logger.info('saving additional info')
+        result_meta = {}
+        if isinstance(self._metadata_endpoints,list):
+            for endpoint_name in self._metadata_endpoints:
+                result_meta.update(self.provider.get(endpoint_name,timeout=100))
+                logger.debug("getting {} endpoint: successful".format(endpoint_name))
+        elif isinstance(self._metadata_endpoints,str):
+            result_meta.update(self.provider.get(self._metadata_endpoints,timeout=100))
+            logger.debug("getting {} endpoint: successful".format(self._metadata_endpoints))
         else:
-            logger.info("No trace_path given in the config file: save_trace feature disabled!")
+            raise DriplineValueError("No valid metadata_endpoints in RSA config.")
+
+        if self.trace_metadata_path is not None:
+            path = self.trace_metadata_path + "{}_metadata.json".format(filename)
+            logger.debug("opening file")
+            with open(path, "w") as outfile:
+                logger.debug("things are about to be dumped in file")
+                json.dump(result_meta, outfile, indent=4)
+                logger.debug("things have been dumped in file")
+            logger.info("saving {}: successful".format(path))
+        else:
+            logger.warning("No trace_metadata_path given in the config file: metadata file saving disabled!")
 
 
     @property
