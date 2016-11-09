@@ -7,6 +7,9 @@ from __future__ import absolute_import
 import logging
 import uuid
 
+from datetime import datetime
+import json
+
 # internal imports
 from dripline import core
 from .ethernet_provider import EthernetProvider
@@ -247,9 +250,11 @@ class RSAAcquisitionInterface(DAQProvider):
 
         logger.info('saving trace')
         path = self.trace_path + "{}_data".format(filename)
-        self.send(['MMEMory:DPX:STORe:TRACe{} "{}"; *OPC?'.format(trace,path)])
+        self.provider.cmd('rsa_interface','_save_trace',[trace,path])
+        logger.info("saving {}: successful".format(path))
 
-        logger.info('saving additional info')
+        if self.trace_metadata_path is None:
+            raise DriplineValueError("No trace_metadata_path in RSA config file: metadata save disabled!")
         result_meta = {}
         if isinstance(self._metadata_endpoints,list):
             for endpoint_name in self._metadata_endpoints:
@@ -261,13 +266,10 @@ class RSAAcquisitionInterface(DAQProvider):
         else:
             raise DriplineValueError("No valid metadata_endpoints in RSA config.")
 
-        if self.trace_metadata_path is not None:
-            path = self.trace_metadata_path + "{}_metadata.json".format(filename)
-            logger.debug("opening file")
-            with open(path, "w") as outfile:
-                logger.debug("things are about to be dumped in file")
-                json.dump(result_meta, outfile, indent=4)
-                logger.debug("things have been dumped in file")
-            logger.info("saving {}: successful".format(path))
-        else:
-            logger.warning("No trace_metadata_path given in the config file: metadata file saving disabled!")
+        path = self.trace_metadata_path + "{}_metadata.json".format(filename)
+        logger.debug("opening file")
+        with open(path, "w") as outfile:
+            logger.debug("things are about to be dumped in file")
+            json.dump(result_meta, outfile, indent=4)
+            logger.debug("things have been dumped in file")
+        logger.info("saving {}: successful".format(path))

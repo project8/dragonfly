@@ -18,9 +18,6 @@ from __future__ import absolute_import
 from dripline.core import exceptions, fancy_doc
 from dragonfly.implementations import EthernetProvider
 
-from datetime import datetime
-import json
-
 import logging
 logger = logging.getLogger(__name__)
 
@@ -39,6 +36,9 @@ class RSAProvider(EthernetProvider):
         EthernetProvider.__init__(self, **kwargs)
         self.max_nb_files = max_nb_files
 
+    # DO NOT USE THIS METHOD!  Use RSAAcquisitionInterface.save_trace instead!
+    def _save_trace(self, trace, path):
+        self.send(['MMEMory:DPX:STORe:TRACe{} "{}"; *OPC?'.format(trace,path)])
 
     @property
     def trigger_status(self):
