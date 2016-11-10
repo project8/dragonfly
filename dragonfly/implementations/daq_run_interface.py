@@ -36,6 +36,7 @@ class DAQProvider(core.Provider):
                  debug_mode_without_database=False,
                  debug_mode_without_metadata_broadcast=False,
                  debug_mode_without_snapshot_broadcast=False,
+                 debug_mode_without_rf_roi=False,
                  **kwargs):
         '''
         daq_name (str): name of the DAQ (used with the run table and in metadata)
@@ -48,7 +49,8 @@ class DAQProvider(core.Provider):
         metadata_target (str): target to send metadata to
         debug_mode_without_database (bool): if True, forces a run_id of 0, rather that making a query (should only be True as part of debugging)
         debug_mode_without_metadata_broadcast (bool): if True, skips the step of sending metadata to the metadata receiver (should only be True as part of debugging)
-        debug_more_without_snapshot_broadcast (bool): if True, skips the step of sending snapshot data to the metadata receiver (should only be True as part of debugging)
+        debug_mode_without_snapshot_broadcast (bool): if True, skips the step of sending snapshot data to the metadata receiver (should only be True as part of debugging)
+        debug_mode_without_rf_roi (bool): if True, skips the step of determining the RF roi; should only be True if debugging with a child of DAQProvider.
         '''
         core.Provider.__init__(self, **kwargs)
 
@@ -79,6 +81,7 @@ class DAQProvider(core.Provider):
         self._debug_without_db = debug_mode_without_database
         self._debug_without_meta_broadcast = debug_mode_without_metadata_broadcast
         self._debug_without_snapshot_broadcast = debug_mode_without_snapshot_broadcast
+        self._debug_without_rf_roi = debug_mode_without_rf_roi
 
         self._stop_handle = None
         self._run_name = None
@@ -132,15 +135,14 @@ class DAQProvider(core.Provider):
     def _do_prerun_gets(self):
         logger.info('doing prerun meta-data and snapshot gets')
         meta_result = self.provider.get(self._metadata_state_target, timeout=120)
-        logger.debug('meta_result is: {}'.format(meta_result))
-        logger.debug('meta_result is of type: {}'.format(type(meta_result)))
         these_metadata = meta_result['value_raw']
         self._run_meta.update(these_metadata)
         for target,item_list in self._snapshot_target_items.items():
             snapshot_result = self.provider.cmd(target, 'get_latest', [self._start_time,item_list], timeout=120)
             these_snaps = snapshot_result['value_raw']
             self._prerun_snapshot.update(these_snaps)
-        self.determine_RF_ROI()
+        if not self._debug_without_rf_roi:
+            self.determine_RF_ROI()
 
     def _do_postrun_gets(self):
         logger.info('doing postrun snapshot gets')
@@ -188,7 +190,7 @@ class DAQProvider(core.Provider):
             this_payload = {'contents': self._prerun_snapshot,
                             'filename': filename}
             req_result = self.provider.cmd(self._metadata_target, None, payload=this_payload)
-            logger.debug('prerun snapshot sent')
+            logger.debug('pre-run snapshot sent')
         elif snap_flag == 'post':
             logger.info('postrun snapshot of the slow control database should broadcast')
             filename = '{directory}/{runN:09d}/{prefix}{runN:09d}_logs_snapshot.json'.format(
@@ -201,7 +203,7 @@ class DAQProvider(core.Provider):
             this_payload = {'contents': self._postrun_snapshot,
                             'filename': filename}
             req_result = self.provider.cmd(self._metadata_target, None, payload=this_payload)
-            logger.debug('postrun snapshot sent')
+            logger.debug('post-run snapshot sent')
 
     def start_timed_run(self, run_name, run_time):
         '''
