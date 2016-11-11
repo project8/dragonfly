@@ -19,23 +19,20 @@ class AMQPHandler(logging.Handler):
     A custom handler for sending messages to slack
     '''
     argparse_flag_str = 'slack'
-    def __init__(self, broker='localhost',*args, **kwargs):
+    def __init__(self, broker,*args, **kwargs):
         # setting the logger listening
         logging.Handler.__init__(self, *args, **kwargs)
         self.setLevel(logging.CRITICAL)
 
         # setting the interface
-        print('setting the interface')
-        print(kwargs)
-        self.connection_to_alert = dripline.core.Service(amqp_url=broker, exchange='alerts',keys='#')
-        print('done the interface')
+        self.connection_to_alert = dripline.core.Service(broker=broker, exchange='alerts',keys='status_message.p8_alerts.dripline')
 
-        print("I am listening")
+        #sending a welcome message
         this_channel = 'p8_alerts'
         username = 'dripline'
         severity = 'status_message.{}.{}'.format(this_channel,username)
         print('sending to alerts exchange with severity {} message ({})'.format(severity,'hello world'))
-        self.connection_to_alert.send_alert(severity=severity,alert='hello world')
+        self.connection_to_alert.send_status_message(severity=severity,alert='hello world')
 
         # this_home = os.path.expanduser('~')
         # slack = {}
@@ -65,21 +62,18 @@ class AMQPHandler(logging.Handler):
         '''
         for now, force the to critical...
         '''
-        print('setting AMQP level')
         if level != logging.CRITICAL:
             print('warning: slack is only ever critical, setting that')
         else:
             super(AMQPHandler, self).setLevel(level)
-        print('done AMQP level')
 
 
     def emit(self, record):
-        print("sending the log to AMQP")
+        print('sending to alerts exchange with severity {} message ({})'.format(self.severity,record.msg))
         this_channel = 'p8_alerts'
         username = 'dripline'
         severity = 'status_message.{}.{}'.format(this_channel,username)
-        print('sending to alerts exchange with severity {} message ({})'.format(severity,record.msg))
-        self.connection_to_alert.send_alert(severity=severity,alert=record.msg)
+        self.connection_to_alert.send_status_message(severity=severity,alert=record.msg)
         # print('supposed to do an emit')
         # #this_channel = '#bot_integration_test'
         # if self.slackclient is not None:
