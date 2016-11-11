@@ -108,6 +108,7 @@ class DAQProvider(core.Provider):
         self._do_postrun_gets()
         if not self._debug_without_snapshot_broadcast:
             self._send_snapshot(snap_flag='post')
+            logger.debug('this snapshot will be {}'.format(self._postrun_snapshot))
         run_was = self.run_id
         if self._stop_handle is not None:
             self.service._connection.remove_timeout(self._stop_handle)
@@ -129,7 +130,7 @@ class DAQProvider(core.Provider):
         if not self._debug_without_snapshot_broadcast:
             self._send_snapshot(snap_flag='pre')
         logger.debug('these meta will be {}'.format(self._run_meta))
-        logger.debug('this snapshot will be {}'.format(self._run_snapshot))
+        logger.debug('this snapshot will be {}'.format(self._prerun_snapshot))
         logger.info('start_run finished')
 
     def _do_prerun_gets(self):
