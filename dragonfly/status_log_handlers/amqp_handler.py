@@ -33,6 +33,7 @@ class AMQPHandler(logging.Handler):
         severity = 'status_message.{}.{}'.format(this_channel,username)
         print('sending to alerts exchange with severity {} message ({})'.format(severity,'hello world'))
         self.connection_to_alert.send_status_message(severity=severity,alert='hello world')
+        # self.username = self.__name__
 
         # this_home = os.path.expanduser('~')
         # slack = {}
@@ -69,10 +70,11 @@ class AMQPHandler(logging.Handler):
 
 
     def emit(self, record):
-        print('sending to alerts exchange with severity {} message ({})'.format(self.severity,record.msg))
         this_channel = 'p8_alerts'
-        username = 'dripline'
-        severity = 'status_message.{}.{}'.format(this_channel,username)
+        # username = 'dripline'
+        severity = 'status_message.{}.{}'.format(this_channel,self.username)
+        print('sending to alerts exchange with severity {} message ({})'.format(severity,record.msg))
+
         self.connection_to_alert.send_status_message(severity=severity,alert=record.msg)
         # print('supposed to do an emit')
         # #this_channel = '#bot_integration_test'
