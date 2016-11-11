@@ -27,11 +27,8 @@ class SlackInterface(Gogol):
 
         this_home = os.path.expanduser('~')
         slack = {}
-        try:
-            slack = json.loads(open(this_home+'/.project8_authentications.json').read())['slack']
-        except:
-            print('either unable to read ~/.project8_authentications.json or no slack field configured')
-            #logger.warning('unable to parse authentication file')
+        slack = json.loads(open(this_home+'/.project8_authentications.json').read())['slack']
+        logger.warning('unable to parse authentication file')
         token = None
         if 'dripline' in slack:
             token = slack['dripline']
@@ -41,7 +38,7 @@ class SlackInterface(Gogol):
             self.slackclient = slackclient.SlackClient(token)
         else:
             self.slackclient = None
-            print('\nWarning! unable to find slack credentials in <~/.project8_authentications.p8>\n')
+            raise dripline.core.exceptions.DriplineValueError('Warning! unable to find slack credentials in <~/.project8_authentications.p8>')
 
         # this_home = os.path.expanduser('~')
         # _tokens = json.loads(open(this_home+'/.project8_authentications.json').read())['slack']
