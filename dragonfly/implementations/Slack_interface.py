@@ -1,26 +1,30 @@
+#!/usr/bin/python
 '''
+Utility app for posting messages to slack
 '''
 
-from __future__ import print_function
-__all__ = []
+from __future__ import absolute_import
 
-import datetime
+import json
+import os
+import re
+
+import slackclient
 
 import dripline
-from dripline.core import Gogol, constants
+from dripline.core import Gogol
 
 import logging
-logger = logging.getLogger(__name__)
+logger=logging.getLogger(__name__)
 
-__all__.append('SlackService')
-@dripline.core.utilities.fancy_doc
-class SlackService(Gogol):
+class SlackInterface(Gogol):
     '''
-    Service which handles the display of critical messages on Slack in the p8_alerts channel
+    A generic service that will repeat AMQP messages to messages on slack.
     '''
-    def __init__(self, *args, **kwargs):
-        logging.Handler.__init__(self, *args, **kwargs)
-        self.setLevel(logging.CRITICAL)
+    def __init__(self, **kwargs):
+        kwargs.update({'exchange':'alerts','keys':['status_message.#.#']})
+        Gogol.__init__(self, **kwargs)
+
         this_home = os.path.expanduser('~')
         slack = {}
         try:
@@ -38,3 +42,37 @@ class SlackService(Gogol):
         else:
             self.slackclient = None
             print('\nWarning! unable to find slack credentials in <~/.project8_authentications.p8>\n')
+
+        # this_home = os.path.expanduser('~')
+        # _tokens = json.loads(open(this_home+'/.project8_authentications.json').read())['slack']
+        # self._slackclients = {}
+        # for bot,token in _tokens.items():
+        #     self._slackclients[bot] = slackclient.SlackClient(token)
+
+    def on_alert_message(self, channel, method, properties, message):
+        # parse the routing key
+        logger.debug('parsing routing key')
+        key_parser = r'status_message.(?P<channel>[\w]+).(?P<from>[\w]+)'
+        routing_info = re.search(key_parser, method.routing_key).groupdict()
+
+        # parse the message
+        msg = dripline.core.Message.from_encoded(message, properties.content_encoding)
+
+        logger.debug('selecting client')
+        as_user = 'false'
+        if routing_info['from'] in self._slackclients:
+            this_client = self._slackclients[routing_info['from']]
+            as_user = 'true'
+        elif 'token' in self._slackclients:
+            this_client = self._slackclients['token']
+        else:
+            this_client = self._slackclients['dripline']
+
+        logger.debug('posting message')
+        api_out = this_client.api_call('chat.postMessage',
+                                       channel='#'+routing_info['channel'],
+                                       text=str(msg.payload),
+                                       username=routing_info['from'],
+                                       as_user=as_user,
+                                      )
+        logger.debug('api call returned:{}'.format(api_out))
