@@ -60,6 +60,7 @@ class SlackInterface(Gogol):
 
         logger.debug('selecting client')
         as_user = 'false'
+        #???????
         if routing_info['from'] in self._slackclients:
             this_client = self._slackclients[routing_info['from']]
             as_user = 'true'
@@ -67,7 +68,7 @@ class SlackInterface(Gogol):
             this_client = self._slackclients['token']
         else:
             this_client = self._slackclients['dripline']
-
+        # ????????
         logger.debug('posting message')
         api_out = this_client.api_call('chat.postMessage',
                                        channel='#'+routing_info['channel'],

@@ -8,15 +8,11 @@ import json
 import os
 
 import logging
-from dripline.core import Gogol
+import dripline
 
 __all__ = []
+__all__.append('AMQPHandler')
 
-try:
-    import slackclient
-    __all__.append('SlackHandler')
-except ImportError:
-    pass
 
 class AMQPHandler(logging.Handler):
     '''
@@ -24,7 +20,7 @@ class AMQPHandler(logging.Handler):
     '''
     def __init__(self, *args, **kwargs):
         # setting the logger listening
-        # logging.Handler.__init__(self, *args, **kwargs)
+        logging.Handler.__init__(self, *args, **kwargs)
         self.setLevel(logging.CRITICAL)
 
         # setting the interface
