@@ -195,14 +195,16 @@ class ESR_Measurement(core.Endpoint):
         '''
         Save data to output json file
         '''
-        outpath = "/data/secondary/esr/raw/{:%Y%m%d_%H%M%S}/".format(datetime.now())
+        tstamp = "{:%Y%m%d_%H%M%S}".format(datetime.now())
+        outpath = "/data/secondary/esr/raw/{}/".format(tstamp)
         if not os.path.exists(outpath):
             logger.info("Creating directory {}".format(outpath))
             os.makedirs(outpath)
-        fp = open(outpath+"esr.json", "w")
+        outfile = outpath+"{}-esr.json".format(tstamp)
+        fp = open(outfile, "w")
         json.dump(obj=self.output_dict, fp=fp, indent=4)
         fp.close()
-        return outpath+"esr.json"
+        return outfile
 
 
     def pull_lockin_data(self, key):

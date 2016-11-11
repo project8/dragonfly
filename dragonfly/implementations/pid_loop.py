@@ -86,11 +86,7 @@ class PidController(Gogol):
         logger.info('starting current is: {}'.format(self._old_current))
 
     def __get_current(self):
-        request = dripline.core.RequestMessage(msgop=dripline.core.OP_GET,
-                                               payload={}
-                                              )
-        reply = self.send_request(target=self._check_channel, request=request)
-        value = reply.payload[self.payload_field]
+        value = self.provider.get(self._check_channel)[self.payload_field]
         logger.info('old current = {}'.format(value))
 
         if type(value) is unicode:
@@ -121,11 +117,7 @@ class PidController(Gogol):
 
     def set_current(self, value):
         logger.info('going to set new current to: {}'.format(value))
-        m = dripline.core.RequestMessage(msgop=constants.OP_SET,
-                                         payload={'values':[value]},
-                                        )
-        logger.debug('request will be: {}'.format(m))
-        reply = self.send_request(self._set_channel, m)
+        reply = self.provider.set(self._set_channel, value)
         logger.info('set response was: {}'.format(reply))
 
     def process_new_value(self, value, timestamp):
