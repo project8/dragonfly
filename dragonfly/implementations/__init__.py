@@ -20,6 +20,7 @@ from .repeater_provider import *
 from .rsa_provider import *
 from .sensor_logger import *
 from .simple_shell import *
+from .Slack_interface import *
 from .step_attenuator import *
 from .muxer_provider import *
 from .sql_snapshot import *

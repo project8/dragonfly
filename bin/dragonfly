@@ -33,7 +33,7 @@ class DriplineParser(argparse.ArgumentParser):
     '''
     A wrapper of the logger.ArgumentParser for dripline scripts
     '''
-    
+
     def __init__(self,
                  extra_logger=None,
                  amqp_broker=False,
@@ -91,18 +91,26 @@ class DriplineParser(argparse.ArgumentParser):
                                           default=None, # value if option not given
                                           const=False, # value if option given with no argument
                                          )
-        self.add_dragonfly_handlers()
         self.add_dragonfly_subcommands()
 
-    def add_dragonfly_handlers(self):
+
+    def add_dragonfly_handlers(self,*kwargs):
         for handler_class in [getattr(dragonfly.status_log_handlers, h) for h in dragonfly.status_log_handlers.__all__]:
-            try:
-                a_handler = handler_class()
-                a_handler.update_parser(self.base_parser)
-                self._handlers[a_handler.argparse_flag_str] = a_handler
-            except:
-                print('\nunable to create an instance of <{}>\n'.format(handler_class))
-    
+            if str(handler_class.__name__) is 'AMQPHandler':
+                try:
+                    a_handler = handler_class(broker=kwargs['broker'])
+                    a_handler.update_parser(self.base_parser)
+                    self._handlers[a_handler.argparse_flag_str] = a_handler
+                except:
+                    print('\nunable to create an instance of <{}>\n'.format(handler_class))
+            else:
+                try:
+                    a_handler = handler_class()
+                    a_handler.update_parser(self.base_parser)
+                    self._handlers[a_handler.argparse_flag_str] = a_handler
+                except:
+                    print('\nunable to create an instance of <{}>\n'.format(handler_class))
+
     def add_dragonfly_subcommands(self):
         # add the subcommands
         subparsers = self.add_subparsers(description='detailed help is available for each subcommand',
@@ -208,6 +216,15 @@ class DriplineParser(argparse.ArgumentParser):
                 except:
                     print("parsing of config failed")
                     raise
+
+        extra_args = {}
+        if 'broker' in args_dict:
+            extra_args.update({'broker': args_dict['broker']})
+        else:
+            extra_args.update({'broker': 'localhost'})
+        # initialize the handlers and subcommands of dragonfly
+        print('adding dragonfly handlers')
+        self.add_dragonfly_handlers(extra_args)
 
         # setup loggers and handlers
         log_level = max(0, 25-these_args.verbose*10)
