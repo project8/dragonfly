@@ -1,0 +1,9 @@
+name: spammer_service
+broker: localhost
+module: Spimescape
+endpoints:
+      - name: spammer
+        module: AlertSpammer
+        username: Spammer
+        broker: higgsino.physics.ucsb.edu
+        sleep_time: 10

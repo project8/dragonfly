@@ -27,9 +27,13 @@ class SlackInterface(Gogol):
                  speaking_time = 60,
                  time_between_warnings=600,
                  number_sentence_per_speaking_time = 30,
+                 slack_channel='p8_alerts',
                  **kwargs):
         '''
         prime_speakers: define which users are allowed to speak as much as they want and we are not allowed to stop them from it
+        speaking_time: duration while it is allowed for a service to say things before being muted
+        number_sentence_per_speaking_time: number of messages allowed during speaking_time before being muted
+        time_between_warnings: time between sending warnings
         '''
         # listen to status_message alerts channel
         kwargs.update({'exchange':'alerts','keys':['status_message.#.#']})
@@ -62,6 +66,7 @@ class SlackInterface(Gogol):
         self._speaking_time = speaking_time
         self._time_between_warnings = time_between_warnings
         self._nspst = number_sentence_per_speaking_time
+        self.slack_channel = '#'+slack_channel
 
 
     def on_alert_message(self, channel, method, properties, message):
@@ -78,7 +83,7 @@ class SlackInterface(Gogol):
             logger.debug('posting message: {}'.format(str(msg.payload)))
             api_out = self.slackclient.api_call('chat.postMessage',
                                         #    channel='#'+routing_info['channel'],
-                                           channel='#slack_test',
+                                           channel=self.slack_channel,
                                            text=str(msg.payload),
                                            username=username,
                                         #    username='toto',
@@ -89,12 +94,12 @@ class SlackInterface(Gogol):
         else:
             if self.history[username]['last_warning'] is 'never' or (datetime.now()-self.history[username]['last_warning']).seconds > self._time_between_warnings:
                 logger.debug('sending warning')
-                message = '{} spoke x times over the last x s: I muted it!'.format(routing_info['from'])
+                message = '{} spoke {} times over the last {} s: muted!'.format(routing_info['from'],len(self.history[username]['last_talks']), self._speaking_time)
                 api_out = self.slackclient.api_call('chat.postMessage',
                                                 #    channel='#'+routing_info['channel'],
-                                                   channel='#slack_test',
+                                                   channel=self.slack_channel,
                                                    text=message,
-                                                   username='Security',
+                                                   username='Slack Security',
                                                 #    username='toto',
                                                    as_user='false', #false allows to send messages with unregistred username (like toto) in the channel
                                                   )
@@ -112,8 +117,7 @@ class SlackInterface(Gogol):
         for time in self.history[username]['last_talks']:
             deltat = now - time
             if deltat.seconds > self._speaking_time:
-                self.history[username].remove(time)
-        print(self.history)
+                self.history[username]['last_talks'].remove(time)
 
     def _is_allowed_to_talk(self,username):
 
@@ -122,10 +126,8 @@ class SlackInterface(Gogol):
         if username in self._prime_speakers:
             is_allowed = True
         else:
-            # print(self.history[username]['last_talks'].size())
             if self.history[username]['last_talks'] == [] or len(self.history[username]['last_talks']) < self._nspst:
                 is_allowed = True
-
             else:
                 logger.info('{} user not allowed to talk: talk {} over the last {} s'.format(username, len(self.history[username]['last_talks']), self._speaking_time))
                 is_allowed = False

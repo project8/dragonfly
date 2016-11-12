@@ -16,9 +16,9 @@ __all__.append('AMQPHandler')
 
 class AMQPHandler(logging.Handler):
     '''
-    A custom handler for sending messages to slack
+    A custom handler for sending messages to AMQP server
     '''
-    argparse_flag_str = 'slack'
+    argparse_flag_str = 'amqp'
     def __init__(self, broker,name=None,*args, **kwargs):
         # setting the logger listening
         logging.Handler.__init__(self, *args, **kwargs)
@@ -34,8 +34,9 @@ class AMQPHandler(logging.Handler):
         else:
             self.username = name
         severity = 'status_message.{}.{}'.format(this_channel,self.username)
-        print('sending to alerts exchange with severity {} message ({})'.format(severity,'hello world'))
-        self.connection_to_alert.send_status_message(severity=severity,alert='hello world')
+        # Test message to be sent everytime a dragonfly command is called
+        # print('sending to alerts exchange with severity {} message ({})'.format(severity,'hello world'))
+        # self.connection_to_alert.send_status_message(severity=severity,alert='hello world')
 
     def update_parser(self, parser):
         parser.add_argument('--'+self.argparse_flag_str,
