@@ -98,15 +98,15 @@ class DriplineParser(argparse.ArgumentParser):
 
         for handler_class in [getattr(dragonfly.status_log_handlers, h) for h in dragonfly.status_log_handlers.__all__]:
             if str(handler_class.__name__) is 'AMQPHandler':
-                try:
+                # try:
                     # print('a')
-                    a_handler = handler_class(broker=kwargs['broker'])
+                    a_handler = handler_class(broker=kwargs['broker'],name=kwargs['name'])
                     # print('b')
                     a_handler.update_parser(self.base_parser)
                     # print('c')
                     self._handlers[a_handler.argparse_flag_str] = a_handler
-                except:
-                    print('\nunable to create an instance of <{}>\n'.format(handler_class))
+                # except:
+                    # print('\nunable to create an instance of <{}>\n'.format(handler_class))
             else:
                 try:
                     a_handler = handler_class()
@@ -206,6 +206,8 @@ class DriplineParser(argparse.ArgumentParser):
         args_dict = vars(these_args)
 
         # add args specified in a config file if there is one
+        # conf_file = {}
+        extra_args = {}
         if 'config' in these_args:
             if these_args.config is not None:
                 try:
@@ -216,16 +218,22 @@ class DriplineParser(argparse.ArgumentParser):
                         if args_dict['broker'] is None:
                             del args_dict['broker']
                     conf_file.update(args_dict)
+                    extra_args.update({'broker':conf_file['broker']})
+                    if 'name' in conf_file:
+                        extra_args.update({'name':conf_file['name']})
+                    else:
+                        extra_args.update({'name':'dripline'})
                     these_args = DotAccess(conf_file)
                 except:
                     print("parsing of config failed")
                     raise
+            else:
+                extra_args.update({'broker':args_dict['broker']})
+                if 'name' in args_dict:
+                    extra_args.update({'name':args_dict['name']})
+                else:
+                    extra_args.update({'name':'dripline'})
 
-        extra_args = {}
-        if 'broker' in args_dict:
-            extra_args={'broker':args_dict['broker']}
-        else:
-            extra_args={'broker':'localhost'}
         # initialize the handlers and subcommands of dragonfly
         self.add_dragonfly_handlers(extra_args)
 

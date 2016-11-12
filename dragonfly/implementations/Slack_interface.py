@@ -64,7 +64,7 @@ class SlackInterface(Gogol):
         msg = dripline.core.Message.from_encoded(message, properties.content_encoding)
         # print(msg)
         logger.debug('selecting client')
-        as_user = 'false'
+        as_user = 'false' # allows to send messages with unregistred username (like toto) in the channel
         #???????
         # if routing_info['from'] in self._slackclients:
         #     this_client = self._slackclients[routing_info['from']]
@@ -80,6 +80,7 @@ class SlackInterface(Gogol):
                                        channel='#slack_test',
                                        text=str(msg.payload),
                                        username=routing_info['from'],
+                                    #    username='toto',
                                        as_user=as_user,
                                       )
         logger.debug('api call returned:{}'.format(api_out))

@@ -19,7 +19,7 @@ class AMQPHandler(logging.Handler):
     A custom handler for sending messages to slack
     '''
     argparse_flag_str = 'slack'
-    def __init__(self, broker,*args, **kwargs):
+    def __init__(self, broker,name=None,*args, **kwargs):
         # setting the logger listening
         logging.Handler.__init__(self, *args, **kwargs)
         self.setLevel(logging.CRITICAL)
@@ -29,11 +29,14 @@ class AMQPHandler(logging.Handler):
 
         #sending a welcome message
         this_channel = 'p8_alerts'
-        username = 'dripline'
-        severity = 'status_message.{}.{}'.format(this_channel,username)
+        if name is None:
+            self.username = 'dripline'
+        else:
+            self.username = name
+        severity = 'status_message.{}.{}'.format(this_channel,self.username)
         print('sending to alerts exchange with severity {} message ({})'.format(severity,'hello world'))
         self.connection_to_alert.send_status_message(severity=severity,alert='hello world')
-        # self.username = self.__name__
+
 
         # this_home = os.path.expanduser('~')
         # slack = {}
@@ -71,7 +74,6 @@ class AMQPHandler(logging.Handler):
 
     def emit(self, record):
         this_channel = 'p8_alerts'
-        # username = 'dripline'
         severity = 'status_message.{}.{}'.format(this_channel,self.username)
         print('sending to alerts exchange with severity {} message ({})'.format(severity,record.msg))
 
