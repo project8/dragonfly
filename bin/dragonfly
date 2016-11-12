@@ -206,7 +206,7 @@ class DriplineParser(argparse.ArgumentParser):
         args_dict = vars(these_args)
 
         # add args specified in a config file if there is one
-        # conf_file = {}
+        # create a small dictionary of informations which might be required by the AMPQ handler
         extra_args = {}
         if 'config' in these_args:
             if these_args.config is not None:
