@@ -25,7 +25,7 @@ class AMQPHandler(logging.Handler):
         self.setLevel(logging.CRITICAL)
 
         # setting the interface
-        self.connection_to_alert = dripline.core.Service(broker=broker, exchange='alerts',keys='status_message.p8_alerts.dripline')
+        self.connection_to_alert = dripline.core.Service(broker=broker, exchange='alerts',keys='status_message.#.#')
 
         #sending a welcome message
         this_channel = 'p8_alerts'
@@ -33,8 +33,8 @@ class AMQPHandler(logging.Handler):
             self.username = 'dripline'
         else:
             self.username = name
-        severity = 'status_message.{}.{}'.format(this_channel,self.username)
         # Test message to be sent everytime a dragonfly command is called
+        # severity = 'status_message.{}.{}'.format(this_channel,self.username)
         # print('sending to alerts exchange with severity {} message ({})'.format(severity,'hello world'))
         # self.connection_to_alert.send_status_message(severity=severity,alert='hello world')
 

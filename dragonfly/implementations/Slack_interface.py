@@ -90,6 +90,7 @@ class SlackInterface(Gogol):
                                            as_user='false', #false allows to send messages with unregistred username (like toto) in the channel
                                           )
             logger.debug('api call returned:{}'.format(api_out))
+            logger.debug('updating history')
             self.history[username]['last_talks'].append(datetime.now())
         else:
             if self.history[username]['last_warning'] is 'never' or (datetime.now()-self.history[username]['last_warning']).seconds > self._time_between_warnings:
@@ -104,11 +105,13 @@ class SlackInterface(Gogol):
                                                    as_user='false', #false allows to send messages with unregistred username (like toto) in the channel
                                                   )
                 logger.debug('api call returned:{}'.format(api_out))
+                logger.debug('adding warning to the history')
                 self.history[username]['last_warning'] = datetime.now()
             else:
                 logger.debug('{} was warned recently: not sending warning'.format(routing_info['from']))
 
     def _update_history(self,username):
+        logger.debug('updating history')
         if username not in self.history:
             self.history.update({username:{}})
             self.history[username].update({'last_talks':[]})
