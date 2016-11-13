@@ -106,23 +106,20 @@ class SQLSnapshot(SQLTable):
             ept_timestamp_results = ', '.join(ept_timestamp_list)
             val_cal_list.append('{} -> {}'.format(endpoint,ept_timestamp_results))
         
-        # JSON formatting
-        val_raw_json = json.dumps(val_raw_dict,indent=4,sort_keys=True,separators=(',',':'))
-
-        return {'value_raw': val_raw_json, 'value_cal': '\n'.join(val_cal_list)}
+        return {'value_raw': val_raw_dict, 'value_cal': '\n'.join(val_cal_list)}
 
 
     def get_latest(self, timestamp, endpoint_list):
         '''
-        start_timestamp (str): oldest timestamp for query into database. Format must follow constants.TIME_FORMAT, i.e. YYYY-MM-DDThh:mm:ssZ
-        endpoint_list (list of str): list of endpoint names (str) of interest. Usage for dragonfly CLI e.g. endpoint_list='["endpoint_name1","endpoint_name_2",...]'
+        timestamp (str): timestamp upper bound for selection. Format must follow constants.TIME_FORMAT, i.e. YYYY-MM-DDThh:mm:ssZ
+        endpoint_list (list): list of endpoint names (str) of interest. Usage for dragonfly CLI e.g. endpoint_list='["endpoint_name1","endpoint_name_2",...]'
         '''
         timestamp = str(timestamp)
         if isinstance(endpoint_list,types.ListType):
             endpoint_list = [str(item) for item in endpoint_list]
         else:
             logger.error('Received type "{}" for argument endpoint_list instead of Python list'.format(type(endpoint_list).__name__))
-            raise exceptions.DriplineValueError('expecting a list but received type {}'.format(type(endpoint_list).__name__))                       
+            raise exceptions.DriplineValueError('expecting a list but received type {}'.format(type(endpoint_list).__name__)) 
 
         # Parsing timestamp
         self._try_parsing_date(timestamp)
@@ -134,7 +131,7 @@ class SQLSnapshot(SQLTable):
 
         # Select query + result
         val_cal_list = []
-        val_raw_dict = {}
+        val_raw_dict = {}                      
 
         for name in endpoint_list:
 
@@ -162,8 +159,9 @@ class SQLSnapshot(SQLTable):
                 logger.error('no records found before "{}" for endpoint "{}" in database'.format(timestamp,name))
                 continue
             else:
-                val_raw_dict[name] = (query_return[0]['value_cal'],query_return[0]['timestamp'].strftime(constants.TIME_FORMAT))
-                val_cal_list.append('{} -> {} {{{}}}'.format(name,val_raw_dict[name][0],val_raw_dict[name][1]))
+                val_raw_dict[name] = {'timestamp' : query_return[0]['timestamp'].strftime(constants.TIME_FORMAT),
+                                      'value_cal' : query_return[0]['value_cal']}
+                val_cal_list.append('{} -> {} {{{}}}'.format(name,val_raw_dict[name]['value_cal'],val_raw_dict[name]['timestamp']))
                               
         return {'value_raw': val_raw_dict, 'value_cal': '\n'.join(val_cal_list)}
 
