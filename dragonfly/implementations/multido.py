@@ -254,10 +254,14 @@ __all__.append('MultiSet')
 @fancy_doc
 class MultiSet(MultiDo):
     '''
-    Identical to MultiDo, but with an explicit exception if on_get is attempted.
-    MultiDo's on_get method has error handling, so this method may be unnecessary as even set-only endpoints can be included in a MultiDo.
+    Identical to MultiDo, but with an explicit exception if on_get is attempted and forced no_check on all targets.
+    MultiDo's on_get method has error handling, so this method only useful to globally apply no_check option.
     '''
     def __init__(self, **kwargs):
+        for a_target in kwargs['targets']:
+            if 'no_check' in a_target and a_target['no_check']==False:
+                logger.critical("MultiSet forces no_check option for all endpoints.  Option for {} of {} overridden.".format(a_target['target'],kwargs['name']))
+            a_target.update({'no_check':True})
         MultiDo.__init__(self, **kwargs)
 
     def on_get(self):
