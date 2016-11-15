@@ -52,7 +52,6 @@ class DAQProvider(core.Provider):
         metadata_target (str): target to send metadata to
         debug_mode_without_database (bool): if True, forces a run_id of 0, rather that making a query (should only be True as part of debugging)
         debug_mode_without_metadata_broadcast (bool): if True, skips the step of sending metadata to the metadata receiver (should only be True as part of debugging)
-        debug_mode_without_snapshot_broadcast (bool): if True, skips the step of sending snapshot data to the metadata receiver (should only be True as part of debugging)
         debug_mode_without_rf_roi (bool): if True, skips the step of determining the RF roi; should only be True if debugging with a child of DAQProvider.
         '''
         core.Provider.__init__(self, **kwargs)
@@ -83,7 +82,6 @@ class DAQProvider(core.Provider):
         self.filename_prefix = filename_prefix
         self._debug_without_db = debug_mode_without_database
         self._debug_without_meta_broadcast = debug_mode_without_metadata_broadcast
-        self._debug_without_snapshot_broadcast = debug_mode_without_snapshot_broadcast
         self._debug_without_rf_roi = debug_mode_without_rf_roi
 
         self._stop_handle = None
@@ -107,10 +105,8 @@ class DAQProvider(core.Provider):
         self._start_time = result['start_timestamp']
 
     def end_run(self):
-        self._postrun_snapshot = {}
         self._do_postrun_gets()
-        if not self._debug_without_snapshot_broadcast:
-            self._send_snapshot(snap_flag='post')
+        self._send_snapshot()
         run_was = self.run_id
         if self._stop_handle is not None:
             self.service._connection.remove_timeout(self._stop_handle)
@@ -125,12 +121,10 @@ class DAQProvider(core.Provider):
         self.run_name = run_name
         self._run_meta = {'DAQ': self.daq_name,
                          }
-        self._prerun_snapshot = {}
+        self._run_snapshot = {'LATEST':{},'LOGS':{}}
         self._do_prerun_gets()
         if not self._debug_without_meta_broadcast:
             self._send_metadata()
-        if not self._debug_without_snapshot_broadcast:
-            self._send_snapshot(snap_flag='pre')
         logger.debug('these meta will be {}'.format(self._run_meta))
         logger.info('start_run finished')
 
@@ -142,7 +136,7 @@ class DAQProvider(core.Provider):
         for target,item_list in self._snapshot_target_items.items():
             snapshot_result = self.provider.cmd(target, 'get_latest', [self._start_time,item_list], timeout=120)
             these_snaps = snapshot_result['value_raw']
-            self._prerun_snapshot.update(these_snaps)
+            self._run_snapshot['LATEST'].update(these_snaps)
         if not self._debug_without_rf_roi:
             self.determine_RF_ROI()
 
@@ -152,7 +146,7 @@ class DAQProvider(core.Provider):
         for target in self._snapshot_target_items:
             snapshot_result = self.provider.cmd(target, 'get_logs', [self._start_time,time_now], timeout=120)
             these_snaps = snapshot_result['value_raw']
-            self._postrun_snapshot.update(these_snaps)
+            self._run_snapshot['LOGS'].update(these_snaps)
 
     def determine_RF_ROI(self):
         raise core.exceptions.DriplineMethodNotSupportedError('subclass must implement RF ROI determination')
@@ -176,36 +170,21 @@ class DAQProvider(core.Provider):
         req_result = self.provider.cmd(self._metadata_target, None, payload=this_payload)
         logger.debug('meta sent')
 
-    def _send_snapshot(self, snap_flag):
+    def _send_snapshot(self):
         '''
-        snap_flag (str): 'pre' for pre-run snapshot file and 'post' for post-run snapshot file
         '''
-        if snap_flag == 'pre':
-            logger.info('prerun snapshot of the slow control database should broadcast')
-            filename = '{directory}/{runN:09d}/{prefix}{runN:09d}_latest_snapshot.json'.format(
-                                                            directory=self.meta_data_directory_path,
-                                                            prefix=self.filename_prefix,
-                                                            runN=self.run_id,
-                                                            acqN=self._acquisition_count
-                                                                                    )
-            logger.debug('should request snapshot file: {}'.format(filename))
-            this_payload = {'contents': self._prerun_snapshot,
-                            'filename': filename}
-            req_result = self.provider.cmd(self._metadata_target, None, payload=this_payload)
-            logger.debug('pre-run snapshot sent')
-        elif snap_flag == 'post':
-            logger.info('postrun snapshot of the slow control database should broadcast')
-            filename = '{directory}/{runN:09d}/{prefix}{runN:09d}_logs_snapshot.json'.format(
-                                                            directory=self.meta_data_directory_path,
-                                                            prefix=self.filename_prefix,
-                                                            runN=self.run_id,
-                                                            acqN=self._acquisition_count
-                                                                                    )
-            logger.debug('should request snapshot file: {}'.format(filename))
-            this_payload = {'contents': self._postrun_snapshot,
-                            'filename': filename}
-            req_result = self.provider.cmd(self._metadata_target, None, payload=this_payload)
-            logger.debug('post-run snapshot sent')
+        logger.info('snapshot of the slow control database should broadcast')
+        filename = '{directory}/{runN:09d}/{prefix}{runN:09d}_snapshot.json'.format(
+                                                        directory=self.meta_data_directory_path,
+                                                        prefix=self.filename_prefix,
+                                                        runN=self.run_id,
+                                                        acqN=self._acquisition_count
+                                                                                )
+        logger.debug('should request snapshot file: {}'.format(filename))
+        this_payload = {'contents': self._run_snapshot,
+                        'filename': filename}
+        req_result = self.provider.cmd(self._metadata_target, None, payload=this_payload)
+        logger.debug('snapshot sent')
 
     def start_timed_run(self, run_name, run_time):
         '''
