@@ -36,10 +36,7 @@ class DAQProvider(core.Provider):
                  snapshot_target_items=None,
                  metadata_state_target='',
                  metadata_target='',
-                 debug_mode_without_database=False,
-                 debug_mode_without_metadata_broadcast=False,
                  debug_mode_without_snapshot_broadcast=False,
-                 debug_mode_without_rf_roi=False,
                  **kwargs):
         '''
         daq_name (str): name of the DAQ (used with the run table and in metadata)
@@ -50,9 +47,6 @@ class DAQProvider(core.Provider):
         snapshot_target_items (dict): keys are SQLSnapshot table endpoint names, values are lists of items (str) to take snapshot of 
         metadata_state_target (str): multiget endpoint to Get() for system state
         metadata_target (str): target to send metadata to
-        debug_mode_without_database (bool): if True, forces a run_id of 0, rather that making a query (should only be True as part of debugging)
-        debug_mode_without_metadata_broadcast (bool): if True, skips the step of sending metadata to the metadata receiver (should only be True as part of debugging)
-        debug_mode_without_rf_roi (bool): if True, skips the step of determining the RF roi; should only be True if debugging with a child of DAQProvider.
         '''
         core.Provider.__init__(self, **kwargs)
 
@@ -75,14 +69,10 @@ class DAQProvider(core.Provider):
         self.data_directory_path = data_directory_path
         self.meta_data_directory_path = meta_data_directory_path
 
-        #self._metadata_gets = metadata_gets
         self._metadata_state_target = metadata_state_target
         self._snapshot_target_items = snapshot_target_items
         self._metadata_target = metadata_target
         self.filename_prefix = filename_prefix
-        self._debug_without_db = debug_mode_without_database
-        self._debug_without_meta_broadcast = debug_mode_without_metadata_broadcast
-        self._debug_without_rf_roi = debug_mode_without_rf_roi
 
         self._stop_handle = None
         self._run_name = None
@@ -96,10 +86,6 @@ class DAQProvider(core.Provider):
     def run_name(self, value):
         self._run_name = value
         self._acquisition_count = 0
-        if self._debug_without_db:
-            logger.debug('not going to try to talk to database')
-            self.run_id = 0
-            return
         result = self.provider.cmd(self.run_table_endpoint, 'do_insert', payload={'run_name':value})
         self.run_id = result['run_id']
         self._start_time = result['start_timestamp']
@@ -123,8 +109,7 @@ class DAQProvider(core.Provider):
                          }
         self._run_snapshot = {'LATEST':{},'LOGS':{}}
         self._do_prerun_gets()
-        if not self._debug_without_meta_broadcast:
-            self._send_metadata()
+        self._send_metadata()
         logger.debug('these meta will be {}'.format(self._run_meta))
         logger.info('start_run finished')
 
@@ -137,8 +122,7 @@ class DAQProvider(core.Provider):
             snapshot_result = self.provider.cmd(target, 'get_latest', [self._start_time,item_list], timeout=120)
             these_snaps = snapshot_result['value_raw']
             self._run_snapshot['LATEST'].update(these_snaps)
-        if not self._debug_without_rf_roi:
-            self.determine_RF_ROI()
+        self.determine_RF_ROI()
 
     def _do_postrun_gets(self):
         logger.info('doing postrun snapshot gets')
@@ -149,7 +133,7 @@ class DAQProvider(core.Provider):
             self._run_snapshot['LOGS'].update(these_snaps)
 
     def determine_RF_ROI(self):
-        raise core.exceptions.DriplineMethodNotSupportedError('subclass must implement RF ROI determination')
+        logger.warning('subclass must implement RF ROI determination; skipped')
 
     def _send_metadata(self):
         '''
