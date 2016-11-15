@@ -36,7 +36,6 @@ class DAQProvider(core.Provider):
                  snapshot_target_items=None,
                  metadata_state_target='',
                  metadata_target='',
-                 debug_mode_without_snapshot_broadcast=False,
                  **kwargs):
         '''
         daq_name (str): name of the DAQ (used with the run table and in metadata)
