@@ -59,7 +59,7 @@ class AMQPHandler(logging.Handler):
         severity = 'status_message.{}.{}'.format(this_channel,self.username)
         print('sending to alerts exchange with severity {} message ({})'.format(severity,record.msg))
         logger.debug('sending to alerts exchange with severity {} message ({})'.format(severity,record.msg))
-        logger.debug('connection_to_alert is: {}'.format(self.connection_to_alert))
+        logger.debug('connection_to_alert is: {}'.format(self.connection_to_alert.__name__))
         self.connection_to_alert.send_status_message(severity=severity,alert=record.msg)
         # print('supposed to do an emit')
         # #this_channel = '#bot_integration_test'
