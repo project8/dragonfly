@@ -7,7 +7,7 @@ at http://www.project8.org/dragonfly/
 For the sake of an example, I'll assume the following:
 
 1. You've activated the virtualenvironment you want to use
-1. You've already installed dripline from the more recent 'master' branch in that virtualenv
+1. You've already installed the dripline in that virtualenv
 
 Simply install all remaining dependencies with pip, and then install dragonfly itself.
 ```bash
