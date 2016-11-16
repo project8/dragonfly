@@ -12,7 +12,7 @@ import dripline
 
 __all__ = []
 __all__.append('AMQPHandler')
-
+logger = logging.getLogger(__name__)
 
 class AMQPHandler(logging.Handler):
     '''
