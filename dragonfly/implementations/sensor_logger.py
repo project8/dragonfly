@@ -50,23 +50,20 @@ class SensorLogger(Gogol, PostgreSQLInterface):
 
         ### Get the type and table for the sensor
         this_type = None
-        this_table = self.endpoints[self._sensor_type_map_table]
-        this_type = this_table.do_select(return_cols=['type'],
-                                         where_eq_dict={'endpoint_name':sensor_name},
-                                        )
-        if not this_type[1]:
-            #logger.info('value not logged for <{}>'.format(sensor_name))
-            logger.critical('endpoint with name "{}" was not found in database hence failed to log its value; might need it to add to the db'.format(sensor_name))
-        else:
+        if sensor_name not in self._sensor_types.keys():
+            this_table = self.endpoints[self._sensor_type_map_table]
+            this_type = this_table.do_select(return_cols=['type'],
+                                             where_eq_dict={'endpoint_name':sensor_name},
+                                            )
             self._sensor_types[sensor_name] = this_type[1][0][0]
-            this_data_table = self.endpoints[self._data_tables[self._sensor_types[sensor_name]]]
+        this_data_table = self.endpoints[self._data_tables[self._sensor_types[sensor_name]]]
 
-            ### Log the sensor value
-            insert_data = {'endpoint_name': sensor_name,
-                           'timestamp': message['timestamp'],
-                          }
-            for key in ['value_raw', 'value_cal', 'memo']:
-                if key in message.payload:
-                    insert_data[key] = message.payload[key]
-            this_data_table.do_insert(**insert_data)
-            logger.info('value logged for <{}>'.format(sensor_name))
+        ### Log the sensor value
+        insert_data = {'endpoint_name': sensor_name,
+                       'timestamp': message['timestamp'],
+                      }
+        for key in ['value_raw', 'value_cal', 'memo']:
+            if key in message.payload:
+                insert_data[key] = message.payload[key]
+        this_data_table.do_insert(**insert_data)
+        logger.info('value logged for <{}>'.format(sensor_name))
