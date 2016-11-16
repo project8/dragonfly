@@ -56,7 +56,7 @@ class SensorLogger(Gogol, PostgreSQLInterface):
                                              where_eq_dict={'endpoint_name':sensor_name},
                                             )
             if not this_type[1]:
-                logger.critical('endpoint with name "{}" not found in database hence failed to log its value; might need it to add to the db'.format(name))
+                logger.critical('endpoint with name "{}" not found in database hence failed to log its value; might need it to add to the db'.format(sensor_name))
             else:
                 self._sensor_types[sensor_name] = this_type[1][0][0]
         this_data_table = self.endpoints[self._data_tables[self._sensor_types[sensor_name]]]
