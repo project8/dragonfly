@@ -79,6 +79,7 @@ class RunDBInterface(Provider):
         except Exception as err:
             db_errs = ('(psycopg2.IntegrityError)','(psycopg2.DataError)')
             if str(err).startswith(db_errs):
+                logger.error('failed to make an SQL insert and receive return:\n{}'.format(str(err)))
                 raise DriplineDatabaseError(str(err))
             else:
                 logger.warning('unknown error while working with sql')
@@ -131,11 +132,8 @@ class InsertDBEndpoint(Endpoint):
         # build the insert dict
         this_insert = self._default_insert_dict.copy()
         this_insert.update(kwargs)
-        try:
-            return_vals = self.provider._insert_with_return(self._table_name,
+        return_vals = self.provider._insert_with_return(self._table_name,
                                                         this_insert,
                                                         self._return_names,
                                                        )
-        except Exception as err:
-            logger.critical('got an error when attempting to insert into the db: {}'.format(str(err)))
         return return_vals
