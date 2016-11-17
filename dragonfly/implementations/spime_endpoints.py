@@ -19,7 +19,7 @@ from __future__ import absolute_import
 
 import re
 
-from dripline.core import Spime, fancy_doc
+from dripline.core import Spime, fancy_doc, calibrate
 from dripline.core.exceptions import *
 
 from .spime_calibrations import *
@@ -291,13 +291,6 @@ class RelaySpime(FormatSpime):
             raise DriplineValueError("Invalid relay_type for {}; expect 'relay' or 'polarity'".format(self.name))
         FormatSpime.__init__(self, **kwargs)
 
-    def __init__(self,
-                 get_str=None,
-                 get_reply_float=False,
-                 set_str=None,
-                 set_value_lowercase=True,
-                 set_value_map=None,
-                 **kwargs):
 
 __all__.append('ProviderAttributeSpime')
 class ProviderAttributeSpime(Spime):

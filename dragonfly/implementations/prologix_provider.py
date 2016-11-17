@@ -4,7 +4,7 @@
 
 from __future__ import absolute_import
 
-from dripline.core import Spime, Provider, SimpleSCPIGetSpime, calibrate
+from dripline.core import Provider
 
 import logging
 logger = logging.getLogger(__name__)
@@ -19,7 +19,7 @@ class PrologixProvider(Provider):
 
     It expects to have a set of Simple*Spime endpoints which return SCPI commands.
     The _cmd_term attribute is appended to those commands before being passed up to
-    the higher level provider which actually maintains a connection (eg PrologixSpimescape).
+    the higher level provider which actually maintains a connection (eg RepeaterProvider).
     '''
     def __init__(self, name, addr, **kwargs):
         Provider.__init__(self, name=name, **kwargs)
