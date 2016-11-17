@@ -131,8 +131,11 @@ class InsertDBEndpoint(Endpoint):
         # build the insert dict
         this_insert = self._default_insert_dict.copy()
         this_insert.update(kwargs)
-        return_vals = self.provider._insert_with_return(self._table_name,
+        try:
+            return_vals = self.provider._insert_with_return(self._table_name,
                                                         this_insert,
                                                         self._return_names,
                                                        )
+        except Exception as err:
+            logger.critical('got an error when attempting to insert into the db: {}'.format(str(err)))
         return return_vals
