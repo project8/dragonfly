@@ -44,9 +44,7 @@ class SensorLogger(Gogol, PostgreSQLInterface):
         ### Get the sensor name
         sensor_name = None
         if '.' in basic_deliver.routing_key:
-            logger.debug('basic_deliver.routing_key is: {}'.format(basic_deliver.routing_key))
             re_out = re.match(r'sensor_value.(?P<from>\S+)', basic_deliver.routing_key)
-            logger.debug('re_out.groupdict() is: {}'.format(re_out.groupdict()))
             sensor_name = re_out.groupdict()['from']
         # note that the following is deprecated in dripline 2.x, retained for compatibility
         else:
@@ -59,7 +57,7 @@ class SensorLogger(Gogol, PostgreSQLInterface):
                                          where_eq_dict={'endpoint_name':sensor_name},
                                         )
         if not this_type[1]:
-            logger.critical('endpoint with name "{}" was not found in database hence failed to log its value; might need it to add to the db'.format(sensor_name))
+            logger.critical('endpoint with name "{}" was not found in database hence failed to log its value; might need to add it to the db'.format(sensor_name))
         else:
             this_table = self.endpoints[self._sensor_type_map_table]
             this_type = this_table.do_select(return_cols=['type'],
