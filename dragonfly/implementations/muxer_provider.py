@@ -3,10 +3,8 @@ import socket
 import threading
 import types
 
-from dripline.core import Provider, Endpoint, exceptions
-from dragonfly.implementations import EthernetProvider
-from dragonfly.implementations import MuxerGetSpime
-from dripline.core.utilities import fancy_doc
+from dripline.core import Provider, Endpoint, exceptions, fancy_doc
+from dragonfly.implementations import EthernetProvider, MuxerGetSpime
 
 import logging
 logger = logging.getLogger(__name__)
