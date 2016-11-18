@@ -114,13 +114,10 @@ class DAQProvider(core.Provider):
     def start_run(self, run_name):
         '''
         '''
-        try:
-            logger.debug('self._run_name before setting is: {}'.format(self._run_name))
-            self.run_name = run_name
-            logger.debug('self._run_name after setting is: {}'.format(self._run_name))
-        except Exception as err:
-            logger.critical('all internal run procedures will be squashed')
-            raise
+        self.run_name = run_name
+        if self._run_name is None:
+            logger.critical('run_name is not present; all internal run procedures will be squashed')
+            raise core.exceptions.DriplineValueError('<{}> instance <{}> requires a value for "{}" to initialize run and procedures'.format(self.__class__.__name__, self.name, '_run_name'))
         self._run_meta = {'DAQ': self.daq_name,
                          }
         self._run_snapshot = {'LATEST':{},'LOGS':{}}
