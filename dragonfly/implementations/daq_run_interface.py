@@ -95,7 +95,7 @@ class DAQProvider(core.Provider):
             # end the run
             if self._stop_handle is not None:
                 self.service._connection.remove_timeout(self._stop_handle)
-                logger.critical('run <{}> was not started')
+                logger.critical('run <{}> was not started'.format(value))
                 self._stop_handle = None
                 self._run_name = None
                 self.run_id = None
@@ -115,9 +115,11 @@ class DAQProvider(core.Provider):
         '''
         '''
         try:
+            logger.debug('self._run_name before setting is: {}'.format(self._run_name))
             self.run_name = run_name
+            logger.debug('self._run_name after setting is: {}'.format(self._run_name))
         except Exception as err:
-            logger.critical('all run internal procedures will be squashed')
+            logger.critical('all internal run procedures will be squashed')
             raise
         self._run_meta = {'DAQ': self.daq_name,
                          }
