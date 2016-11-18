@@ -75,7 +75,7 @@ class DAQProvider(core.Provider):
 
         self._stop_handle = None
         self._run_name = None
-        self.run_id = None
+        self._run_id = None
         self._start_time = None
         self._acquisition_count = None
 
@@ -88,36 +88,36 @@ class DAQProvider(core.Provider):
         self._acquisition_count = 0
         try:
             result = self.provider.cmd(self.run_table_endpoint, 'do_insert', payload={'run_name':value})
-            self.run_id = result['run_id']
+            self._run_id = result['run_id']
             self._start_time = result['start_timestamp']
         except core.exceptions.DriplineDatabaseError as dripline_error:
-            logger.critical('failed to insert run_name to the db and obtain run_id and start_timestamp. error:\n{}'.format(dripline_error.message))
+            logger.critical('failed to insert run_name to the db, obtain run_id, and start_timestamp. error:\n{}'.format(dripline_error.message))
             # end the run
             if self._stop_handle is not None:
                 self.service._connection.remove_timeout(self._stop_handle)
-                logger.critical('run <{}> was not started')
+                logger.critical('run <{}> was ended prematurely and not started')
                 self._stop_handle = None
                 self._run_name = None
-                self.run_id = None
+                self._run_id = None
             result = None
                 
     def end_run(self):
         self._do_postrun_gets()
         self._send_snapshot()
-        run_was = self.run_id
+        run_was = self._run_id
         if self._stop_handle is not None:
             self.service._connection.remove_timeout(self._stop_handle)
             self._stop_handle = None
         self._run_name = None
-        self.run_id = None
+        self._run_id = None
         logger.info('run <{}> ended'.format(run_was))
 
     def start_run(self, run_name):
         '''
         '''
-        self.run_name = run_name
-        if not run_name:
-            raise core.exceptions.DriplineValueError('run_name must not be empty; all run internal procedures have been squashed')
+        self._run_name = run_name
+        if not self._run_name:
+            raise core.exceptions.DriplineValueError('run_name cannot be empty; all run internal procedures have been squashed')
         self._run_meta = {'DAQ': self.daq_name,
                          }
         self._run_snapshot = {'LATEST':{},'LOGS':{}}
@@ -155,14 +155,14 @@ class DAQProvider(core.Provider):
         filename = '{directory}/{runN:09d}/{prefix}{runN:09d}_meta.json'.format(
                                                         directory=self.meta_data_directory_path,
                                                         prefix=self.filename_prefix,
-                                                        runN=self.run_id,
+                                                        runN=self._run_id,
                                                         acqN=self._acquisition_count
                                                                                )
         logger.debug('should request metadatafile: {}'.format(filename))
         this_payload = {'contents': self._run_meta,
                         'filename': filename,
                        }
-        this_payload['contents']['run_id'] = self.run_id
+        this_payload['contents']['run_id'] = self._run_id
         # note, the following line has an empty method/RKS, this shouldn't be the case but is what golang expects
         req_result = self.provider.cmd(self._metadata_target, None, payload=this_payload)
         logger.debug('meta sent')
@@ -174,7 +174,7 @@ class DAQProvider(core.Provider):
         filename = '{directory}/{runN:09d}/{prefix}{runN:09d}_snapshot.json'.format(
                                                         directory=self.meta_data_directory_path,
                                                         prefix=self.filename_prefix,
-                                                        runN=self.run_id,
+                                                        runN=self._run_id,
                                                         acqN=self._acquisition_count
                                                                                 )
         logger.debug('should request snapshot file: {}'.format(filename))
@@ -188,7 +188,7 @@ class DAQProvider(core.Provider):
         '''
         self._stop_handle = self.service._connection.add_timeout(int(run_time), self.end_run)
         self.start_run(run_name)
-        return self.run_id
+        return self._run_id
 
 
 __all__.append('RSAAcquisitionInterface')
@@ -255,8 +255,8 @@ class RSAAcquisitionInterface(DAQProvider):
         super(RSAAcquisitionInterface, self).start_run(run_name)
 
         # call start_run method in daq_target
-        directory = "\\".join([self.data_directory_path, '{:09d}'.format(self.run_id)])
-        filename = "{}{:09d}".format(self.filename_prefix, self.run_id)
+        directory = "\\".join([self.data_directory_path, '{:09d}'.format(self._run_id)])
+        filename = "{}{:09d}".format(self.filename_prefix, self._run_id)
         self.provider.cmd(self._daq_target, 'start_run', [directory, filename])
 
     def end_run(self):
