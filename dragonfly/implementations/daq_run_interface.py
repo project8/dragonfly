@@ -99,7 +99,6 @@ class DAQProvider(core.Provider):
                 self._stop_handle = None
                 self._run_name = None
                 self._run_id = None
-            result = None
                 
     def end_run(self):
         self._do_postrun_gets()
@@ -116,7 +115,7 @@ class DAQProvider(core.Provider):
         '''
         '''
         self._run_name = run_name
-        if not self._run_name:
+        if self._run_name is None:
             raise core.exceptions.DriplineValueError('run_name cannot be empty; all run internal procedures have been squashed')
         self._run_meta = {'DAQ': self.daq_name,
                          }
