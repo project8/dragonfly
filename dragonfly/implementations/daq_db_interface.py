@@ -79,7 +79,7 @@ class RunDBInterface(Provider):
         except Exception as err:
             db_errs = ('(psycopg2.IntegrityError)','(psycopg2.DataError)')
             if str(err).startswith(db_errs):
-                logger.error('failed to make an SQL insert and receive return:\n{}'.format(str(err)))
+                logger.error('failed to make an SQL insert and receive return. error:\n{}'.format(str(err)))
                 raise DriplineDatabaseError(str(err))
             else:
                 logger.warning('unknown error while working with sql')
