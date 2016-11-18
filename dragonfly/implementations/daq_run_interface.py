@@ -76,6 +76,7 @@ class DAQProvider(core.Provider):
         self._stop_handle = None
         self._run_name = None
         self.run_id = None
+        self._start_time = None
         self._acquisition_count = None
 
     @property
@@ -85,9 +86,12 @@ class DAQProvider(core.Provider):
     def run_name(self, value):
         self._run_name = value
         self._acquisition_count = 0
-        result = self.provider.cmd(self.run_table_endpoint, 'do_insert', payload={'run_name':value})
-        self.run_id = result['run_id']
-        self._start_time = result['start_timestamp']
+        try:
+            result = self.provider.cmd(self.run_table_endpoint, 'do_insert', payload={'run_name':value})
+            self.run_id = result['run_id']
+            self._start_time = result['start_timestamp']
+        except core.exceptions.DriplineDatabaseError as dripline_error:
+            logger.error('failed to insert run_name to the db and obtain run_id and start_timestamp:\n{}'.format(dripline_error.message))
 
     def end_run(self):
         self._do_postrun_gets()
