@@ -90,12 +90,12 @@ class DAQProvider(core.Provider):
             result = self.provider.cmd(self.run_table_endpoint, 'do_insert', payload={'run_name':value})
             self._run_id = result['run_id']
             self._start_time = result['start_timestamp']
-        except core.exceptions.DriplineDatabaseError as dripline_error:
-            logger.critical('failed to insert run_name to the db, obtain run_id, and start_timestamp. error:\n{}'.format(dripline_error.message))
+        except Exception as err:
+            logger.critical('failed to insert run_name to the db, obtain run_id, and start_timestamp. error:\n{}'.format(str(err)))
             # end the run
             if self._stop_handle is not None:
                 self.service._connection.remove_timeout(self._stop_handle)
-                logger.critical('run <{}> was ended prematurely and not started')
+                logger.critical('run <{}> was not started')
                 self._stop_handle = None
                 self._run_name = None
                 self._run_id = None
@@ -114,9 +114,11 @@ class DAQProvider(core.Provider):
     def start_run(self, run_name):
         '''
         '''
-        self._run_name = run_name
-        if self._run_name is None:
-            raise core.exceptions.DriplineValueError('run_name cannot be empty; all run internal procedures have been squashed')
+        try:
+            self._run_name = run_name
+        except Exception as err:
+            logger.critical('all run internal procedures will be squashed')
+            raise
         self._run_meta = {'DAQ': self.daq_name,
                          }
         self._run_snapshot = {'LATEST':{},'LOGS':{}}
