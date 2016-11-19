@@ -52,7 +52,7 @@ class SimpleSCPISpime(Spime):
     def on_get(self):
         to_send = [self.cmd_base + '?']
         result = self.provider.send(to_send)
-        logger.debug('result is: {}'.format(result))
+        logger.debug('raw result is: {}'.format(result))
         return result
 
     def on_set(self, value):
@@ -144,7 +144,7 @@ class FormatSpime(Spime):
     def on_set(self, value):
         if self._set_str is None:
             raise DriplineMethodNotSupportedError('<{}> has no set string available'.format(self.name))
-        if isinstance(value, types.StringTypes) and self._set_value_lowercase:
+        if isinstance(value, str) and self._set_value_lowercase:
             value = value.lower()
         if self._set_value_map is None:
             mapped_value = value
@@ -152,6 +152,36 @@ class FormatSpime(Spime):
             mapped_value = self._set_value_map[value]
         logger.debug('value is {}; mapped value is: {}'.format(value, mapped_value))
         return self.provider.send([self._set_str.format(mapped_value)])
+
+
+__all__.append('ErrorQueueSpime')
+class ErrorQueueSpime(Spime):
+    '''
+    Spime for polling error queue until empty.
+    '''
+
+    def __init__(self,
+                 get_str,
+                 empty_str,
+                 **kwargs):
+        '''
+        get_str (str): channel number for endpoint
+        empty_key (str): modify get string to return float instead of int
+        '''
+        Spime.__init__(self, **kwargs)
+        self._get_str = get_str
+        self._empty_str = empty_str
+
+    @calibrate()
+    def on_get(self):
+        result = [None]
+        while result[-1] != self._empty_str:
+            result.append( self.provider.send([self._get_str]) )
+        result.pop(0)
+        return ';'.join(result)
+
+    def on_set(self, value):
+        raise DriplineMethodNotSupportedError('setting not available for {}'.format(self.name))
 
 
 __all__.append('LockinSpime')
@@ -174,17 +204,16 @@ class LockinSpime(FormatSpime):
         else:
             self._get_str = property_key
         self._set_str = property_key
-        self._disable_set = disable_set
 
     @calibrate([acquisition_calibration, status_calibration])
     def on_get(self):
-        return self.provider.send(self._get_str)
+        return self.provider.send([self._get_str])
 
     def on_set(self, value):
         if not isinstance(value, int):
-            raise DriplineValueError("Set value of LockinSpime {} must be an int".format(self.name))
-        cmd = "{0} {1}; {0}".format(self._set_str, value)
-        return self.provider.send(cmd)
+            raise DriplineValueError('Set value of LockinSpime {} must be an int'.format(self.name))
+        to_send = "{0} {1}; {0}".format(self._set_str, value)
+        return self.provider.send([to_send])
 
 
 __all__.append('LockinGetSpime')
@@ -223,7 +252,7 @@ class MuxerGetSpime(Spime):
 
     @calibrate([pt100_calibration, cernox_calibration, cernox_calibration_chebychev])
     def on_get(self):
-        result = self.provider.send(self.base_str.format(self.ch_number))
+        result = self.provider.send([self.base_str.format(self.ch_number)])
         logger.debug('very raw is: {}'.format(result))
         return result.split()[0]
 

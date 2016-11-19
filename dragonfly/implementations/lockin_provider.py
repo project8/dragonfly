@@ -14,13 +14,13 @@ class LockinProvider(PrologixProvider):
         PrologixProvider.__init__(self, **kwargs)
 
     def grab_data(self, key):
-        pts = int(self.send("LEN"))
+        pts = int(self.send(["LEN"]))
         logger.info("expect {} pt data curves".format(pts))
-        cbd = int(self.send("CBD"))
+        cbd = int(self.send(["CBD"]))
         logger.info("mask of available data curves is {}".format(cbd))
         if not cbd & 0b00010000:
             raise ValueError("No floating point data available, reconfigure CBD")
-        status = self.send("M")
+        status = self.send(["M"])
         status = map(int, status.split(','))
         logger.info("{} curve(s) available, {} points per curve".format(status[1], status[3]))
         if status[1] != 1:

@@ -46,8 +46,6 @@ class PrologixProvider(Provider):
         return status
 
     def send(self, cmd):
-        if isinstance(cmd, str):
-            cmd = [cmd]
         to_send = ['++addr {}\r++addr'.format(self.addr)] + cmd
         result = self.provider.send(to_send)
         logger.debug('raw result:\n{}'.format(result))
