@@ -109,8 +109,8 @@ class DAQProvider(core.Provider):
     def end_run(self):
         self._postrun_snapshot = {}
         self._do_postrun_gets()
-        if not self._debug_without_snapshot_broadcast:
-            self._send_snapshot(snap_flag='post')
+        # if not self._debug_without_snapshot_broadcast:
+        #     self._send_snapshot(snap_flag='post')
         run_was = self.run_id
         if self._stop_handle is not None:
             self.service._connection.remove_timeout(self._stop_handle)
