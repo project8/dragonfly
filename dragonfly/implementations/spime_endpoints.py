@@ -243,16 +243,16 @@ class MuxerGetSpime(Spime):
         ch_number (int): channel number for endpoint
         conf_str (str): used by MuxerProvider to configure endpoint scan
         '''
-        self.get_str = "DATA:LAST? (@{})".format(ch_number)
         if conf_str is None:
-           logger.debug('conf_str value not provided; set to None')
-        else:
-           self.conf_str = conf_str.format(ch_number)
+           raise DriplineValueError('conf_str required for MuxerGetSpime endpoint {}, set to False to not configure'.format(self.name))
+        self.get_str = "DATA:LAST? (@{})".format(ch_number)
+        self.ch_number = ch_number
+        self.conf_str = conf_str.format(ch_number)
         Spime.__init__(self, **kwargs)
 
     @calibrate([pt100_calibration, cernox_calibration, cernox_calibration_chebychev])
     def on_get(self):
-        result = self.provider.send([self.base_str.format(self.ch_number)])
+        result = self.provider.send([self.get_str.format(self.ch_number)])
         logger.debug('very raw is: {}'.format(result))
         return result.split()[0]
 
@@ -276,7 +276,7 @@ class RelaySpime(FormatSpime):
         '''
         # Default get/set strings
         if 'get_str' not in kwargs:
-            kwargs.update( {'get_str':'ROUTE:OPEN? (@{}})'.format(ch_number)} )
+            kwargs.update( {'get_str':'ROUTE:OPEN? (@{})'.format(ch_number)} )
         if 'set_str' not in kwargs:
             kwargs.update( {'set_str':'ROUTE:{{}} (@{})'.format(ch_number)} )
         # Default kwargs for get_on_set and set_value_lowercase
