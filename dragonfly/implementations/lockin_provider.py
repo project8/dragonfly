@@ -1,29 +1,26 @@
 from __future__ import absolute_import
 
 from dripline.core import Endpoint, exceptions, calibrate
-from .prologix_provider import PrologixProvider
+from dragonfly.implementations import PrologixProvider
 
 import logging
 logger = logging.getLogger(__name__)
 
-__all__ = [
-            'LockinProvider',
-            'ProviderProperty',
-          ]
+__all__ = ['LockinProvider']
 
 class LockinProvider(PrologixProvider):
-    
+
     def __init__(self, **kwargs):
         PrologixProvider.__init__(self, **kwargs)
 
     def grab_data(self, key):
-        pts = int(self.send("LEN"))
+        pts = int(self.send(["LEN"]))
         logger.info("expect {} pt data curves".format(pts))
-        cbd = int(self.send("CBD"))
+        cbd = int(self.send(["CBD"]))
         logger.info("mask of available data curves is {}".format(cbd))
         if not cbd & 0b00010000:
             raise ValueError("No floating point data available, reconfigure CBD")
-        status = self.send("M")
+        status = self.send(["M"])
         status = map(int, status.split(','))
         logger.info("{} curve(s) available, {} points per curve".format(status[1], status[3]))
         if status[1] != 1:
@@ -49,53 +46,3 @@ class LockinProvider(PrologixProvider):
             raise ValueError("Missing data points")
         result = result.split(";")[0]
         return result.replace(delimit, ";")
-
-
-def acquisition_calibration(value):
-    if value[0] == 0:
-        status = 'done, {} curve(s) available with {} points'.format(value[1], value[3])
-    elif value[0] == 1:
-        status = 'running, {} points collected'.format(value[3])
-    else:
-        raise ValueError('unexpected status byte value: {}'.format(value[0]))
-    return status
-
-def status_calibration(value):
-    lookup = { 0 : "command complete",
-               1 : "invalid command",
-               2 : "command parameter error",
-               3 : "reference unlock",
-               4 : "overload",
-               5 : "new ADC values available after external trigger",
-               6 : "asserted SRQ",
-               7 : "data available" }
-    status = []
-    for i in range(8):
-        if value & 1<<i:
-            status.append(lookup[i])
-    return "; ".join(status)
-
-class ProviderProperty(Endpoint):
-    def __init__(self, property_key, disable_set = False, get_float = False, **kwargs):
-        Endpoint.__init__(self, **kwargs)
-        self.target_property = property_key
-        self.disable_set = disable_set
-        self.get_float = get_float
-
-    @calibrate([acquisition_calibration, status_calibration])
-    def on_get(self):
-        if self.get_float:
-            cmd = self.target_property + "."
-        else:
-            cmd = self.target_property
-        prop = self.provider.send(cmd)
-        return prop
-
-    def on_set(self, value):
-        if self.disable_set:
-            raise NameError("Set property unavailable for {}".format(self.target_property))
-        if not isinstance(value, int):
-            raise TypeError("Set value must be an int")
-        cmd = "{} {}; {}".format(self.target_property, value, self.target_property)
-        prop = self.provider.send(cmd)
-        return prop
