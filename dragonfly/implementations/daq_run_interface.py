@@ -15,8 +15,6 @@ import json
 from dripline import core
 from .ethernet_provider import EthernetProvider
 
-import datetime
-
 __all__ = []
 
 logger = logging.getLogger(__name__)
