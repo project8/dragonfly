@@ -75,7 +75,7 @@ class SQLSnapshot(SQLTable):
             logger.error('{}; in executing SQLAlchemy select statement'.format(dripline_error.message))
             return
         if not query_return:
-            logger.warning('no entries found between "{}" and "{}"'.format(start_timestamp,end_timestamp))
+            logger.critical('no entries found in database between "{}" and "{}" hence producing empty snapshot'.format(start_timestamp,end_timestamp))
 
         # Counting how many times each endpoint is present
         endpoint_name_raw = []
@@ -143,7 +143,7 @@ class SQLSnapshot(SQLTable):
                 logger.error('{}; in executing SQLAlchemy select statement to obtain endpoint_id for endpoint "{}"'.format(dripline_error.message,name))
                 return
             if not query_return:
-                logger.error('endpoint with name "{}" not found in database'.format(name))
+                logger.critical('endpoint with name "{}" not found in database hence failed to take snapshot of its value; might need it to add to the db'.format(name))
                 continue
             else:
                 ept_id = query_return[0]['endpoint_id']
@@ -156,7 +156,7 @@ class SQLSnapshot(SQLTable):
                 logger.error('{}; in executing SQLAlchemy select statement for endpoint "{}"'.format(dripline_error.message,name))
                 return
             if not query_return:
-                logger.error('no records found before "{}" for endpoint "{}" in database'.format(timestamp,name))
+                logger.critical('no records found before "{}" for endpoint "{}" in database hence not recording its snapshot'.format(timestamp,name))
                 continue
             else:
                 val_raw_dict[name] = {'timestamp' : query_return[0]['timestamp'].strftime(constants.TIME_FORMAT),

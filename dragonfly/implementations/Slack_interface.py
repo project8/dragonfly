@@ -42,7 +42,7 @@ class SlackInterface(Gogol):
         # get the authentification file and look for a slack field
         this_home = os.path.expanduser('~')
         slack = {}
-        config_file = json.loads(open(this_home+'/.project8_authentications_project8.json').read())
+        config_file = json.loads(open(this_home+'/.project8_authentications.json').read())
         if 'slack' in config_file:
             slack = config_file['slack']
         else:
