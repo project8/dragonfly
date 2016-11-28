@@ -5,15 +5,11 @@ from __future__ import absolute_import
 
 # standard imports
 import logging
-import uuid
-import types
-
-from datetime import datetime
 import json
+from datetime import datetime
 
 # internal imports
 from dripline import core
-from .ethernet_provider import EthernetProvider
 
 __all__ = []
 
@@ -75,6 +71,9 @@ class DAQProvider(core.Provider):
         self._run_name = None
         self.run_id = None
         self._acquisition_count = None
+        self._start_time = None
+        self._run_meta = None
+        self._run_snapshot = None
 
     @property
     def run_name(self):
@@ -88,10 +87,8 @@ class DAQProvider(core.Provider):
         self._start_time = result['start_timestamp']
 
     def end_run(self):
-        self._postrun_snapshot = {}
-        self._do_postrun_gets()
-        # if not self._debug_without_snapshot_broadcast:
-        #     self._send_snapshot(snap_flag='post')
+#        self._do_postrun_gets()
+#        self._send_snapshot()
         run_was = self.run_id
         if self._stop_handle is not None:
             self.service._connection.remove_timeout(self._stop_handle)
@@ -108,35 +105,30 @@ class DAQProvider(core.Provider):
                          }
         self._run_snapshot = {'LATEST':{},'LOGS':{}}
         self._do_prerun_gets()
-        if not self._debug_without_meta_broadcast:
-            self._send_metadata()
-        # if not self._debug_without_snapshot_broadcast:
-        #     self._send_snapshot(snap_flag='pre')
+        self._send_metadata()
         logger.debug('these meta will be {}'.format(self._run_meta))
         logger.info('start_run finished')
 
     def _do_prerun_gets(self):
         logger.info('doing prerun meta-data and snapshot gets')
-        meta_result = self.provider.get(self._metadata_state_target, timeout=120)
-        these_metadata = meta_result['value_raw']
-        self._run_meta.update(these_metadata)
-        # for target,item_list in self._snapshot_target_items.items():
-        #     snapshot_result = self.provider.cmd(target, 'get_latest', [self._start_time,item_list], timeout=120)
-        #     these_snaps = snapshot_result['value_raw']
-        #     self._prerun_snapshot.update(these_snaps)
-        if not self._debug_without_rf_roi:
-            self.determine_RF_ROI()
+        meta_result = self.provider.get(self._metadata_state_target, timeout=30)
+        self._run_meta.update(meta_result['value_raw'])
+#        for target,item_list in self._snapshot_target_items.items():
+#            snapshot_result = self.provider.cmd(target, 'get_latest', [self._start_time,item_list], timeout=30)
+#            these_snaps = snapshot_result['value_raw']
+#            self._run_snapshot['LATEST'].update(these_snaps)
+        self.determine_RF_ROI()
 
     def _do_postrun_gets(self):
         logger.info('doing postrun snapshot gets')
-        # time_now = datetime.utcnow().strftime(core.constants.TIME_FORMAT)
-        # for target in self._snapshot_target_items:
-        #     snapshot_result = self.provider.cmd(target, 'get_logs', [self._start_time,time_now], timeout=120)
-        #     these_snaps = snapshot_result['value_raw']
-        #     self._postrun_snapshot.update(these_snaps)
+        time_now = datetime.utcnow().strftime(core.constants.TIME_FORMAT)
+        for target in self._snapshot_target_items:
+            snapshot_result = self.provider.cmd(target, 'get_logs', [self._start_time,time_now], timeout=30)
+            these_snaps = snapshot_result['value_raw']
+            self._run_snapshot['LOGS'].update(these_snaps)
 
     def determine_RF_ROI(self):
-        logger.warning('subclass must implement RF ROI determination; skipped')
+        raise core.exceptions.DriplineMethodNotSupportedError('subclass must implement RF ROI determination')
 
     def _send_metadata(self):
         '''
