@@ -34,6 +34,7 @@ class SensorLogger(Gogol, PostgreSQLInterface):
         self._sensor_type_map_table = sensor_type_map_table
         self._sensor_types = {}
         self._data_tables = data_tables_dict
+        self.service = self
 
     def add_endpoint(self, endpoint):
         # forcing PostgreSQLInterface add_endpoint usage
