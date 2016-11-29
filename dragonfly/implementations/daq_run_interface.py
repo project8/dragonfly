@@ -142,7 +142,7 @@ class DAQProvider(core.Provider):
             self._run_snapshot['LOGS'].update(these_snaps)
 
     def determine_RF_ROI(self):
-        raise core.exceptions.DriplineMethodNotSupportedError('subclass must implement RF ROI determination')
+        logger.warning('subclass must implement RF ROI determination; skipped')
 
     def _send_metadata(self):
         '''
