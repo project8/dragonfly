@@ -144,7 +144,7 @@ class FormatSpime(Spime):
     def on_set(self, value):
         if self._set_str is None:
             raise DriplineMethodNotSupportedError('<{}> has no set string available'.format(self.name))
-        if isinstance(value, str) and self._set_value_lowercase:
+        if isinstance(value, (str,unicode)) and self._set_value_lowercase:
             value = value.lower()
         if self._set_value_map is None:
             mapped_value = value
@@ -276,7 +276,10 @@ class RelaySpime(FormatSpime):
         '''
         # Default get/set strings
         if 'get_str' not in kwargs:
-            kwargs.update( {'get_str':'ROUTE:OPEN? (@{})'.format(ch_number)} )
+            if relay_type=='relay' or relay_type=='polarity':
+                kwargs.update( {'get_str':'ROUTE:OPEN? (@{})'.format(ch_number)} )
+            elif relay_type=='switch':
+                kwargs.update( {'get_str':'ROUTE:CLOSE? (@{})'.format(ch_number)} )
         if 'set_str' not in kwargs:
             kwargs.update( {'set_str':'ROUTE:{{}} (@{})'.format(ch_number)} )
         # Default kwargs for get_on_set and set_value_lowercase
