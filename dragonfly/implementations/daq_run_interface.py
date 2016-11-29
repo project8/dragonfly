@@ -5,17 +5,11 @@ from __future__ import absolute_import
 
 # standard imports
 import logging
-import uuid
-import types
-
-from datetime import datetime
 import json
+from datetime import datetime
 
 # internal imports
 from dripline import core
-from .ethernet_provider import EthernetProvider
-
-import datetime
 
 __all__ = []
 
@@ -43,7 +37,7 @@ class DAQProvider(core.Provider):
         directory_path (str): absolute path to "hot" storage (as seen from the DAQ software, not a network path)
         meta_data_directory_path (str): path where the metadata file should be written
         filename_prefix (str): prefix for unique filenames
-        snapshot_target_items (dict): keys are SQLSnapshot table endpoint names, values are lists of items (str) to take snapshot of 
+        snapshot_target_items (dict): keys are SQLSnapshot table endpoint names, values are lists of items (str) to take snapshot of
         metadata_state_target (str): multiget endpoint to Get() for system state
         metadata_target (str): target to send metadata to
         '''
@@ -78,6 +72,9 @@ class DAQProvider(core.Provider):
         self.run_id = None
         self._start_time = None
         self._acquisition_count = None
+        self._start_time = None
+        self._run_meta = None
+        self._run_snapshot = None
 
     @property
     def run_name(self):
@@ -101,8 +98,8 @@ class DAQProvider(core.Provider):
                 self.run_id = None
                 
     def end_run(self):
-        self._do_postrun_gets()
-        self._send_snapshot()
+#        self._do_postrun_gets()
+#        self._send_snapshot()
         run_was = self.run_id
         if self._stop_handle is not None:
             self.service._connection.remove_timeout(self._stop_handle)
@@ -128,25 +125,24 @@ class DAQProvider(core.Provider):
 
     def _do_prerun_gets(self):
         logger.info('doing prerun meta-data and snapshot gets')
-        meta_result = self.provider.get(self._metadata_state_target, timeout=120)
-        these_metadata = meta_result['value_raw']
-        self._run_meta.update(these_metadata)
-        for target,item_list in self._snapshot_target_items.items():
-            snapshot_result = self.provider.cmd(target, 'get_latest', [self._start_time,item_list], timeout=120)
-            these_snaps = snapshot_result['value_raw']
-            self._run_snapshot['LATEST'].update(these_snaps)
+        meta_result = self.provider.get(self._metadata_state_target, timeout=30)
+        self._run_meta.update(meta_result['value_raw'])
+#        for target,item_list in self._snapshot_target_items.items():
+#            snapshot_result = self.provider.cmd(target, 'get_latest', [self._start_time,item_list], timeout=30)
+#            these_snaps = snapshot_result['value_raw']
+#            self._run_snapshot['LATEST'].update(these_snaps)
         self.determine_RF_ROI()
 
     def _do_postrun_gets(self):
         logger.info('doing postrun snapshot gets')
-        time_now = datetime.datetime.utcnow().strftime(core.constants.TIME_FORMAT)
+        time_now = datetime.utcnow().strftime(core.constants.TIME_FORMAT)
         for target in self._snapshot_target_items:
-            snapshot_result = self.provider.cmd(target, 'get_logs', [self._start_time,time_now], timeout=120)
+            snapshot_result = self.provider.cmd(target, 'get_logs', [self._start_time,time_now], timeout=30)
             these_snaps = snapshot_result['value_raw']
             self._run_snapshot['LOGS'].update(these_snaps)
 
     def determine_RF_ROI(self):
-        logger.warning('subclass must implement RF ROI determination; skipped')
+        raise core.exceptions.DriplineMethodNotSupportedError('subclass must implement RF ROI determination')
 
     def _send_metadata(self):
         '''
