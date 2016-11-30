@@ -74,6 +74,7 @@ class DAQProvider(core.Provider):
         self._start_time = None
         self._run_meta = None
         self._run_snapshot = None
+        self._run_time = None
 
     @property
     def run_name(self):
@@ -102,6 +103,7 @@ class DAQProvider(core.Provider):
         '''
         self.run_name = run_name
         self._run_meta = {'DAQ': self.daq_name,
+                          'run_time': self._run_time,
                          }
         self._run_snapshot = {'LATEST':{},'LOGS':{}}
         self._do_prerun_gets()
@@ -168,7 +170,8 @@ class DAQProvider(core.Provider):
     def start_timed_run(self, run_name, run_time):
         '''
         '''
-        self._stop_handle = self.service._connection.add_timeout(int(run_time), self.end_run)
+        self._run_time = int(run_time)
+        self._stop_handle = self.service._connection.add_timeout(self._run_time, self.end_run)
         self.start_run(run_name)
         return self.run_id
 
