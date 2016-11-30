@@ -88,14 +88,13 @@ class DAQProvider(core.Provider):
             self.run_id = result['run_id']
             self._start_time = result['start_timestamp']
         except Exception as err:
-            logger.critical('failed to insert run_name to the db, obtain run_id, and start_timestamp. error:\n{}'.format(str(err)))
-            # end the run
-            if self._stop_handle is not None:
+            if self._stop_handle is not None:  # end the run
                 self.service._connection.remove_timeout(self._stop_handle)
-                logger.critical('run <{}> was not started'.format(value))
                 self._stop_handle = None
+                failed_run_name = self._run_name
                 self._run_name = None
                 self.run_id = None
+            raise core.exceptions.DriplineValueError('failed to insert run_name to the db, obtain run_id, and start_timestamp. run "<{}>" not started. error:\n{}'.format(str(err),failed_run_name))
                 
     def end_run(self):
 #        self._do_postrun_gets()
@@ -112,9 +111,6 @@ class DAQProvider(core.Provider):
         '''
         '''
         self.run_name = run_name
-        if self._run_name is None:
-            logger.critical('run_name is not present; all internal run procedures will be squashed')
-            raise core.exceptions.DriplineValueError('<{}> instance <{}> requires a value for "{}" to initialize run and procedures'.format(self.__class__.__name__, self.name, '_run_name'))
         self._run_meta = {'DAQ': self.daq_name,
                          }
         self._run_snapshot = {'LATEST':{},'LOGS':{}}
@@ -142,7 +138,7 @@ class DAQProvider(core.Provider):
             self._run_snapshot['LOGS'].update(these_snaps)
 
     def determine_RF_ROI(self):
-        logger.warning('subclass must implement RF ROI determination; skipped')
+        raise core.exceptions.DriplineMethodNotSupportedError('subclass must implement RF ROI determination')
 
     def _send_metadata(self):
         '''
