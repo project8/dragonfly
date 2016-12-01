@@ -128,7 +128,7 @@ class DAQProvider(core.Provider):
 #            snapshot_result = self.provider.cmd(target, 'get_latest', [self._start_time,item_list], timeout=30)
 #            these_snaps = snapshot_result['value_raw']
 #            self._run_snapshot['LATEST'].update(these_snaps)
-#        self.determine_RF_ROI()
+        self.determine_RF_ROI()
 
     def _do_postrun_gets(self):
         logger.info('doing postrun snapshot gets')
