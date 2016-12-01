@@ -91,10 +91,9 @@ class DAQProvider(core.Provider):
             if self._stop_handle is not None:  # end the run
                 self.service._connection.remove_timeout(self._stop_handle)
                 self._stop_handle = None
-                failed_run_name = self._run_name
                 self._run_name = None
                 self.run_id = None
-            raise core.exceptions.DriplineValueError('failed to insert run_name to the db, obtain run_id, and start_timestamp. run "<{}>" not started. error:\n{}'.format(str(err),failed_run_name))
+            raise core.exceptions.DriplineValueError('failed to insert run_name to the db, obtain run_id, and start_timestamp. run "<{}>" not started.\nerror:\n{}'.format(str(err),value))
                 
     def end_run(self):
 #        self._do_postrun_gets()
