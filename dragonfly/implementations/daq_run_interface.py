@@ -93,7 +93,7 @@ class DAQProvider(core.Provider):
                 self._stop_handle = None
                 self._run_name = None
                 self.run_id = None
-            raise core.exceptions.DriplineValueError('failed to insert run_name to the db, obtain run_id, and start_timestamp\n run "<{}>" not started\nerror:\n{}'.format(value,str(err)))
+            raise core.exceptions.DriplineValueError('failed to insert run_name to the db, obtain run_id, and start_timestamp. run "<{}>" not started\nerror:\n{}'.format(value,str(err)))
                 
     def end_run(self):
 #        self._do_postrun_gets()
