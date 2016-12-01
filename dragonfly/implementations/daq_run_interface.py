@@ -70,6 +70,7 @@ class DAQProvider(core.Provider):
         self._stop_handle = None
         self._run_name = None
         self.run_id = None
+        self._start_time = None
         self._acquisition_count = None
         self._start_time = None
         self._run_meta = None
@@ -83,10 +84,20 @@ class DAQProvider(core.Provider):
     def run_name(self, value):
         self._run_name = value
         self._acquisition_count = 0
-        result = self.provider.cmd(self.run_table_endpoint, 'do_insert', payload={'run_name':value})
-        self.run_id = result['run_id']
-        self._start_time = result['start_timestamp']
-
+        try:
+            result = self.provider.cmd(self.run_table_endpoint, 'do_insert', payload={'run_name':value})
+            self.run_id = result['run_id']
+            self._start_time = result['start_timestamp']
+        except Exception as err:
+            logger.critical('failed to insert run_name to the db, obtain run_id, and start_timestamp. error:\n{}'.format(str(err)))
+            # end the run
+            if self._stop_handle is not None:
+                self.service._connection.remove_timeout(self._stop_handle)
+                logger.critical('run <{}> was not started'.format(value))
+                self._stop_handle = None
+                self._run_name = None
+                self.run_id = None
+                
     def end_run(self):
 #        self._do_postrun_gets()
 #        self._send_snapshot()
@@ -102,6 +113,9 @@ class DAQProvider(core.Provider):
         '''
         '''
         self.run_name = run_name
+        if self._run_name is None:
+            logger.critical('run_name is not present; all internal run procedures will be squashed')
+            raise core.exceptions.DriplineValueError('<{}> instance <{}> requires a value for "{}" to initialize run and procedures'.format(self.__class__.__name__, self.name, '_run_name'))
         self._run_meta = {'DAQ': self.daq_name,
                           'run_time': self._run_time,
                          }
@@ -130,7 +144,7 @@ class DAQProvider(core.Provider):
             self._run_snapshot['LOGS'].update(these_snaps)
 
     def determine_RF_ROI(self):
-        raise core.exceptions.DriplineMethodNotSupportedError('subclass must implement RF ROI determination')
+        logger.warning('subclass must implement RF ROI determination; skipped')
 
     def _send_metadata(self):
         '''
