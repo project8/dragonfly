@@ -70,6 +70,7 @@ class DAQProvider(core.Provider):
         self._stop_handle = None
         self._run_name = None
         self.run_id = None
+        self._start_time = None
         self._acquisition_count = None
         self._start_time = None
         self._run_meta = None
@@ -83,10 +84,18 @@ class DAQProvider(core.Provider):
     def run_name(self, value):
         self._run_name = value
         self._acquisition_count = 0
-        result = self.provider.cmd(self.run_table_endpoint, 'do_insert', payload={'run_name':value})
-        self.run_id = result['run_id']
-        self._start_time = result['start_timestamp']
-
+        try:
+            result = self.provider.cmd(self.run_table_endpoint, 'do_insert', payload={'run_name':value})
+            self.run_id = result['run_id']
+            self._start_time = result['start_timestamp']
+        except Exception as err:
+            if self._stop_handle is not None:  # end the run
+                self.service._connection.remove_timeout(self._stop_handle)
+                self._stop_handle = None
+                self._run_name = None
+                self.run_id = None
+            raise core.exceptions.DriplineValueError('failed to insert run_name to the db, obtain run_id, and start_timestamp. run "<{}>" not started\nerror:\n{}'.format(value,str(err)))
+                
     def end_run(self):
 #        self._do_postrun_gets()
 #        self._send_snapshot()
