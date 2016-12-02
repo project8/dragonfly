@@ -43,6 +43,7 @@ class PostgreSQLInterface(Provider):
         '''
         Provider.__init__(self, **kwargs)
         self._connect_to_db(database_server, database_name)
+        self._endpoint_name_set = set()
 
     def _connect_to_db(self, database_server, database_name):
         '''
@@ -62,6 +63,24 @@ class PostgreSQLInterface(Provider):
         if isinstance(endpoint, SQLTable):
             logger.debug('Adding endpoint {} to the table'.format(endpoint.table_name))
             endpoint.table = sqlalchemy.Table(endpoint.table_name, self.meta, autoload=True, schema=endpoint.schema)
+            self._endpoint_name_set.update(endpoint.target_items)
+
+    def take_snapshot(self, start_time, end_time, filename):
+        # need to add a notice that says request received
+        run_snapshot = {}
+        logger.info('doing latest-snapshot gets')
+        for child in self.endpoints:
+            snapshot_result = self.endpoints[child].get_latest(start_time, self.endpoints[child].target_items)
+            these_snaps = snapshot_result['value_raw']
+            run_snapshot.update(these_snaps)
+        logger.info('doing logs-snapshot gets')
+        for child in self.endpoints:
+            snapshot_result = self.endpoints[child].get_logs(start_time,end_time)
+            these_snaps = snapshot_result['value_raw']
+            run_snapshot.update(these_snaps)
+        # need to check run_snapshot keys against master endpoint name set (self._endpoint_name_set) and pop those not in the list
+        # need to send run_snapshot to mdreceiver, something like send_snapshot in DAQProvider
+        # need to return either a 0 or a None to DAQProvider?       
 
 
 @fancy_doc
