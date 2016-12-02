@@ -38,12 +38,13 @@ __all__.append('SQLSnapshot')
 @fancy_doc
 class SQLSnapshot(SQLTable):
 
-    def __init__(self, table_name, schema, *args, **kwargs):
+    def __init__(self, table_name, schema, target_items=None, *args, **kwargs):
         '''
         '''
         if not 'sqlalchemy' in globals():
                 raise ImportError('SQLAlchemy not found, required for SQLSnapshot class')
         SQLTable.__init__(self, table_name, schema, *args, **kwargs)
+        self._target_items = target_items
 
     def get_logs(self, start_timestamp, end_timestamp):
         '''
