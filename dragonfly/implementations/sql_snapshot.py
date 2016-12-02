@@ -88,7 +88,7 @@ class SQLSnapshot(SQLTable):
         endpoint_dict = collections.OrderedDict(sorted(endpoint_dict.items(),key=lambda pair:pair[0].lower()))
 
         # Parsing result
-        val_dict = {'timestamp':None,'value_raw':None,'value_cal':None}
+        val_dict = {'timestamp':None,'value_cal':None}
         val_raw_dict = {}
         val_cal_list = []
         index = 0
@@ -99,7 +99,6 @@ class SQLSnapshot(SQLTable):
                 val_raw_dict[endpoint].append(val_dict.copy())
                 query_row = query_return[index]
                 val_raw_dict[endpoint][i]['timestamp'] = query_row['timestamp'].strftime(constants.TIME_FORMAT)
-                val_raw_dict[endpoint][i]['value_raw'] = query_row['value_raw']
                 val_raw_dict[endpoint][i]['value_cal'] = query_row['value_cal']
                 ept_timestamp_list.append('{} {{{}}}'.format(val_raw_dict[endpoint][i]['value_cal'],val_raw_dict[endpoint][i]['timestamp']))
                 index += 1
