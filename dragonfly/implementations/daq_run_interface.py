@@ -111,6 +111,12 @@ class DAQProvider(core.Provider):
         '''
         '''
         self.run_name = run_name
+        self._filename = '{directory}/{runN:09d}/{prefix}{runN:09d}_meta.json'.format(
+                                                        directory=self.meta_data_directory_path,
+                                                        prefix=self.filename_prefix,
+                                                        runN=self.run_id,
+                                                        acqN=self._acquisition_count
+                                                                               )
         self._run_meta = {'DAQ': self.daq_name,
                           'run_time': self._run_time,
                          }
@@ -145,15 +151,9 @@ class DAQProvider(core.Provider):
         '''
         '''
         logger.info('metadata should broadcast')
-        filename = '{directory}/{runN:09d}/{prefix}{runN:09d}_meta.json'.format(
-                                                        directory=self.meta_data_directory_path,
-                                                        prefix=self.filename_prefix,
-                                                        runN=self.run_id,
-                                                        acqN=self._acquisition_count
-                                                                               )
-        logger.debug('should request metadatafile: {}'.format(filename))
+        logger.debug('should request metadatafile: {}'.format(self._filename))
         this_payload = {'contents': self._run_meta,
-                        'filename': filename,
+                        'filename': self._filename,
                        }
         this_payload['contents']['run_id'] = self.run_id
         # note, the following line has an empty method/RKS, this shouldn't be the case but is what golang expects
