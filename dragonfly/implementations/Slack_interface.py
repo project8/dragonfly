@@ -20,7 +20,7 @@ logger=logging.getLogger(__name__)
 
 class SlackInterface(Gogol):
     '''
-    A generic service that will repeat AMQP messages to messages on slack.
+    A generic service that will repeat AMQP alerts to messages on slack.
     '''
     def __init__(self,
                  prime_speakers = None,
