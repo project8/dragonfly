@@ -97,7 +97,7 @@ class DAQProvider(core.Provider):
             raise core.exceptions.DriplineValueError('failed to insert run_name to the db, obtain run_id, and start_timestamp. run "<{}>" not started\nerror:\n{}'.format(value,str(err)))
                 
     def end_run(self):
-        self._do_postrun_procedures()
+        self._do_snapshot()
         run_was = self.run_id
         if self._stop_handle is not None:
             self.service._connection.remove_timeout(self._stop_handle)
@@ -110,12 +110,6 @@ class DAQProvider(core.Provider):
         '''
         '''
         self.run_name = run_name
-        self._filename = '{directory}/{runN:09d}/{prefix}{runN:09d}_meta.json'.format(
-                                                        directory=self.meta_data_directory_path,
-                                                        prefix=self.filename_prefix,
-                                                        runN=self.run_id,
-                                                        acqN=self._acquisition_count
-                                                                               )
         self._run_meta = {'DAQ': self.daq_name,
                           'run_time': self._run_time,
                          }
@@ -128,12 +122,18 @@ class DAQProvider(core.Provider):
         logger.info('doing prerun meta-data get')
         meta_result = self.provider.get(self._metadata_state_target, timeout=30)
         self._run_meta.update(meta_result['value_raw'])
-        self.determine_RF_ROI()
+#        self.determine_RF_ROI()
 
-    def _do_postrun_procedures(self):
+    def _do_snapshot(self):
         logger.info('requesting snapshot of database')
+        filename = '{directory}/{runN:09d}/{prefix}{runN:09d}_snapshot.json'.format(
+                                                        directory=self.meta_data_directory_path,
+                                                        prefix=self.filename_prefix,
+                                                        runN=self.run_id,
+                                                        acqN=self._acquisition_count
+                                                                               )
         time_now = datetime.utcnow().strftime(core.constants.TIME_FORMAT)
-        snap_state = self.provider.cmd(self._snapshot_state_target,'take_snapshot',[self._start_time,time_now,self._filename],timeout=30)
+        snap_state = self.provider.cmd(self._snapshot_state_target,'take_snapshot',[self._start_time,time_now,filename],timeout=30)
         logger.debug('snapshot returned ok')
 
     def determine_RF_ROI(self):
@@ -143,9 +143,15 @@ class DAQProvider(core.Provider):
         '''
         '''
         logger.info('metadata should broadcast')
-        logger.debug('should request metadatafile: {}'.format(self._filename))
+        filename = '{directory}/{runN:09d}/{prefix}{runN:09d}_meta.json'.format(
+                                                        directory=self.meta_data_directory_path,
+                                                        prefix=self.filename_prefix,
+                                                        runN=self.run_id,
+                                                        acqN=self._acquisition_count
+                                                                               )
+        logger.debug('should request metadatafile: {}'.format(filename))
         this_payload = {'contents': self._run_meta,
-                        'filename': self._filename,
+                        'filename': filename,
                        }
         this_payload['contents']['run_id'] = self.run_id
         # note, the following line has an empty method/RKS, this shouldn't be the case but is what golang expects
