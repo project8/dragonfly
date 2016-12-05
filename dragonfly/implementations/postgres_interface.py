@@ -206,7 +206,7 @@ class SQLSnapshot(SQLTable):
         if not 'sqlalchemy' in globals():
                 raise ImportError('SQLAlchemy not found, required for SQLSnapshot class')
         SQLTable.__init__(self, table_name, schema, *args, **kwargs)
-        self._target_items = target_items
+        self.target_items = target_items
 
     def get_logs(self, start_timestamp, end_timestamp):
         '''
