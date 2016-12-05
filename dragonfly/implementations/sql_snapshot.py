@@ -143,7 +143,7 @@ class SQLSnapshot(SQLTable):
                 logger.error('{}; in executing SQLAlchemy select statement to obtain endpoint_id for endpoint "{}"'.format(dripline_error.message,name))
                 return
             if not query_return:
-                logger.critical('endpoint with name "{}" not found in database hence failed to take snapshot of its value; might need it to add to the db'.format(name))
+                logger.critical('endpoint with name "{}" not found in database hence failed to take snapshot of its value; might need to add it to the db'.format(name))
                 continue
             else:
                 ept_id = query_return[0]['endpoint_id']
