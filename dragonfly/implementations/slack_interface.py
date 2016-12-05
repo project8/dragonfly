@@ -46,7 +46,7 @@ class SlackInterface(Gogol):
         if 'slack' in config_file:
             slack = config_file['slack']
         else:
-            raise dripline.core.exceptions.DriplineValueError('Warning! unable to find slack credentials in <~/.project8_authentications.p8>')
+            raise dripline.core.exceptions.DriplineValueError('Warning! unable to find slack credentials in <~/.project8_authentications.json>')
 
         # grab the token used for authentification to slack
         token = None
@@ -58,7 +58,7 @@ class SlackInterface(Gogol):
             self.slackclient = slackclient.SlackClient(token)
         else:
             self.slackclient = None
-            raise dripline.core.exceptions.DriplineValueError('Warning! unable to find slack token in <~/.project8_authentications.p8>')
+            raise dripline.core.exceptions.DriplineValueError('Warning! unable to find slack token in <~/.project8_authentications.json>')
 
         # Keep track of the frequency of emission of the services
         self.history = {}
