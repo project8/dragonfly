@@ -40,6 +40,7 @@ class SQLSnapshot(SQLTable):
 
     def __init__(self, table_name, schema, target_items=None, *args, **kwargs):
         '''
+        target_items (list): items (str) to take snapshot of
         '''
         if not 'sqlalchemy' in globals():
                 raise ImportError('SQLAlchemy not found, required for SQLSnapshot class')
@@ -159,9 +160,9 @@ class SQLSnapshot(SQLTable):
                 logger.critical('no records found before "{}" for endpoint "{}" in database hence not recording its snapshot'.format(timestamp,name))
                 continue
             else:
-                val_raw_dict[name] = {'timestamp' : query_return[0]['timestamp'].strftime(constants.TIME_FORMAT),
-                                      'value_cal' : query_return[0]['value_cal']}
-                val_cal_list.append('{} -> {} {{{}}}'.format(name,val_raw_dict[name]['value_cal'],val_raw_dict[name]['timestamp']))
+                val_raw_dict[name] = [{'timestamp' : query_return[0]['timestamp'].strftime(constants.TIME_FORMAT),
+                                      'value_cal' : query_return[0]['value_cal']}]
+                val_cal_list.append('{} -> {} {{{}}}'.format(name,val_raw_dict[name][0]['value_cal'],val_raw_dict[name][0]['timestamp']))
                               
         return {'value_raw': val_raw_dict, 'value_cal': '\n'.join(val_cal_list)}
 
