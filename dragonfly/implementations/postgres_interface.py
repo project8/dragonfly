@@ -24,6 +24,7 @@ except ImportError:
 # local imports
 from dripline.core import Provider, Endpoint, fancy_doc
 from dripline.core.exceptions import *
+from dragonfly.implementations import SQLSnapshot
 
 import logging
 logger = logging.getLogger(__name__)
