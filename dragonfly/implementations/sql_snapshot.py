@@ -27,7 +27,7 @@ import collections
 # local imports
 from dripline.core import Provider, Endpoint, exceptions, constants
 from dripline.core.utilities import fancy_doc
-from dragonfly.implementations import PostgreSQLInterface, SQLTable
+import dragonfly.implementations
 
 import logging
 logger = logging.getLogger(__name__)
@@ -36,7 +36,7 @@ logger.setLevel(logging.DEBUG)
 __all__.append('SQLSnapshot')
 
 @fancy_doc
-class SQLSnapshot(SQLTable):
+class SQLSnapshot(dragonfly.implementations.SQLTable):
 
     def __init__(self, table_name, schema, target_items=None, *args, **kwargs):
         '''
@@ -44,7 +44,7 @@ class SQLSnapshot(SQLTable):
         '''
         if not 'sqlalchemy' in globals():
                 raise ImportError('SQLAlchemy not found, required for SQLSnapshot class')
-        SQLTable.__init__(self, table_name, schema, *args, **kwargs)
+        dragonfly.implementations.SQLTable.__init__(self, table_name, schema, *args, **kwargs)
         self._target_items = target_items
 
     def get_logs(self, start_timestamp, end_timestamp):

@@ -24,7 +24,7 @@ except ImportError:
 # local imports
 from dripline.core import Provider, Endpoint, fancy_doc
 from dripline.core.exceptions import *
-from dragonfly.implementations import SQLSnapshot
+import dragonfly.implementations 
 
 import logging
 logger = logging.getLogger(__name__)
@@ -66,7 +66,7 @@ class PostgreSQLInterface(Provider):
         if isinstance(endpoint, SQLTable):
             logger.debug('Adding endpoint {} to the table'.format(endpoint.table_name))
             endpoint.table = sqlalchemy.Table(endpoint.table_name, self.meta, autoload=True, schema=endpoint.schema)
-        if isinstance(endpoint, SQLSnapshot):
+        if isinstance(endpoint, dragonfly.implementations.SQLSnapshot):
             self._endpoint_name_set.update(endpoint.target_items)
 
     def take_snapshot(self, start_time, end_time, filename):
