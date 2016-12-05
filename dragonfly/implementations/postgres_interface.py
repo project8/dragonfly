@@ -36,13 +36,15 @@ class PostgreSQLInterface(Provider):
     A not-so-flexible provider for getting run_id values.
     '''
 
-    def __init__(self, database_name, database_server, **kwargs):
+    def __init__(self, database_name, database_server, metadata_target='', **kwargs):
         '''
         database_name (str): name of the database to connect to
         database_server (str): network resolvable hostname of database server
+        metadata_target (str): target to send metadata to
         '''
         Provider.__init__(self, **kwargs)
         self._connect_to_db(database_server, database_name)
+        self._metadata_target = metadata_target
         self._endpoint_name_set = set()
 
     def _connect_to_db(self, database_server, database_name):
@@ -66,21 +68,30 @@ class PostgreSQLInterface(Provider):
             self._endpoint_name_set.update(endpoint.target_items)
 
     def take_snapshot(self, start_time, end_time, filename):
-        # need to add a notice that says request received
         run_snapshot = {}
-        logger.info('doing latest-snapshot gets')
-        for child in self.endpoints:
-            snapshot_result = self.endpoints[child].get_latest(start_time, self.endpoints[child].target_items)
-            these_snaps = snapshot_result['value_raw']
-            run_snapshot.update(these_snaps)
         logger.info('doing logs-snapshot gets')
         for child in self.endpoints:
             snapshot_result = self.endpoints[child].get_logs(start_time,end_time)
             these_snaps = snapshot_result['value_raw']
             run_snapshot.update(these_snaps)
-        # need to check run_snapshot keys against master endpoint name set (self._endpoint_name_set) and pop those not in the list
-        # need to send run_snapshot to mdreceiver, something like send_snapshot in DAQProvider
-        # need to return either a 0 or a None to DAQProvider?       
+        logger.info('doing latest-snapshot gets')
+        latest_snap = {}
+        for child in self.endpoints:
+            snapshot_result = self.endpoints[child].get_latest(start_time, self.endpoints[child].target_items)
+            these_snaps = snapshot_result['value_raw']
+            latest_snap.update(these_snaps)
+        for latest_endpoint in latest_snap.keys():
+            run_snapshot.setdefault(latest_endpoint,[]).append(latest_snap[latest_endpoint][0])
+        for endpoint_name in sorted(run_snapshot.keys()):
+            if not set([endpoint_name])<=self._endpoint_name_set:
+                run_snapshot.pop(endpoint_name) 
+        logger.info('snapshot of the slow control database should broadcast')
+        logger.debug('should request snapshot file: {}'.format(filename))
+        this_payload = {'contents': run_snapshot,
+                        'filename': filename}
+        req_result = self.provider.cmd(self._metadata_target, None, payload=this_payload)
+        logger.debug('snapshot sent')
+        return       
 
 
 @fancy_doc
