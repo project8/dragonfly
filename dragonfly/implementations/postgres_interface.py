@@ -65,6 +65,7 @@ class PostgreSQLInterface(Provider):
         if isinstance(endpoint, SQLTable):
             logger.debug('Adding endpoint {} to the table'.format(endpoint.table_name))
             endpoint.table = sqlalchemy.Table(endpoint.table_name, self.meta, autoload=True, schema=endpoint.schema)
+        if isinstance(endpoint, SQLSnapshot):
             self._endpoint_name_set.update(endpoint.target_items)
 
     def take_snapshot(self, start_time, end_time, filename):
