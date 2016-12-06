@@ -134,7 +134,7 @@ class DAQProvider(core.Provider):
                                                                                )
         time_now = datetime.utcnow().strftime(core.constants.TIME_FORMAT)
         snap_state = self.provider.cmd(self._snapshot_state_target,'take_snapshot',[self._start_time,time_now,filename],timeout=30)
-        logger.debug('snapshot returned ok')
+        logger.info('snapshot returned ok')
 
     def determine_RF_ROI(self):
         raise core.exceptions.DriplineMethodNotSupportedError('subclass must implement RF ROI determination')
