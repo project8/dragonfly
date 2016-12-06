@@ -46,13 +46,11 @@ class DiskMonitor(Gogol):
         msg = dripline.core.Message.from_encoded(message, properties.content_encoding)
 
         computername = routing_info['computername']
-
         disk = msg.payload["directory"]
         usedspace = msg.payload["used"]
         usedspacepourcent = usedspace/msg.payload["all"]
 
         self._update_history(computername,disk)
-
 
         if usedspacepourcent < self._disk_space_alert:
             logger.info("{}:{} -> Enough free space ({}%); doing nothing".format(computername,disk,100-int(usedspacepourcent*100),int(self._disk_space_alert*100)))
