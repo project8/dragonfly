@@ -60,14 +60,32 @@ __all__.append('Roach2Interface')
 class Roach2Interface(Roach2Provider, EthernetProvider):
     def __init__(self,
                  roach2_hostname = 'led',
-                 source_ip = None,
-                 source_port = None,
-                 source_mac = None,
-                 dest_ip = None,
-                 dest_port = None,
-                 dest_mac = None,
-                 daq_name = None,
-                 channel_tag = 'a',
+                 source_ip_a = None,
+                 source_port_a = None,
+                 source_mac_a = None,
+                 dest_ip_a = None,
+                 dest_port_a = None,
+                 dest_mac_a = None,
+                 channel_tag_a = 'a',
+
+                 source_ip_b = None,
+                 source_port_b = None,
+                 source_mac_b = None,
+                 dest_ip_b = None,
+                 dest_port_b = None,
+                 dest_mac_b = None,
+                 channel_tag_b = 'b',
+
+                 source_ip_c = None,
+                 source_port_c = None,
+                 source_mac_c = None,
+                 dest_ip_c = None,
+                 dest_port_c = None,
+                 dest_mac_c = None,
+                 channel_tag_c = 'c',
+
+		 Nchannels = 1,
+		 daq_name = None,
                  do_adc_ogp_calibration = False,
                  central_freq = 800e6,
                  gain = 7.0,
@@ -86,15 +104,33 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
         self.roach2_hostname = roach2_hostname
         self._hf_lo_freq = hf_lo_freq
         self._analysis_bandwidth = analysis_bandwidth
-        self.source_ip = str(source_ip)
-        self.source_port = source_port
-        self.source_mac = str(source_mac)
-        self.dest_ip = str(dest_ip)
-        self.dest_port = dest_port
-        self.dest_mac = str(dest_mac)
-        self.cfg_list = None
+        self.source_ip = str(source_ip_a)
+        self.source_port = source_port_a
+        self.source_mac = str(source_mac_a)
+        self.dest_ip = str(dest_ip_a)
+        self.dest_port = dest_port_a
+        self.dest_mac = str(dest_mac_a)
+
+	self.source_ip_b = str(source_ip_b)
+        self.source_port_b = source_port_b
+        self.source_mac_b = str(source_mac_b)
+        self.dest_ip_b = str(dest_ip_b)
+        self.dest_port_b = dest_port_b
+        self.dest_mac_b = str(dest_mac_b)
+
+	self.source_ip_c = str(source_ip_c)
+        self.source_port_c = source_port_c
+        self.source_mac_c = str(source_mac_c)
+        self.dest_ip_c = str(dest_ip_c)
+        self.dest_port_c = dest_port_c
+        self.dest_mac_c = str(dest_mac_c)
+
+
+
+	self.channel_list = []
+        self.cfg_list = []
         self.daq_name = daq_name
-        self.channel_tag = channel_tag
+        self.channel_tag = channel_tag_a
         self.central_freq = central_freq
         self.gain = gain
         self.configured=False
@@ -108,27 +144,41 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
 #            self.calibrated=True
 
         if self.source_port != None:
-            cfg_a = self.make_interface_config_dictionary(self.source_ip, self.source_port,self.dest_ip, self.dest_port, src_mac=self.source_mac, dest_mac=self.dest_mac)
-            #cfg_b = self.make_interface_config_dictionary('192.168.10.101',4000,'192.168.10.64',4001,dest_mac='00:60:dd:44:91:e8',tag='b')
+            cfg_a = self.make_interface_config_dictionary(self.source_ip, self.source_port,self.dest_ip, self.dest_port, src_mac=self.source_mac, dest_mac=self.dest_mac, tag='a')
+	    self.cfg_list.append(cfg_a)
+	    self.channel_list.append('a')
 
-            self.cfg_list = [cfg_a]
-            logger.info(type(self.cfg_list))
-            ArtooDaq.__init__(self, self.roach2_hostname, boffile=boffile, do_ogp_cal=do_ogp_cal, do_adcif_cal=do_adcif_cal, ifcfg=self.cfg_list)
-            self.configured=True
-        else:
+	else:
             logger.info('Configuring ROACH2 without specific IP settings')
             ArtooDaq.__init__(self, self.roach2_hostname, boffile=boffile, do_ogp_cal=do_ogp_cal, do_adcif_cal=do_adcif_cal)
-            self.configured=True
+            self.configured=False
 
-        self.set_central_frequency(self.central_freq)
-        self.set_gain(self.gain)
 
+	if self.source_port_b != None:
+	    cfg_b = self.make_interface_config_dictionary(self.source_ip_b, self.source_port_b,self.dest_ip_b, self.dest_port_b, src_mac=self.source_mac_b, dest_mac=self.dest_mac_b, tag ='b')
+	    self.cfg_list.append(cfg_b)
+	    self.channel_list.append('b')
+	if self.source_port_c != None:
+	    cfg_c = self.make_interface_config_dictionary(self.source_ip_c, self.source_port_c,self.dest_ip_c, self.dest_port_c, src_mac=self.source_mac_c, dest_mac=self.dest_mac_c, tag ='c')
+	    self.cfg_list.append(cfg_c)
+	    self.channel_list.append('c')
+
+        logger.info('Number of channels: {}'.format(np.shape(np.array(self.cfg_list))))
+
+
+        ArtooDaq.__init__(self, self.roach2_hostname, boffile=boffile, do_ogp_cal=do_ogp_cal, do_adcif_cal=do_adcif_cal, ifcfg=self.cfg_list)
+        self.configured=True
+
+	for s in self.channel_list:
+	    self.set_central_frequency(self.central_freq, channel=s)
+	    self.set_gain(self.gain,channel=s)
 
         return self.configured
 
+
     def get_ip_configuration(self):
         logger.info('source ip: {}, source port: {},  \n dest ip: {}, dest port: {}'.format(self.source_ip,self.source_port, self.dest_ip,self.dest_port))
-        return 'source ip: {}, source port: {} \n dest ip: {}, dest port: {}'.format(self.source_ip,self.source_port, self.dest_ip,self.dest_port)
+        return self.cfg_list
 
     def get_calibration_status(self):
         return self.calibrated
@@ -173,11 +223,16 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
 
 
 
-    def set_central_frequency(self, cf):
-        logger.info('setting central frequency of channel {} to {}'.format(self.channel_tag, cf))
-        cf1 = ArtooDaq.tune_ddc_1st_to_freq(self, cf, tag=self.channel_tag)
-        self.central_freq = cf1
-        return self.central_freq
+    def set_central_frequency(self, cf, channel='a'):
+        logger.info('setting central frequency of channel {} to {}'.format(channel, cf))
+        cf1 = ArtooDaq.tune_ddc_1st_to_freq(self, cf, tag=channel)
+	if channel == 'b':
+            self.central_freq_b = cf1
+	elif channel =='c':
+            self.central_freq_c = cf1
+	else:
+	    self.central_freq_a = cf1
+	return cf1
 
     def get_central_frequency(self):
 	#self.central_frequency = ArtooDaq.read_ddc_1st_config(self, tag=self.channel_tag)['f_c']
@@ -188,10 +243,10 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
         logger.info('Configuration information of 1st stage DDC is {}'.format(self.channel_tag, cfg['digital']))
 
 
-    def set_gain(self, gain):
+    def set_gain(self, gain, channel='a'):
         if gain>-8 and gain <7.93:
-            logger.info('setting gain of channel {} to {}'.format(self.channel_tag, gain))
-            ArtooDaq.set_gain(self, gain, tag=self.channel_tag)
+            logger.info('setting gain of channel {} to {}'.format(channel, gain))
+            ArtooDaq.set_gain(self, gain, tag=channel)
             return True
         else:
             logger.error('Only gain values between -8 and 7.93 are allowed')
@@ -201,9 +256,13 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
         logger.info('setting fft shift of channel {} to {}'.format(tag, shift))
         ArtooDaq.set_fft_shift(self, str(shift), tag=tag)
 
-    def get_packets(self,n=1,dsoc_desc=None,close_soc=True):
-        if dsoc_desc == None:
-            dsoc_desc = (str(self.dest_ip),self.dest_port)
+    def get_packets(self,n=1,channel='a',close_soc=True):
+        if channel == 'b':
+            dsoc_desc = (str(self.dest_ip_b),self.dest_port_b)
+	elif channel == 'c':
+	    dsoc_desc = (str(self.dest_ip_c), self.dest_port_c)
+	else:
+	    dsoc_desc = (str(self.dest_ip), self.dest_port)
         try:
             logger.info('grabbing packets from {}'.format(dsoc_desc))
             pkts=ArtooDaq.grab_packets(self,n,dsoc_desc,close_soc)
@@ -216,22 +275,32 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
         except:
             logger.warning('cannot grab packets')
             return False
-        if_ids, digital_ids = [], []
+        if_ids, digital_ids, pktnum = [], [], []
         for i in range(n):
             if_ids.append(pkts[i].if_id)
             digital_ids.append(pkts[i].digital_id)
+	    pktnum.append(pkts[i].pkt_in_batch)
         logger.info(if_ids)
         logger.info(digital_ids)
+	logger.info(pktnum)
         plt.figure()
-        plt.plot(if_ids)
-        plt.plot(digital_ids)
+        plt.plot(np.array(pktnum))
         plt.savefig('/home/cclaesse/monitor/ids.png')
 
 
 
-    def monitor(self,dsoc_desc=None,close_soc=True, tag='a'):
-        if dsoc_desc == None:
+    def monitor(self,dsoc_desc=None,close_soc=True, channel='a'):
+        if channel=='a':
             dsoc_desc = (str(self.dest_ip),self.dest_port)
+	    cf = self.central_freq_a
+	elif channel=='b':
+	    dsoc_desc = (str(self.dest_ip_b),self.dest_port_b)
+	    cf = self.central_freq_b
+	elif channel=='c':
+	    dsoc_desc = (str(self.dest_ip_c),self.dest_port_c)
+            cf = self.central_freq_c
+
+	
 
         logger.info('grabbing packets from {}'.format(dsoc_desc))
         pkts=ArtooDaq.grab_packets(self,2,dsoc_desc,close_soc)
@@ -248,19 +317,24 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
 	p = np.abs(np.fft.fftshift(np.fft.fft(x)))
 	logger.info(x[0:10])
 	logger.info(f[0:10])
+	logger.info('cf={}'.format(cf))
 	p = p/np.max(p) 	
-	logger.info(np.min(np.min(f)), np.max(np.abs(f)))
-	cf = self.central_freq*10**-6
-        plt.figure()
+	cf = cf*10**-6
+	logger.info('max value in f packet: {}, shape of fft of signal {}'.format(np.max(np.abs), np.shape(p)))
+        plt.close("all")
+	plt.figure()
         plt.plot(np.linspace(cf-50,cf+50,np.shape(x)[0]),10.0*np.log10(p), color='b', label='fft(T-Packet')
+	logger.info('cf={}, shape={}'.format(cf, np.shape(x)[0]))
+
 	#plt.plot(np.linspace(cf-50,cf+50,np.shape(x)[0]),np.abs(p), color='b')
-	plt.plot(np.linspace(cf-50,cf+50,np.shape(x)[0]),10.0*np.log10(np.abs(f)), color='g',label='F-Packet')
+	plt.plot(np.linspace(cf-50,cf+50,np.shape(x)[0]),10.0*np.log10(np.abs(f)/np.max(np.abs(f))), color='g',label='F-Packet')
         #plt.plot(np.linspace(cf-50,cf+50,np.shape(x)[0]),np.abs(f), color='g')
 	plt.xlabel('frequency [MHz]')
 	plt.ylabel('relativ amplitude [dB]')
-	#plt.legend()
+	plt.legend()
+	plt.title(channel)
         plt.savefig('/home/cclaesse/monitor/freq_plot.png')
-
+	logger.info('file saved')
 
 
     def calibrate_manually(self, gain1=0.0, gain2=0.42, gain3=0.42, gain4=1.55, off1=3.14, off2=-0.39, off3=2.75, off4=-1.18):

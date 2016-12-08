@@ -273,10 +273,10 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
                 raise core.DriplineInternalError('Status of Psyllid must be "Initialized", status is {}'.format(self.status))
 
             #set daq presets
-            self.configure(self.psyllid_preset)
+            #self.configure(self.psyllid_preset)
 
             #set udp receiver port
-            self.set_udp_port(self.udp_receiver_port)
+            #self.set_udp_port(self.udp_receiver_port)
 
             #activate
             self.activate()
@@ -412,7 +412,7 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
                 logger.warning('retcode indicates an error')
             #self.is_running()
             time.sleep(1)
-            self.is_running()
+            #self.is_running()
             return True
 
         else:
@@ -565,7 +565,7 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
         if not os.path.exists(filepath):
             os.makedirs(filepath)
         self.set_path(filepath+filename)
-	#time.sleep(1)
+	time.sleep(1)
 
         request = core.RequestMessage(msgop=core.OP_CMD)
         result = self.portal.send_request(self.psyllid_queue+'.start-run',
