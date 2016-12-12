@@ -37,7 +37,7 @@ class DAQProvider(core.Provider):
         directory_path (str): absolute path to "hot" storage (as seen from the DAQ software, not a network path)
         meta_data_directory_path (str): path where the metadata file should be written
         filename_prefix (str): prefix for unique filenames
-        snapshot_state_target (str): target to request snapshot from 
+        snapshot_state_target (str): target to request snapshot from
         metadata_state_target (str): multiget endpoint to Get() for system state
         metadata_target (str): target to send metadata to
         '''
@@ -95,7 +95,7 @@ class DAQProvider(core.Provider):
                 self._run_name = None
                 self.run_id = None
             raise core.exceptions.DriplineValueError('failed to insert run_name to the db, obtain run_id, and start_timestamp. run "<{}>" not started\nerror:\n{}'.format(value,str(err)))
-                
+
     def end_run(self):
         self._do_snapshot()
         run_was = self.run_id
@@ -122,7 +122,7 @@ class DAQProvider(core.Provider):
         logger.info('doing prerun meta-data get')
         meta_result = self.provider.get(self._metadata_state_target, timeout=30)
         self._run_meta.update(meta_result['value_raw'])
-#        self.determine_RF_ROI()
+        self.determine_RF_ROI()
 
     def _do_snapshot(self):
         logger.info('requesting snapshot of database')
