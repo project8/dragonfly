@@ -24,6 +24,7 @@ class AlertSpammer(Endpoint):
     Spammer of Alerts
     '''
     def __init__(self,broker=None,sleep_time = 10,*args, **kwargs):
+
         Endpoint.__init__(self,**kwargs)
 
         # setting the interface
@@ -42,3 +43,7 @@ class AlertSpammer(Endpoint):
             self.connection_to_alert.send_status_message(severity=severity,alert='Redundant informations')
             logger.critical('I am critical')
             sleep(self.sleep_time)
+
+    def _set_condition(self,number):
+        print('set_condition {}'.format(number))
+        return 'set condition {}'.format(number)
