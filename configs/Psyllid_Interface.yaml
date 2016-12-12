@@ -14,8 +14,9 @@ endpoints:
 
     # daq_run_interface params
     run_table_endpoint: run_table
-    filename_prefix: 'rid'
+    filename_prefix: 'psyllid'
     directory_path: "/home/cclaesse/psyllid_test_data"
+    metadata_directory_path: "/home/cclaesse/psyllid_test_data"
 
     metadata_state_target: run_metadata
     

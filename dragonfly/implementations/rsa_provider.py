@@ -34,18 +34,11 @@ class RSAProvider(EthernetProvider):
                  max_nb_files=10000,
                  **kwargs):
         EthernetProvider.__init__(self, **kwargs)
-
         self.max_nb_files = max_nb_files
 
-    def save_trace(self, trace, path):
-        logger.info('saving trace')
+    # DO NOT USE THIS METHOD!  Use RSAAcquisitionInterface.save_trace instead!
+    def _save_trace(self, trace, path):
         self.send(['MMEMory:DPX:STORe:TRACe{} "{}"; *OPC?'.format(trace,path)])
-
-    def create_new_auto_mask(self, trace, xmargin, ymargin):
-        #This convenience method is currently broken
-        logger.info('setting the auto mask')
-        raise exceptions.DriplineError("convenience method <create_new_auto_mask> not yet implemented")
-        self.provider.set('rsa_new_auto_mask','{},{},{}'.format(trace,xmargin,ymargin))
 
     @property
     def trigger_status(self):
@@ -53,7 +46,7 @@ class RSAProvider(EthernetProvider):
     @trigger_status.setter
     def trigger_status(self, value):
         self.send("TRIG:SEQUENCE:STATUS {}; *OPC?".format(value))
-        return self.send("TRIG:SEQUENCE:STATUS?")
+        return getattr(self, "trigger_status")
 
 
     def start_run(self, directory, filename):

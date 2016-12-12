@@ -18,9 +18,10 @@ try:
     __all__.append('RunDBInterface')
 except ImportError:
     pass
+from datetime import datetime
 
 # local imports
-from dripline.core import Provider, Endpoint#, fancy_init_doc
+from dripline.core import Provider, Endpoint, constants#, fancy_init_doc
 from dripline.core.exceptions import *
 
 import logging
@@ -69,11 +70,16 @@ class RunDBInterface(Provider):
                 ins = ins.returning(*[self.tables[table_name].c[col_name] for col_name in return_col_names_list])
             insert_result = ins.execute()
             if return_col_names_list:
-                return_values = insert_result.first()
+                return_values = list(insert_result.first())
+                for i,value in enumerate(return_values):
+                    if isinstance(value,datetime):
+                        return_values[i]=value.strftime(constants.TIME_FORMAT)
             else:
                 return_values = []
         except Exception as err:
-            if str(err).startswith('(psycopg2.IntegrityError)'):
+            db_errs = ('(psycopg2.IntegrityError)','(psycopg2.DataError)')
+            if str(err).startswith(db_errs):
+                logger.error('failed to make an SQL insert and receive return. error:\n{}'.format(str(err)))
                 raise DriplineDatabaseError(str(err))
             else:
                 logger.warning('unknown error while working with sql')
