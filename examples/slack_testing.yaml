@@ -1,0 +1,9 @@
+name: slack_interface_testing
+module: SlackInterface
+broker: myrna.p8
+prime_speakers: ['dripline']
+speaking_time: 300
+number_sentence_per_speaking_time: 30
+time_between_warnings: 3600
+# slack_channel: 'slack_test'
+slack_channel: 'slack_test'
