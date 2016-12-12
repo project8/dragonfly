@@ -23,7 +23,6 @@ from .sensor_logger import *
 from .simple_shell import *
 from .slack_interface import *
 from .spime_endpoints import *
-from .sql_snapshot import *
 from .step_attenuator import *
 # keep these out of sequence, they inherit from elsewhere in dragonfly
 from .lockin_provider import *

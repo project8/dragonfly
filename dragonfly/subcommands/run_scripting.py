@@ -675,7 +675,6 @@ class RunScript(object):
             for i_do,a_do in enumerate(operations):
                 logger.info('doing operation #{}'.format(i_do))
                 these_operations = []
-                print(a_do)
                 key = a_do.keys()[0]
                 if key == 'sets':
                     these_sets = []
