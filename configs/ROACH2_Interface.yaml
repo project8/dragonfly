@@ -9,9 +9,6 @@ endpoints:
     debug_mode_without_database: True
     debug_mode_without_metadata_broadcast: True
     
-    command_terminator: "\n"
-    response_terminator: "\n"
-
 
     # ethernet SCPI params
     #socket_info: ("led.p8", communication_port)
@@ -44,7 +41,5 @@ endpoints:
     source_port_c: 4000
     source_mac_c: 02:02:10:00:23:02
 
-    
-    metadata_state_target: run_metadata
-    run_table_endpoint: run_table
+    monitor_target: '/home/cclaesse/monitor' 
     

@@ -13,7 +13,7 @@ import os
 import adc5g
 import matplotlib.pyplot as plt
 import numpy as np
-
+import time
 
 # internal imports
 from dripline import core
@@ -92,7 +92,7 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
 
                  hf_lo_freq=24.2e9,
                  analysis_bandwidth=50e6,
-
+		 monitor_target = '/home/project8/monitor',
                  **kwargs):
 
 
@@ -103,6 +103,7 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
 
         self.roach2_hostname = roach2_hostname
         self._hf_lo_freq = hf_lo_freq
+	self.monitor_target = monitor_target
         self._analysis_bandwidth = analysis_bandwidth
         self.source_ip = str(source_ip_a)
         self.source_port = source_port_a
@@ -187,7 +188,7 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
         return self.configured
 
     def do_adc_ogp_calibration(self, **kwargs):
-
+	
         logger.info('Calibrating ROACH2, this will take a while.... no news is good news.')
 
         logger.info('Doing adc ogp calibration')
@@ -289,7 +290,7 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
 
 
 
-    def monitor(self,dsoc_desc=None,close_soc=True, channel='a'):
+    def screenshot_T_packets(self,dsoc_desc=None,close_soc=True, channel='a'):
         if channel=='a':
             dsoc_desc = (str(self.dest_ip),self.dest_port)
 	    cf = self.central_freq_a
@@ -300,7 +301,44 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
 	    dsoc_desc = (str(self.dest_ip_c),self.dest_port_c)
             cf = self.central_freq_c
 
-	
+        logger.info('grabbing packets from {}'.format(dsoc_desc))
+        pkts=ArtooDaq.grab_packets(self,2,dsoc_desc,close_soc)
+
+        if pkts[0].freq_not_time==False:
+            x = pkts[0].interpret_data()
+            f = pkts[1].interpret_data()
+	    pkt_id=pkts[0].pkt_in_batch
+        elif pkts[1].freq_not_time==False:
+            x = pkts[1].interpret_data()
+            f = pkts[0].interpret_data()
+	    pkt_id=pkts[1].pkt_in_batch
+
+	p = np.abs(np.fft.fftshift(np.fft.fft(x)))
+	logger.info('first 10 entries in time domain array: ')
+	logger.info(x[0:10])
+	logger.info('cf={}'.format(cf))
+	p = p/np.max(p) 	
+	cf = cf*10**-6
+        plt.close("all")
+	plt.figure(1)
+        plt.plot(np.linspace(cf-50,cf+50,np.shape(x)[0]),10.0*np.log10(p), color='b', label='fft(T-Packet')
+	plt.xlabel('Frequency [MHz]')
+	plt.ylabel('Normalized Power spectrum [dB]')
+	plt.legend()
+	plt.title('Channel {}, Packet ID {}'.format(channel,pkt_id))
+        plt.savefig(self.monitor_target+'/time_domain_plot.png')
+	logger.info('file saved to {}'.format(self.monitor_target))
+
+    def screenshot_F_packets(self,dsoc_desc=None,close_soc=True, channel='a'):
+        if channel=='a':
+            dsoc_desc = (str(self.dest_ip),self.dest_port)
+            cf = self.central_freq_a
+        elif channel=='b':
+            dsoc_desc = (str(self.dest_ip_b),self.dest_port_b)
+            cf = self.central_freq_b
+        elif channel=='c':
+            dsoc_desc = (str(self.dest_ip_c),self.dest_port_c)
+            cf = self.central_freq_c
 
         logger.info('grabbing packets from {}'.format(dsoc_desc))
         pkts=ArtooDaq.grab_packets(self,2,dsoc_desc,close_soc)
@@ -308,33 +346,76 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
         if pkts[0].freq_not_time==False:
             x = pkts[0].interpret_data()
             f = pkts[1].interpret_data()
+	    pkt_id=pkts[1].pkt_in_batch
+
         elif pkts[1].freq_not_time==False:
             x = pkts[1].interpret_data()
             f = pkts[0].interpret_data()
+	    pkt_id=pkts[0].pkt_in_batch
 
-	n = np.shape(x)[0]
-	logger.info('array length {}'.format(n))
-	p = np.abs(np.fft.fftshift(np.fft.fft(x)))
-	logger.info(x[0:10])
+
+        logger.info('first 10 entries in frequency domain array: ')
 	logger.info(f[0:10])
-	logger.info('cf={}'.format(cf))
-	p = p/np.max(p) 	
-	cf = cf*10**-6
-	logger.info('max value in f packet: {}, shape of fft of signal {}'.format(np.max(np.abs), np.shape(p)))
+        logger.info('cf={}'.format(cf))
+        cf = cf*10**-6
+        #logger.info('max value in f packet: {}, shape of fft of signal {}'.format(np.max(np.abs), np.shape(p)))
         plt.close("all")
-	plt.figure()
-        plt.plot(np.linspace(cf-50,cf+50,np.shape(x)[0]),10.0*np.log10(p), color='b', label='fft(T-Packet')
-	logger.info('cf={}, shape={}'.format(cf, np.shape(x)[0]))
+        plt.figure(2)
+        plt.xlabel('Frequency [MHz]')
+        plt.ylabel('Absolute frequency domain amplitude [dB]')
+        plt.plot(np.linspace(cf-50,cf+50,np.shape(x)[0]),10.0*np.log10(np.abs(f)), color='g',label='F-Packet')
+        plt.legend()
+        plt.title('Channel {}, Packet ID {}'.format(channel, pkt_id))
+        plt.savefig(self.monitor_target+'/freq_domain_plot.png')
+        logger.info('file saved to {}'.format(self.monitor_target))
 
-	#plt.plot(np.linspace(cf-50,cf+50,np.shape(x)[0]),np.abs(p), color='b')
-	plt.plot(np.linspace(cf-50,cf+50,np.shape(x)[0]),10.0*np.log10(np.abs(f)/np.max(np.abs(f))), color='g',label='F-Packet')
-        #plt.plot(np.linspace(cf-50,cf+50,np.shape(x)[0]),np.abs(f), color='g')
-	plt.xlabel('frequency [MHz]')
-	plt.ylabel('relativ amplitude [dB]')
-	plt.legend()
-	plt.title(channel)
-        plt.savefig('/home/cclaesse/monitor/freq_plot.png')
-	logger.info('file saved')
+
+
+    def average_T_packets(self,dsoc_desc=None, channel='a', NPackets=10):
+        if channel=='a':
+            dsoc_desc = (str(self.dest_ip),self.dest_port)
+            cf = self.central_freq_a
+        elif channel=='b':
+            dsoc_desc = (str(self.dest_ip_b),self.dest_port_b)
+            cf = self.central_freq_b
+        elif channel=='c':
+            dsoc_desc = (str(self.dest_ip_c),self.dest_port_c)
+            cf = self.central_freq_c
+	else:
+	    logger.warning('No channel specified')
+
+
+
+        logger.info('grabbing packets from {}'.format(dsoc_desc))
+	pkts=ArtooDaq.grab_packets(self, NPackets*2, dsoc_desc, True)
+	#logger.info('grabbing {} packets to {} seconds'.format(NPackets, (end-start)))
+	logger.info('cf={}'.format(cf))
+	cf = cf*10**-6
+	p = []
+        if pkts[0].freq_not_time==False:
+	    for i in range(int(NPackets)):  
+		x=pkts[i*2].interpret_data()
+	        p.append(np.abs(np.fft.fftshift(np.fft.fft(x))))
+	else:
+	    for i in range(int(NPackets)):
+		x=pkts[i*2+1].interpret_data()
+                p.append(np.abs(np.fft.fftshift(np.fft.fft(x))))
+	#np.save(self.monitor_target+'/monitor', np.array(p))
+	p_ave=np.sum(np.array(p), axis=0)
+	p_norm = np.array(p)/np.max(p_ave)
+	p_norm_ave = np.sum(p_norm, axis=0)
+	p_std = np.std(p_norm, axis=0)
+	logger.info(np.shape(p_std))
+        cf = cf*10**-6
+        plt.close("all")
+        plt.figure(1)
+        plt.errorbar(np.linspace(cf-50,cf+50,np.shape(x)[0]),10.0*np.log10(p_norm_ave), yerr=p_std*10*np.log10(p_norm_ave), color='b', ecolor='g', label='fft(T-Packet')
+        plt.xlabel('Frequency [MHz]')
+        plt.ylabel('Normalized Power spectrum [dB]')
+        plt.legend()
+        plt.title('Channel {}, Average of {} packets'.format(channel,NPackets))
+        plt.savefig(self.monitor_target+'/time_domain_average.png')
+        logger.info('file saved to {}'.format(self.monitor_target))
 
 
     def calibrate_manually(self, gain1=0.0, gain2=0.42, gain3=0.42, gain4=1.55, off1=3.14, off2=-0.39, off3=2.75, off4=-1.18):
