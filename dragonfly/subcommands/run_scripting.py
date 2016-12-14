@@ -634,12 +634,10 @@ class RunScript(object):
         while (datetime.datetime.now() - start_of_runs).total_seconds() < run_duration:
             logger.info('checking the daq for a set_condition')
             list_is_running = []
-            list_daq_in_safe_mode = []
             for daq in daq_targets:
                 if self.interface.get(daq+'.is_running')['payload']['values'][0] == 2:
                     logger.critical('{} is in safe_mode (maybe due to a set_condition)')
                     a_daq_in_safe_mode = True
-                    list_daq_in_safe_mode.append(daq)
                 elif self.interface.get(daq+'.is_running')['payload']['values'][0] == 1:
                     all_done = False
                     logger.info('still waiting on <{}> (maybe others)'.format(daq))
@@ -652,8 +650,8 @@ class RunScript(object):
                     for name in list_is_running:
                         response = response + '\n ' + name
                     logger.critical(response)
-                    logger.critical('Run scripting is stopping')
-                    sys.exit(n)
+                logger.critical('Run scripting is stopping')
+                sys.exit(n)
             logger.info('time remaining >= {:.0f} seconds'.format(run_duration-(datetime.datetime.now()-start_of_runs).total_seconds()))
             time.sleep(min(7*60,max(10,run_duration/14.)))
 
@@ -664,12 +662,10 @@ class RunScript(object):
         while all_done == False:
             all_done = True
             list_is_running = []
-            list_daq_in_safe_mode = []
             for daq in daq_targets:
                 if self.interface.get(daq+'.is_running')['payload']['values'][0] == 2:
                     logger.critical('{} is in safe_mode (maybe due to a set_condition)')
                     a_daq_in_safe_mode = True
-                    list_daq_in_safe_mode.append(daq)
                 elif self.interface.get(daq+'.is_running')['payload']['values'][0] == 1:
                     all_done = False
                     logger.info('still waiting on <{}> (maybe others)'.format(daq))
@@ -682,8 +678,8 @@ class RunScript(object):
                     for name in list_is_running:
                         response = response + '\n ' + name
                     logger.critical(response)
-                    logger.critical('Run scripting is stopping')
-                    sys.exit(n)
+                logger.critical('Run scripting is stopping')
+                sys.exit(n)
             time.sleep(5)
         logger.info('acquistions complete')
 
