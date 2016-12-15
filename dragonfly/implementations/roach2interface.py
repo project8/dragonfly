@@ -136,13 +136,14 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
         self.gain = gain
         self.configured=False
         self.calibrated=False
+	self.adc_dictionary = None
        # self.do_calibrations=do_adc_ogp_calibration
 
 
 
     def configure(self, do_ogp_cal=False, do_adcif_cal=True, boffile=None):
-#        if do_ogp_cal==True and do_adcif_cal==True:
-#            self.calibrated=True
+	self.channel_list = []
+        self.cfg_list = []
 
         if self.source_port != None:
             cfg_a = self.make_interface_config_dictionary(self.source_ip, self.source_port,self.dest_ip, self.dest_port, src_mac=self.source_mac, dest_mac=self.dest_mac, tag='a')
@@ -192,11 +193,28 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
         logger.info('Calibrating ROACH2, this will take a while.... no news is good news.')
 
         logger.info('Doing adc ogp calibration')
-        d = ArtooDaq.calibrate_adc_ogp(self, **kwargs)
-        logger.info(d)
+        self.adc_dictionary = ArtooDaq.calibrate_adc_ogp(self, **kwargs)
+        logger.info(self.adc_dictionary)
 	self.calibrated=True
 
         return self.calibrated
+
+
+    def get_adc_gain(self):
+	if self.adc_dictionary==None:
+	    return False
+	else: return self.adc_dictionary['gain']
+
+    def get_adc_offset(self):
+        if self.adc_dictionary==None:
+            return False
+        else: return self.adc_dictionary['offset']
+
+    def get_adc_phase(self):
+        if self.adc_dictionary==None:
+            return False
+        else: return self.adc_dictionary['phase']
+
 
 
     def is_running(self):
@@ -235,8 +253,16 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
 	    self.central_freq_a = cf1
 	return cf1
 
-    def get_central_frequency(self):
+    def get_central_frequency(self, channel='a'):
 	#self.central_frequency = ArtooDaq.read_ddc_1st_config(self, tag=self.channel_tag)['f_c']
+	if channel == 'b':
+            cf=self.central_freq_b
+        elif channel =='c':
+            cf=self.central_freq_c
+        else:
+            cf=self.central_freq_a
+        return cf
+
         return self.central_freq
 
     def get_ddc_config(self):
@@ -392,29 +418,40 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
 	logger.info('cf={}'.format(cf))
 	cf = cf*10**-6
 	p = []
-        if pkts[0].freq_not_time==False:
-	    for i in range(int(NPackets)):  
-		x=pkts[i*2].interpret_data()
-	        p.append(np.abs(np.fft.fftshift(np.fft.fft(x))))
-	else:
-	    for i in range(int(NPackets)):
-		x=pkts[i*2+1].interpret_data()
-                p.append(np.abs(np.fft.fftshift(np.fft.fft(x))))
+	for i in range(int(NPackets*2)):
+	    if pkts[i].freq_not_time==False:  
+		x=pkts[i].interpret_data()
+	        p.append(np.abs(np.fft.fftshift(np.fft.fft(x)))/np.shape(x)[0])
 	#np.save(self.monitor_target+'/monitor', np.array(p))
-	p_ave=np.sum(np.array(p), axis=0)
-	p_norm = np.array(p)/np.max(p_ave)
-	p_norm_ave = np.sum(p_norm, axis=0)
-	p_std = np.std(p_norm, axis=0)
-	logger.info(np.shape(p_std))
-        cf = cf*10**-6
+	p_ave=np.mean(np.array(p), axis=0)
+	#p_norm = np.array(p)/np.max(p_ave)
+	#p_norm_ave = np.mean(p_norm, axis=0)
+	#p_norm_std = np.std(p_norm, axis=0)
+	p_std = np.std(np.array(p), axis=0)
+	#logger.info(np.shape(p_std))
         plt.close("all")
         plt.figure(1)
-        plt.errorbar(np.linspace(cf-50,cf+50,np.shape(x)[0]),10.0*np.log10(p_norm_ave), yerr=p_std*10*np.log10(p_norm_ave), color='b', ecolor='g', label='fft(T-Packet')
+        plt.errorbar(np.linspace(cf-50,cf+50,np.shape(x)[0]),10.0*np.log10(p_ave), yerr=10*0.434*p_std/p_ave, color='b', ecolor='g', label='fft(T-Packet')
         plt.xlabel('Frequency [MHz]')
-        plt.ylabel('Normalized Power spectrum [dB]')
+        plt.ylabel('Averaged spectrum [dB]')
         plt.legend()
-        plt.title('Channel {}, Average of {} packets'.format(channel,NPackets))
+        plt.title('Channel {}, Average of {} T packets'.format(channel,np.shape(np.array(p))[0]))
         plt.savefig(self.monitor_target+'/time_domain_average.png')
+        logger.info('file saved to {}'.format(self.monitor_target))
+
+
+    def plot_raw_adc_data(self):
+	x = ArtooDaq._snap_per_core(self, zdok=0)
+	x_all = x.flatten('C')
+	logger.info('shape x is {} shape x_all is {}'.format(np.shape(x), np.shape(x_all)))
+	p = np.abs(np.fft.fftshift(np.fft.fft(x_all[0:24000])))
+        plt.close("all")
+        plt.figure(1)
+        plt.plot(np.linspace(-1600.0,1600.0,24000),10.0*np.log10(p), color='b', label='fft(raw adc data')
+        plt.xlabel('Frequency [MHz]')
+        plt.ylabel('raw spectrum [dB]')
+        plt.legend()
+        plt.savefig(self.monitor_target+'/raw_adc_plot.png')
         logger.info('file saved to {}'.format(self.monitor_target))
 
 
