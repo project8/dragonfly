@@ -36,7 +36,8 @@ class SlackInterface(Gogol):
         time_between_warnings: time between sending warnings
         '''
         # listen to status_message alerts channel
-        kwargs.update({'exchange':'alerts','keys':['status_message.#.#']})
+        #kwargs.update({'exchange':'alerts','keys':['status_message.#.#']})
+        kwargs.update({'keys':['status_message.#.#']})
         Gogol.__init__(self, **kwargs)
 
         # get the authentification file and look for a slack field

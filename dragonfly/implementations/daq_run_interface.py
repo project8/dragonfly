@@ -244,7 +244,7 @@ class RSAAcquisitionInterface(DAQProvider):
     def start_run(self, run_name):
 
         logger.debug('testing if the DAQ is running')
-        result = is_running
+        result = self.is_running
         if result == 1:
             raise core.exceptions.DriplineHardwareError('RSA is already running: aborting run')
         if result == 2:
@@ -323,11 +323,11 @@ class RSAAcquisitionInterface(DAQProvider):
 
     def _set_condition(self,number):
         logger.debug('receiving a set_condition {} request'.format(number))
-        if number is in self._set_condition_list:
+        if number in self._set_condition_list:
             logger.debug('putting myself in safe_mode')
             self._daq_in_safe_mode = True
             logger.critical('Condition {} reached!'.format(number))
-        elif number is 0:
+        elif number == 0:
             logger.debug('getting out of safe_mode')
             self._daq_in_safe_mode = False
             logger.critical('Condition {} reached!'.format(number))

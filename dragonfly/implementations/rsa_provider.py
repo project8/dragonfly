@@ -82,7 +82,7 @@ class RSAProvider(EthernetProvider):
 
     def _set_condition(self,number):
         logger.debug('receiving a set_condition {} request'.format(number))
-        if number is in self._set_condition_list:
+        if number in self._set_condition_list:
             logger.debug('stopping data taking')
-            end_run()
+            self.end_run()
             logger.critical('Condition {} reached!'.format(number))

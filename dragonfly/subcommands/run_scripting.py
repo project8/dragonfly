@@ -644,7 +644,7 @@ class RunScript(object):
                     list_is_running.append(daq)
                 elif self.interface.get(daq+'.is_running')['payload']['values'][0] == 0:
                     logger.info('{} is already done!'.format(daq))
-            if a_daq_in_safe_mode = True
+            if a_daq_in_safe_mode == True:
                 if len(list_is_running)>0:
                     response = 'daq still running: '
                     for name in list_is_running:
@@ -672,7 +672,7 @@ class RunScript(object):
                     list_is_running.append(daq)
                 elif self.interface.get(daq+'.is_running')['payload']['values'][0] == 0:
                     logger.info('{} is done!'.format(daq))
-            if a_daq_in_safe_mode = True
+            if a_daq_in_safe_mode == True:
                 if len(list_is_running)>0:
                     response = 'daq still running: '
                     for name in list_is_running:

@@ -30,7 +30,7 @@ class DiskMonitor(Gogol):
         disk_space_alert: used space threshold above which the Disk Monitor will start to send alerts
         '''
         # listen to status_message alerts channel
-        kwargs.update({'exchange':'alerts','keys':['disk_status.#.#']})
+        kwargs.update({'keys':['disk_status.#.#']})
         Gogol.__init__(self, **kwargs)
         self.history = {}
         self._time_between_warnings = time_between_warnings
