@@ -48,11 +48,11 @@ class DiskMonitor(Gogol):
         msg = dripline.core.Message.from_encoded(message, properties.content_encoding)
 
         computername = routing_info['computername']
-        self._update_history(computername)
-
         disk = msg.payload["directory"]
         usedspace = msg.payload["used"]
         usedspacepourcent = usedspace/msg.payload["all"]
+
+        self._update_history(computername,disk)
 
         if usedspacepourcent < self._disk_space_alert:
             logger.info("{}:{} -> Enough free space ({}%); doing nothing".format(computername,disk,100-int(usedspacepourcent*100),int(self._disk_space_alert*100)))
@@ -61,7 +61,7 @@ class DiskMonitor(Gogol):
             if self._can_talk(computername,disk):
                 # change here to critical for sending an alert on Slack
                 logger.critical("{}:{} -> Free space below threshold ({}%); need to monitor!".format(computername,disk,100-int(usedspacepourcent*100)))
-                self.history[computername].update({'last_alert': datetime.now() })
+                self.history[computername][disk].update({'last_alert': datetime.now() })
             else:
                 logger.info("{}:{} -> Free space below threshold ({}%); need to monitor!".format(computername,disk,100-int(usedspacepourcent*100)))
         if usedspacepourcent > self._disk_space_critical:

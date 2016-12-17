@@ -27,7 +27,7 @@ class DAQProvider(core.Provider):
                  data_directory_path=None,
                  meta_data_directory_path=None,
                  filename_prefix='',
-                 snapshot_target_items=None,
+                 snapshot_state_target='',
                  metadata_state_target='',
                  metadata_target='',
                  **kwargs):
@@ -37,7 +37,7 @@ class DAQProvider(core.Provider):
         directory_path (str): absolute path to "hot" storage (as seen from the DAQ software, not a network path)
         meta_data_directory_path (str): path where the metadata file should be written
         filename_prefix (str): prefix for unique filenames
-        snapshot_target_items (dict): keys are SQLSnapshot table endpoint names, values are lists of items (str) to take snapshot of
+        snapshot_state_target (str): target to request snapshot from
         metadata_state_target (str): multiget endpoint to Get() for system state
         metadata_target (str): target to send metadata to
         '''
@@ -63,8 +63,8 @@ class DAQProvider(core.Provider):
         self.meta_data_directory_path = meta_data_directory_path
 
         self._metadata_state_target = metadata_state_target
-        self._snapshot_target_items = snapshot_target_items
         self._metadata_target = metadata_target
+        self._snapshot_state_target = snapshot_state_target
         self.filename_prefix = filename_prefix
 
         self._stop_handle = None
@@ -97,8 +97,7 @@ class DAQProvider(core.Provider):
             raise core.exceptions.DriplineValueError('failed to insert run_name to the db, obtain run_id, and start_timestamp. run "<{}>" not started\nerror:\n{}'.format(value,str(err)))
 
     def end_run(self):
-#        self._do_postrun_gets()
-#        self._send_snapshot()
+        self._do_snapshot()
         run_was = self.run_id
         if self._stop_handle is not None:
             self.service._connection.remove_timeout(self._stop_handle)
@@ -114,29 +113,28 @@ class DAQProvider(core.Provider):
         self._run_meta = {'DAQ': self.daq_name,
                           'run_time': self._run_time,
                          }
-        self._run_snapshot = {'LATEST':{},'LOGS':{}}
         self._do_prerun_gets()
         self._send_metadata()
         logger.debug('these meta will be {}'.format(self._run_meta))
         logger.info('start_run finished')
 
     def _do_prerun_gets(self):
-        logger.info('doing prerun meta-data and snapshot gets')
+        logger.info('doing prerun meta-data get')
         meta_result = self.provider.get(self._metadata_state_target, timeout=30)
         self._run_meta.update(meta_result['value_raw'])
-#        for target,item_list in self._snapshot_target_items.items():
-#            snapshot_result = self.provider.cmd(target, 'get_latest', [self._start_time,item_list], timeout=30)
-#            these_snaps = snapshot_result['value_raw']
-#            self._run_snapshot['LATEST'].update(these_snaps)
         self.determine_RF_ROI()
 
-    def _do_postrun_gets(self):
-        logger.info('doing postrun snapshot gets')
+    def _do_snapshot(self):
+        logger.info('requesting snapshot of database')
+        filename = '{directory}/{runN:09d}/{prefix}{runN:09d}_snapshot.json'.format(
+                                                        directory=self.meta_data_directory_path,
+                                                        prefix=self.filename_prefix,
+                                                        runN=self.run_id,
+                                                        acqN=self._acquisition_count
+                                                                               )
         time_now = datetime.utcnow().strftime(core.constants.TIME_FORMAT)
-        for target in self._snapshot_target_items:
-            snapshot_result = self.provider.cmd(target, 'get_logs', [self._start_time,time_now], timeout=30)
-            these_snaps = snapshot_result['value_raw']
-            self._run_snapshot['LOGS'].update(these_snaps)
+        snap_state = self.provider.cmd(self._snapshot_state_target,'take_snapshot',[self._start_time,time_now,filename],timeout=30)
+        logger.info('snapshot returned ok')
 
     def determine_RF_ROI(self):
         raise core.exceptions.DriplineMethodNotSupportedError('subclass must implement RF ROI determination')
@@ -159,22 +157,6 @@ class DAQProvider(core.Provider):
         # note, the following line has an empty method/RKS, this shouldn't be the case but is what golang expects
         req_result = self.provider.cmd(self._metadata_target, None, payload=this_payload)
         logger.debug('meta sent')
-
-    def _send_snapshot(self):
-        '''
-        '''
-        logger.info('snapshot of the slow control database should broadcast')
-        filename = '{directory}/{runN:09d}/{prefix}{runN:09d}_snapshot.json'.format(
-                                                        directory=self.meta_data_directory_path,
-                                                        prefix=self.filename_prefix,
-                                                        runN=self.run_id,
-                                                        acqN=self._acquisition_count
-                                                                                )
-        logger.debug('should request snapshot file: {}'.format(filename))
-        this_payload = {'contents': self._run_snapshot,
-                        'filename': filename}
-        req_result = self.provider.cmd(self._metadata_target, None, payload=this_payload)
-        logger.debug('snapshot sent')
 
     def start_timed_run(self, run_name, run_time):
         '''
