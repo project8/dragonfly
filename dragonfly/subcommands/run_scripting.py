@@ -636,7 +636,7 @@ class RunScript(object):
             list_is_running = []
             for daq in daq_targets:
                 if self.interface.get(daq+'.is_running')['payload']['values'][0] == 2:
-                    logger.critical('{} is in safe_mode (maybe due to a set_condition)')
+                    logger.critical('{} is in safe_mode (maybe due to a set_condition)'.format(daq))
                     a_daq_in_safe_mode = True
                 elif self.interface.get(daq+'.is_running')['payload']['values'][0] == 1:
                     all_done = False
@@ -651,7 +651,7 @@ class RunScript(object):
                         response = response + '\n ' + name
                     logger.critical(response)
                 logger.critical('Run scripting is stopping')
-                sys.exit(n)
+                sys.exit()
             logger.info('time remaining >= {:.0f} seconds'.format(run_duration-(datetime.datetime.now()-start_of_runs).total_seconds()))
             time.sleep(min(7*60,max(10,run_duration/14.)))
 
@@ -664,7 +664,7 @@ class RunScript(object):
             list_is_running = []
             for daq in daq_targets:
                 if self.interface.get(daq+'.is_running')['payload']['values'][0] == 2:
-                    logger.critical('{} is in safe_mode (maybe due to a set_condition)')
+                    logger.critical('{} is in safe_mode (maybe due to a set_condition)'.format(daq))
                     a_daq_in_safe_mode = True
                 elif self.interface.get(daq+'.is_running')['payload']['values'][0] == 1:
                     all_done = False
@@ -679,7 +679,7 @@ class RunScript(object):
                         response = response + '\n ' + name
                     logger.critical(response)
                 logger.critical('Run scripting is stopping')
-                sys.exit(n)
+                sys.exit()
             time.sleep(5)
         logger.info('acquistions complete')
 
