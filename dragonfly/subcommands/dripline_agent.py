@@ -32,7 +32,7 @@ class GenericAgent(object):
                        exchange = 'requests',
                        keys = '#'
                       )
-    
+
         values = []
         payload = {}
         for val in args.values:
@@ -43,14 +43,15 @@ class GenericAgent(object):
                     payload.update({temp_val.split('=')[0]:value})
                 else:
                     values.append(temp_val)
-                
+
             else:
                 values.append(temp_val)
-    
+
         payload.update({'values':values})
         broadcast_targets = ['broadcast.lock',
                              'broadcast.unlock',
-                             'broadcast.ping'
+                             'broadcast.ping',
+                             'broadcast.set_condition'
                             ]
         if args.target.startswith('broadcast') and args.target not in broadcast_targets:
             # this try block is for python 2/3 compliance
@@ -91,7 +92,7 @@ class GenericAgent(object):
                 print('\n{}\n'.format(reply[0].payload['value_cal']))
         return reply[0].payload
 
-    
+
     @staticmethod
     def cast_arg(value):
         '''
