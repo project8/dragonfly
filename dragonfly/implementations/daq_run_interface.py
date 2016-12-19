@@ -180,6 +180,7 @@ class RSAAcquisitionInterface(DAQProvider):
                  trace_path=None,
                  trace_metadata_path=None,
                  metadata_endpoints=None,
+                 set_condition_list = [10],
                  **kwargs):
         DAQProvider.__init__(self, **kwargs)
 
@@ -207,17 +208,29 @@ class RSAAcquisitionInterface(DAQProvider):
             self.trace_metadata_path = None
         self._metadata_endpoints = metadata_endpoints
 
+        self._daq_in_safe_mode = False
+        self._set_condition_list = set_condition_list
+
         # naming prefixes are not currently implemented, but maintained in code for consistency
         #self.instrument_setup_filename_prefix = instrument_setup_filename_prefix
         #self.mask_filename_prefix = mask_filename_prefix
 
     @property
     def is_running(self):
+        if self._daq_in_safe_mode is True:
+            return 2 #can be a sentence
         result = self.provider.get("rsa_trigger_status")
         logger.info('RSA trigger status is <{}>'.format(result['value_cal']))
-        return bool(int(result['value_raw']))
+        return bool(int(result['value_raw'])) # should either 0 or 1, can be a sentence
 
     def start_run(self, run_name):
+
+        logger.debug('testing if the DAQ is running')
+        result = self.is_running
+        if result == 1:
+            raise core.exceptions.DriplineHardwareError('RSA is already running: aborting run')
+        if result == 2:
+            raise core.exceptions.DriplineHardwareError('RSA is in safe mode: remove it from there with <dragonfly cmd broadcast.set_condition 0 -b myrna.p8>')
         # try to force external reference
         the_ref = self.provider.set('rsa_osc_source', 'EXT')['value_raw']
         if the_ref != 'EXT':
@@ -255,7 +268,6 @@ class RSAAcquisitionInterface(DAQProvider):
         self._run_meta['RF_ROI_MAX'] = float(result) + float(self._hf_lo_freq)
         logger.debug('RF Max: {}'.format(self._run_meta['RF_ROI_MAX']))
 
-
     def save_trace(self, trace, comment):
         if self.trace_path is None:
             raise DriplineValueError("No trace_path in RSA config file: save_trace feature disabled!")
@@ -290,3 +302,16 @@ class RSAAcquisitionInterface(DAQProvider):
             json.dump(result_meta, outfile, indent=4)
             logger.debug("things have been dumped in file")
         logger.info("saving {}: successful".format(path))
+
+    def _set_condition(self,number):
+        logger.debug('receiving a set_condition {} request'.format(number))
+        if number in self._set_condition_list:
+            logger.debug('putting myself in safe_mode')
+            self._daq_in_safe_mode = True
+            logger.critical('Condition {} reached!'.format(number))
+        elif number == 0:
+            logger.debug('getting out of safe_mode')
+            self._daq_in_safe_mode = False
+            logger.critical('Condition {} reached!'.format(number))
+        else:
+            logger.debug('condition {} is unknown: ignoring!'.format(number))

@@ -160,6 +160,8 @@ class ESR_Measurement(core.Endpoint):
         settings['insert'] = self.raw_get_endpoint("run_metadata", timeout=20)
         settings['lockin'] = self.raw_get_endpoint("lockin_settings", timeout=20)
         settings['sweeper'] = self.raw_get_endpoint("sweeper_settings")
+        self.lockin_n_points = settings['lockin']['lockin_n_points']
+        self.lockin_sampling_interval = settings['lockin']['lockin_sampling_interval']
         self.output_dict.update({'header' : settings})
 
     def single_measure(self, coil):

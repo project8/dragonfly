@@ -22,19 +22,21 @@ class DiskMonitor(Gogol):
     '''
     def __init__(self,
                  disk_space_alert = 0.8,
-                 disk_space_set_condition = 0.9,
+                 disk_space_critical = 0.9,
                  time_between_warnings = 60,
+                 actions_conditions = None,
                  **kwargs):
         '''
         disk_space_alert: used space threshold above which the Disk Monitor will start to send alerts
         '''
         # listen to status_message alerts channel
-        kwargs.update({'exchange':'alerts','keys':['disk_status.#.#']})
+        kwargs.update({'keys':['disk_status.#.#']})
         Gogol.__init__(self, **kwargs)
         self.history = {}
         self._time_between_warnings = time_between_warnings
         self._disk_space_alert = disk_space_alert
-        self._disk_space_set_condition = disk_space_set_condition
+        self._disk_space_critical = disk_space_critical
+        self._action_when_critical = actions_conditions
 
 
     def on_alert_message(self, channel, method, properties, message):
@@ -55,16 +57,26 @@ class DiskMonitor(Gogol):
         if usedspacepourcent < self._disk_space_alert:
             logger.info("{}:{} -> Enough free space ({}%); doing nothing".format(computername,disk,100-int(usedspacepourcent*100),int(self._disk_space_alert*100)))
             return
-        if usedspacepourcent > self._disk_space_alert and usedspacepourcent < self._disk_space_set_condition:
+        if usedspacepourcent > self._disk_space_alert and usedspacepourcent < self._disk_space_critical:
             if self._can_talk(computername,disk):
                 # change here to critical for sending an alert on Slack
                 logger.critical("{}:{} -> Free space below threshold ({}%); need to monitor!".format(computername,disk,100-int(usedspacepourcent*100)))
                 self.history[computername][disk].update({'last_alert': datetime.now() })
             else:
                 logger.info("{}:{} -> Free space below threshold ({}%); need to monitor!".format(computername,disk,100-int(usedspacepourcent*100)))
-        if usedspacepourcent > self._disk_space_set_condition:
+        if usedspacepourcent > self._disk_space_critical:
             # change here to critical for sending an alert on Slack
-            logger.critical("{}:{} -> Free space below critical ({}%); setting condition X!".format(computername,disk,100-int(usedspacepourcent*100)))
+            for a_dict in self._action_when_critical:
+                if computername is a_dict['name']:
+                    if isinstance(a_dict['condition_to_set'],int):
+                        logger.critical("{}:{} -> Free space below critical ({}%); setting condition {}!".format(computername,disk,100-int(usedspacepourcent*100),a_dict['condition_to_set']))
+                        result = self.provider.cmd('broadcast','set_condition', a_dict['condition_to_set'], timeout=30)
+                        logger.critical("Result of broadcast.set_condition {}: \n {}".format(a_dict['condition_to_set'],result))
+                        return
+                    else:
+                        logger.critical("{}:{} -> Free space below critical ({}%); {} is not an integer: require manual operations!".format(computername,disk,100-int(usedspacepourcent*100),a_dict['condition_to_set']))
+            logger.critical("{}:{} -> Free space below critical ({}%); no condition defined: require manual operations!".format(computername,disk,100-int(usedspacepourcent*100)))
+
             # Add here the set condition thing (broadcast?)
 
     def _update_history(self,computername,disk):

@@ -32,9 +32,11 @@ class RSAProvider(EthernetProvider):
     '''
     def __init__(self,
                  max_nb_files=10000,
+                 set_condition_list = [10],
                  **kwargs):
         EthernetProvider.__init__(self, **kwargs)
         self.max_nb_files = max_nb_files
+        self._set_condition_list = set_condition_list
 
     # DO NOT USE THIS METHOD!  Use RSAAcquisitionInterface.save_trace instead!
     def _save_trace(self, trace, path):
@@ -48,7 +50,7 @@ class RSAProvider(EthernetProvider):
         self.send("TRIG:SEQUENCE:STATUS {}; *OPC?".format(value))
         return getattr(self, "trigger_status")
 
-
+    # DO NOT USE THIS METHOD!  Use RSAAcquisitionInterface.save_trace instead!
     def start_run(self, directory, filename):
         # set output directory and file prefix
         self.send('SENS:ACQ:FSAV:LOC "{}";*OPC?'.format(directory))
@@ -77,3 +79,10 @@ class RSAProvider(EthernetProvider):
         setattr(self, 'trigger_status', 0)
         # disable the save dacq data on trigger mode
         self.send("TRIGger:SAVE:DATA 0;*OPC?")
+
+    def _set_condition(self,number):
+        logger.debug('receiving a set_condition {} request'.format(number))
+        if number in self._set_condition_list:
+            logger.debug('stopping data taking')
+            self.end_run()
+            logger.critical('Condition {} reached!'.format(number))
