@@ -21,8 +21,6 @@ class ESR_Measurement(core.Endpoint):
     Methods are sorted by order of call within run_scan.
     """
     def __init__(self,
-                 lockin_n_points,
-                 lockin_sampling_interval,
                  **kwargs):
         core.Endpoint.__init__(self,**kwargs)
         # Settings for lockin and sweeper
@@ -40,7 +38,7 @@ class ESR_Measurement(core.Endpoint):
         logger.info(kwargs)
         self.output_dict = {}
         if config_instruments:
-            self.configure_instruments(restore_defaults)
+            self.configure_instruments()
         self.capture_settings()
         for i in coils:
             self.single_measure(i)
@@ -55,7 +53,7 @@ class ESR_Measurement(core.Endpoint):
         '''
         Configure instruments to default settings.
         '''
-        self.provider.set('lockin_esr_settings',1)
+        self.provider.set('lockin_esr_settings',1,timeout=20)
         err_msg = self.raw_get_endpoint('hf_error_check')
         if not err_msg ==  '+0,"No error"':
             logger.warning("Clearing sweeper error queue: {}".format(err_msg))
