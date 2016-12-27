@@ -111,7 +111,6 @@ esr_run -> send a cmd <method_name> to the esr service endpoint. First three fie
           timeout (int||float): (recommended setting: 600)
          OPTIONAL ARGUMENTS:
           config_instruments (bool): configure lockin, sweeper, and relays (default: True)
-          restore_defaults (bool): reset internal esr variables to default values from config file (default: True)
           coils (list): esr coils to use (default: [1,2,3,4,5])
           n_fits (int): number of fits to attempt on ESR traces (default: 2)
 
@@ -173,7 +172,6 @@ multi_run -> probably the most useful/sophisticated action, effectively provides
         esr_runs:
             timeout (int||float): 600
             config_instruments (bool): True (optional)
-            restore_defaults (bool): True (optional)
             coils (list): [1,2,3,4,5] (optional)
             n_fits (int): 2 (optional)
         save_trace:
