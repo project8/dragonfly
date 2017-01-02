@@ -316,30 +316,32 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
     def __init__(self,
                  psyllid_queue='psyllid',
                  roach2_queue = 'roach2_interface',
-                 psyllid_preset = 'str-1ch',
-                 udp_receiver_port = 23530,
-                 timeout = 10,
+                 #psyllid_preset = 'str-1ch',
+                 #udp_receiver_port = 23530,
 		 filename_prefix = 'psyllid',
+		 hf_lo_freq = None,
                  **kwargs
                 ):
 
         DAQProvider.__init__(self, **kwargs)
-        core.Spime.__init__(self, **kwargs)
-        self.alert_routing_key = 'daq_requests'
+        #core.Spime.__init__(self, **kwargs)
+        #self.alert_routing_key = 'daq_requests'
 
         self.psyllid_queue = psyllid_queue
         self.roach2_queue = roach2_queue
 	self.filename_prefix = filename_prefix
-        self.timeout = timeout
+        #self.timeout = timeout
 	self._acquisition_count = 0
 	self.run_id = 0
 
         self.status = None
         self.status_value = None
 	self.duration = None
-        self.psyllid_preset = psyllid_preset
-        self.udp_receiver_port = udp_receiver_port
-
+        #self.psyllid_preset = psyllid_preset
+        #self.udp_receiver_port = udp_receiver_port
+        if hf_lo_freq is None:
+            raise core.exceptions.DriplineValueError('the psyllid acquisition interface requires a "hf_lo_freq" in its config file')
+	self._hf_lo_freq = hf_lo_freq
 
 
 
@@ -371,11 +373,10 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
 
     def is_running(self):
         logger.info('Checking Psyllid status')
-        query_msg = core.RequestMessage(msgop=core.OP_GET)
-
+        
         try:
             #result = self.portal.send_request(request=query_msg, target=self.psyllid_queue+'.daq-status', timeout=self.timeout)
-            result = self.provider.get(self.psyllid_queue+'.daq-status', timeout=100)
+            result = self.provider.get(self.psyllid_queue+'.daq-status', timeout=10)
             self.status = result['server']['status']
             self.status_value = result['server']['status-value']
             logger.info('Psyllid is running. Status is {}'.format(self.status))
@@ -404,7 +405,7 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
 
     def set_path(self, filepath):
         result = self.provider.set(self.psyllid_queue+'.filename', filepath)
-        self.get_path()
+        #self.get_path()
 
     def get_path(self):
         result = self.provider.get(self.psyllid_queue+'.filename')
@@ -419,9 +420,6 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
         result = self.provider.set(self.psyllid_queue+'.description', description)
         logger.info('Description set to:'.format(description))
 
-    #def get_description(self):
-    #    result = self.portal.send_request(request=core.RequestMessage(msgop=core.OP_GET), target=self.psyllid_queue+'.description')
-    #    if result.retcode >= 100:
 
     def set_duration(self, duration):
         result = self.provider.set(self.psyllid_queue+'.duration', duration)
@@ -504,14 +502,21 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
 
 
     def determine_RF_ROI(self):
+        logger.info('trying to determine roi')
+
+        self._run_meta['RF_HF_MIXING'] = float(self._hf_lo_freq)
+	logger.debug('RF High stage mixing: {}'.format(self._run_meta['RF_HF_MIXING']))
+
         logger.info('Getting central frequency from ROACH2')
         result = self.provider.cmd(self.roach2_queue, 'get_central_frequency')
         logger.info('Central frequency is: {}'.format(result['values'][0]))
-        return result['values'][0]
 
+        self._run_meta['RF_ROI_MIN'] = float(result['values'][0]-50e6) + float(self._hf_lo_freq)
+        logger.debug('RF Min: {}'.format(self._run_meta['RF_ROI_MIN']))
 
-    def start_run(self, run_name):
-	self.start_timed_run(run_name, 100)
+        self._run_meta['RF_ROI_MAX'] = float(result['values'][0]+50e6) + float(self._hf_lo_freq)
+	logger.debug('RF Max: {}'.format(self._run_meta['RF_ROI_MAX']))
+
 
 
     def start_timed_run(self, run_name, run_time, description=None):
@@ -538,28 +543,22 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
 
         logger.info('runname is {}'.format(run_name))
         super(PsyllidAcquisitionInterface, self).start_run(run_name)
-	logger.info('back to psyllid')
+	logger.info('back to Psyllid interface')
 
 	self.set_duration(run_time)
         if description!=None:
 	    self.set_description(description)
 	logger.info('starting run >{}>'.format(run_name))
-        if self.run_id is None:
-            raise core.DriplineInternalError('run number is None, must request a run_id assignment prior to starting acquisition')
-        filepath = '{directory}/'.format(
-                                        directory=self.data_directory_path)
+        #if self.run_id is None:
+        #    raise core.DriplineInternalError('run number is None, must request a run_id assignment prior to starting acquisition')
 
-        #filename = '{prefix}{runN:09d}_{acqN:09d}_{runname}.egg'.format(prefix=self.filename_prefix,
-        #                                runN=self.run_id,
-        #                                acqN=self._acquisition_count,
-	#
-	#			runname=run_name)
-	filename = str(run_name)+'.egg'
+	filepath = "/".join([self.data_directory_path, '{:09d}'.format(self.run_id)])
+	filename = "/{}{:09d}{}.egg".format(self.filename_prefix, self.run_id, run_name)
         if not os.path.exists(filepath):
             os.makedirs(filepath)
         self.set_path(filepath+filename)
 	time.sleep(1)
-
+	logger.info('Going to tell psyllid to start the run')
         result = self.provider.cmd(self.psyllid_queue, 'start-run')
 
         #else:
@@ -569,15 +568,14 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
 
 
     def end_run(self):
-        self.logging_status = 'stop'
         super(PsyllidAcquisitionInterface, self).end_run()
         result = self.provider.cmd(self.psyllid_queue, 'stop-run')
         logger.warning('daq stopped')
 
 
-    def stop_all(self):
-        result = self.provider.cmd(self.psyllid_queue, 'stop-all')
-        logger.info('all stopped')
+    #def stop_all(self):
+    #    result = self.provider.cmd(self.psyllid_queue, 'stop-all')
+    #    logger.info('all stopped')
 
     def quit_psyllid(self):
         result = self.provider.cmd(self.psyllid_queue, 'quit-psyllid')

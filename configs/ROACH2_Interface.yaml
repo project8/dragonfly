@@ -42,4 +42,8 @@ endpoints:
     source_mac_c: 02:02:10:00:23:02
 
     monitor_target: '/home/cclaesse/monitor' 
-    
+
+setup_calls:
+    - target: roach2_interface
+      method: configure
+      #args: "boffile='latest-build'"    
