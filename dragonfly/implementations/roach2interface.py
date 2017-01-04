@@ -92,7 +92,7 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
 
                  hf_lo_freq=24.2e9,
                  analysis_bandwidth=50e6,
-		 monitor_target = '/home/project8/monitor',
+		 monitor_target = '/home/project8/roach_plots',
                  **kwargs):
 
 
@@ -298,7 +298,7 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
 	logger.info(pktnum)
         plt.figure()
         plt.plot(np.array(pktnum))
-        plt.savefig('/home/cclaesse/monitor/ids.png')
+        plt.savefig(self.monitor_target+'/ids.png')
 
 
 
@@ -325,7 +325,7 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
             f = pkts[0].interpret_data()
 	    pkt_id=pkts[1].pkt_in_batch
 
-	np.save('/home/cclaesse/monitor/TPacket', x)
+	np.save(self.monitor_target+'/TPacket', x)
 
 	N = np.shape(x)[0]
 	p = np.abs(np.fft.fftshift(np.fft.fft(x)))/N
@@ -427,6 +427,8 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
         plt.errorbar(np.linspace(cf-50,cf+50,N),10.0*np.log10(p_ave), yerr=10*0.434*p_std/p_ave, color='b', ecolor='g', label='fft(T-Packet')
         plt.xlabel('Frequency [MHz]')
         plt.ylabel('Averaged spectrum [dB]')
+	#plt.ylim([-30, 20])
+	#plt.yticks(np.arange(-30,20,2))
         plt.legend()
         plt.title('Channel {}, Average of {} T packets'.format(channel,np.shape(np.array(p))[0]))
 	if cf_in_name == True:
@@ -442,10 +444,14 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
 	x = ArtooDaq._snap_per_core(self, zdok=0)
 	x_all = x.flatten('C')
 	logger.info('shape x is {} shape x_all is {}'.format(np.shape(x), np.shape(x_all)))
-	p = np.abs(np.fft.fftshift(np.fft.fft(x_all[0:24000])))
+	p = []
+	for i in range(16):
+	    p.append(np.abs(np.fft.fftshift(np.fft.fft(x_all[i*16384:(i+1)*16384])))/16384)
+	p_ave = np.mean(np.array(p), axis=0)
+	p_std = np.std(np.array(p), axis=0)
         plt.close("all")
         plt.figure(1)
-        plt.plot(np.linspace(-1600.0,1600.0,24000),10.0*np.log10(p), color='b', label='fft(raw adc data')
+        plt.errorbar(np.linspace(-1600.0,1600.0,16384),10.0*np.log10(p_ave), yerr=10*0.434*p_std/p_ave, color='b', ecolor='g', label='fft(raw adc data')
         plt.xlabel('Frequency [MHz]')
         plt.ylabel('raw spectrum [dB]')
         plt.legend()
