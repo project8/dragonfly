@@ -71,7 +71,6 @@ class DAQProvider(core.Provider):
         self._run_name = None
         self.run_id = None
         self._start_time = None
-        self._acquisition_count = None
         self._start_time = None
         self._run_meta = None
         self._run_snapshot = None
@@ -83,7 +82,6 @@ class DAQProvider(core.Provider):
     @run_name.setter
     def run_name(self, value):
         self._run_name = value
-        self._acquisition_count = 0
         try:
             result = self.provider.cmd(self.run_table_endpoint, 'do_insert', payload={'run_name':value})
             self.run_id = result['run_id']
@@ -97,6 +95,8 @@ class DAQProvider(core.Provider):
             raise core.exceptions.DriplineValueError('failed to insert run_name to the db, obtain run_id, and start_timestamp. run "<{}>" not started\nerror:\n{}'.format(value,str(err)))
 
     def end_run(self):
+        if self.run_id is None:
+            raise core.DriplineValueError("No run to end: run_id is None.")
         self._do_snapshot()
         run_was = self.run_id
         if self._stop_handle is not None:
@@ -129,8 +129,7 @@ class DAQProvider(core.Provider):
         filename = '{directory}/{runN:09d}/{prefix}{runN:09d}_snapshot.json'.format(
                                                         directory=self.meta_data_directory_path,
                                                         prefix=self.filename_prefix,
-                                                        runN=self.run_id,
-                                                        acqN=self._acquisition_count
+                                                        runN=self.run_id
                                                                                )
         time_now = datetime.utcnow().strftime(core.constants.TIME_FORMAT)
         snap_state = self.provider.cmd(self._snapshot_state_target,'take_snapshot',[self._start_time,time_now,filename],timeout=30)
@@ -146,8 +145,7 @@ class DAQProvider(core.Provider):
         filename = '{directory}/{runN:09d}/{prefix}{runN:09d}_meta.json'.format(
                                                         directory=self.meta_data_directory_path,
                                                         prefix=self.filename_prefix,
-                                                        runN=self.run_id,
-                                                        acqN=self._acquisition_count
+                                                        runN=self.run_id
                                                                                )
         logger.debug('should request metadatafile: {}'.format(filename))
         this_payload = {'contents': self._run_meta,
@@ -162,8 +160,9 @@ class DAQProvider(core.Provider):
         '''
         '''
         self._run_time = int(run_time)
-        self._stop_handle = self.service._connection.add_timeout(self._run_time, self.end_run)
         self.start_run(run_name)
+        logger.info("Adding {} sec timeout for run <{}> duration".format(self._run_time, self.run_id))
+        self._stop_handle = self.service._connection.add_timeout(self._run_time, self.end_run)
         return self.run_id
 
 
