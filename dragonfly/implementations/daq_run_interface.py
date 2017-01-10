@@ -95,6 +95,8 @@ class DAQProvider(core.Provider):
             raise core.exceptions.DriplineValueError('failed to insert run_name to the db, obtain run_id, and start_timestamp. run "<{}>" not started\nerror:\n{}'.format(value,str(err)))
 
     def end_run(self):
+        if self.run_id is None:
+            raise core.DriplineValueError("No run to end: run_id is None.")
         self._do_snapshot()
         run_was = self.run_id
         if self._stop_handle is not None:
@@ -123,8 +125,6 @@ class DAQProvider(core.Provider):
         self.determine_RF_ROI()
 
     def _do_snapshot(self):
-        if not isinstance(self.run_id, int):
-            raise core.exceptions.DriplineValueError("Invalid run_id value {}, int required".format(self.run_id))
         logger.info('requesting snapshot of database')
         filename = '{directory}/{runN:09d}/{prefix}{runN:09d}_snapshot.json'.format(
                                                         directory=self.meta_data_directory_path,
@@ -161,6 +161,7 @@ class DAQProvider(core.Provider):
         '''
         self._run_time = int(run_time)
         self.start_run(run_name)
+        logger.info("Adding {} sec timeout for run <{}> duration".format(self._run_time, self.run_id))
         self._stop_handle = self.service._connection.add_timeout(self._run_time, self.end_run)
         return self.run_id
 
