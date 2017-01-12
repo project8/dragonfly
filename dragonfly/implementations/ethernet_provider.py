@@ -92,11 +92,15 @@ class EthernetProvider(Provider):
         logger.info("Ethernet socket {} established".format(self.socket_info))
 
         commands = self.cmd_at_reconnect
+        # Agilent/Keysight instruments give an unprompted *IDN? response on
+        #   connection. This must be cleared before communicating with a blank
+        #   listen or all future queries will be offset.
         while commands[0] is None:
             logger.debug("Emptying reconnect buffer")
             commands.pop(0)
             self._listen(blank_command=True)
         response = self._send_commands(self.cmd_at_reconnect)
+        # Final cmd_at_reconnect should return '1' to test connection.
         if response[-1] != '1':
             logger.warning("Failed connection test.  Response was {}".format(response))
             self.socket.close()
@@ -133,7 +137,6 @@ class EthernetProvider(Provider):
         all_data=[]
 
         for command in commands:
-            og_command = command
             command += self.command_terminator
             logger.debug("sending: {}".format(repr(command)))
             self.socket.send(command)
@@ -147,10 +150,9 @@ class EthernetProvider(Provider):
             if self.reply_echo_cmd:
                 if data.startswith(command):
                     data = data[len(command):]
-                elif data.startswith(og_command):
-                    data = data[len(og_command):]
-                else:
-                    logger.warning('Data without reply echo.')
+                elif not blank_command:
+                    logger.critical('Data without reply echo: {}'.format(data))
+                    raise exception.DriplineHardwareResponselessError('Bad ethernet query return.')
             logger.info("sync: {} -> {}".format(repr(command),repr(data)))
             all_data.append(data)
         return all_data
@@ -164,14 +166,13 @@ class EthernetProvider(Provider):
         try:
             while True:
                 data += self.socket.recv(1024)
-                if data not in (self.response_terminator, self.bare_response_terminator):
-                    if data.endswith(self.response_terminator):
-                        terminator = self.response_terminator
-                        break
-                    # Special exception for bad communication with glenlivet
-                    elif self.bare_response_terminator and data.endswith(self.bare_response_terminator):
-                        terminator = self.bare_response_terminator
-                        break
+                if data.endswith(self.response_terminator):
+                    terminator = self.response_terminator
+                    break
+                # Special exception for bad communication with glenlivet
+                elif self.bare_response_terminator and data.endswith(self.bare_response_terminator):
+                    terminator = self.bare_response_terminator
+                    break
                 # Special exception for disconnect of prologix box to avoid infinite loop
                 if data == '':
                     raise exceptions.DriplineHardwareResponselessError("empty socket.recv packet from {}".format(self.socket_info[0]))
