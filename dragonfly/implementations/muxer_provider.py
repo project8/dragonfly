@@ -21,7 +21,7 @@ class MuxerProvider(EthernetProvider):
             raise exceptions.DriplineValueError("scan interval must be > 0")
         self.scan_interval = scan_interval
 
-    def conf_scan_list(self, *args, **kwargs):
+    def configure_scan(self, *args, **kwargs):
         '''
         loops over the provider's internal list of endpoints and attempts to configure each, then configures and begins scan
         '''

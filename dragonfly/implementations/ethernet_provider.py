@@ -91,7 +91,7 @@ class EthernetProvider(Provider):
         self.socket.settimeout(self.socket_timeout)
         logger.info("Ethernet socket {} established".format(self.socket_info))
 
-        commands = self.cmd_at_reconnect
+        commands = self.cmd_at_reconnect[:]
         # Agilent/Keysight instruments give an unprompted *IDN? response on
         #   connection. This must be cleared before communicating with a blank
         #   listen or all future queries will be offset.
@@ -99,10 +99,10 @@ class EthernetProvider(Provider):
             logger.debug("Emptying reconnect buffer")
             commands.pop(0)
             self._listen(blank_command=True)
-        response = self._send_commands(self.cmd_at_reconnect)
+        response = self._send_commands(commands)
         # Final cmd_at_reconnect should return '1' to test connection.
         if response[-1] != '1':
-            logger.warning("Failed connection test.  Response was {}".format(response))
+            logger.critical("Failed connection test.  Response was {}".format(response))
             self.socket.close()
             raise exceptions.DriplineHardwareConnectionError("Failed connection test.")
 
@@ -112,7 +112,7 @@ class EthernetProvider(Provider):
         Standard provider method to communicate with instrument.
         NEVER RENAME THIS METHOD!
         '''
-        if isinstance(commands, str):
+        if isinstance(commands, (unicode,str)):
             commands = [commands]
         self.alock.acquire()
 
@@ -175,6 +175,7 @@ class EthernetProvider(Provider):
                     break
                 # Special exception for disconnect of prologix box to avoid infinite loop
                 if data == '':
+                    logger.critical("empty data packet received")
                     raise exceptions.DriplineHardwareResponselessError("empty socket.recv packet from {}".format(self.socket_info[0]))
         except socket.timeout:
             logger.warning("socket.timeout condition met; received:\n{}".format(repr(data)))
