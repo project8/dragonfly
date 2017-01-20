@@ -68,7 +68,6 @@ class DriplineParser(argparse.ArgumentParser):
                                       help='display dripline version',
                                      )
         self._handlers = {}
-        self._handlers['default'] = logging.StreamHandler()
         self.__set_format()
         if amqp_broker:
             self.base_parser.add_argument('-b',
@@ -95,6 +94,12 @@ class DriplineParser(argparse.ArgumentParser):
 
 
     def add_dragonfly_handlers(self,kwargs):
+        # add handler for stdout and stderr streams
+        self._handlers['default'] = logging.StreamHandler(sys.stdout)
+        self._handlers['default'].setFormatter(self.fmt)
+        self._handlers['stderr'] = logging.StreamHandler(sys.stderr)
+        self._handlers['stderr'].setFormatter(self.fmt)
+        self._handlers['stderr'].setLevel(21)
         # add handler depending on the nature (AMQP or not)
         for handler_class in [getattr(dragonfly.status_log_handlers, h) for h in dragonfly.status_log_handlers.__all__]:
             if str(handler_class.__name__) is 'AMQPHandler':
@@ -149,7 +154,6 @@ class DriplineParser(argparse.ArgumentParser):
                     base_format.format(' ', ''),
                     TIME_FORMAT[:-1]
                     )
-        self._handlers['default'].setFormatter(self.fmt)
 
     def __process_tmux(self, args):
         new_argv = list(sys.argv)
@@ -239,7 +243,7 @@ class DriplineParser(argparse.ArgumentParser):
         for handler in self._handlers:
             logger.addHandler(self._handlers[handler])
             dripline_logger.addHandler(self._handlers[handler])
-            if not handler is 'slack':
+            if handler not in ('stderr'):
                 self._handlers[handler].setLevel(log_level)
             if self.extra_logger:
                 self.extra_logger.addHandler(self._handlers[handler])
