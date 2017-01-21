@@ -48,7 +48,7 @@ class EthernetProvider(Provider):
         command_terminator (str): string to append to commands
         response_terminator (str||None): string to strip from responses, this MUST exist for get method to function properly!
         bare_response_terminator (str||None): abbreviated string to strip from responses containing only prompt
-                                            : only used to handle non-standard glenlivet/lockin behavior
+                                            : only used to handle non-standard lockin behavior
         reply_echo_cmd (bool): set to True if command+command_terminator or just command are present in reply
         '''
         Provider.__init__(self, **kwargs)
@@ -169,7 +169,7 @@ class EthernetProvider(Provider):
                 if data.endswith(self.response_terminator):
                     terminator = self.response_terminator
                     break
-                # Special exception for bad communication with glenlivet
+                # Special exception for lockin data dump
                 elif self.bare_response_terminator and data.endswith(self.bare_response_terminator):
                     terminator = self.bare_response_terminator
                     break
@@ -179,12 +179,10 @@ class EthernetProvider(Provider):
                     raise exceptions.DriplineHardwareResponselessError("empty socket.recv packet from {}".format(self.socket_info[0]))
         except socket.timeout:
             logger.warning("socket.timeout condition met; received:\n{}".format(repr(data)))
-            if blank_command == False and data == '':
+            if blank_command == False:
                 logger.critical("Cannot connect to: {}".format(self.socket_info[0]))
                 raise exceptions.DriplineHardwareResponselessError("socket.timeout from {}".format(self.socket_info[0]))
-            else:
-                logger.critical("socket.timeout condition met with data from {}".format(self.socket_info[0]))
-                terminator = ''
+            terminator = ''
         logger.debug(repr(data))
         data = data[0:data.rfind(terminator)]
         return data
