@@ -30,6 +30,7 @@ class DAQProvider(core.Provider):
                  snapshot_state_target='',
                  metadata_state_target='',
                  metadata_target='',
+                 set_condition_list = [10],
                  **kwargs):
         '''
         daq_name (str): name of the DAQ (used with the run table and in metadata)
@@ -75,6 +76,10 @@ class DAQProvider(core.Provider):
         self._run_meta = None
         self._run_snapshot = None
         self._run_time = None
+
+        # Set condition and DAQ safe mode init
+        self._daq_in_safe_mode = False
+        self._set_condition_list = set_condition_list
 
     @property
     def run_name(self):
@@ -160,10 +165,27 @@ class DAQProvider(core.Provider):
         '''
         '''
         self._run_time = int(run_time)
+        if self._daq_in_safe_mode:
+            logger.info("DAQ in safe mode")
+            return 0
         self.start_run(run_name)
         logger.info("Adding {} sec timeout for run <{}> duration".format(self._run_time, self.run_id))
         self._stop_handle = self.service._connection.add_timeout(self._run_time, self.end_run)
         return self.run_id
+
+    def _set_condition(self,number):
+        logger.debug('receiving a set_condition {} request'.format(number))
+        if number in self._set_condition_list:
+            logger.debug('putting myself in safe_mode')
+            self._daq_in_safe_mode = True
+            self.end_run()
+            logger.critical('Condition {} reached!'.format(number))
+        elif number == 0:
+            logger.debug('getting out of safe_mode')
+            self._daq_in_safe_mode = False
+            logger.critical('Condition {} reached!'.format(number))
+        else:
+            logger.debug('condition {} is unknown: ignoring!'.format(number))
 
 
 __all__.append('RSAAcquisitionInterface')
@@ -179,7 +201,6 @@ class RSAAcquisitionInterface(DAQProvider):
                  trace_path=None,
                  trace_metadata_path=None,
                  metadata_endpoints=None,
-                 set_condition_list = [10],
                  **kwargs):
         DAQProvider.__init__(self, **kwargs)
 
@@ -207,8 +228,6 @@ class RSAAcquisitionInterface(DAQProvider):
             self.trace_metadata_path = None
         self._metadata_endpoints = metadata_endpoints
 
-        self._daq_in_safe_mode = False
-        self._set_condition_list = set_condition_list
 
         # naming prefixes are not currently implemented, but maintained in code for consistency
         #self.instrument_setup_filename_prefix = instrument_setup_filename_prefix
@@ -216,8 +235,6 @@ class RSAAcquisitionInterface(DAQProvider):
 
     @property
     def is_running(self):
-        if self._daq_in_safe_mode is True:
-            return 2 #can be a sentence
         result = self.provider.get("rsa_trigger_status")
         logger.info('RSA trigger status is <{}>'.format(result['value_cal']))
         return bool(int(result['value_raw'])) # should either 0 or 1, can be a sentence
@@ -301,16 +318,3 @@ class RSAAcquisitionInterface(DAQProvider):
             json.dump(result_meta, outfile, indent=4)
             logger.debug("things have been dumped in file")
         logger.info("saving {}: successful".format(path))
-
-    def _set_condition(self,number):
-        logger.debug('receiving a set_condition {} request'.format(number))
-        if number in self._set_condition_list:
-            logger.debug('putting myself in safe_mode')
-            self._daq_in_safe_mode = True
-            logger.critical('Condition {} reached!'.format(number))
-        elif number == 0:
-            logger.debug('getting out of safe_mode')
-            self._daq_in_safe_mode = False
-            logger.critical('Condition {} reached!'.format(number))
-        else:
-            logger.debug('condition {} is unknown: ignoring!'.format(number))
