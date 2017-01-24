@@ -28,15 +28,16 @@ class RepeaterProvider(Provider):
     def send_request(self, target, request):
         result = self.service.send_request(self._repeat_target, request, timeout=self._timeout)
         if result.retcode != 0:
-            msg = ''
-            if 'ret_msg' in result.payload:
-                msg = result.payload['ret_msg']
+            if 'return_msg' in result:
+                msg = result['return_msg']
+            else:
+                msg = ''
             # Exception 201 means wolfburn is having connection issues and isn't spamming errors.
             if result.retcode == 201:
                 raise exception_map[result.retcode](msg)
             else:
-                logger.critical("{} returned from {} with message {}. {} service crashing.".\
-                    format(exception_map[result.retcode],self._repeat_target,repr(msg),self.name))
+                logger.critical("{} returned from {} with message '{}'. {} service crashing.".\
+                    format(exception_map[result.retcode],self._repeat_target,msg,self.name))
                 sys.exit()
         return result.payload
 
