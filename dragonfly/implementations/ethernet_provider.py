@@ -84,9 +84,9 @@ class EthernetProvider(Provider):
         self.socket.close()
         self.socket = socket.socket()
         try:
-            self.socket.connect(self.socket_info)
-        except socket.error:
-            logger.warning("connection with info: {} refused".format(self.socket_info))
+            self.socket = socket.create_connection(self.socket_info, self.socket_timeout)
+        except socket.error or socket.timeout as err:
+            logger.warning("connection {} refused: {}".format(self.socket_info, err))
             raise exceptions.DriplineHardwareConnectionError("Unable to establish ethernet socket {}".format(self.socket_info))
         self.socket.settimeout(self.socket_timeout)
         logger.info("Ethernet socket {} established".format(self.socket_info))
@@ -102,8 +102,8 @@ class EthernetProvider(Provider):
         response = self._send_commands(commands)
         # Final cmd_at_reconnect should return '1' to test connection.
         if response[-1] != '1':
-            logger.critical("Failed connection test.  Response was {}".format(response))
             self.socket.close()
+            logger.warning("Failed connection test.  Response was {}".format(response))
             raise exceptions.DriplineHardwareConnectionError("Failed connection test.")
 
 
@@ -118,10 +118,23 @@ class EthernetProvider(Provider):
 
         try:
             data = self._send_commands(commands)
-        except (socket.error, exceptions.DriplineHardwareResponselessError):
-            logger.warning("Attempting socket reconnect")
+        except socket.error as err:
+            logger.warning("socket.error <{}> received, attempting reconnect".format(err))
             self._reconnect()
             data = self._send_commands(commands)
+            logger.critical("Ethernet connection reestablished")
+        except exceptions.DriplineHardwareResponselessError as err:
+            logger.critical(str(err))
+            try:
+                self._reconnect()
+                data = self._send_commands(commands)
+                logger.critical("Query successful after ethernet connection recovered")
+            except exceptions.DriplineHardwareConnectionError:
+                logger.critical("Ethernet reconnect failed, dead socket")
+                raise exceptions.DriplineHardwareConnectionError("Broken ethernet socket")
+            except exceptions.DriplineHardwareResponselessError as err:
+                logger.critical("Query failed after successful ethernet socket reconnect")
+                raise exceptions.DriplineHardwareResponselessError(err)
         finally:
             self.alock.release()
         to_return = ';'.join(data)
@@ -151,8 +164,7 @@ class EthernetProvider(Provider):
                 if data.startswith(command):
                     data = data[len(command):]
                 elif not blank_command:
-                    logger.critical('Data without reply echo: {}'.format(data))
-                    raise exception.DriplineHardwareResponselessError('Bad ethernet query return.')
+                    raise exception.DriplineHardwareResponselessError("Bad ethernet query return: {}".format(data))
             logger.info("sync: {} -> {}".format(repr(command),repr(data)))
             all_data.append(data)
         return all_data
@@ -175,13 +187,11 @@ class EthernetProvider(Provider):
                     break
                 # Special exception for disconnect of prologix box to avoid infinite loop
                 if data == '':
-                    logger.critical("empty data packet received")
-                    raise exceptions.DriplineHardwareResponselessError("empty socket.recv packet from {}".format(self.socket_info[0]))
+                    raise exceptions.DriplineHardwareResponselessError("Empty socket.recv packet")
         except socket.timeout:
             logger.warning("socket.timeout condition met; received:\n{}".format(repr(data)))
             if blank_command == False:
-                logger.critical("Cannot connect to: {}".format(self.socket_info[0]))
-                raise exceptions.DriplineHardwareResponselessError("socket.timeout from {}".format(self.socket_info[0]))
+                raise exceptions.DriplineHardwareResponselessError("Unexpected socket.timeout")
             terminator = ''
         logger.debug(repr(data))
         data = data[0:data.rfind(terminator)]
