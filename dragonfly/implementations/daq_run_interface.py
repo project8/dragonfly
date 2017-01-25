@@ -167,18 +167,18 @@ class DAQProvider(core.Provider):
         self._run_time = int(run_time)
         if self._daq_in_safe_mode:
             logger.info("DAQ in safe mode")
-            raise Exception
+            raise core.exceptions.DriplineDAQNotEnabled("DAQ is not enabled: enable it using <dragonfly cmd broadcast.set_condition 0 -b myrna.p8>")
 
         # self.start_run(run_name)
         logger.debug('testing if the DAQ is running')
         result = self.is_running
         if result == True:
-            raise core.exceptions.DriplineHardwareError('DAQ is already running: aborting run')
+            raise core.exceptions.DriplineDAQRunning('DAQ is already running: aborting run')
 
         # do the last minutes checks: DAQ specific
         self._do_checks()
 
-        # get run_id
+        # get run_id and do pre_run gets
         self.start_run(run_name)
 
         # call start_run method in daq_target
@@ -258,12 +258,12 @@ class RSAAcquisitionInterface(DAQProvider):
     def _do_checks(self):
         the_ref = self.provider.set('rsa_osc_source', 'EXT')['value_raw']
         if the_ref != 'EXT':
-            raise core.exceptions.DriplineHardwareError('RSA external ref found to be <{}> (!="EXT")'.format(the_ref))
+            raise core.exceptions.DriplineGenericDAQError('RSA external ref found to be <{}> (!="EXT")'.format(the_ref))
 
         # counting the number of errors in the RSA system queue and aborting the data taking if Nerrors>0
         Nerrors = self.provider.get('rsa_system_error_count')['value_raw']
         if Nerrors != '0':
-            raise core.exceptions.DriplineHardwareError('RSA system has {} error(s) in the queue: check them with <dragonfly get rsa_system_error_queue -b myrna.p8>'.format(Nerrors))
+            raise core.exceptions.DriplineGenericDAQError('RSA system has {} error(s) in the queue: check them with <dragonfly get rsa_system_error_queue -b myrna.p8>'.format(Nerrors))
 
     def end_run(self):
         # call end_run method in daq_target
