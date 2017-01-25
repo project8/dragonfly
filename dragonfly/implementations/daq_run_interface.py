@@ -268,6 +268,8 @@ class RSAAcquisitionInterface(DAQProvider):
         if Nerrors != '0':
             raise core.exceptions.DriplineGenericDAQError('RSA system has {} error(s) in the queue: check them with <dragonfly get rsa_system_error_queue -b myrna.p8>'.format(Nerrors))
 
+        return "checks successful"
+
     def determine_RF_ROI(self):
         logger.info('trying to determine roi')
 
