@@ -167,8 +167,25 @@ class DAQProvider(core.Provider):
         self._run_time = int(run_time)
         if self._daq_in_safe_mode:
             logger.info("DAQ in safe mode")
-            return 0
+            raise Exception
+
+        # self.start_run(run_name)
+        logger.debug('testing if the DAQ is running')
+        result = self.is_running
+        if result == True:
+            raise core.exceptions.DriplineHardwareError('DAQ is already running: aborting run')
+
+        # do the last minutes checks: DAQ specific
+        self._do_checks()
+
+        # get run_id
         self.start_run(run_name)
+
+        # call start_run method in daq_target
+        directory = "\\".join([self.data_directory_path, '{:09d}'.format(self.run_id)])
+        filename = "{}{:09d}".format(self.filename_prefix, self.run_id)
+        self.provider.cmd(self._daq_target, 'start_run', [directory, filename])
+
         logger.info("Adding {} sec timeout for run <{}> duration".format(self._run_time, self.run_id))
         self._stop_handle = self.service._connection.add_timeout(self._run_time, self.end_run)
         return self.run_id
@@ -228,7 +245,6 @@ class RSAAcquisitionInterface(DAQProvider):
             self.trace_metadata_path = None
         self._metadata_endpoints = metadata_endpoints
 
-
         # naming prefixes are not currently implemented, but maintained in code for consistency
         #self.instrument_setup_filename_prefix = instrument_setup_filename_prefix
         #self.mask_filename_prefix = mask_filename_prefix
@@ -237,17 +253,9 @@ class RSAAcquisitionInterface(DAQProvider):
     def is_running(self):
         result = self.provider.get("rsa_trigger_status")
         logger.info('RSA trigger status is <{}>'.format(result['value_cal']))
-        return bool(int(result['value_raw'])) # should either 0 or 1, can be a sentence
+        return bool(int(result['value_raw']))
 
-    def start_run(self, run_name):
-
-        logger.debug('testing if the DAQ is running')
-        result = self.is_running
-        if result == 1:
-            raise core.exceptions.DriplineHardwareError('RSA is already running: aborting run')
-        if result == 2:
-            raise core.exceptions.DriplineHardwareError('RSA is in safe mode: remove it from there with <dragonfly cmd broadcast.set_condition 0 -b myrna.p8>')
-        # try to force external reference
+    def _do_checks(self):
         the_ref = self.provider.set('rsa_osc_source', 'EXT')['value_raw']
         if the_ref != 'EXT':
             raise core.exceptions.DriplineHardwareError('RSA external ref found to be <{}> (!="EXT")'.format(the_ref))
@@ -256,13 +264,6 @@ class RSAAcquisitionInterface(DAQProvider):
         Nerrors = self.provider.get('rsa_system_error_count')['value_raw']
         if Nerrors != '0':
             raise core.exceptions.DriplineHardwareError('RSA system has {} error(s) in the queue: check them with <dragonfly get rsa_system_error_queue -b myrna.p8>'.format(Nerrors))
-
-        super(RSAAcquisitionInterface, self).start_run(run_name)
-
-        # call start_run method in daq_target
-        directory = "\\".join([self.data_directory_path, '{:09d}'.format(self.run_id)])
-        filename = "{}{:09d}".format(self.filename_prefix, self.run_id)
-        self.provider.cmd(self._daq_target, 'start_run', [directory, filename])
 
     def end_run(self):
         # call end_run method in daq_target
