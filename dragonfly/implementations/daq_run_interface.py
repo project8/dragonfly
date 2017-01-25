@@ -100,6 +100,9 @@ class DAQProvider(core.Provider):
             raise core.exceptions.DriplineValueError('failed to insert run_name to the db, obtain run_id, and start_timestamp. run "<{}>" not started\nerror:\n{}'.format(value,str(err)))
 
     def end_run(self):
+        # call end_run method in daq_target
+        self.provider.cmd(self._daq_target, 'end_run')
+
         if self.run_id is None:
             raise core.DriplineValueError("No run to end: run_id is None.")
         self._do_snapshot()
@@ -264,12 +267,6 @@ class RSAAcquisitionInterface(DAQProvider):
         Nerrors = self.provider.get('rsa_system_error_count')['value_raw']
         if Nerrors != '0':
             raise core.exceptions.DriplineGenericDAQError('RSA system has {} error(s) in the queue: check them with <dragonfly get rsa_system_error_queue -b myrna.p8>'.format(Nerrors))
-
-    def end_run(self):
-        # call end_run method in daq_target
-        self.provider.cmd(self._daq_target, 'end_run')
-        # call global DAQ end_run method
-        super(RSAAcquisitionInterface, self).end_run()
 
     def determine_RF_ROI(self):
         logger.info('trying to determine roi')
