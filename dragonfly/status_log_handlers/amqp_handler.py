@@ -33,10 +33,6 @@ class AMQPHandler(logging.Handler):
             self.username = 'dripline'
         else:
             self.username = name
-        # Test message to be sent everytime a dragonfly command is called
-        # severity = 'status_message.{}.{}'.format(this_channel,self.username)
-        # print('sending to alerts exchange with severity {} message ({})'.format(severity,'hello world'))
-        # self.connection_to_alert.send_status_message(severity=severity,alert='hello world')
 
     def update_parser(self, parser):
         parser.add_argument('--'+self.argparse_flag_str,
@@ -57,10 +53,5 @@ class AMQPHandler(logging.Handler):
     def emit(self, record):
         this_channel = 'p8_alerts'
         severity = 'status_message.{}.{}'.format(this_channel,self.username)
-        print('sending to alerts exchange with severity {} message ({})'.format(severity,record.msg))
 
         self.connection_to_alert.send_status_message(severity=severity,alert=record.msg)
-        # print('supposed to do an emit')
-        # #this_channel = '#bot_integration_test'
-        # if self.slackclient is not None:
-        #     self.slackclient.api_call('chat.postMessage', channel=this_channel, text=record.msg, username='dripline', as_user='true')
