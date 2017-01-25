@@ -170,7 +170,7 @@ class DAQProvider(core.Provider):
         self._run_time = int(run_time)
         if self._daq_in_safe_mode:
             logger.info("DAQ in safe mode")
-            raise core.exceptions.DriplineDAQNotEnabled("DAQ is not enabled: enable it using <dragonfly cmd broadcast.set_condition 0 -b myrna.p8>")
+            raise core.exceptions.DriplineDAQNotEnabled("{} is not enabled: enable it using <dragonfly cmd broadcast.set_condition 0 -b myrna.p8>".format(self.daq_name))
 
         # self.start_run(run_name)
         logger.debug('testing if the DAQ is running')
@@ -198,7 +198,9 @@ class DAQProvider(core.Provider):
         if number in self._set_condition_list:
             logger.debug('putting myself in safe_mode')
             self._daq_in_safe_mode = True
-            self.end_run()
+            if self.is_running:
+                self.end_run()
+                logger.critical("Run {} ended".format(self.run_id))
             logger.critical('Condition {} reached!'.format(number))
         elif number == 0:
             logger.debug('getting out of safe_mode')
@@ -269,6 +271,10 @@ class RSAAcquisitionInterface(DAQProvider):
             raise core.exceptions.DriplineGenericDAQError('RSA system has {} error(s) in the queue: check them with <dragonfly get rsa_system_error_queue -b myrna.p8>'.format(Nerrors))
 
         return "checks successful"
+
+    # def _set_condition(self,number):
+    #     logger.info("Use the generic DAQProvider _set_condition method")
+    #     super(RSAAcquisitionInterface,self)._set_condition(number)
 
     def determine_RF_ROI(self):
         logger.info('trying to determine roi')
