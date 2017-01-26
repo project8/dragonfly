@@ -187,10 +187,8 @@ class DAQProvider(core.Provider):
         # call start_run method in daq_target
         directory = "\\".join([self.data_directory_path, '{:09d}'.format(self.run_id)])
         filename = "{}{:09d}".format(self.filename_prefix, self.run_id)
-        self.provider.cmd(self._daq_target, 'start_run', [directory, filename])
+        self._take_data_now(directory,filename)
 
-        logger.info("Adding {} sec timeout for run <{}> duration".format(self._run_time, self.run_id))
-        self._stop_handle = self.service._connection.add_timeout(self._run_time, self.end_run)
         return self.run_id
 
     def _set_condition(self,number):
@@ -271,6 +269,11 @@ class RSAAcquisitionInterface(DAQProvider):
             raise core.exceptions.DriplineGenericDAQError('RSA system has {} error(s) in the queue: check them with <dragonfly get rsa_system_error_queue -b myrna.p8>'.format(Nerrors))
 
         return "checks successful"
+
+    def _take_data_now(self,directory,filename):
+        self.provider.cmd(self._daq_target, 'start_run', [directory, filename])
+        logger.info("Adding {} sec timeout for run <{}> duration".format(self._run_time, self.run_id))
+        self._stop_handle = self.service._connection.add_timeout(self._run_time, self.end_run)
 
     # def _set_condition(self,number):
     #     logger.info("Use the generic DAQProvider _set_condition method")
