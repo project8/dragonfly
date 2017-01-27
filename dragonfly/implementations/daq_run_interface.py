@@ -99,23 +99,9 @@ class DAQProvider(core.Provider):
                 self.run_id = None
             raise core.exceptions.DriplineValueError('failed to insert run_name to the db, obtain run_id, and start_timestamp. run "<{}>" not started\nerror:\n{}'.format(value,str(err)))
 
-    def end_run(self):
-        # call end_run method in daq_target
-        self.provider.cmd(self._daq_target, 'end_run')
-
-        if self.run_id is None:
-            raise core.DriplineValueError("No run to end: run_id is None.")
-        self._do_snapshot()
-        run_was = self.run_id
-        if self._stop_handle is not None:
-            self.service._connection.remove_timeout(self._stop_handle)
-            self._stop_handle = None
-        self._run_name = None
-        self.run_id = None
-        logger.info('run <{}> ended'.format(run_was))
-
     def start_run(self, run_name):
         '''
+        Do the prerun_gets and send the metadata to the recording associated computer
         '''
         self.run_name = run_name
         self._run_meta = {'DAQ': self.daq_name,
@@ -125,6 +111,21 @@ class DAQProvider(core.Provider):
         self._send_metadata()
         logger.debug('these meta will be {}'.format(self._run_meta))
         logger.info('start_run finished')
+
+    def end_run(self):
+        '''
+        Send command to the DAQ provider to stop data taking, do the post-run snapshot, and announce the end of the run.
+        '''
+        # call _stop_data_taking DAQ-specific method
+        self._stop_data_taking()
+
+        if self.run_id is None:
+            raise core.DriplineValueError("No run to end: run_id is None.")
+        self._do_snapshot()
+        run_was = self.run_id
+        self._run_name = None
+        self.run_id = None
+        logger.info('run <{}> ended'.format(run_was))
 
     def _do_prerun_gets(self):
         logger.info('doing prerun meta-data get')
@@ -187,8 +188,7 @@ class DAQProvider(core.Provider):
         # call start_run method in daq_target
         directory = "\\".join([self.data_directory_path, '{:09d}'.format(self.run_id)])
         filename = "{}{:09d}".format(self.filename_prefix, self.run_id)
-        self._take_data_now(directory,filename)
-
+        self._start_data_taking(directory,filename)
         return self.run_id
 
     def _set_condition(self,number):
@@ -196,9 +196,6 @@ class DAQProvider(core.Provider):
         if number in self._set_condition_list:
             logger.debug('putting myself in safe_mode')
             self._daq_in_safe_mode = True
-            if self.is_running:
-                self.end_run()
-                logger.critical("Run {} ended".format(self.run_id))
             logger.critical('Condition {} reached!'.format(number))
         elif number == 0:
             logger.debug('getting out of safe_mode')
@@ -270,14 +267,17 @@ class RSAAcquisitionInterface(DAQProvider):
 
         return "checks successful"
 
-    def _take_data_now(self,directory,filename):
+    def _start_data_taking(self,directory,filename):
         self.provider.cmd(self._daq_target, 'start_run', [directory, filename])
         logger.info("Adding {} sec timeout for run <{}> duration".format(self._run_time, self.run_id))
         self._stop_handle = self.service._connection.add_timeout(self._run_time, self.end_run)
 
-    # def _set_condition(self,number):
-    #     logger.info("Use the generic DAQProvider _set_condition method")
-    #     super(RSAAcquisitionInterface,self)._set_condition(number)
+    def _stop_data_taking(self):
+        self.provider.cmd(self._daq_target, 'end_run')
+        if self._stop_handle is not None:
+            logger.info("Removing sec timeout for run <{}> duration".format(self.run_id))
+            self.service._connection.remove_timeout(self._stop_handle)
+            self._stop_handle = None
 
     def determine_RF_ROI(self):
         logger.info('trying to determine roi')
