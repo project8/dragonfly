@@ -353,8 +353,8 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
                  roach2_queue = 'roach2_interface',
                  #psyllid_preset = 'str-1ch',
                  #udp_receiver_port = 23530,
-		 filename_prefix = 'psyllid',
-		 hf_lo_freq = None,
+                 filename_prefix = 'psyllid',
+                 hf_lo_freq = None,
                  **kwargs
                 ):
 
@@ -362,17 +362,20 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
 
         self.psyllid_queue = psyllid_queue
         self.roach2_queue = roach2_queue
-	self.filename_prefix = filename_prefix
-	self._acquisition_count = 0
-	self.run_id = 0
+        self.filename_prefix = filename_prefix
+        self._acquisition_count = 0
+        self.run_id = 0
 
         self.status = None
         self.status_value = None
-	self.duration = None
+        self.duration = None
+        self.central_frequency = None
         
-	if hf_lo_freq is None:
+        self.channel_dictionary = {'a': 0, 'b': 1, 'c': 2}
+        
+        if hf_lo_freq is None:
             raise core.exceptions.DriplineValueError('the psyllid acquisition interface requires a "hf_lo_freq" in its config file')
-	self._hf_lo_freq = hf_lo_freq
+        self._hf_lo_freq = hf_lo_freq
 
 
 
@@ -401,8 +404,7 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
             return False
 
 
-
-    def is_running(self):
+    def _request_psyllid_status(self):
         logger.info('Checking Psyllid status')
         
         try:
@@ -410,7 +412,7 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
             self.status = result['server']['status']
             self.status_value = result['server']['status-value']
             logger.info('Psyllid is running. Status is {}'.format(self.status))
-	    logger.info('Status in numbers: {}'.format(self.status_value))
+            logger.info('Status in numbers: {}'.format(self.status_value))
             return True
 
         except:
@@ -419,79 +421,17 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
             self.status_value=None
             logger.info('Status is {}'.format(self.status))
             return False
+        
 
-
-    def set_central_frequency(self, cf):
-	result = self.provider.set(self.psyllid_queue+'.node_config.ch0.??', cf)
-	
-    # set and get
-
-    #def set_udp_port(self, new_port):
-    #    self.udp_receiver_port = new_port
-    #    logger.info('Setting udp receiver port to {}'.format(self.udp_receiver_port))
-    #    result = self.provider.set(self.psyllid_queue+'.node.udpr.port', self.udp_receiver_port)
-
-    #def get_udp_port(self):
-    #    result = self.provider.get(self.psyllid_queue+'.node.udpr.port')
-    #    logger.info('udp receiver port is: {}'.format(result.payload))
-    #    return self.udp_receiver_port
-
-    def set_path(self, filepath):
-        result = self.provider.set(self.psyllid_queue+'.filename', filepath)
-        #self.get_path()
-
-    def get_path(self):
-        result = self.provider.get(self.psyllid_queue+'.filename')
-        logger.info('Egg filename is {} path is {}'.format(result['values'], self.data_directory_path))
-        return result['values']
-
-    def change_data_directory_path(self,path):
-        self.data_directory_path = path
-        return self.data_directory_path
-
-    def set_description(self, description):
-        result = self.provider.set(self.psyllid_queue+'.description', description)
-        logger.info('Description set to:'.format(description))
-
-
-    def set_duration(self, duration):
-        result = self.provider.set(self.psyllid_queue+'.duration', duration)
-	self.duration = duration
-
-    def get_duration(self):
-        result = self.provider.get(self.psyllid_queue+'.duration')
-        logger.info('Duration is {}'.format(result.payload))
-        return result.payload['values'][0]
-
-
-
-    def activate(self):
-        if self.status_value == 6:
-            self.is_running()
-        elif self.status_value == 0:
-            logger.info('Activating Psyllid')
-            request = core.RequestMessage(msgop=core.OP_CMD)
-            result = self.provider.cmd(self.psyllid_queue, 'activate-daq')
-            self.is_running()
+    def is_running(self):
+        self._request_psyllid_status()
+        if self.status_value==5:
             return True
-
         else:
-            logger.warning('Could not activate Psyllid')
             return False
+            
 
-
-    def deactivate(self):
-        if self.status != 0:
-            logger.info('Deactivating Psyllid')
-            result = self.provider.cmd(self.psyllid_queue,'deactivate-daq')
-            self.is_running()
-	if self.status_value!=0:
-	    logger.warning('Could not deactivate Psyllid')
-            return False
-	else: return True
-
-
-    def check_roach2_status(self):
+    def _check_roach2_status(self):
 
         #call is_running
         result = self.provider.cmd(self.roach2_queue, 'is_running')
@@ -515,13 +455,36 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
             return True
         else:
             return False
+            
+            
+    def _do_checks(self):
+        #checking psyllid
+        if self._request_psyllid_status()!=True:
+            raise core.exceptions.DriplineGenericDAQError('Psyllid is not responding')
+
+        if self.status-value!=4:
+            raise core.exceptions.DriplineGenericDAQError('Psyllid DAQ is not in activated status')
+
+        #checking roach
+        is_roach_running = self._check_roach2_status()
+        
+        if is_roach_running == False:
+            raise core.exceptions.DriplineGenericDAQError('ROACH2 is not responding')
+            
+        if self.roach2configured ==False:
+            raise core.exceptions.DriplineGenericDAQError('ROACH2 has not been programmed and configured by roach roach service')
+
+        if self.roach2calibrated==False:
+            logger.warning('The ADC was not calibrated. Data taking not recommended.')
+        
+        return "checks successful"
 
 
     def determine_RF_ROI(self):
         logger.info('trying to determine roi')
 
         self._run_meta['RF_HF_MIXING'] = float(self._hf_lo_freq)
-	logger.debug('RF High stage mixing: {}'.format(self._run_meta['RF_HF_MIXING']))
+        logger.debug('RF High stage mixing: {}'.format(self._run_meta['RF_HF_MIXING']))
 
         logger.info('Getting central frequency from ROACH2')
         result = self.provider.cmd(self.roach2_queue, 'get_central_frequency')
@@ -531,55 +494,109 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
         logger.debug('RF Min: {}'.format(self._run_meta['RF_ROI_MIN']))
 
         self._run_meta['RF_ROI_MAX'] = float(result['values'][0]+50e6) + float(self._hf_lo_freq)
-	logger.debug('RF Max: {}'.format(self._run_meta['RF_ROI_MAX']))
+        logger.debug('RF Max: {}'.format(self._run_meta['RF_ROI_MAX']))
 
 
 
-    def start_timed_run(self, run_name, run_time, description=None):
-        '''
-        '''
-        #checking psyllid
-        if self.is_running()!=True:
-            logger.error('Cannot start run. Psyllid is not running')
-	    return False
-	elif self.status!='Idle':
-	    logger.error('Cannot start run. Psyllid status is not Idle')
-	    return False
+    def _start_data_taking(self, directory, filename):
+        
+        filename = filename+'.egg'
+        if self.run_time>=5000:
+            raise('With this duration the filesize is too big for testing')
 
-        #checking roach
-        is_roach_running = self.check_roach2_status()
-        if is_roach_running == False:
+        if not os.path.exists(directory):
+            os.makedirs(directory)
+        #self.set_path(filepath+filename)
+        logger.info('Going to tell psyllid to start the run')
+        payload = {'filename': directory+filename, 'duration':self._run_time}
+        result = self.provider.cmd(self.psyllid_queue, 'start-run', payload=payload1)
+
+
+    def _set_condition(self, number):
+        if number in self._set_condition_list:
+            logger.debug('deactivating psyllid daq')
+            self.deactivate()
+        elif number == 0:
+            logger.debug('getting out of safe mode')
+        else:
+            logger.debug('condition {} is unknown: ignoring!'.format(number))
+
+# Other communication with psyllid and the roach        
+            
+        
+    def _set_roach_central_freq(self, cf, channel):
+        #no idea whether this works
+        payload=(cf, channel=channel)
+        result = self.provider.cmd(self.roach2_queue, 'set_central_frequency', payload=payload)
+
+    def set_central_frequency(self, cf, channel='a'):
+        self._set_roach_central_freq(cf, channel)
+        try:
+            request = '.node_config.ch'+str(self.channel_dictionary[channel])+'strw.center-freq'
+            result = self.provider.set(self.psyllid_queue+request, cf)
+            logger.info('Set central frequency of streaming writer')
+        except:
+            request = '.node_config.ch'+str(self.channel_dictionary[channel])+'ew.center-freq'
+            result = self.provider.set(self.psyllid_queue+request, cf)
+            logger.info('Set central frequency of egg writer')
+        except:
+            logger.error('Couldnt set central frequency')
+	
+
+#    def set_path(self, filepath):
+#        result = self.provider.set(self.psyllid_queue+'.filename', filepath)
+        #self.get_path()
+
+    def get_path(self):
+        result = self.provider.get(self.psyllid_queue+'.filename')
+        logger.info('Egg filename is {} path is {}'.format(result['values'], self.data_directory_path))
+        return result['values']
+
+    def change_data_directory_path(self,path):
+        self.data_directory_path = path
+        return self.data_directory_path
+
+#    def set_description(self, description):
+#        result = self.provider.set(self.psyllid_queue+'.description', description)
+#        logger.info('Description set to:'.format(description))
+
+
+#    def set_duration(self, duration):
+#        result = self.provider.set(self.psyllid_queue+'.duration', duration)
+#	self.duration = duration
+
+#    def get_duration(self):
+#        result = self.provider.get(self.psyllid_queue+'.duration')
+#        logger.info('Duration is {}'.format(result.payload))
+#        return result.payload['values'][0]
+
+
+
+    def activate(self):
+        if self.status_value == 6:
+            self.is_running()
+        elif self.status_value == 0:
+            logger.info('Activating Psyllid')
+            request = core.RequestMessage(msgop=core.OP_CMD)
+            result = self.provider.cmd(self.psyllid_queue, 'activate-daq')
+            self._request_psyllid_status()
+            return True
+
+        else:
+            logger.warning('Could not activate Psyllid')
             return False
 
-        elif is_roach_running == True:
-            if self.roach2configured ==False:
-                logger.warning('The ROACH2 might not be configured correctly. Check Roach2 service')
-            if self.roach2calibrated==False:
-                logger.warning('The adc is not calibrated. Data taking not recommended.')
 
-        logger.info('runname is {}'.format(run_name))
-        super(PsyllidAcquisitionInterface, self).start_run(run_name)
-	#logger.info('back to Psyllid interface')
+    def deactivate(self):
+        if self.status != 0:
+            logger.info('Deactivating Psyllid')
+            result = self.provider.cmd(self.psyllid_queue,'deactivate-daq')
+            self._request_psyllid_status()
+        if self.status_value!=0:
+            logger.warning('Could not deactivate Psyllid')
+            return False
+        else: return True
 
-	self.set_duration(run_time)
-        if description!=None:
-	    self.set_description(description)
-	logger.info('starting run >{}>'.format(run_name))
-        #if self.run_id is None:
-        #    raise core.DriplineInternalError('run number is None, must request a run_id assignment prior to starting acquisition')
-
-	filepath = "/".join([self.data_directory_path, '{:09d}'.format(self.run_id)])
-	filename = "/{}{:09d}{}.egg".format(self.filename_prefix, self.run_id, run_name)
-        if not os.path.exists(filepath):
-            os.makedirs(filepath)
-        self.set_path(filepath+filename)
-	#time.sleep(1)
-	logger.info('Going to tell psyllid to start the run')
-        payload = {'filename': filepath+filename, 'duration':run_time}
-	result = self.provider.cmd(self.psyllid_queue, 'start-run', payload=payload1)
-
-	#logger.info('run started')
-        return "run {} started".format(run_name)
 
 
     def quit_psyllid(self):
