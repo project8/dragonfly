@@ -31,6 +31,7 @@ class DAQProvider(core.Provider):
                  directory_path=None,
                  data_directory_path=None,
                  meta_data_directory_path=None,
+		 Linux_not_Windows_DAQ = True,
                  filename_prefix='',
                  snapshot_state_target='',
                  metadata_state_target='',
@@ -72,6 +73,7 @@ class DAQProvider(core.Provider):
         self._metadata_target = metadata_target
         self._snapshot_state_target = snapshot_state_target
         self.filename_prefix = filename_prefix
+	self.Linux_not_Windows_DAQ = Linux_not_Windows_DAQ
 
         self._stop_handle = None
         self._run_name = None
@@ -151,7 +153,6 @@ class DAQProvider(core.Provider):
         time_now = datetime.utcnow().strftime(core.constants.TIME_FORMAT)
         snap_state = self.provider.cmd(self._snapshot_state_target,'take_snapshot',[self._start_time,time_now,filename],timeout=30)
         logger.info('snapshot returned ok')
-#>>>>>>> develop
 
     def determine_RF_ROI(self):
         raise core.exceptions.DriplineMethodNotSupportedError('subclass must implement RF ROI determination')
@@ -199,7 +200,11 @@ class DAQProvider(core.Provider):
         self.start_run(run_name)
 
         # call start_run method in daq_target
-        directory = "\\".join([self.data_directory_path, '{:09d}'.format(self.run_id)])
+	if self.Linux_not_Windows_DAQ!=True:
+	    directory = os.path.join("\\",self.data_directory_path, '{:09d}'.format(self.run_id))
+	else:
+	    directory = os.path.join(self.data_directory_path, '{:09}'.format(self.run_id))
+
         filename = "{}{:09d}".format(self.filename_prefix, self.run_id)
         self._start_data_taking(directory,filename)
         return self.run_id
@@ -373,7 +378,7 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
         self.multi_channel_daq = False
         
         self.channel_dictionary = {'a': 0, 'b': 1, 'c': 2}
-        self.freq_dict = {'a': None, 'b', None, 'c': None}
+        self.freq_dict = {'a': None, 'b': None, 'c': None}
         
         if hf_lo_freq is None:
             raise core.exceptions.DriplineValueError('the psyllid acquisition interface requires a "hf_lo_freq" in its config file')
@@ -391,9 +396,10 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
             raise core.DriplineInternalError('Cannot configure psyllid')
             
         if self.multi_channel_daq == True:
-            self._get_roach_central_freqs()
+            self.freq_dict = self._get_roach_central_freqs()
             self._set_all_freqs()
-
+	else:
+	    self.activate()
 
     def _request_psyllid_status(self):
         logger.info('Checking Psyllid status')
@@ -498,7 +504,9 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
 
     def _start_data_taking(self, directory, filename):
         
-        filename = filename+'.egg'
+        filename = filename+self._run_name+'.egg'
+	logger.info(filename)
+	logger.info(directory)
         if self._run_time>=5000:
             raise('With this duration the filesize is too big for testing')
 
@@ -506,7 +514,7 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
             os.makedirs(directory)
         #self.set_path(filepath+filename)
         logger.info('Going to tell psyllid to start the run')
-        payload = {'filename': directory+filename, 'duration':self._run_time}
+        payload = {'filename': os.path.join(directory, filename), 'duration':self._run_time}
         result = self.provider.cmd(self.psyllid_queue, 'start-run', payload=payload)
 
 
@@ -530,10 +538,9 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
  
  
     def _get_roach_central_freqs(self):
-        result = self.provider.cmd(self.roach2_queue, 'get_all_central_frequencies')['payload']
+        result = self.provider.cmd(self.roach2_queue, 'get_all_central_frequencies')
         logger.info('central freq {}'.format(result))
-        self.freq_dict = result
-
+        return result
 
     def _set_all_freqs(self):
         try:
@@ -549,8 +556,8 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
                     request = '.node-config.ch'+str(self.channel_dictionary[channel])+'.ew.center-freq'
                     result = self.provider.set(self.psyllid_queue+request, cf_in_MHz)
                     logger.info('Set central frequency of egg writer for channel {}'.format(channel))
-                except:
-                    logger.error('Could not set central frequency')
+            except:
+                logger.error('Could not set central frequency')
         return self.reactivate()
         
         
@@ -578,9 +585,10 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
 #    def set_path(self, filepath):
 #        result = self.provider.set(self.psyllid_queue+'.filename', filepath)
         #self.get_path()
+
     def start_multi_channel_daq(self):
         self.multi_channel_daq = True
-        self._finish_configure
+        self._finish_configure()
         
     def auto_channel_config(self):
         logger.warning('Not implemented yet')
@@ -595,19 +603,10 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
         self.data_directory_path = path
         return self.data_directory_path
 
-#    def set_description(self, description):
-#        result = self.provider.set(self.psyllid_queue+'.description', description)
-#        logger.info('Description set to:'.format(description))
-
 
 #    def set_duration(self, duration):
 #        result = self.provider.set(self.psyllid_queue+'.duration', duration)
 #	self.duration = duration
-
-#    def get_duration(self):
-#        result = self.provider.get(self.psyllid_queue+'.duration')
-#        logger.info('Duration is {}'.format(result.payload))
-#        return result.payload['values'][0]
 
 
 
@@ -641,6 +640,8 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
             result = self.provider.cmd(self.psyllid_queue, 'reactivate-daq')
             self._request_psyllid_status()
 	    return True
+	elif self.status_value==0:
+	    self.activate()
 	else:
 	    logger.warning('Could not reactivate Psyllid')
     	    return False

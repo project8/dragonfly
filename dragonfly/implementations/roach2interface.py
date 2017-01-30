@@ -87,7 +87,7 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
                  dest_mac_c = None,
                  channel_tag_c = 'c',
 
-        		 Nchannels = 1,
+        	 Nchannels = 1,
                  daq_name = None,
                  do_adc_ogp_calibration = False,
                  central_freq = 800e6,
@@ -95,7 +95,7 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
 
                  hf_lo_freq=24.2e9,
                  analysis_bandwidth=50e6,
-		      monitor_target = '/home/project8/roach_plots',
+	         monitor_target = '/home/project8/roach_plots',
                  **kwargs):
 
 
@@ -247,7 +247,7 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
 
 
     def get_all_central_frequencies(self):
-        return payload=self.freq_dict
+        return self.freq_dict
             
     #def get_ddc_config(self):
     #    cfg = self.read_ddc_1st_config(tag=self.channel_tag)
