@@ -2,9 +2,9 @@
 '''
 from __future__ import absolute_import
 
-import types
+import sys
 
-from dripline.core import Provider, message, constants, exceptions, exception_map
+from dripline.core import Provider, message, constants, exception_map
 
 
 import logging
@@ -14,7 +14,7 @@ __all__ = ['RepeaterProvider',
           ]
 
 class RepeaterProvider(Provider):
-    
+
     def __init__(self,
                  repeat_target,
                  broker,
@@ -27,13 +27,18 @@ class RepeaterProvider(Provider):
 
     def send_request(self, target, request):
         result = self.service.send_request(self._repeat_target, request, timeout=self._timeout)
-        if not 'retcode' in result:
-            raise core.exceptions.DriplineInternalError('no return code in reply')
-        if not result.retcode == 0:
-            msg = ''
-            if 'ret_msg' in result.payload:
-                msg = result.payload['ret_msg']
-            raise exception_map[result.retcode](msg)
+        if result.retcode != 0:
+            if 'return_msg' in result:
+                msg = result['return_msg']
+            else:
+                msg = ''
+            # Exception 201 means wolfburn is having connection issues and isn't spamming errors.
+            if result.retcode == 201:
+                raise exception_map[result.retcode](msg)
+            else:
+                logger.critical("{} returned from {} with message '{}'. {} service crashing.".\
+                    format(exception_map[result.retcode],self._repeat_target,msg,self.name))
+                sys.exit()
         return result.payload
 
     def send(self, to_send):

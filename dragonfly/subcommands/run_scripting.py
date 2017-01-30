@@ -111,7 +111,6 @@ esr_run -> send a cmd <method_name> to the esr service endpoint. First three fie
           timeout (int||float): (recommended setting: 600)
          OPTIONAL ARGUMENTS:
           config_instruments (bool): configure lockin, sweeper, and relays (default: True)
-          restore_defaults (bool): reset internal esr variables to default values from config file (default: True)
           coils (list): esr coils to use (default: [1,2,3,4,5])
           n_fits (int): number of fits to attempt on ESR traces (default: 2)
 
@@ -173,7 +172,6 @@ multi_run -> probably the most useful/sophisticated action, effectively provides
         esr_runs:
             timeout (int||float): 600
             config_instruments (bool): True (optional)
-            restore_defaults (bool): True (optional)
             coils (list): [1,2,3,4,5] (optional)
             n_fits (int): 2 (optional)
         save_trace:
@@ -194,7 +192,7 @@ multi_run -> probably the most useful/sophisticated action, effectively provides
 
 from __future__ import absolute_import
 
-import os
+import os, sys
 import datetime
 import json
 import logging
@@ -629,18 +627,57 @@ class RunScript(object):
             self.interface.cmd(**run_kwargs)
         logger.info('daq all started, now wait for requested livetime')
         logger.info('time remaining >= {:.0f} seconds'.format(run_duration-(datetime.datetime.now()-start_of_runs).total_seconds()))
+        # Checking the status of the daq
+        a_daq_in_safe_mode = False
         while (datetime.datetime.now() - start_of_runs).total_seconds() < run_duration:
+            logger.info('checking the daq for a set_condition')
+            list_is_running = []
+            for daq in daq_targets:
+                if self.interface.get(daq+'.is_running')['payload']['values'][0] == 2:
+                    logger.critical('{} is in safe_mode (maybe due to a set_condition)'.format(daq))
+                    a_daq_in_safe_mode = True
+                elif self.interface.get(daq+'.is_running')['payload']['values'][0] == 1:
+                    all_done = False
+                    logger.info('still waiting on <{}> (maybe others)'.format(daq))
+                    list_is_running.append(daq)
+                elif self.interface.get(daq+'.is_running')['payload']['values'][0] == 0:
+                    logger.info('{} is already done!'.format(daq))
+            if a_daq_in_safe_mode == True:
+                if len(list_is_running)>0:
+                    response = 'daq still running: '
+                    for name in list_is_running:
+                        response = response + '\n ' + name
+                    logger.critical(response)
+                logger.critical('Run scripting is stopping')
+                sys.exit()
             logger.info('time remaining >= {:.0f} seconds'.format(run_duration-(datetime.datetime.now()-start_of_runs).total_seconds()))
             time.sleep(min(7*60,max(10,run_duration/14.)))
+
+        # run duration is over, checking the status of the daq more often
         all_done = False
+        a_daq_in_safe_mode = False
         logger.info('ideal livetime over, waiting for daq systems to finish')
         while all_done == False:
             all_done = True
+            list_is_running = []
             for daq in daq_targets:
-                if self.interface.get(daq+'.is_running')['payload']['values'][0]:
+                if self.interface.get(daq+'.is_running')['payload']['values'][0] == 2:
+                    logger.critical('{} is in safe_mode (maybe due to a set_condition)'.format(daq))
+                    a_daq_in_safe_mode = True
+                elif self.interface.get(daq+'.is_running')['payload']['values'][0] == 1:
                     all_done = False
                     logger.info('still waiting on <{}> (maybe others)'.format(daq))
-                    break
+                    list_is_running.append(daq)
+                elif self.interface.get(daq+'.is_running')['payload']['values'][0] == 0:
+                    logger.info('{} is done!'.format(daq))
+            if a_daq_in_safe_mode == True:
+                if len(list_is_running)>0:
+                    response = 'daq still running: '
+                    for name in list_is_running:
+                        response = response + '\n ' + name
+                    logger.critical(response)
+                logger.critical('Run scripting is stopping')
+                sys.exit()
             time.sleep(5)
         logger.info('acquistions complete')
 
@@ -770,6 +807,7 @@ class RunScript(object):
                     this_timeout=None
                 logger.debug('timeout set to {} s'.format(this_timeout))
                 self.action_single_run(this_run_duration, this_run_name, runs['daq_targets'],this_timeout)
+
 
             # update cache variable with this run being complete and update the cache file
             self._action_cache['last_run'] = run_count

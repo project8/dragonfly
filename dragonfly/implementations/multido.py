@@ -65,7 +65,7 @@ class MultiDo(Endpoint):
             if 'tolerance' in a_target:
                 these_details.update({'tolerance':a_target['tolerance']})
             else:
-                these_details.update({'tolerance': 1.})
+                these_details.update({'tolerance': 0.99})
             if 'no_check' in a_target:
                 these_details.update({'no_check':a_target['no_check']})
             else:

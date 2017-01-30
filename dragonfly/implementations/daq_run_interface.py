@@ -35,6 +35,7 @@ class DAQProvider(core.Provider):
                  snapshot_state_target='',
                  metadata_state_target='',
                  metadata_target='',
+                 set_condition_list = [10],
                  **kwargs):
         '''
         daq_name (str): name of the DAQ (used with the run table and in metadata)
@@ -42,7 +43,7 @@ class DAQProvider(core.Provider):
         directory_path (str): absolute path to "hot" storage (as seen from the DAQ software, not a network path)
         meta_data_directory_path (str): path where the metadata file should be written
         filename_prefix (str): prefix for unique filenames
-        snapshot_state_target (str): target to request snapshot from 
+        snapshot_state_target (str): target to request snapshot from
         metadata_state_target (str): multiget endpoint to Get() for system state
         metadata_target (str): target to send metadata to
         '''
@@ -76,13 +77,14 @@ class DAQProvider(core.Provider):
         self._run_name = None
         self.run_id = None
         self._start_time = None
-        self._acquisition_count = None
         self._start_time = None
         self._run_meta = None
         self._run_snapshot = None
         self._run_time = None
 
-        print('no errors from DAQ Provider')
+        # Set condition and DAQ safe mode init
+        self._daq_in_safe_mode = False
+        self._set_condition_list = set_condition_list
 
     @property
     def run_name(self):
@@ -91,7 +93,6 @@ class DAQProvider(core.Provider):
     def run_name(self, value):
 
         self._run_name = value
-        self._acquisition_count = 0
         try:
             result = self.provider.cmd(self.run_table_endpoint, 'do_insert', payload={'run_name':value})
             self.run_id = result['run_id']
@@ -103,19 +104,10 @@ class DAQProvider(core.Provider):
                 self._run_name = None
                 self.run_id = None
             raise core.exceptions.DriplineValueError('failed to insert run_name to the db, obtain run_id, and start_timestamp. run "<{}>" not started\nerror:\n{}'.format(value,str(err)))
-                
-    def end_run(self):
-        self._do_snapshot()
-        run_was = self.run_id
-        if self._stop_handle is not None:
-            self.service._connection.remove_timeout(self._stop_handle)
-            self._stop_handle = None
-        self._run_name = None
-        self.run_id = None
-        logger.info('run <{}> ended'.format(run_was))
 
     def start_run(self, run_name):
         '''
+        Do the prerun_gets and send the metadata to the recording associated computer
         '''
 
         self._run_name = run_name
@@ -128,19 +120,33 @@ class DAQProvider(core.Provider):
         logger.debug('these meta will be {}'.format(self._run_meta))
         logger.info('start_run finished')
 
+    def end_run(self):
+        '''
+        Send command to the DAQ provider to stop data taking, do the post-run snapshot, and announce the end of the run.
+        '''
+        # call _stop_data_taking DAQ-specific method
+        self._stop_data_taking()
+
+        if self.run_id is None:
+            raise core.DriplineValueError("No run to end: run_id is None.")
+        self._do_snapshot()
+        run_was = self.run_id
+        self._run_name = None
+        self.run_id = None
+        logger.info('run <{}> ended'.format(run_was))
+
     def _do_prerun_gets(self):
         logger.info('doing prerun meta-data get')
         meta_result = self.provider.get(self._metadata_state_target, timeout=30)
         self._run_meta.update(meta_result['value_raw'])
-#        self.determine_RF_ROI()
+        self.determine_RF_ROI()
 
     def _do_snapshot(self):
         logger.info('requesting snapshot of database')
         filename = '{directory}/{runN:09d}/{prefix}{runN:09d}_snapshot.json'.format(
                                                         directory=self.meta_data_directory_path,
                                                         prefix=self.filename_prefix,
-                                                        runN=self.run_id,
-                                                        acqN=self._acquisition_count
+                                                        runN=self.run_id
                                                                                )
         time_now = datetime.utcnow().strftime(core.constants.TIME_FORMAT)
         snap_state = self.provider.cmd(self._snapshot_state_target,'take_snapshot',[self._start_time,time_now,filename],timeout=30)
@@ -161,10 +167,8 @@ class DAQProvider(core.Provider):
 	filename = '{directory}/{runN:09d}/{prefix}{runN:09d}_meta.json'.format(
                                                         directory=self.meta_data_directory_path,
                                                         prefix=self.filename_prefix,
-                                                        runN=self.run_id,
-                                                        acqN=self._acquisition_count)
-        logger.info(filename)
-	logger.info(self._metadata_target)                                                         
+                                                        runN=self.run_id
+                                                                               )
         logger.debug('should request metadatafile: {}'.format(filename))
         this_payload = {'contents': self._run_meta,
                         'filename': filename,
@@ -178,9 +182,40 @@ class DAQProvider(core.Provider):
         '''
         '''
         self._run_time = int(run_time)
-        self._stop_handle = self.service._connection.add_timeout(self._run_time, self.end_run)
+        if self._daq_in_safe_mode:
+            logger.info("DAQ in safe mode")
+            raise core.exceptions.DriplineDAQNotEnabled("{} is not enabled: enable it using <dragonfly cmd broadcast.set_condition 0 -b myrna.p8>".format(self.daq_name))
+
+        # self.start_run(run_name)
+        logger.debug('testing if the DAQ is running')
+        result = self.is_running
+        if result == True:
+            raise core.exceptions.DriplineDAQRunning('DAQ is already running: aborting run')
+
+        # do the last minutes checks: DAQ specific
+        self._do_checks()
+
+        # get run_id and do pre_run gets
         self.start_run(run_name)
+
+        # call start_run method in daq_target
+        directory = "\\".join([self.data_directory_path, '{:09d}'.format(self.run_id)])
+        filename = "{}{:09d}".format(self.filename_prefix, self.run_id)
+        self._start_data_taking(directory,filename)
         return self.run_id
+
+    def _set_condition(self,number):
+        logger.debug('receiving a set_condition {} request'.format(number))
+        if number in self._set_condition_list:
+            logger.debug('putting myself in safe_mode')
+            self._daq_in_safe_mode = True
+            logger.critical('Condition {} reached!'.format(number))
+        elif number == 0:
+            logger.debug('getting out of safe_mode')
+            self._daq_in_safe_mode = False
+            logger.critical('Condition {} reached!'.format(number))
+        else:
+            logger.debug('condition {} is unknown: ignoring!'.format(number))
 
 
 __all__.append('RSAAcquisitionInterface')
@@ -233,29 +268,29 @@ class RSAAcquisitionInterface(DAQProvider):
         logger.info('RSA trigger status is <{}>'.format(result['value_cal']))
         return bool(int(result['value_raw']))
 
-    def start_run(self, run_name):
-        # try to force external reference
+    def _do_checks(self):
         the_ref = self.provider.set('rsa_osc_source', 'EXT')['value_raw']
         if the_ref != 'EXT':
-            raise core.exceptions.DriplineHardwareError('RSA external ref found to be <{}> (!="EXT")'.format(the_ref))
+            raise core.exceptions.DriplineGenericDAQError('RSA external ref found to be <{}> (!="EXT")'.format(the_ref))
 
         # counting the number of errors in the RSA system queue and aborting the data taking if Nerrors>0
         Nerrors = self.provider.get('rsa_system_error_count')['value_raw']
         if Nerrors != '0':
-            raise core.exceptions.DriplineHardwareError('RSA system has {} error(s) in the queue: check them with <dragonfly get rsa_system_error_queue -b myrna.p8>'.format(Nerrors))
+            raise core.exceptions.DriplineGenericDAQError('RSA system has {} error(s) in the queue: check them with <dragonfly get rsa_system_error_queue -b myrna.p8>'.format(Nerrors))
 
-        super(RSAAcquisitionInterface, self).start_run(run_name)
+        return "checks successful"
 
-        # call start_run method in daq_target
-        directory = "\\".join([self.data_directory_path, '{:09d}'.format(self.run_id)])
-        filename = "{}{:09d}".format(self.filename_prefix, self.run_id)
+    def _start_data_taking(self,directory,filename):
         self.provider.cmd(self._daq_target, 'start_run', [directory, filename])
+        logger.info("Adding {} sec timeout for run <{}> duration".format(self._run_time, self.run_id))
+        self._stop_handle = self.service._connection.add_timeout(self._run_time, self.end_run)
 
-    def end_run(self):
-        # call end_run method in daq_target
+    def _stop_data_taking(self):
         self.provider.cmd(self._daq_target, 'end_run')
-        # call global DAQ end_run method
-        super(RSAAcquisitionInterface, self).end_run()
+        if self._stop_handle is not None:
+            logger.info("Removing sec timeout for run <{}> duration".format(self.run_id))
+            self.service._connection.remove_timeout(self._stop_handle)
+            self._stop_handle = None
 
     def determine_RF_ROI(self):
         logger.info('trying to determine roi')
