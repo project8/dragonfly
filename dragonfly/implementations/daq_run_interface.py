@@ -370,8 +370,10 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
         self.status_value = None
         self.duration = None
         self.central_frequency = None
+        self.multi_channel_daq = False
         
         self.channel_dictionary = {'a': 0, 'b': 1, 'c': 2}
+        self.freq_dict = {'a': None, 'b', None, 'c': None}
         
         if hf_lo_freq is None:
             raise core.exceptions.DriplineValueError('the psyllid acquisition interface requires a "hf_lo_freq" in its config file')
@@ -383,25 +385,14 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
         logger.debug('Configuring Psyllid')
         is_running = self._request_psyllid_status()
         if is_running:
-            if self.status_value == 4:
+            if self.status_value != 0:
                 self.deactivate()
-
-            elif self.status_value!=0:
-                raise core.DriplineInternalError('Status of Psyllid must be "Initialized", status is {}'.format(self.status))
-
-            ##set daq presets
-            #self.configure(self.psyllid_preset)
-
-            ##set udp receiver port
-            #self.set_udp_port(self.udp_receiver_port)
-
-            #activate
-            self.activate()
-            return True
-
         else:
-            logger.error('Psyllid could not be configured.')
-            return False
+            raise core.DriplineInternalError('Cannot configure psyllid')
+            
+        if self.multi_channel_daq == True:
+            self._get_roach_central_freqs()
+            self._set_all_freqs()
 
 
     def _request_psyllid_status(self):
@@ -477,6 +468,13 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
         if self.roach2calibrated==False:
             logger.warning('The ADC was not calibrated. Data taking not recommended.')
         
+        #check frequency matches
+        if self.multi_channel_daq==True:
+            roach_freqs = self._get_roach_central_freqs()
+            for channel in roach_freqs.keys():
+                if roach_freqs[channel]!=self.freq_dict[channel]:
+                    raise core.exceptions.DriplineGenericDAQError('Frequency mismatch')
+        
         return "checks successful"
 
 
@@ -528,24 +526,51 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
         #no idea whether this works
         payload={'cf':cf, 'channel':channel}
         result = self.provider.cmd(self.roach2_queue, 'set_central_frequency', payload=payload)
-	return result['values'][0]
+        return result['values'][0]
+ 
+ 
+    def _get_roach_central_freqs(self):
+        result = self.provider.cmd(self.roach2_queue, 'get_all_central_frequencies')['payload']
+        logger.info('central freq {}'.format(result))
+        self.freq_dict = result
 
+
+    def _set_all_freqs(self):
+        try:
+            for channel in self.channel_dictionary.keys():
+                cf_in_MHz = round(self.freq_dict[channel]*10**-6)
+                request = '.node-config.ch'+str(self.channel_dictionary[channel])+'.strw.center-freq'
+                result = self.provider.set(self.psyllid_queue+request, cf_in_MHz)
+                logger.info('Set central frequency of streaming writer for channel {}'.format(channel))
+        except:
+            try:
+                for channel in self.channel_dictionary.keys():
+                    cf_in_MHz = round(self.freq_dict[channel]*10**-6)
+                    request = '.node-config.ch'+str(self.channel_dictionary[channel])+'.ew.center-freq'
+                    result = self.provider.set(self.psyllid_queue+request, cf_in_MHz)
+                    logger.info('Set central frequency of egg writer for channel {}'.format(channel))
+                except:
+                    logger.error('Could not set central frequency')
+        return self.reactivate()
+        
+        
     def set_central_frequency(self, cf, channel='a'):
         cf = self._set_roach_central_freq(cf, channel)
-	logger.info(cf)
-	cf_in_MHz = round(cf*10**-6)
-	logger.info('cf in MHz: {}'.format(cf_in_MHz))
+        self.freq_dict[channel]=cf
+        logger.info(cf)
+        cf_in_MHz = round(cf*10**-6)
+        logger.info('cf in MHz: {}'.format(cf_in_MHz))
         try:
-            request = '.node-config.ch'+str(self.channel_dictionary[channel])+'.strw.center-freq'
-            result = self.provider.set(self.psyllid_queue+request, cf_in_MHz)
-            logger.info('Set central frequency of streaming writer')
+             request = '.node-config.ch'+str(self.channel_dictionary[channel])+'.strw.center-freq'
+             result = self.provider.set(self.psyllid_queue+request, cf_in_MHz)
+             logger.info('Set central frequency of streaming writer')
         except:
-	    try:
-            	request = '.node-config.ch'+str(self.channel_dictionary[channel])+'.ew.center-freq'
-            	result = self.provider.set(self.psyllid_queue+request, cf_in_MHz)
-           	logger.info('Set central frequency of egg writer')
-	    except:
-		logger.error('Could not set central frequency')
+            try:
+                request = '.node-config.ch'+str(self.channel_dictionary[channel])+'.ew.center-freq'
+                result = self.provider.set(self.psyllid_queue+request, cf_in_MHz)
+                logger.info('Set central frequency of egg writer')
+            except:
+                logger.error('Could not set central frequency')
 
         return self.reactivate()
 	
@@ -553,6 +578,13 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
 #    def set_path(self, filepath):
 #        result = self.provider.set(self.psyllid_queue+'.filename', filepath)
         #self.get_path()
+    def start_multi_channel_daq(self):
+        self.multi_channel_daq = True
+        self._finish_configure
+        
+    def auto_channel_config(self):
+        logger.warning('Not implemented yet')
+        return False
 
     def get_path(self):
         result = self.provider.get(self.psyllid_queue+'.filename')
