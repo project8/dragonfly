@@ -386,7 +386,9 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
             return False
 
 
-
+    def set_central_frequency(self, cf):
+	result = self.provider.set(self.psyllid_queue+'.node_config.ch0.??', cf)
+	
     # set and get
 
     #def set_udp_port(self, new_port):
@@ -538,19 +540,11 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
         self.set_path(filepath+filename)
 	#time.sleep(1)
 	logger.info('Going to tell psyllid to start the run')
-        payload = {'filename': filename+filepath, 'duration':run_time}
-	logger.info(payload)
-	result = self.provider.cmd(self.psyllid_queue, 'start-run', payload)
+        payload = {'filename': filepath+filename, 'duration':run_time}
+	result = self.provider.cmd(self.psyllid_queue, 'start-run', payload=payload1)
 
 	#logger.info('run started')
         return "run {} started".format(run_name)
-
-
-    def end_run(self):
-        super(PsyllidAcquisitionInterface, self).end_run()
-        result = self.provider.cmd(self.psyllid_queue, 'stop-run')
-        logger.warning('daq stopped')
-
 
 
     def quit_psyllid(self):
