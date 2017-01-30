@@ -527,8 +527,8 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
         else:
             logger.debug('condition {} is unknown: ignoring!'.format(number))
 
+
 # Other communication with psyllid and the roach        
-            
         
     def _set_roach_central_freq(self, cf, channel):
         #no idea whether this works
@@ -582,9 +582,6 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
         return self.reactivate()
 	
 
-#    def set_path(self, filepath):
-#        result = self.provider.set(self.psyllid_queue+'.filename', filepath)
-        #self.get_path()
 
     def start_multi_channel_daq(self):
         self.multi_channel_daq = True
@@ -593,20 +590,6 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
     def auto_channel_config(self):
         logger.warning('Not implemented yet')
         return False
-
-    def get_path(self):
-        result = self.provider.get(self.psyllid_queue+'.filename')
-        logger.info('Egg filename is {} path is {}'.format(result['values'], self.data_directory_path))
-        return result['values']
-
-    def change_data_directory_path(self,path):
-        self.data_directory_path = path
-        return self.data_directory_path
-
-
-#    def set_duration(self, duration):
-#        result = self.provider.set(self.psyllid_queue+'.duration', duration)
-#	self.duration = duration
 
 
 
