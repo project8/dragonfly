@@ -381,7 +381,7 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
 
     def _finish_configure(self):
         logger.debug('Configuring Psyllid')
-        is_running = self.is_running()
+        is_running = self._request_psyllid_status()
         if is_running:
             if self.status_value == 4:
                 self.deactivate()
@@ -462,7 +462,7 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
         if self._request_psyllid_status()!=True:
             raise core.exceptions.DriplineGenericDAQError('Psyllid is not responding')
 
-        if self.status-value!=4:
+        if self.status_value!=4:
             raise core.exceptions.DriplineGenericDAQError('Psyllid DAQ is not in activated status')
 
         #checking roach
@@ -501,7 +501,7 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
     def _start_data_taking(self, directory, filename):
         
         filename = filename+'.egg'
-        if self.run_time>=5000:
+        if self._run_time>=5000:
             raise('With this duration the filesize is too big for testing')
 
         if not os.path.exists(directory):
@@ -509,7 +509,7 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
         #self.set_path(filepath+filename)
         logger.info('Going to tell psyllid to start the run')
         payload = {'filename': directory+filename, 'duration':self._run_time}
-        result = self.provider.cmd(self.psyllid_queue, 'start-run', payload=payload1)
+        result = self.provider.cmd(self.psyllid_queue, 'start-run', payload=payload)
 
 
     def _set_condition(self, number):
@@ -526,21 +526,28 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
         
     def _set_roach_central_freq(self, cf, channel):
         #no idea whether this works
-        payload=(cf, channel=channel)
+        payload={'cf':cf, 'channel':channel}
         result = self.provider.cmd(self.roach2_queue, 'set_central_frequency', payload=payload)
+	return result['values'][0]
 
     def set_central_frequency(self, cf, channel='a'):
-        self._set_roach_central_freq(cf, channel)
+        cf = self._set_roach_central_freq(cf, channel)
+	logger.info(cf)
+	cf_in_MHz = round(cf*10**-6)
+	logger.info('cf in MHz: {}'.format(cf_in_MHz))
         try:
-            request = '.node_config.ch'+str(self.channel_dictionary[channel])+'strw.center-freq'
-            result = self.provider.set(self.psyllid_queue+request, cf)
+            request = '.node-config.ch'+str(self.channel_dictionary[channel])+'.strw.center-freq'
+            result = self.provider.set(self.psyllid_queue+request, cf_in_MHz)
             logger.info('Set central frequency of streaming writer')
         except:
-            request = '.node_config.ch'+str(self.channel_dictionary[channel])+'ew.center-freq'
-            result = self.provider.set(self.psyllid_queue+request, cf)
-            logger.info('Set central frequency of egg writer')
-        except:
-            logger.error('Couldnt set central frequency')
+	    try:
+            	request = '.node-config.ch'+str(self.channel_dictionary[channel])+'.ew.center-freq'
+            	result = self.provider.set(self.psyllid_queue+request, cf_in_MHz)
+           	logger.info('Set central frequency of egg writer')
+	    except:
+		logger.error('Could not set central frequency')
+
+        return self.reactivate()
 	
 
 #    def set_path(self, filepath):
@@ -577,7 +584,6 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
             self.is_running()
         elif self.status_value == 0:
             logger.info('Activating Psyllid')
-            request = core.RequestMessage(msgop=core.OP_CMD)
             result = self.provider.cmd(self.psyllid_queue, 'activate-daq')
             self._request_psyllid_status()
             return True
@@ -597,6 +603,15 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
             return False
         else: return True
 
+    def reactivate(self):
+        if self.status_value != 0:
+            logger.info('Reactivating Psyllid')
+            result = self.provider.cmd(self.psyllid_queue, 'reactivate-daq')
+            self._request_psyllid_status()
+	    return True
+	else:
+	    logger.warning('Could not reactivate Psyllid')
+    	    return False
 
 
     def quit_psyllid(self):
