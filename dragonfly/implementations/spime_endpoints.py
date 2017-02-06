@@ -281,7 +281,7 @@ class RelaySpime(FormatSpime):
             elif relay_type=='switch':
                 kwargs.update( {'get_str':':ROUTE:CLOSE? (@{})'.format(ch_number)} )
         if 'set_str' not in kwargs:
-            kwargs.update( {'set_str':':ROUTE:{{}} (@{});{}'.format(ch_number,get_str)} )
+            kwargs.update( {'set_str':':ROUTE:{{}} (@{});{}'.format(ch_number,kwargs['get_str'])} )
         # Default kwargs for get_on_set and set_value_lowercase
         if 'get_on_set' not in kwargs:
             kwargs.update( {'get_on_set':True} )
