@@ -164,7 +164,7 @@ class EthernetProvider(Provider):
                 if data.startswith(command):
                     data = data[len(command):]
                 elif not blank_command:
-                    raise exception.DriplineHardwareResponselessError("Bad ethernet query return: {}".format(data))
+                    raise exceptions.DriplineHardwareResponselessError("Bad ethernet query return: {}".format(data))
             logger.info("sync: {} -> {}".format(repr(command),repr(data)))
             all_data.append(data)
         return all_data
