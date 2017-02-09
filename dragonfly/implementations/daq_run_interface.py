@@ -135,15 +135,13 @@ class DAQProvider(core.Provider):
 
     def _do_snapshot(self):
         logger.info('requesting snapshot of database')
-        filename = '{directory}/{runNyx:03d}yyyxxx/{runNx:06d}xxx/\
-                   {runN:09d}/{prefix}{runN:09d}_snapshot.json'.format(
+        filename = '{directory}/{runNyx:03d}yyyxxx/{runNx:06d}xxx/{runN:09d}/{prefix}{runN:09d}_snapshot.json'.format(
                                                                    directory=self.meta_data_directory_path,
                                                                    prefix=self.filename_prefix,
                                                                    runNyx=self.run_id/1000000,
                                                                    runNx=self.run_id/1000,
                                                                    runN=self.run_id
                                                                   )
-
         time_now = datetime.utcnow().strftime(core.constants.TIME_FORMAT)
         snap_state = self.provider.cmd(self._snapshot_state_target,'take_snapshot',[self._start_time,time_now,filename],timeout=30)
         logger.info('snapshot returned ok')
@@ -155,15 +153,13 @@ class DAQProvider(core.Provider):
         '''
         '''
         logger.info('metadata should broadcast')
-        filename = '{directory}/{runNyx:03d}yyyxxx/{runNx:06d}xxx/\
-                    {runN:09d}/{prefix}{runN:09d}_meta.json'.format(
+        filename = '{directory}/{runNyx:03d}yyyxxx/{runNx:06d}xxx/{runN:09d}/{prefix}{runN:09d}_meta.json'.format(
                                                                     directory=self.meta_data_directory_path,
                                                                     prefix=self.filename_prefix,
                                                                     runNyx=self.run_id/1000000,
                                                                     runNx=self.run_id/1000,
                                                                     runN=self.run_id
                                                                    )
-        logger.debug('should request metadatafile: {}'.format(filename))
         this_payload = {'contents': self._run_meta,
                         'filename': filename,
                        }
@@ -194,13 +190,12 @@ class DAQProvider(core.Provider):
 
         # call start_run method in daq_target
         directory = '{base}{separator}{runNyx:03d}yyyxxx{separator}{runNx:06d}xxx{separator}{runN:09d}'.format(
-                                                                    base=self.self.data_directory_path,
+                                                                    base=self.data_directory_path,
                                                                     separator=self._path_separator,
                                                                     runNyx=self.run_id/1000000,
                                                                     runNx=self.run_id/1000,
                                                                     runN=self.run_id
                                                                    )
-        # directory = "\\".join([self.data_directory_path, '{:09d}'.format(self.run_id)])
         filename = "{}{:09d}".format(self.filename_prefix, self.run_id)
         self._start_data_taking(directory,filename)
         return self.run_id
