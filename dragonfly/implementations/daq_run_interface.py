@@ -120,7 +120,7 @@ class DAQProvider(core.Provider):
         self._stop_data_taking()
 
         if self.run_id is None:
-            raise core.DriplineValueError("No run to end: run_id is None.")
+            raise core.exceptions.DriplineValueError("No run to end: run_id is None.")
         self._do_snapshot()
         run_was = self.run_id
         self._run_name = None
@@ -189,9 +189,8 @@ class DAQProvider(core.Provider):
         self.start_run(run_name)
 
         # call start_run method in daq_target
-        directory = '{base}{separator}{runNyx:03d}yyyxxx{separator}{runNx:06d}xxx{separator}{runN:09d}'.format(
+        directory = '{base}/{runNyx:03d}yyyxxx/{runNx:06d}xxx/{runN:09d}'.format(
                                                                     base=self.data_directory_path,
-                                                                    separator=self._path_separator,
                                                                     runNyx=self.run_id/1000000,
                                                                     runNx=self.run_id/1000,
                                                                     runN=self.run_id
@@ -237,21 +236,17 @@ class RSAAcquisitionInterface(DAQProvider):
             raise core.exceptions.DriplineValueError('the rsa acquisition interface requires a "hf_lo_freq" in its config file')
         self._hf_lo_freq = hf_lo_freq
 
-        # The RSA instrument is based on Windows so "\" separators
-        self._path_separator="\\"
         if isinstance(trace_path,str):
-            if trace_path.endswith(self._path_separator):
-                self.trace_path = trace_path
-            else:
-                self.trace_path = trace_path + self._path_separator
+            self.trace_path = trace_path
+            if not self.trace_path.endswith('/'):
+                self.trace_path = trace_path + '/'
         else:
             logger.info("No trace_path given in the config file: save_trace feature disabled")
             self.trace_path = None
         if isinstance(trace_metadata_path,str):
-            if trace_metadata_path.endswith(self._path_separator):
-                self.trace_metadata_path = trace_metadata_path
-            else:
-                self.trace_metadata_path = trace_metadata_path + self._path_separator
+            self.trace_metadata_path = trace_metadata_path
+            if not trace_metadata_path.endswith('/'):
+                self.trace_metadata_path = trace_metadata_path + '/'
         else:
             self.trace_metadata_path = None
         self._metadata_endpoints = metadata_endpoints
@@ -311,7 +306,7 @@ class RSAAcquisitionInterface(DAQProvider):
         if isinstance(comment,(str,unicode)):
             comment = comment.replace(" ","_")
         datenow = datetime.now()
-        filename = "{:%Y%m%d_%H%M%S}/{:%Y%m%d_%H%M%S}_Trace{}_{}".format(datenow,datenow,trace,comment)
+        filename = "{0:%Y}/{0:%m%d}/{0:%Y%m%d_%H%M%S}/{0:%Y%m%d_%H%M%S}_Trace{1}_{2}".format(datenow,trace,comment)
 
         logger.info('saving trace')
         path = self.trace_path + "{}_data".format(filename)
@@ -319,7 +314,7 @@ class RSAAcquisitionInterface(DAQProvider):
         logger.info("saving {}: successful".format(path))
 
         if self.trace_metadata_path is None:
-            raise DriplineValueError("No trace_metadata_path in RSA config file: metadata save disabled!")
+            raise core.exceptions.DriplineValueError("No trace_metadata_path in RSA config file: metadata save disabled!")
         result_meta = {}
         if isinstance(self._metadata_endpoints,list):
             for endpoint_name in self._metadata_endpoints:
@@ -329,7 +324,7 @@ class RSAAcquisitionInterface(DAQProvider):
             result_meta.update(self.provider.get(self._metadata_endpoints,timeout=100)['value_raw'])
             logger.debug("getting {} endpoint: successful".format(self._metadata_endpoints))
         else:
-            raise DriplineValueError("No valid metadata_endpoints in RSA config.")
+            raise core.exceptions.DriplineValueError("No valid metadata_endpoints in RSA config.")
 
         path = self.trace_metadata_path + "{}_metadata.json".format(filename)
         logger.debug("opening file")
