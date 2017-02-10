@@ -189,9 +189,8 @@ class DAQProvider(core.Provider):
         self.start_run(run_name)
 
         # call start_run method in daq_target
-        directory = '{base}{separator}{runNyx:03d}yyyxxx{separator}{runNx:06d}xxx{separator}{runN:09d}'.format(
+        directory = '{base}/{runNyx:03d}yyyxxx/{runNx:06d}xxx/{runN:09d}'.format(
                                                                     base=self.data_directory_path,
-                                                                    separator=self._path_separator,
                                                                     runNyx=self.run_id/1000000,
                                                                     runNx=self.run_id/1000,
                                                                     runN=self.run_id
@@ -237,21 +236,17 @@ class RSAAcquisitionInterface(DAQProvider):
             raise core.exceptions.DriplineValueError('the rsa acquisition interface requires a "hf_lo_freq" in its config file')
         self._hf_lo_freq = hf_lo_freq
 
-        # The RSA instrument is based on Windows so "\" separators
-        self._path_separator="\\"
         if isinstance(trace_path,str):
-            if trace_path.endswith(self._path_separator):
-                self.trace_path = trace_path
-            else:
-                self.trace_path = trace_path + self._path_separator
+            self.trace_path = trace_path
+            if not self.trace_path.endswith('/'):
+                self.trace_path = trace_path + '/'
         else:
             logger.info("No trace_path given in the config file: save_trace feature disabled")
             self.trace_path = None
         if isinstance(trace_metadata_path,str):
-            if trace_metadata_path.endswith(self._path_separator):
-                self.trace_metadata_path = trace_metadata_path
-            else:
-                self.trace_metadata_path = trace_metadata_path + self._path_separator
+            self.trace_metadata_path = trace_metadata_path
+            if not trace_metadata_path.endswith('/'):
+                self.trace_metadata_path = trace_metadata_path + '/'
         else:
             self.trace_metadata_path = None
         self._metadata_endpoints = metadata_endpoints
