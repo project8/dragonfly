@@ -120,7 +120,7 @@ class DAQProvider(core.Provider):
         self._stop_data_taking()
 
         if self.run_id is None:
-            raise core.DriplineValueError("No run to end: run_id is None.")
+            raise core.exceptions.DriplineValueError("No run to end: run_id is None.")
         self._do_snapshot()
         run_was = self.run_id
         self._run_name = None
@@ -311,7 +311,7 @@ class RSAAcquisitionInterface(DAQProvider):
         if isinstance(comment,(str,unicode)):
             comment = comment.replace(" ","_")
         datenow = datetime.now()
-        filename = "{:%Y%m%d_%H%M%S}/{:%Y%m%d_%H%M%S}_Trace{}_{}".format(datenow,datenow,trace,comment)
+        filename = "{0:%Y}/{0:%m%d}/{0:%Y%m%d_%H%M%S}/{0:%Y%m%d_%H%M%S}_Trace{1}_{2}".format(datenow,trace,comment)
 
         logger.info('saving trace')
         path = self.trace_path + "{}_data".format(filename)
@@ -319,7 +319,7 @@ class RSAAcquisitionInterface(DAQProvider):
         logger.info("saving {}: successful".format(path))
 
         if self.trace_metadata_path is None:
-            raise DriplineValueError("No trace_metadata_path in RSA config file: metadata save disabled!")
+            raise core.exceptions.DriplineValueError("No trace_metadata_path in RSA config file: metadata save disabled!")
         result_meta = {}
         if isinstance(self._metadata_endpoints,list):
             for endpoint_name in self._metadata_endpoints:
@@ -329,7 +329,7 @@ class RSAAcquisitionInterface(DAQProvider):
             result_meta.update(self.provider.get(self._metadata_endpoints,timeout=100)['value_raw'])
             logger.debug("getting {} endpoint: successful".format(self._metadata_endpoints))
         else:
-            raise DriplineValueError("No valid metadata_endpoints in RSA config.")
+            raise core.exceptions.DriplineValueError("No valid metadata_endpoints in RSA config.")
 
         path = self.trace_metadata_path + "{}_metadata.json".format(filename)
         logger.debug("opening file")
