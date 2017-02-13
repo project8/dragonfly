@@ -367,7 +367,6 @@ class ROACH1ChAcquisitionInterface(DAQProvider, core.Spime):
         self.psyllid_interface = psyllid_interface
         self.daq_target = daq_target
         self.filename_prefix = filename_prefix
-        self._acquisition_count = 0
         self.run_id = 0
 
         self.status_value = None
@@ -387,7 +386,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider, core.Spime):
         self.status_value = self.provider.cmd(self.psyllid_interface, 'request_status')
         if self.status_value!=False:
             if self.status_value != 0:
-                self.deactivate()
+                self.status_value = self.provider.cmd(self.psyllid_interface, 'deactivate')
         else:
             raise core.DriplineInternalError('Cannot configure Psyllid')
                 
@@ -445,8 +444,10 @@ class ROACH1ChAcquisitionInterface(DAQProvider, core.Spime):
             
     def _do_checks(self):
         #checking psyllid
-        self.status_value =  self.provider.cmd(self.psyllid_interface, 'request_status')
-        if self.status_value==False:
+        if self.is_running()==True:
+            raise core.exceptions.DriplineGenericDAQError('Psyllid is already running')
+            
+        if self.status_value == None:
             raise core.exceptions.DriplineGenericDAQError('Psyllid is not responding')
 
         if self.status_value!=4:
@@ -609,7 +610,6 @@ class ROACH2ChAcquisitionInterface(DAQProvider, core.Spime):
         self.psyllid_interface = psyllid_interface
         self.daq_target = daq_target
         self.filename_prefix = filename_prefix
-        self._acquisition_count = 0
         self.run_id = 0
 
         self.status_value = None
@@ -631,7 +631,7 @@ class ROACH2ChAcquisitionInterface(DAQProvider, core.Spime):
         self.status_value = self.provider.cmd(self.psyllid_interface, 'request_status')
         if self.status_value!=False:
             if self.status_value != 0:
-                self.deactivate()
+                self.status_value = self.provider.cmd(self.psyllid_interface, 'deactivate')
         else:
             raise core.DriplineInternalError('Cannot configure Psyllid')
                 
@@ -694,7 +694,11 @@ class ROACH2ChAcquisitionInterface(DAQProvider, core.Spime):
             
     def _do_checks(self):
         #checking psyllid
-        if self._request_psyllid_status()!=True:
+    
+        if self.is_running()==True:
+            raise core.exceptions.DriplineGenericDAQError('Psyllid is already running')
+            
+        if self.status_value == None:
             raise core.exceptions.DriplineGenericDAQError('Psyllid is not responding')
 
         if self.status_value!=4:

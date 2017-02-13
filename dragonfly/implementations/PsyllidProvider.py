@@ -71,7 +71,7 @@ class PsyllidProvider(core.Provider, core.Spime):
             self.status=None
             self.status_value=None
             logger.info('Status is {}'.format(self.status))
-            return False
+            return self.status_value
     
     def activate(self):
         if self.status_value == 6:
@@ -79,8 +79,8 @@ class PsyllidProvider(core.Provider, core.Spime):
         elif self.status_value == 0:
             logger.info('Activating Psyllid')
             result = self.provider.cmd(self.psyllid_queue, 'activate-daq')
-            self._request_psyllid_status()
-            return True
+            self.request_status()
+            return self.status_value
 
         else:
             logger.warning('Could not activate Psyllid')
@@ -91,18 +91,18 @@ class PsyllidProvider(core.Provider, core.Spime):
         if self.status != 0:
             logger.info('Deactivating Psyllid')
             result = self.provider.cmd(self.psyllid_queue,'deactivate-daq')
-            self._request_psyllid_status()
+            self.request_status()
         if self.status_value!=0:
             logger.warning('Could not deactivate Psyllid')
             return False
-        else: return True
+        else: return self.status_value
 
 
     def reactivate(self):
         if self.status_value != 0:
             logger.info('Reactivating Psyllid')
             result = self.provider.cmd(self.psyllid_queue, 'reactivate-daq')
-            self._request_psyllid_status()
+            self.request_status()
             return True
          elif self.status_value==0:
 	    self.activate()
