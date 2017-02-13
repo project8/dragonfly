@@ -27,26 +27,22 @@ class PsyllidProvider(core.Provider, core.Spime):
     '''
     def __init__(self,
                  
-                 queue=5672
+                 queue='psyllid'
                  set_condition_list = [],
                  **kwargs):
         
-        self.broker = broker
         self.psyllid_queue = queue
         self._set_condition_list = set_condition_list
         self.status = None
         self.status_value = None
-        self.duration = None
-        self.central_frequency = None
-        self.multi_channel_daq = False
-        
+               
         self.channel_dictionary = {'a': 0, 'b': 1, 'c': 2}
         self.freq_dict = {'a': None, 'b': None, 'c': None}
         
         
     def _finish_configure(self):
         self.request_status()
-        self.set_default_central_frequencies
+        self.set_default_central_frequencies()
         self.get_number_of_channels()
         
         
