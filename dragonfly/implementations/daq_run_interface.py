@@ -508,8 +508,8 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
 
     def _start_data_taking(self, directory, filename):
         
-        NAcquisitions = round(self._run_time/self._max_duration)
-        if NAcquisitions==1:
+        NAcquisitions = int(round(self._run_time/self._max_duration))
+        if NAcquisitions<=1:
             filename = filename+self._run_name+'.egg'
             logger.info(filename)
             logger.info(directory)
@@ -521,7 +521,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
             #self.set_path(filepath+filename)
             logger.info('Going to tell psyllid to start the run')
             payload = {'filename': os.path.join(directory, filename), 'duration':self._run_time}
-            result = self.provider.cmd(self.psyllid_interface, 'start-run', payload=payload)
+            result = self.provider.cmd(self.psyllid_interface, 'start_run', payload=payload)
         else:
             logger.info('Doing {} acquisitions'.format(NAcquisitions))
             for i in NAcquisitions:
@@ -538,13 +538,13 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
                     duration = self._run_time-total_run_time                    
                     logger.info('Going to tell psyllid to start the run')
                     payload = {'filename': os.path.join(directory, filename), 'duration':duration}
-                    result = self.provider.cmd(self.psyllid_interface, 'start-run', payload=payload)
+                    result = self.provider.cmd(self.psyllid_interface, 'start_run', payload=payload)
                     
                 else:
                     total_run_time+=self.max_duration
                     logger.info('Going to tell psyllid to start the run')
                     payload = {'filename': os.path.join(directory, filename), 'duration':self.max_duration}
-                    result = self.provider.cmd(self.psyllid_interface, 'start-run', payload=payload)
+                    result = self.provider.cmd(self.psyllid_interface, 'start_run', payload=payload)
 
 
 #    def _set_condition(self, number):

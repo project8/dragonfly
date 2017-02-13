@@ -161,7 +161,8 @@ class PsyllidProvider(core.Provider, core.Spime):
         return self.reactivate()
     
     
-    def start_run(self, payload):
+    def start_run(self, duration, filename):
+	payload = {'duration':duration, 'filename':filename}
         result = self.provider.cmd(self.psyllid_queue, 'start-run', payload=payload)
         
     
