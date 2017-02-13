@@ -518,14 +518,14 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
         result = self.provider.cmd(self.psyllid_queue, 'start-run', payload=payload)
 
 
-    def _set_condition(self, number):
-        if number in self._set_condition_list:
-            logger.debug('deactivating psyllid daq')
-            self.deactivate()
-        elif number == 0:
-            logger.debug('getting out of safe mode')
-        else:
-            logger.debug('condition {} is unknown: ignoring!'.format(number))
+#    def _set_condition(self, number):
+#        if number in self._set_condition_list:
+#            logger.debug('deactivating psyllid daq')
+#            self.deactivate()
+#        elif number == 0:
+#            logger.debug('getting out of safe mode')
+#        else:
+#            logger.debug('condition {} is unknown: ignoring!'.format(number))
 
 
 # Other communication with psyllid and the roach        
@@ -543,21 +543,22 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
         return result
 
     def _set_all_freqs(self):
-        try:
-            for channel in self.channel_dictionary.keys():
-                cf_in_MHz = round(self.freq_dict[channel]*10**-6)
-                request = '.node-config.ch'+str(self.channel_dictionary[channel])+'.strw.center-freq'
+        for channel in self.channel_dictionary.keys():
+	    cf_in_MHz = round(self.freq_dict[channel]*10**-6)
+            try:
+		request = '.node-config.ch'+str(self.channel_dictionary[channel])+'.strw.center-freq'
                 result = self.provider.set(self.psyllid_queue+request, cf_in_MHz)
                 logger.info('Set central frequency of streaming writer for channel {}'.format(channel))
-        except:
-            try:
-                for channel in self.channel_dictionary.keys():
-                    cf_in_MHz = round(self.freq_dict[channel]*10**-6)
+            except:
+		try:
                     request = '.node-config.ch'+str(self.channel_dictionary[channel])+'.ew.center-freq'
                     result = self.provider.set(self.psyllid_queue+request, cf_in_MHz)
                     logger.info('Set central frequency of egg writer for channel {}'.format(channel))
-            except:
-                logger.error('Could not set central frequency')
+            	except:
+                    logger.error('Could not set central frequency')
+		    self.multi_channel_daq = False
+		    self.freq_dict[channel]=None
+	logger.info('central frequencies: {}'.format(self.freq_dict))
         return self.reactivate()
         
         
@@ -570,12 +571,12 @@ class PsyllidAcquisitionInterface(DAQProvider, core.Spime):
         try:
              request = '.node-config.ch'+str(self.channel_dictionary[channel])+'.strw.center-freq'
              result = self.provider.set(self.psyllid_queue+request, cf_in_MHz)
-             logger.info('Set central frequency of streaming writer')
+             logger.info('Set central frequency of streaming writer for channel {}'.format(channel))
         except:
             try:
                 request = '.node-config.ch'+str(self.channel_dictionary[channel])+'.ew.center-freq'
                 result = self.provider.set(self.psyllid_queue+request, cf_in_MHz)
-                logger.info('Set central frequency of egg writer')
+                logger.info('Set central frequency of egg writer for channel {}'.format(channel))
             except:
                 logger.error('Could not set central frequency')
 
