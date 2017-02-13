@@ -13,7 +13,7 @@ from datetime import datetime
 
 # internal imports
 from dripline import core
-
+from dragonfly.implementations import EthernetProvider
 
 
 __all__ = []
@@ -27,10 +27,11 @@ class PsyllidProvider(core.Provider, core.Spime):
     '''
     def __init__(self,
                  
-                 queue='psyllid'
+                 queue='psyllid',
                  set_condition_list = [],
                  **kwargs):
-        
+
+	core.Provider.__init__(self, **kwargs)        
         self.psyllid_queue = queue
         self._set_condition_list = set_condition_list
         self.status = None
@@ -100,9 +101,9 @@ class PsyllidProvider(core.Provider, core.Spime):
             result = self.provider.cmd(self.psyllid_queue, 'reactivate-daq')
             self.request_status()
             return True
-         elif self.status_value==0:
+        elif self.status_value==0:
 	    self.activate()
-         else:
+        else:
              logger.warning('Could not reactivate Psyllid')
              return False
 
@@ -117,11 +118,14 @@ class PsyllidProvider(core.Provider, core.Spime):
     
 
     def set_central_frequency(self, cf, channel='a'):
-        cf_in_Mhz = round(cf*10**-6)
+        cf_in_MHz = round(cf*10**-6)
+	logger.info(channel)
+	logger.info(cf_in_MHz)	
         try:
-             request = '.node-config.ch'+str(self.channel_dictionary[channel])+'.strw.center-freq'
-             result = self.provider.set(self.psyllid_queue+request, cf_in_MHz)
-             logger.info('Set central frequency of streaming writer for channel {}'.format(channel))
+            request = '.node-config.ch'+str(self.channel_dictionary[channel])+'.strw.center-freq'
+	    logger.info(request)
+            result = self.provider.set(self.psyllid_queue+request, cf_in_MHz)
+            logger.info('Set central frequency of streaming writer for channel {}'.format(channel))
         except:
             try:
                 request = '.node-config.ch'+str(self.channel_dictionary[channel])+'.ew.center-freq'
@@ -134,10 +138,13 @@ class PsyllidProvider(core.Provider, core.Spime):
         
     def set_all_central_frequencies(self, freq_dict):
         for channel in freq_dict.keys():
+	    logger.info(channel)
             cf_in_MHz = round(freq_dict[channel]*10**-6)
-            self.freq_dict[channel]=freq_dict[channel]
+            logger.info(cf_in_MHz)
+	    self.freq_dict[channel]=freq_dict[channel]
             try:
                 request = '.node-config.ch'+str(self.channel_dictionary[channel])+'.strw.center-freq'
+		logger.info(request)
                 result = self.provider.set(self.psyllid_queue+request, cf_in_MHz)
                 logger.info('Set central frequency of streaming writer for channel {}'.format(channel))
             except:
@@ -152,16 +159,16 @@ class PsyllidProvider(core.Provider, core.Spime):
         return self.reactivate()
     
     
-    def start_run(self, payload)
+    def start_run(self, payload):
         result = self.provider.cmd(self.psyllid_queue, 'start-run', payload=payload)
         
     
     def get_number_of_channels(self):
-        active_channels = [self.freq_dict[i] for i in self.freq_dict.keys() if self.freq_dict[i]!=None]
-        logger.info('Active channels are {}'.format(active_channels.keys()))
+        active_channels = [i for i in self.freq_dict.keys() if self.freq_dict[i]!=None]
+        logger.info('Active channels are {}'.format(active_channels))
         return len(active_channels)
         
     def get_active_channels(self):
-        active_channels = [self.freq_dict[i] for i in self.freq_dict.keys() if self.freq_dict[i]!=None]
+        active_channels = [i for i in self.freq_dict.keys() if self.freq_dict[i]!=None]
         return active_channels
         

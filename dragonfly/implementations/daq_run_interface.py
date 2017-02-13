@@ -396,7 +396,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider, core.Spime):
         
         active_channels = self.provider.cmd(self.psyllid_interface, 'get_active_channels')
         if active_channels.keys() != sel.channel_id:
-            raise core.exceptions.DriplineGenericDAQError('The Psyllid and ROACH channel interfaces don\'t match')
+            raise core.exceptions.DriplineGenericDAQError('The Psyllid and ROACH channel interfaces do not match')
             
         if self._check_roach2_status() == False:
             raise core.exceptions.DriplineGenericDAQError('The ROACH is not running')
@@ -472,7 +472,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider, core.Spime):
             
         active_channels = self.provider.cmd(self.psyllid_interface, 'get_active_channels')
         if active_channels.keys() != sel.channel_id:
-            raise core.exceptions.DriplineGenericDAQError('The Psyllid and ROACH channel interfaces don\'t match')
+            raise core.exceptions.DriplineGenericDAQError('The Psyllid and ROACH channel interfaces do not match')
         
         #check frequency matches
         roach_freqs = self._get_roach_central_freqs()
@@ -590,9 +590,9 @@ class ROACH2ChAcquisitionInterface(DAQProvider, core.Spime):
                  daq_target = 'roach2_interface',
                  channel_id_1 = 'a',
                  channel_id_2 = 'b',
-                 mode = 'identical_cf' #other modes: overlapping_cf, independent
+                 mode = 'identical_cf', #other modes: window_overlap, independent
                  filename_prefix = 'psyllid',
-                 ROI_overlap = 0.0
+                 ROI_overlap = 0.0,
                  hf_lo_freq = None,
                  **kwargs
                 ):
@@ -618,7 +618,7 @@ class ROACH2ChAcquisitionInterface(DAQProvider, core.Spime):
 
 
 
-       def _finish_configure(self):
+    def _finish_configure(self):
         logger.debug('Configuring Psyllid')
         self.status_value = self.provider.cmd(self.psyllid_interface, 'request_status')
         if self.status_value!=False:
@@ -634,7 +634,7 @@ class ROACH2ChAcquisitionInterface(DAQProvider, core.Spime):
         active_channels = self.provider.cmd(self.psyllid_interface, 'get_active_channels')
         for i in self.channel_ids:
             if active_channels.has_key(i)==False:
-                raise core.exceptions.DriplineGenericDAQError('The Psyllid and ROACH channel interfaces don\'t match')
+                raise core.exceptions.DriplineGenericDAQError('The Psyllid and ROACH channel interfaces do not match')
             
         if self._check_roach2_status() == False:
             raise core.exceptions.DriplineGenericDAQError('The ROACH is not running')
@@ -647,9 +647,6 @@ class ROACH2ChAcquisitionInterface(DAQProvider, core.Spime):
             else:
                 self.set_central_frequency(freqs[self.channel_ids[0]])
 
-
-        
-
     def is_running(self):
         self.status_value = self.provider.cmd(self.psyllid_interface, 'request_status')
         if self.status_value==5:
@@ -657,6 +654,18 @@ class ROACH2ChAcquisitionInterface(DAQProvider, core.Spime):
         else:
             return False
             
+    def change_mode(self, mode, cf=1000e6):
+	if mode == 'independent':
+	    self.mode=mode
+	elif mode == 'window_overlap':
+	    self.mode=mode
+	elif mode =='identical_cf':
+	    self.mode=mode
+	else:
+	    logger.error('{} is not a valid mode'.format(mode))
+	    return False
+
+
 
     def _check_roach2_status(self):
 
@@ -716,14 +725,14 @@ class ROACH2ChAcquisitionInterface(DAQProvider, core.Spime):
         active_channels = self.provider.cmd(self.psyllid_interface, 'get_active_channels')
         for i in self.channel_ids:
             if active_channels.has_key(i)==False:
-                raise core.exceptions.DriplineGenericDAQError('The Psyllid and ROACH channel interfaces don\'t match')
+                raise core.exceptions.DriplineGenericDAQError('The Psyllid and ROACH channel interfaces do not match')
         
         #check frequency matches
         roach_freqs = self._get_roach_central_freqs()
         psyllid_freqs = self._get_psyllid_central_freqs()
         for i in self.channel_ids:
             if roach_freqs[i]!=psyllid_freqs[i]:
-            raise core.exceptions.DriplineGenericDAQError('Frequency mismatch')
+                raise core.exceptions.DriplineGenericDAQError('Frequency mismatch')
         
         return "checks successful"
 
@@ -748,7 +757,7 @@ class ROACH2ChAcquisitionInterface(DAQProvider, core.Spime):
             logger.debug('RF Max: {}'.format(self._run_meta['RF_ROI_MAX']))
             
         
-        elif self.mode=='overlapping_cf':            
+        elif self.mode=='window_overlap':            
             logger.info('trying to determine roi')
     
             self._run_meta['RF_HF_MIXING'] = float(self._hf_lo_freq)
@@ -819,16 +828,16 @@ class ROACH2ChAcquisitionInterface(DAQProvider, core.Spime):
     def set_central_frequency(self, cf):
         if self.mode=='identical_cf':
             self.central_frequency = cf
-            logger.info('This is 2 Channel ROACH DAQ speaking: I am in \'identical_cf\' mode. Setting identical cf to both channels...')
+            logger.info('This is 2 Channel ROACH DAQ speaking: I am in "identical_cf" mode. Setting identical cf to both channels...')
             
             self._set_central_frequency(cf, self.channel_ids[0])
             self._set_central_frequency(cf, self.channel_ids[1])
 
             return self.freq_dict
         
-        elif self.mode=='overlapping_cf':
+        elif self.mode=='window_overlap':
             self.central_frequency = cf
-            logger.info('This is 2 Channel ROACH DAQ speaking: I am in \'overlapping_cf\' mode. Setting cf...')
+            logger.info('This is 2 Channel ROACH DAQ speaking: I am in "window_overlap" mode. Setting cf...')
            
             self._set_central_frequency(cf-50e6+self.ROI_overlap/2.0, self.channel_ids[0])
             self._set_central_frequency(cf+50e6-self.ROI_overlap/2.0, self.channel_ids[1])
@@ -836,7 +845,7 @@ class ROACH2ChAcquisitionInterface(DAQProvider, core.Spime):
             return self.freq_dict
         
         else:            
-            logger.error('Use \'set_central_frequencies cf1 cf2\' in this mode')
+            logger.error('Use "set_central_frequencies cf1 cf2" in this mode')
             return false
 
             
@@ -868,9 +877,9 @@ class ROACH3ChAcquisitionInterface(DAQProvider, core.Spime):
                  channel_id_1 = 'a',
                  channel_id_2 = 'b',
                  channel_id_3 = 'c',
-                 mode = 'identical_cf' #other modes: overlapping_cf, independent
+                 mode = 'identical_cf', #other modes: window_overlap, independent
                  filename_prefix = 'psyllid',
-                 ROI_overlap = 0.0
+                 ROI_overlap = 0.0,
                  hf_lo_freq = None,
                  **kwargs
                 ):
@@ -888,7 +897,7 @@ class ROACH3ChAcquisitionInterface(DAQProvider, core.Spime):
         self.ROI_overlap = ROI_overlap
         
         self.channel_ids = [channel_id_1, channel_id_2, channel_id_3]
-        self.freq_dict = {self.channel_ids[0]: None, self.channel_ids[2]: None, self.channel_ids[3]}
+        self.freq_dict = {self.channel_ids[0]: None, self.channel_ids[2]: None, self.channel_ids[3]: None}
         
         if hf_lo_freq is None:
             raise core.exceptions.DriplineValueError('the psyllid acquisition interface requires a "hf_lo_freq" in its config file')
@@ -896,7 +905,7 @@ class ROACH3ChAcquisitionInterface(DAQProvider, core.Spime):
 
 
 
-       def _finish_configure(self):
+    def _finish_configure(self):
         logger.debug('Configuring Psyllid')
         self.status_value = self.provider.cmd(self.psyllid_interface, 'request_status')
         if self.status_value!=False:
@@ -912,7 +921,7 @@ class ROACH3ChAcquisitionInterface(DAQProvider, core.Spime):
         active_channels = self.provider.cmd(self.psyllid_interface, 'get_active_channels')
         for i in self.channel_ids:
             if active_channels.has_key(i)==False:
-                raise core.exceptions.DriplineGenericDAQError('The Psyllid and ROACH channel interfaces don\'t match')
+                raise core.exceptions.DriplineGenericDAQError('The Psyllid and ROACH channel interfaces do not match')
             
         if self._check_roach2_status() == False:
             raise core.exceptions.DriplineGenericDAQError('The ROACH is not running')
@@ -992,14 +1001,14 @@ class ROACH3ChAcquisitionInterface(DAQProvider, core.Spime):
         active_channels = self.provider.cmd(self.psyllid_interface, 'get_active_channels')
         for i in self.channel_ids:
             if active_channels.has_key(i)==False:
-                raise core.exceptions.DriplineGenericDAQError('The Psyllid and ROACH channel interfaces don\'t match')
+                raise core.exceptions.DriplineGenericDAQError('The Psyllid and ROACH channel interfaces do not match')
         
         #check frequency matches
         roach_freqs = self._get_roach_central_freqs()
         psyllid_freqs = self._get_psyllid_central_freqs()
         for i in self.channel_ids:
             if roach_freqs[i]!=psyllid_freqs[i]:
-            raise core.exceptions.DriplineGenericDAQError('Frequency mismatch')
+                raise core.exceptions.DriplineGenericDAQError('Frequency mismatch')
         
         return "checks successful"
 
@@ -1024,7 +1033,7 @@ class ROACH3ChAcquisitionInterface(DAQProvider, core.Spime):
             logger.debug('RF Max: {}'.format(self._run_meta['RF_ROI_MAX']))
             
         
-        elif self.mode=='overlapping_cf':            
+        elif self.mode=='window_overlap':            
             logger.info('trying to determine roi')
     
             self._run_meta['RF_HF_MIXING'] = float(self._hf_lo_freq)
@@ -1096,7 +1105,7 @@ class ROACH3ChAcquisitionInterface(DAQProvider, core.Spime):
     def set_central_frequency(self, cf):
         if self.mode=='identical_cf':
             self.central_frequency = cf
-            logger.info('This is 2 Channel ROACH DAQ speaking: I am in \'identical_cf\' mode. Setting identical cf for all channels...')
+            logger.info('This is 2 Channel ROACH DAQ speaking: I am in "identical_cf" mode. Setting identical cf for all channels...')
             
             self._set_central_frequency(cf, self.channel_ids[0])
             self._set_central_frequency(cf, self.channel_ids[1])
@@ -1104,9 +1113,9 @@ class ROACH3ChAcquisitionInterface(DAQProvider, core.Spime):
 
             return self.freq_dict
         
-        elif self.mode=='overlapping_cf':
+        elif self.mode=='window_overlap':
             self.central_frequency = cf
-            logger.info('This is 2 Channel ROACH DAQ speaking: I am in \'overlapping_cf\' mode. Setting cf...')
+            logger.info('This is 2 Channel ROACH DAQ speaking: I am in "window_overlap" mode. Setting cf...')
            
             self._set_central_frequency(cf-50e6+self.ROI_overlap/2.0, self.channel_ids[0])
             self._set_central_frequency(cf, self.channel_ids[1])
@@ -1115,7 +1124,7 @@ class ROACH3ChAcquisitionInterface(DAQProvider, core.Spime):
             return self.freq_dict
         
         else:            
-            logger.error('Use \'set_central_frequencies cf1 cf2\' in this mode')
+            logger.error('Use "set_central_frequencies cf1 cf2 cf3" in this mode')
             return false
 
             
@@ -1133,112 +1142,3 @@ class ROACH3ChAcquisitionInterface(DAQProvider, core.Spime):
         result = self.provider.cmd(self.psyllid_interface, 'get_all_central_frequencies')
         logger.info('central freq {}'.format(result))
         return result
-
-#        try:
-#             request = '.node-config.ch'+str(self.channel_dictionary[channel])+'.strw.center-freq'
-#             result = self.provider.set(self.psyllid_interface+request, cf_in_MHz)
-#             logger.info('Set central frequency of streaming writer for channel {}'.format(channel))
-#        except:
-#            try:
-#                request = '.node-config.ch'+str(self.channel_dictionary[channel])+'.ew.center-freq'
-#                result = self.provider.set(self.psyllid_interface+request, cf_in_MHz)
-#                logger.info('Set central frequency of egg writer for channel {}'.format(channel))
-#            except:
-#                logger.error('Could not set central frequency')
-#
-#        return self.reactivate()
-	
-
-
-        
-
-
-
-
-#    def activate(self):
-#        if self.status_value == 6:
-#            self.is_running()
-#        elif self.status_value == 0:
-#            logger.info('Activating Psyllid')
-#            result = self.provider.cmd(self.psyllid_interface, 'activate-daq')
-#            self._request_psyllid_status()
-#            return True
-#
-#        else:
-#            logger.warning('Could not activate Psyllid')
-#            return False
-#
-#
-#    def deactivate(self):
-#        if self.status != 0:
-#            logger.info('Deactivating Psyllid')
-#            result = self.provider.cmd(self.psyllid_interface,'deactivate-daq')
-#            self._request_psyllid_status()
-#        if self.status_value!=0:
-#            logger.warning('Could not deactivate Psyllid')
-#            return False
-#        else: return True
-#
-#    def reactivate(self):
-#        if self.status_value != 0:
-#            logger.info('Reactivating Psyllid')
-#            result = self.provider.cmd(self.psyllid_interface, 'reactivate-daq')
-#            self._request_psyllid_status()
-#	    return True
-#	elif self.status_value==0:
-#	    self.activate()
-#	else:
-#	    logger.warning('Could not reactivate Psyllid')
-#    	    return False
-#
-#
-#    def quit_psyllid(self):
-#        result = self.provider.cmd(self.psyllid_interface, 'quit-psyllid')
-#        logger.info('psyllid quit')
-
-
-#    def _set_all_freqs(self):
-#        for channel in self.channel_dictionary.keys():
-#	    cf_in_MHz = round(self.freq_dict[channel]*10**-6)
-#            try:
-#		request = '.node-config.ch'+str(self.channel_dictionary[channel])+'.strw.center-freq'
-#                result = self.provider.set(self.psyllid_interface+request, cf_in_MHz)
-#                logger.info('Set central frequency of streaming writer for channel {}'.format(channel))
-#            except:
-#		try:
-#                    request = '.node-config.ch'+str(self.channel_dictionary[channel])+'.ew.center-freq'
-#                    result = self.provider.set(self.psyllid_interface+request, cf_in_MHz)
-#                    logger.info('Set central frequency of egg writer for channel {}'.format(channel))
-#            	except:
-#                    logger.error('Could not set central frequency')
-#		    self.multi_channel_daq = False
-#		    self.freq_dict[channel]=None
-#	logger.info('central frequencies: {}'.format(self.freq_dict))
-#        return self.reactivate()
-
-#    def _request_psyllid_status(self):
-#        logger.info('Checking Psyllid status')
-#        
-#        try:
-#            result = self.provider.get(self.psyllid_interface+'.daq-status', timeout=10)
-#            self.status = result['server']['status']
-#            self.status_value = result['server']['status-value']
-#            logger.info('Psyllid is running. Status is {}'.format(self.status))
-#            logger.info('Status in numbers: {}'.format(self.status_value))
-#            return True
-#
-#        except:
-#            logger.warning('Psyllid is not running or sth. else is wrong')
-#            self.status=None
-#            self.status_value=None
-#            logger.info('Status is {}'.format(self.status))
-#            return False
-#
-#    def _set_roach_central_freq(self, cf):
-#        payload={'cf':cf, 'channel':self.channel_id}
-#        result = self.provider.cmd(self.daq_target, 'set_central_frequency', payload=payload)
-#        return result['values'][0]
-#        
-#    def _set_psyllid_central_freq(self, cf):
-#        payload={'cf':cf, 'channel':self.channel_id}
-#        result = self.provider.cmd(self.psyllid_interface, 'set_central_frequency', payload=payload)
