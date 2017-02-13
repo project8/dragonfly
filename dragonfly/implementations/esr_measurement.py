@@ -2,7 +2,6 @@ from __future__ import absolute_import
 __all__ = []
 
 import os
-import numpy
 import logging
 import json
 from datetime import datetime
@@ -119,12 +118,14 @@ class ESR_Measurement(core.Endpoint):
         '''
         Save data to output json file
         '''
-        tstamp = "{:%Y%m%d_%H%M%S}".format(datetime.now())
-        outpath = "/data/secondary/esr/raw/{}/".format(tstamp)
+        tstamp = datetime.now()
+        outpath = "/data/secondary/esr/raw/{0:%Y}/{0:%m%d}/{0:%Y%m%d_%H%M%S}/".format(tstamp)
         if not os.path.exists(outpath):
             logger.info("Creating directory {}".format(outpath))
             os.makedirs(outpath)
-        outfile = outpath+"{}-esr.json".format(tstamp)
+        else:
+            raise exceptions.DriplineInternalError("Output directory already exists!")
+        outfile = outpath+"{:%Y%m%d_%H%M%S}-esr.json".format(tstamp)
         fp = open(outfile, "w")
         json.dump(obj=self.output_dict, fp=fp, indent=4)
         fp.close()
