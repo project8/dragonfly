@@ -119,20 +119,19 @@ class PsyllidProvider(core.Provider, core.Spime):
 
     def set_central_frequency(self, cf, channel='a'):
         cf_in_MHz = round(cf*10**-6)
-	logger.info(channel)
-	logger.info(cf_in_MHz)	
+	
         try:
             request = '.node-config.ch'+str(self.channel_dictionary[channel])+'.strw.center-freq'
-	    logger.info(request)
+            logger.info(request)
             result = self.provider.set(self.psyllid_queue+request, cf_in_MHz)
             logger.info('Set central frequency of streaming writer for channel {}'.format(channel))
-	    self.freq_dict[channel]=cf
+            self.freq_dict[channel]=cf
         except:
             try:
                 request = '.node-config.ch'+str(self.channel_dictionary[channel])+'.ew.center-freq'
                 result = self.provider.set(self.psyllid_queue+request, cf_in_MHz)
                 logger.info('Set central frequency of egg writer for channel {}'.format(channel))
-		self.freq_dict[channel]=cf
+                self.freq_dict[channel]=cf
             except:
                 logger.error('Could not set central frequency')
 
