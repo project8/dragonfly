@@ -372,7 +372,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         self.status_value = None
         self.channel_id = channel_id
         self.freq_dict = {self.channel_id: None}
-        self._max_duration = 1000
+        self._max_duration = 1000.0
 
         if hf_lo_freq is None:
             raise core.exceptions.DriplineValueError('the psyllid acquisition interface requires a "hf_lo_freq" in its config file')
@@ -511,28 +511,29 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
 
     def _start_data_taking(self, directory, filename):
         
+        logger.info('start data taking')
         # switching from seconds to milisecons
-        duration = self._run_time*1000
+        duration = self._run_time
         logger.info('run duration in ms: {}'.format(duration))
         
-        NAcquisitions = int(duration/self._max_duration)+1
+        NAcquisitions = duration/self._max_duration
         
-        if NAcquisitions==1:
-            filename = filename+'_'+self._run_name+'.egg'
+        if NAcquisitions<=1:
+            psyllid_filename = filename+'_'+self._run_name+'.egg'
 
             if not os.path.exists(directory):
                 os.makedirs(directory)
            
             logger.info('Going to tell psyllid to start the run')
-            payload = {'filename': os.path.join(directory, filename), 'duration':duration}
+            payload = {'filename': os.path.join(directory, psyllid_filename), 'duration':duration}
             result = self.provider.cmd(self.psyllid_interface, 'start_run', payload=payload)
         
         else:
-            logger.info('Doing {} acquisitions'.format(NAcquisitions))
+            logger.info('Doing {} acquisitions'.format(int(NAcquisitions)+1))
             
-            for i in range(NAcquisitions):
+            for i in range(int(NAcquisitions)+1):
                 total_run_time = 0.0
-                filename = filename+'_'+self._run_name+'_'+str(i)+'.egg'
+                psyllid_filename = filename+'_'+self._run_name+'_'+str(i)+'.egg'
 
                 if not os.path.exists(directory):
                     os.makedirs(directory)
@@ -540,13 +541,13 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
                 if total_run_time > duration-self._max_duration:
                     duration = duration-total_run_time
                     logger.info('Going to tell psyllid to start the run')
-                    payload = {'filename': os.path.join(directory, filename), 'duration':duration}
+                    payload = {'filename': os.path.join(directory, psyllid_filename), 'duration':duration}
                     result = self.provider.cmd(self.psyllid_interface, 'start_run', payload=payload)
-
+                    return
                 else:
-                    total_run_time+=self.max_duration
+                    total_run_time+=self._max_duration
                     logger.info('Going to tell psyllid to start the run')
-                    payload = {'filename': os.path.join(directory, filename), 'duration':self.max_duration}
+                    payload = {'filename': os.path.join(directory, psyllid_filename), 'duration':self._max_duration}
                     result = self.provider.cmd(self.psyllid_interface, 'start_run', payload=payload)
 
 
@@ -630,7 +631,7 @@ class ROACHMultiChAcquisitionInterface(DAQProvider, core.Spime):
             self.freq_dict = {self.channel_ids[0]: None, self.channel_ids[2]: None, self.channel_ids[3]: None}
             
         else:
-            raise raise core.exceptions.DriplineValueError('No valid channel number')
+            raise core.exceptions.DriplineValueError('No valid channel number')
 
         if hf_lo_freq is None:
             raise core.exceptions.DriplineValueError('the psyllid acquisition interface requires a "hf_lo_freq" in its config file')

@@ -149,7 +149,7 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
 
 
 
-    def configure(self, do_ogp_cal=False, do_adcif_cal=True, boffile=None):
+    def configure(self, do_ogp_cal=False, do_adcif_cal=True, boffile='None'):
 	self.channel_list = []
         self.cfg_list = []
 
@@ -328,7 +328,6 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
             f = pkts[0].interpret_data()
             pkt_id=pkts[1].pkt_in_batch
 
-        np.save(self.monitor_target+'/TPacket', x)
 
         N = np.shape(x)[0]
         p = np.abs(np.fft.fftshift(np.fft.fft(x)))/N
