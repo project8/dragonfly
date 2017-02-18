@@ -30,6 +30,9 @@ import logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
+__all__.append('PostgreSQLInterface')
+__all__.append("SQLTable")
+__all__.append('SQLSnapshot')
 
 @fancy_doc
 class PostgreSQLInterface(Provider):
