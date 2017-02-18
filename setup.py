@@ -16,11 +16,11 @@ except Exception as err:
 
 
 extras_require={
+    'colorlog' : ['colorlog'],
+    'database': ['psycopg2', 'sqlalchemy'], #this may also require system packages
+    'debug': ['ipdb'],
     'doc': ['sphinx', 'sphinx_rtd_theme', 'sphinxcontrib-programoutput'],
-    'database': ['cython', 'psycopg2', 'sqlalchemy'], #this may also require system packages
     'slack': ['slackclient'],
-    'dpph': ['numpy'],
-    'other': ['colorlog', 'ipython', 'ipdb'],
 }
 everything = set()
 for deps in extras_require.values():
@@ -32,7 +32,7 @@ setup(
     version=verstr,
     packages=['dragonfly','dragonfly/implementations','dragonfly/status_log_handlers','dragonfly/subcommands'],
     scripts=['bin/dragonfly'],
-    install_requires=['dripline'],
+    install_requires=['dripline', 'asteval'],
     extras_require=extras_require,
     url='http://www.github.com/project8/dragonfly',
 )
