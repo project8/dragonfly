@@ -9,14 +9,17 @@ For the sake of an example, I'll assume the following:
 1. You've activated the virtualenvironment you want to use
 1. You've already installed the dripline in that virtualenv
 
-Simply install all remaining dependencies with pip, and then install dragonfly itself.
+Simply use pip to install dragonfly with any desired "extra" dependencies.
 ```bash
-pip install -r requirements.txt
-python setup.py install
+pip install -U pip # pip version >= 7.0.0 required
+pip install ${REPOSPATH}/dragonfly[extra1,extra2,...]
 ```
 
-If you will not be interacting with any SQL databases, then you can instead install a reduced set of dependencies.
+On claude, the command will be `pip install ~/Repos/dragonfly[colorlog]`, on myrna it will be `pip install ~/Repos/dragonfly[colorlog,database,slack]` to handle the additional services.
+
+To install in "develop" mode, use `pip install -e` flag.
+
+An alternative is to install directly from github.  See [pip documentation]https://pip.pypa.io/en/stable/reference/pip_install/#git for details on git+VCS support: branch/commit selection and git+ssh options are also available.
 ```bash
-pip install -r requirements_no_sql.txt
+pip install git+https://github.com/project8/dragonfly#egg=dragonfly[extra1,extra2,...]
 ```
-Note: On Claude, use requirements_no_sql.txt  
