@@ -372,7 +372,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         self.status_value = None
         self.channel_id = channel_id
         self.freq_dict = {self.channel_id: None}
-        self._max_duration = 1000.0
+        self._max_duration = 1.0
 
         if hf_lo_freq is None:
             raise core.exceptions.DriplineValueError('the psyllid acquisition interface requires a "hf_lo_freq" in its config file')
@@ -513,7 +513,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         
         logger.info('start data taking')
         # switching from seconds to milisecons
-        duration = self._run_time
+        duration = self._run_time*1000
         logger.info('run duration in ms: {}'.format(duration))
         
         NAcquisitions = duration/self._max_duration
