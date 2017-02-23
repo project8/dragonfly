@@ -10,7 +10,10 @@ import os
 import re
 from datetime import datetime, timedelta
 
-import slackclient
+try:
+    import slackclient
+except ImportError:
+    pass
 
 import dripline
 from dripline.core import Gogol
@@ -35,6 +38,8 @@ class SlackInterface(Gogol):
         number_sentence_per_speaking_time: number of messages allowed during speaking_time before being muted
         time_between_warnings: time between sending warnings
         '''
+        if not 'slackclient' in globals():
+            raise ImportError('slackclient not found, required for SlackInterface class')
         # listen to status_message alerts channel
         #kwargs.update({'exchange':'alerts','keys':['status_message.#.#']})
         kwargs.update({'keys':['status_message.#.#']})
