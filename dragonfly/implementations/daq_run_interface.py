@@ -108,13 +108,13 @@ class DAQProvider(core.Provider):
         '''
         Do the prerun_gets and send the metadata to the recording associated computer
         '''
-        self.run_name = run_name
+        self._run_name = run_name
         self._run_meta = {'DAQ': self.daq_name,
                           'run_time': self._run_time,
                          }
 
         self._do_prerun_gets()
-        self._send_metadata()
+       # self._send_metadata()
         logger.debug('these meta will be {}'.format(self._run_meta))
         logger.info('start_run finished')
 
@@ -355,7 +355,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
     def __init__(self,
                  psyllid_interface='psyllid_interface',
                  daq_target = 'roach2_interface',
-                 channel_id = 'a',
+                 channel = 'a',
                  filename_prefix = 'psyllid',
                  hf_lo_freq = None,
                  **kwargs
@@ -367,12 +367,12 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         self.daq_target = daq_target
         
         self.filename_prefix = filename_prefix
-        #self.run_id = 0
+        self.run_id = 0
 
         self.status_value = None
-        self.channel_id = channel_id
+        self.channel_id = channel
         self.freq_dict = {self.channel_id: None}
-        self._max_duration = 1.0
+        self._max_duration = 1000.0
 
         if hf_lo_freq is None:
             raise core.exceptions.DriplineValueError('the psyllid acquisition interface requires a "hf_lo_freq" in its config file')
@@ -383,6 +383,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
     def _finish_configure(self):
         logger.info('Configuring Psyllid')
         self.status_value = self.provider.cmd(self.psyllid_interface, 'request_status')['values'][0]
+        logger.info('status value is: {}'.format(self.status_value))
         if self.status_value!=None:
             if self.status_value != 0:
                 self.status_value = self.provider.cmd(self.psyllid_interface, 'deactivate')
@@ -391,11 +392,12 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
 
         result = self.provider.cmd(self.psyllid_interface, 'get_number_of_channels')
         NChannels = result['values'][0]
+        logger.info('number of active channels is: '.format(NChannels))
         if NChannels != 1:
             raise core.exceptions.DriplineValueError('Too many Psyllid channels are active under this queue')
 
         active_channels = self.provider.cmd(self.psyllid_interface, 'get_active_channels')['values'][0]
-
+        logger.info('active channel: {}'.format(active_channels))
         if active_channels[0] != self.channel_id:
             raise core.exceptions.DriplineGenericDAQError('The Psyllid and ROACH channel interfaces do not match')
 
