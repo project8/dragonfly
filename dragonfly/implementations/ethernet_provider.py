@@ -17,7 +17,7 @@ from __future__ import absolute_import
 import socket
 import threading
 
-from dripline.core import Provider, Endpoint, exceptions, fancy_doc
+from dripline.core import Provider, exceptions, fancy_doc
 
 import logging
 logger = logging.getLogger(__name__)

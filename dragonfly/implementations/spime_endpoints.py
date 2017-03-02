@@ -10,6 +10,8 @@ Spime catalog (in order of ease-of-use):
 - SimpleSCPISpime: quick and simple minimal spime
 -* SimpleSCPIGetSpime/SimpleSCPISetSpime: limited instance of above with disabled Get/Set
 - FormatSpime: utility spime with expanded functionality
+- ErrorQueueSpime: spime for iterating through error queue to clear it and return all erros
+- GPIOSpime: spime to handle GPIO pin control on RPi
 - LockinSpime: spime to handle antiquated lockin IEEE 488 formatting
 -* LockinGetSpime: limited instance of above with disabled Set
 - MuxerGetSpime: spime to handle glenlivet muxer formatting
@@ -18,6 +20,11 @@ Spime catalog (in order of ease-of-use):
 from __future__ import absolute_import
 
 import re
+
+try:
+    import RPi.GPIO as GPIO
+except ImportError:
+    pass
 
 from dripline.core import Spime, fancy_doc, calibrate
 from dripline.core.exceptions import *
@@ -182,6 +189,68 @@ class ErrorQueueSpime(Spime):
 
     def on_set(self, value):
         raise DriplineMethodNotSupportedError('setting not available for {}'.format(self.name))
+
+
+__all__.append('GPIOSpime')
+@fancy_doc
+class GPIOSpime(Spime):
+    '''
+    Spime for interacting with GPIO pins on Raspberry Pi
+    '''
+    def __init__(self,
+                 inpin=None,
+                 outpin=None,
+                 setvaluemap=None,
+                 **kwargs
+                 ):
+        '''
+        inpin (int||list): pin(s) to read for get
+        outpin (int||list): pin(s) to program for set
+        set_value_map (dict): dictionary of mappings for values to on_set; note that the result of set_value_map[value] will be used as the input to set_str.format(value) if this dict is present
+        '''
+        if not 'GPIO' in globals():
+            raise ImportError('RPi.GPIO not found, required for GPIOSpime class')
+        if 'get_on_set' not in kwargs:
+            kwargs['get_on_set'] = True
+        Spime.__init__(self, **kwargs)
+
+        if inpin is not None:
+            if not isinstance(inpin, list):
+                inpin = [inpin]
+            if not all(isinstance(pin, int) for pin in inpin):
+                raise exceptions.DriplineValueError("Invalid inpin <{}> for {}, requires int or list of int".format(repr(inpin), self.name))
+        self._inpin = inpin
+        if outpin is not None:
+            if not isinstance(outpin, list):
+                outpin = [outpin]
+            if not all(isinstance(pin,int) for pin in outpin):
+                raise exceptions.DriplineValueError("Invalid outpin <{}> for {}, requires int or list of int".format(repr(outpin), self.name))
+        self._outpin = outpin
+        if set_value_map is not None and not isinstance(set_value_map, dict):
+            raise DriplineValueError("Invalid set_value_map config for {}; type is {} not dict".format(self.name, type(set_value_map)))
+        self._set_value_map = set_value_map
+
+    @calibrate()
+    def on_get(self):
+        if self._inpin is None:
+            raise DriplineMethodNotSupportedError("<{}> has no get pin available".format(self.name))
+        result = 0
+        for i, pin in enumerate(self._inpin):
+            result += GPIO.input(pin)<<i
+        return rbin(esult)
+
+    def on_set(self, value):
+        if self._outpin is None:
+            raise DriplineMethodNotSupportedError("<{}> has no set pin available".format(self.name))
+        if isinstance(self._set_value_map, dict) and value in self._set_value_map:
+            raw_value = value
+            if isinstance(value, (str,unicode)):
+                value = value.lower()
+            value = self._set_value_map[value]
+            logger.debug('raw set value is {}; mapped value is: {}'.format(raw_value, value))
+        GPIO.output(self._outpin, value)
+        if not all(GPIO.input(pin)==value for pin in self._outpin):
+            raise DriplineHardwareError("Error setting GPIO output pins")
 
 
 __all__.append('LockinSpime')
