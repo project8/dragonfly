@@ -200,7 +200,7 @@ class GPIOSpime(Spime):
     def __init__(self,
                  inpin=None,
                  outpin=None,
-                 setvaluemap=None,
+                 set_value_map=None,
                  **kwargs
                  ):
         '''
@@ -237,7 +237,7 @@ class GPIOSpime(Spime):
         result = 0
         for i, pin in enumerate(self._inpin):
             result += GPIO.input(pin)<<i
-        return rbin(esult)
+        return result
 
     def on_set(self, value):
         if self._outpin is None:

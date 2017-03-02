@@ -46,12 +46,12 @@ class RPiGPIOProvider(Provider):
             logger.debug('configuring {}'.format(child))
             if not isinstance(self.endpoints[child], GPIOSpime):
                 continue
-            if not self.endpoints[child].inpin and not self.endpoints[child].outpin:
+            if not self.endpoints[child]._inpin and not self.endpoints[child]._outpin:
                 logger.critical('Cannot configure pins for GPIOSpime {}'.format(self.endpoints[child]))
                 continue
-            if self.endpoints[child].inpin:
-                for pin in self.endpoints[child].inpin:
+            if self.endpoints[child]._inpin:
+                for pin in self.endpoints[child]._inpin:
                     GPIO.setup(pin, GPIO.IN)
-            if self.endpoints[child].outpin:
-                for pin in self.endpoints[child].outpin:
+            if self.endpoints[child]._outpin:
+                for pin in self.endpoints[child]._outpin:
                     GPIO.setup(pin, GPIO.OUT)
