@@ -104,9 +104,7 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
 
 
         self.roach2_hostname = roach2_hostname
-        #self._hf_lo_freq = hf_lo_freq
         self.monitor_target = monitor_target
-        #self._analysis_bandwidth = analysis_bandwidth
 
 	#channel a
         self.source_ip = str(source_ip_a)
@@ -139,7 +137,6 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
         self.block_dict = {'a': False, 'b': False, 'c':False}
         self.cfg_list = []
         self.daq_name = daq_name
-        self.channel_tag = channel_tag_a
         self.central_freq = central_freq
         self.gain = gain
         self.configured=False
@@ -179,9 +176,10 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
 
         ArtooDaq.__init__(self, self.roach2_hostname, boffile=boffile, do_ogp_cal=do_ogp_cal, do_adcif_cal=do_adcif_cal, ifcfg=self.cfg_list)
         self.configured=True
+
         if boffile!=None:
             self.do_adc_ogp_calibration()
-            self.calibrated=True
+
         for s in self.channel_list:
             self.set_central_frequency(self.central_freq, channel=s)
             self.set_gain(self.gain,channel=s)
@@ -190,9 +188,7 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
         return self.configured
 
 
-    #def get_ip_configuration(self):
-    #    logger.info('source ip: {}, source port: {},  \n dest ip: {}, dest port: {}'.format(self.source_ip,self.source_port, self.dest_ip,self.dest_port))
-        
+
     def get_calibration_status(self):
         return self.calibrated
 
@@ -227,7 +223,7 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
             self.calibrated=False
 
         return self.calibrated
-        
+
     def block_channel(self, channel):
         if self.block_dict.has_key(channel)==False:
             logger.info('{} is not a valid channel label'.format(channel))
@@ -254,17 +250,12 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
 
 
     def get_central_frequency(self, channel='a'):
-	#self.central_frequency = ArtooDaq.read_ddc_1st_config(self, tag=self.channel_tag)['f_c']
         return self.freq_dict[channel]
 
 
     def get_all_central_frequencies(self):
         return self.freq_dict
             
-    #def get_ddc_config(self):
-    #    cfg = self.read_ddc_1st_config(tag=self.channel_tag)
-    #    logger.info('Configuration information of 1st stage DDC is {}'.format(self.channel_tag, cfg['digital']))
-
 
     def set_gain(self, gain, channel='a'):
         if gain>-8 and gain <7.93:
@@ -301,14 +292,6 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
             logger.warning('cannot grab packets')
             return False
 
-        '''if_ids, digital_ids, pktnum = [], [], []
-        for i in range(n):
-            if_ids.append(pkts[i].if_id)
-            digital_ids.append(pkts[i].digital_id)
-            pktnum.append(pkts[i].pkt_in_batch)
-            logger.info(if_ids)
-            logger.info(digital_ids)
-            logger.info(pktnum)'''
 
     def get_roach2_clock(self):
         a = self.roach2.est_brd_clk()
