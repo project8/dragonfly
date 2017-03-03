@@ -26,7 +26,6 @@ class PsyllidProvider(core.Provider, core.Spime):
     
     '''
     def __init__(self,
-                 
                  queue='psyllid',
                  set_condition_list = [],
                  **kwargs):
@@ -48,7 +47,7 @@ class PsyllidProvider(core.Provider, core.Spime):
         
         
     def set_default_central_frequencies(self):
-        freq_dict = {'a': 1000e6, 'b': 1000e6, 'c': 1000e6}
+        freq_dict = {'a': 800e6, 'b': 800e6, 'c': 800e6}
         self.set_all_central_frequencies(freq_dict)
         
 

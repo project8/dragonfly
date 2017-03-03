@@ -392,7 +392,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
 
         result = self.provider.cmd(self.psyllid_interface, 'get_number_of_channels')
         NChannels = result['values'][0]
-        logger.info('number of active channels is: '.format(NChannels))
+        logger.info('number of active channels is: {}'.format(NChannels))
         if NChannels != 1:
             raise core.exceptions.DriplineValueError('Too many Psyllid channels are active under this queue')
 
@@ -429,20 +429,19 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
             raise core.exceptions.DriplineGenericDAQError('Cannot request roach status from {}'.format(self.daq_target))
             
         if result['values'][0]==False:
-            logger.warning('The ROACH is not running!')
+            logger.warning('The ROACH is not ready!')
             return False
 
         elif result['values'][0]==True:
 
             #get calibration and configuration status
-            result = self.provider.cmd(self.daq_target, 'get_calibration_status')
-            self.roach2calibrated=result['values'][0]
+            #result = self.provider.cmd(self.daq_target, 'get_calibration_status')
+            #self.roach2calibrated=result['values'][0]
 
-            result = self.provider.cmd(self.daq_target, 'get_configuration_status')
-            self.roach2configured=result['values'][0]
+            #result = self.provider.cmd(self.daq_target, 'get_configuration_status')
+            #self.roach2configured=result['values'][0]
 
-            #print results
-            logger.info('Configured: {}, Calibrated: {}'.format(self.roach2configured, self.roach2calibrated))
+            #logger.info('Configured: {}, Calibrated: {}'.format(self.roach2configured, self.roach2calibrated))
 
             return True
         else:
@@ -450,6 +449,8 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
 
 
     def _do_checks(self):
+        if self._run_time ==0:
+            raise core.exceptions.DriplineValueError('run time is zero')
         #checking psyllid
         if self.is_running()==True:
             raise core.exceptions.DriplineGenericDAQError('Psyllid is already running')
@@ -466,13 +467,13 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         is_roach_running = self._check_roach2_status()
 
         if is_roach_running == False:
-            raise core.exceptions.DriplineGenericDAQError('ROACH2 is not responding')
+            raise core.exceptions.DriplineGenericDAQError('ROACH2 is not ready')
 
-        if self.roach2configured ==False:
-            raise core.exceptions.DriplineGenericDAQError('ROACH2 has not been programmed and configured by roach roach service')
+        #if self.roach2configured ==False:
+        #    raise core.exceptions.DriplineGenericDAQError('ROACH2 has not been programmed and configured by roach roach service')
 
-        if self.roach2calibrated==False:
-            logger.warning('The ADC was not calibrated. Data taking not recommended.')
+        #if self.roach2calibrated==False:
+        #    logger.warning('The ADC was not calibrated. Data taking not recommended.')
 
         #check channel match
         NChannels = self.provider.cmd(self.psyllid_interface, 'get_number_of_channels')['values'][0]
@@ -512,7 +513,9 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
 
 
     def _start_data_taking(self, directory, filename):
-        
+        logger.info('block roach channel')
+        payload = {'channel': self.channel_id}
+        result = self.provider.cmd(self.daq_target, 'block_channel', payload=payload)
         logger.info('start data taking')
         # switching from seconds to milisecons
         duration = self._run_time*1000
@@ -552,7 +555,9 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
                     payload = {'filename': os.path.join(directory, psyllid_filename), 'duration':self._max_duration}
                     result = self.provider.cmd(self.psyllid_interface, 'start_run', payload=payload)
 
-
+        logger.info('unblock channel')
+        payload = {'channel': self.channel_id}
+        result = self.provider.cmd(self.daq_target, 'unblock_channel', payload=payload)
 #    def _set_condition(self, number):
 #        if number in self._set_condition_list:
 #            logger.debug('deactivating psyllid daq')

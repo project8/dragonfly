@@ -180,6 +180,7 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
         ArtooDaq.__init__(self, self.roach2_hostname, boffile=boffile, do_ogp_cal=do_ogp_cal, do_adcif_cal=do_adcif_cal, ifcfg=self.cfg_list)
         self.configured=True
         if boffile!=None:
+            self.do_adc_ogp_calibration()
             self.calibrated=True
         for s in self.channel_list:
             self.set_central_frequency(self.central_freq, channel=s)
