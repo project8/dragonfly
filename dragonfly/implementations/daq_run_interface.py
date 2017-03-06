@@ -653,18 +653,18 @@ class ROACHMultiChAcquisitionInterface(DAQProvider, core.Spime):
 
     def _finish_configure(self):
         logger.debug('Configuring Psyllid')
-        self.status_value = self.provider.cmd(self.psyllid_interface, 'request_status')
+        self.status_value = self.provider.cmd(self.psyllid_interface, 'request_status')['values'][0]
         if self.status_value!=False:
             if self.status_value != 0:
                 self.status_value = self.provider.cmd(self.psyllid_interface, 'deactivate')
         else:
             raise core.DriplineInternalError('Cannot configure Psyllid')
 
-        NChannels = self.provider.cmd(self.psyllid_interface, 'get_number_of_channels')
+        NChannels = self.provider.cmd(self.psyllid_interface, 'get_number_of_channels')['values'][0]
         if NChannels != self.NChannels:
             raise core.exceptions.DriplineValueError('Wrong number of Psyllid channels are active under this queue')
 
-        active_channels = self.provider.cmd(self.psyllid_interface, 'get_active_channels')
+        active_channels = self.provider.cmd(self.psyllid_interface, 'get_active_channels')['values'][0]
         for i in self.channel_ids:
             if active_channels.has_key(i)==False:
                 raise core.exceptions.DriplineGenericDAQError('The Psyllid and ROACH channel interfaces do not match')
@@ -682,7 +682,7 @@ class ROACHMultiChAcquisitionInterface(DAQProvider, core.Spime):
 
 
     def is_running(self):
-        self.status_value = self.provider.cmd(self.psyllid_interface, 'request_status')
+        self.status_value = self.provider.cmd(self.psyllid_interface, 'request_status')['values'][0]
         if self.status_value==5:
             return True
         else:
@@ -705,15 +705,15 @@ class ROACHMultiChAcquisitionInterface(DAQProvider, core.Spime):
 
         elif result['values'][0]==True:
 
-            #get calibration and configuration status
-            result = self.provider.cmd(self.daq_target, 'get_calibration_status')
-            self.roach2calibrated=result['values'][0]
-
-            result = self.provider.cmd(self.daq_target, 'get_configuration_status')
-            self.roach2configured=result['values'][0]
-
-            #print results
-            logger.info('Configured: {}, Calibrated: {}'.format(self.roach2configured, self.roach2calibrated))
+#            #get calibration and configuration status
+#            result = self.provider.cmd(self.daq_target, 'get_calibration_status')
+#            self.roach2calibrated=result['values'][0]
+#
+#            result = self.provider.cmd(self.daq_target, 'get_configuration_status')
+#            self.roach2configured=result['values'][0]
+#
+#            #print results
+#            logger.info('Configured: {}, Calibrated: {}'.format(self.roach2configured, self.roach2calibrated))
 
             return True
         else:
@@ -738,18 +738,18 @@ class ROACHMultiChAcquisitionInterface(DAQProvider, core.Spime):
         if is_roach_running == False:
             raise core.exceptions.DriplineGenericDAQError('ROACH2 is not responding')
 
-        if self.roach2configured ==False:
-            raise core.exceptions.DriplineGenericDAQError('ROACH2 has not been programmed and configured by roach roach service')
-
-        if self.roach2calibrated==False:
-            logger.warning('The ADC was not calibrated. Data taking not recommended.')
+#        if self.roach2configured ==False:
+#            raise core.exceptions.DriplineGenericDAQError('ROACH2 has not been programmed and configured by roach roach service')
+#
+#        if self.roach2calibrated==False:
+#            logger.warning('The ADC was not calibrated. Data taking not recommended.')
 
         #check channel match
-        NChannels = self.provider.cmd(self.psyllid_interface, 'get_number_of_channels')
+        NChannels = self.provider.cmd(self.psyllid_interface, 'get_number_of_channels')['values'][0]
         if NChannels != self.NChannels:
             raise core.exceptions.DriplineValueError('Wrong number of Psyllid channels are active under this queue')
 
-        active_channels = self.provider.cmd(self.psyllid_interface, 'get_active_channels')
+        active_channels = self.provider.cmd(self.psyllid_interface, 'get_active_channels')['values'][0]
         for i in self.channel_ids:
             if active_channels.has_key(i)==False:
                 raise core.exceptions.DriplineGenericDAQError('The Psyllid and ROACH channel interfaces do not match')
@@ -816,19 +816,28 @@ class ROACHMultiChAcquisitionInterface(DAQProvider, core.Spime):
 
 
     def _start_data_taking(self, directory, filename):
+        logger.info('block roach channels')
+        for i in self.channel_ids.keys():
+            payload = {'channel':i}
+            result = self.provider.cmd(self.daq_target, 'block_channel', payload = payload)
 
-        filename = filename+self._run_name+'.egg'
-        logger.info(filename)
-        logger.info(directory)
+        duration = self._run_time*1000
+        psyllid_filename = filename+'_'+self._run_name+'.egg'
+
         if self._run_time>=5000:
             raise('With this duration the filesize is too big for testing')
 
         if not os.path.exists(directory):
             os.makedirs(directory)
-        #self.set_path(filepath+filename)
+
         logger.info('Going to tell psyllid to start the run')
-        payload = {'filename': os.path.join(directory, filename), 'duration':self._run_time}
+        payload = {'filename': os.path.join(directory, filename), 'duration':duration}
         result = self.provider.cmd(self.psyllid_interface, 'start-run', payload=payload)
+        
+        logger.info('unblock roach channels')
+        for i in self.channel_ids.keys():
+            payload = {'channel':i}
+            result = self.provider.cmd(self.daq_target, 'unblock_channel', payload = payload)
 
 
 #    def _set_condition(self, number):

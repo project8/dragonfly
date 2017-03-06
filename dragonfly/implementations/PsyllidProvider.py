@@ -262,7 +262,7 @@ class MultiPsyllidProvider(core.Provider, core.Spime):
 
 
     def quit_psyllid(self, channel):
-        result = self.provider.cmd(self.queue_dcit[channel], 'quit-psyllid')
+        result = self.provider.cmd(self.queue_dict[channel], 'quit-psyllid')
         logger.info('psyllid quit!')
 
         
@@ -293,7 +293,7 @@ class MultiPsyllidProvider(core.Provider, core.Spime):
     
     
     def start_run(self, channel, duration, filename):
-        if duration ==0:
+        if duration <= 10:
             return False
         payload = {'duration':duration, 'filename':filename}
         result = self.provider.cmd(self.queue_dict[channel], 'start-run', payload=payload)
