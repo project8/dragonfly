@@ -183,7 +183,7 @@ class MultiPsyllidProvider(core.Provider, core.Spime):
     def __init__(self,
                  queue_a='channel_a_psyllid',
                  queue_b = 'channel_b_psyllid',
-                 queue_c = 'channel_c_psyllid,
+                 queue_c = 'channel_c_psyllid',
                  set_condition_list = [],
                  **kwargs):
 
@@ -198,67 +198,77 @@ class MultiPsyllidProvider(core.Provider, core.Spime):
         
         
     def _finish_configure(self):
-        for i in self.channel_dictionary.keys():
+        logger.info(self.channel_dict.keys())
+        for i in self.channel_dict.keys():
+            logger.info('channel {}'.format(i))
             self.request_status(i)
-            self.set_central_frequency(i, 800e6)
-            if self.get_number_of_streams(i)==1:
-                raise core.DriplineGenericDaqError("Psyllid instance for channel {} has to many streams".format(i))
+            self.set_central_frequency(channel=i, cf=800e6)
+            if self.get_number_of_streams(i)>1:
+                raise core.DriplineGenericDaqError("Psyllid instance for channel {} has too many streams".format(i))
 
 
     def request_status(self, channel):
-        logger.info('Checking Psyllid status')
-        
+        logger.info('Checking Psyllid status of channel {}'.format(channel))
         try:
-            result = self.provider.get(self.queue_dict[channel]'.daq-status', timeout=10)
+            result = self.provider.get(self.queue_dict[channel]+'.daq-status', timeout=10)
+            logger.info(result)
             self.status_dict[channel] = result['server']['status']
             self.status_value_dict[channel] = result['server']['status-value']
-            logger.info('Psyllid is running. Status is {}'.format(self.status))
-            logger.info('Status in numbers: {}'.format(self.status_value))
-            return self.status_dict[channel]
+            logger.info('Psyllid is running. Status is {}'.format(self.status_dict[channel]))
+            logger.info('Status in numbers: {}'.format(self.status_value_dict[channel]))
+            return self.status_value_dict[channel]
 
         except:
-            logger.warning('Psyllid is not running or sth. else is wrong')
+            logger.warning('Psyllid instance for channel {} is not running or sth. else is wrong'.format(channel))
             self.status_dict[channel]=None
             self.status_value_dict[channel]=None
-            logger.info('Status is {}'.format(self.status_dict[channel]))
             return False
     
     def activate(self, channel):
-        if self.status_value_dict[channel] == 6:
-            self.is_running(channel)
-        elif self.status_value_dict[channel] == 0:
+        if self.status_value_dict[channel] == 0:
             logger.info('Activating Psyllid for channel {}'.format(channel))
             result = self.provider.cmd(self.queue_dict[channel], 'activate-daq')
-            self.request_status(channel)
-            return self.status_value_dict[channel]
-
         else:
-            logger.warning('Could not activate Psyllid')
+            logger.warning('Cannot activate Psyllid')
             return False
+        self.request_status(channel)
+        if self.status_value_dict[channel]!=4:
+            logger.warning('Activating failed')
+            return False
+        else: return True
 
 
     def deactivate(self, channel):
         if self.status_value_dict[channel] != 0:
-            logger.info('Deactivating Psyllid')
-            result = self.provider.cmd(self.psyllid_queue,'deactivate-daq')
-            self.request_status(channel)
-        if self.status_value_dict[channel]!=0:
-            logger.warning('Could not deactivate Psyllid instance of channel {}'.format(channel))
+            logger.info('Deactivating Psyllid instance of channel {}'.format(channel))
+            result = self.provider.cmd(self.queue_dict[channel],'deactivate-daq')
+        else:
+            logger.warning('Cannot not deactivate Psyllid instance of channel {}'.format(channel))
             return False
-        else: return self.status_value_dict[channel]
+        self.request_status(channel)
+        if self.status_value_dict[channel]!=0:
+            logger.warning('Deactivating failed')
+            return False
+        else: return True
 
 
     def reactivate(self, channel):
         if self.status_value_dict[channel] != 0:
             logger.info('Reactivating Psyllid instance of channel {}'.format(channel))
             result = self.provider.cmd(self.queue_dict[channel], 'reactivate-daq')
-            self.request_status(channel)
-            return True
+            logger.info(result)
         elif self.status_value_dict[channel]==0:
 	    self.activate(channel)
         else:
-             logger.warning('Could not reactivate Psyllid instance of channel {}'.format(channel))
-             return False
+            logger.warning('Cannot not reactivate Psyllid instance of channel {}'.format(channel))
+            return False
+        self.request_status(channel)
+        if self.status_value_dict[channel]!=4:
+            logger.warning('Reactivating failed')
+            self.freq_dict[channel]=None
+            return False
+        else:
+            return True
 
 
     def quit_psyllid(self, channel):
@@ -270,23 +280,27 @@ class MultiPsyllidProvider(core.Provider, core.Spime):
         return self.freq_dict
     
 
-    def set_central_frequency(self, cf, channel):
+    def set_central_frequency(self, channel, cf):
+        logger.info('cf: {} '.format(cf))
         cf_in_MHz = round(cf*10**-6)
-	
-        try:
-            request = '.node-config.ch'+str(self.channel_dictionary[channel])+'.strw.center-freq'
+	logger.info('Trying to set cf of channel {} to {} MHz'.format(channel, cf_in_MHz))
+        if True:
+            request = '.node-config.ch'+str(self.channel_dict[channel])+'.strw.center-freq'
+            payload_cf = {'center-freq': cf_in_MHz}
             logger.info(request)
             result = self.provider.set(self.queue_dict[channel]+request, cf_in_MHz)
             logger.info('Set central frequency of streaming writer for channel {} to {} MHz'.format(channel, cf_in_MHz))
             self.freq_dict[channel]=cf
-        except:
+        else:
             try:
-                request = '.node-config.ch'+str(self.channel_dictionary[channel])+'.ew.center-freq'
+                request = '.node-config.ch'+str(self.channel_dict[channel])+'.ew.center-freq'
                 result = self.provider.set(self.queue_dict[channel]+request, cf_in_MHz)
                 logger.info('Set central frequency of egg writer for channel {} to {} MHz'.format(channel, cf_in_MHz))
                 self.freq_dict[channel]=cf
             except:
                 logger.error('Could not set central frequency')
+                self.freq_dict[channel]=None
+                return False
 
         return self.reactivate(channel)
 
@@ -310,18 +324,19 @@ class MultiPsyllidProvider(core.Provider, core.Spime):
 
 
     def get_number_of_streams(self, channel):
-        for i in self.channel_dict:
-            cf_in_MHz = round(self.freq_dict[channel]*10**-6)
-            channel_count = 0
+        channel_count = 0
+        try:
+            cf_in_MHz = round(self.freq_dict[channel])*10**-6
+            request = '.node-config.ch'+str(self.channel_dict[channel])+'.strw.center-freq'
+            logger.info(request)
+            result = self.provider.set(self.queue_dict[channel]+request, cf_in_MHz)
+            channel_count += 1
+        except:
             try:
-                request = '.node-config.ch'+str(self.channel_dictionary[channel])+'.strw.center-freq'
+                request = '.node-config.ch'+str(self.channel_dict[channel])+'.ew.center-freq'
                 result = self.provider.set(self.queue_dict[channel]+request, cf_in_MHz)
                 channel_count += 1
             except:
-                try:
-                    request = '.node-config.ch'+str(self.channel_dictionary[channel])+'.ew.center-freq'
-                    result = self.provider.set(self.queue_dict+request, cf_in_MHz)
-                    channel_count += 1
-                except:
-                    pass         
+                pass        
+        logger.info('Number of streams: {}'.format(channel_count))
         return channel_count
