@@ -382,19 +382,19 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
 
     def _finish_configure(self):
         logger.info('Configuring Psyllid')
-        payload_channel = {'channel': self.channel_id}
-        self.status_value = self.provider.cmd(self.psyllid_interface, 'request_status', payload = payload_channel)['values'][0]
+        self.payload_channel = {'channel': self.channel_id}
+        self.status_value = self.provider.cmd(self.psyllid_interface, 'request_status', payload = self.payload_channel)['values'][0]
 
         if self.status_value!=None:
             if self.status_value != 0:
-                self.status_value = self.provider.cmd(self.psyllid_interface, 'deactivate', payload = payload_channel)
+                self.status_value = self.provider.cmd(self.psyllid_interface, 'deactivate', payload = self.payload_channel)
         else:
             raise core.DriplineInternalError('Cannot configure Psyllid')
 
-        result = self.provider.cmd(self.psyllid_interface, 'get_number_of_streams', payload = payload_channel)
+        result = self.provider.cmd(self.psyllid_interface, 'get_number_of_streams', payload = self.payload_channel)
         NStreams = result['values'][0]
 
-        if NChannels != 1:
+        if NStreams != 1:
             raise core.exceptions.DriplineValueError('Too many Psyllid channels are active under this queue')
 
 #        active_channels = self.provider.cmd(self.psyllid_interface, 'get_active_channels')['values'][0]
@@ -409,11 +409,11 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
             freqs = self._get_roach_central_freqs()
             logger.info(freqs[self.channel_id])
             self.set_central_frequency(freqs[self.channel_id])
-
+        return True
 
 
     def is_running(self):
-        self.status_value = self.provider.cmd(self.psyllid_interface, 'request_status', payload = payload_channel)
+        self.status_value = self.provider.cmd(self.psyllid_interface, 'request_status', payload = self.payload_channel)
         if self.status_value==5:
             return True
         else:
@@ -455,7 +455,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         if self.is_running()==True:
             raise core.exceptions.DriplineGenericDAQError('Psyllid is already running')
             
-        self.status_value = self.provider.cmd(self.psyllid_interface, 'request_status', payload = payload_channel)['values'][0]
+        self.status_value = self.provider.cmd(self.psyllid_interface, 'request_status', payload = self.payload_channel)['values'][0]
         if self.status_value == None:
             raise core.exceptions.DriplineGenericDAQError('Psyllid is not responding')
 
@@ -476,9 +476,9 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         #    logger.warning('The ADC was not calibrated. Data taking not recommended.')
 
         #check channel match
-        NStreams = self.provider.cmd(self.psyllid_interface, 'get_number_of_channels', payload = payload_channel)['values'][0]
+        NStreams = self.provider.cmd(self.psyllid_interface, 'get_number_of_streams', payload = self.payload_channel)['values'][0]
         if NStreams != 1:
-            raise core.exceptions.DriplineValueError('Too many Psyllid channels are active under this queue')
+            raise core.exceptions.DriplineValueError('Wrong number of Psyllid streams in thisPsyllid instance')
 
 #        active_channels = self.provider.cmd(self.psyllid_interface, 'get_active_channels')['values'][0]
 #        if active_channels[0] != self.channel_id:
@@ -514,7 +514,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
 
     def _start_data_taking(self, directory, filename):
         logger.info('block roach channel')
-        result = self.provider.cmd(self.daq_target, 'block_channel', payload=payload_channel)
+        result = self.provider.cmd(self.daq_target, 'block_channel', payload=self.payload_channel)
         logger.info('start data taking')
         # switching from seconds to milisecons
         duration = self._run_time*1000
@@ -559,7 +559,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         result = self.provider.cmd(self.daq_target, 'unblock_channel', payload=payload)
 
     def emergeny_stop(self):
-        result = self.provider.cmd(self.psyllid_interface, 'quit_psyllid', payload = payload_channel)
+        result = self.provider.cmd(self.psyllid_interface, 'quit_psyllid', payload = self.payload_channel)
         result = self.provider.cmd(self.daq_target, 'unblock_channel', payload=payload_channel)        
         return 
 

@@ -285,12 +285,13 @@ class MultiPsyllidProvider(core.Provider, core.Spime):
         cf_in_MHz = round(cf*10**-6)
 	logger.info('Trying to set cf of channel {} to {} MHz'.format(channel, cf_in_MHz))
         if True:
-            request = '.node-config.ch'+str(self.channel_dict[channel])+'.strw.center-freq'
+            request = '.active-config.ch'+str(self.channel_dict[channel])+'.strw.center-freq'
             payload_cf = {'center-freq': cf_in_MHz}
             logger.info(request)
             result = self.provider.set(self.queue_dict[channel]+request, cf_in_MHz)
             logger.info('Set central frequency of streaming writer for channel {} to {} MHz'.format(channel, cf_in_MHz))
             self.freq_dict[channel]=cf
+            return True
         else:
             try:
                 request = '.node-config.ch'+str(self.channel_dict[channel])+'.ew.center-freq'
