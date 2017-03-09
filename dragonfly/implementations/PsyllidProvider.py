@@ -26,24 +26,24 @@ class PsyllidProvider(core.Provider, core.Spime):
     
     '''
     def __init__(self,
-                 queue='psyllid',
+                 psyllid_queue='psyllid',
                  set_condition_list = [],
                  **kwargs):
 
 	core.Provider.__init__(self, **kwargs)        
-        self.psyllid_queue = queue
+        self.psyllid_queue = psyllid_queue
         self._set_condition_list = set_condition_list
         self.status = None
         self.status_value = None
                
-        self.channel_dictionary = {'a': 0, 'b': 1, 'c': 2}
+        self.channel_dict = {'a': 0, 'b': 1, 'c': 2}
         self.freq_dict = {'a': None, 'b': None, 'c': None}
         
         
     def _finish_configure(self):
         self.request_status()
         self.set_default_central_frequencies()
-        self.get_number_of_channels()
+        self.get_number_of_streams()
         
         
     def set_default_central_frequencies(self):
@@ -70,17 +70,20 @@ class PsyllidProvider(core.Provider, core.Spime):
             return self.status_value
     
     def activate(self):
+        logger.info('Trying to activate Psyllid. Status value is {}'.format(self.status_value))
         if self.status_value == 6:
-            self.is_running()
-        elif self.status_value == 0:
+            self.request_status()
+        if self.status_value == 0:
             logger.info('Activating Psyllid')
             result = self.provider.cmd(self.psyllid_queue, 'activate-daq')
             self.request_status()
-            return self.status_value
-
         else:
-            logger.warning('Could not activate Psyllid')
+            logger.warning('Cannot activate Psyllid')
             return False
+        if self.status_value != 4:
+            logger.error('Could not activate Psyllid')
+            return False 
+        else: return True
 
 
     def deactivate(self):
@@ -91,7 +94,7 @@ class PsyllidProvider(core.Provider, core.Spime):
         if self.status_value!=0:
             logger.warning('Could not deactivate Psyllid')
             return False
-        else: return self.status_value
+        else: return True
 
 
     def reactivate(self):
@@ -116,49 +119,32 @@ class PsyllidProvider(core.Provider, core.Spime):
         return self.freq_dict
     
 
-    def set_central_frequency(self, cf, channel='a'):
+    def set_central_frequency(self, channel='a', cf=800e6):
         cf_in_MHz = round(cf*10**-6)
 	
         try:
-            request = '.node-config.ch'+str(self.channel_dictionary[channel])+'.strw.center-freq'
+            request = '.active-config.ch'+str(self.channel_dict[channel])+'.strw.center-freq'
             logger.info(request)
             result = self.provider.set(self.psyllid_queue+request, cf_in_MHz)
-            logger.info('Set central frequency of streaming writer for channel {}'.format(channel))
+            logger.info('Set central frequency of streaming writer for channel {} to {} MHz'.format(channel, cf_in_MHz))
             self.freq_dict[channel]=cf
+            return True
         except:
             try:
-                request = '.node-config.ch'+str(self.channel_dictionary[channel])+'.ew.center-freq'
+                request = '.active-config.ch'+str(self.channel_dict[channel])+'.ew.center-freq'
                 result = self.provider.set(self.psyllid_queue+request, cf_in_MHz)
-                logger.info('Set central frequency of egg writer for channel {}'.format(channel))
+                logger.info('Set central frequency of egg writer for channel {} to {} MHz'.format(channel, cf_in_MHz))
                 self.freq_dict[channel]=cf
+                return True
             except:
                 logger.error('Could not set central frequency')
-
-        return self.reactivate()
+                return False
         
     def set_all_central_frequencies(self, freq_dict):
-        for channel in freq_dict.keys():
-	    logger.info(channel)
-            cf_in_MHz = round(freq_dict[channel]*10**-6)
-            logger.info(cf_in_MHz)
-	    self.freq_dict[channel]=freq_dict[channel]
-            try:
-                request = '.node-config.ch'+str(self.channel_dictionary[channel])+'.strw.center-freq'
-		logger.info(request)
-                result = self.provider.set(self.psyllid_queue+request, cf_in_MHz)
-                logger.info('Set central frequency of streaming writer for channel {}'.format(channel))
-            except:
-                try:
-                    request = '.node-config.ch'+str(self.channel_dictionary[channel])+'.ew.center-freq'
-                    result = self.provider.set(self.psyllid_queue+request, cf_in_MHz)
-                    logger.info('Set central frequency of egg writer for channel {}'.format(channel))
-            	except:
-                    logger.error('Could not set central frequency')
-                    self.freq_dict[channel]=None
-        logger.info('central frequencies: {}'.format(self.freq_dict))
-        return self.reactivate()
-    
-    
+        for ichannel in freq_dict.keys():
+	    self.set_central_frequency(channel=ichannel, cf=freq_dict[ichannel])
+
+
     def start_run(self, duration, filename):
         if duration ==0:
             return False
@@ -166,12 +152,12 @@ class PsyllidProvider(core.Provider, core.Spime):
         result = self.provider.cmd(self.psyllid_queue, 'start-run', payload=payload)
         return True
     
-    def get_number_of_channels(self):
+    def get_number_of_streams(self):
         active_channels = [i for i in self.freq_dict.keys() if self.freq_dict[i]!=None]
         logger.info('Active channels are {}'.format(active_channels))
         return len(active_channels)
         
-    def get_active_channels(self):
+    def get_active_streams(self):
         active_channels = [i for i in self.freq_dict.keys() if self.freq_dict[i]!=None]
         return active_channels
         
@@ -198,13 +184,16 @@ class MultiPsyllidProvider(core.Provider, core.Spime):
         
         
     def _finish_configure(self):
-        logger.info(self.channel_dict.keys())
         for i in self.channel_dict.keys():
-            logger.info('channel {}'.format(i))
-            self.request_status(i)
-            self.set_central_frequency(channel=i, cf=800e6)
-            if self.get_number_of_streams(i)>1:
-                raise core.DriplineGenericDaqError("Psyllid instance for channel {} has too many streams".format(i))
+            try:
+                self.request_status(i)
+                self.set_central_frequency(channel=i, cf=800e6)
+                if self.get_number_of_streams(i)>1:
+                    raise core.DriplineGenericDaqError("Psyllid instance for channel {} has too many streams".format(i))
+            except:
+                logger.info('No Psyllid instance for channel {} present'.format(i))
+        logger.info('Status of channels {}'.format(self.status_value_dict))
+        logger.info('Set central frequencies {}'.format(self.freq_dict))
 
 
     def request_status(self, channel):
@@ -281,29 +270,29 @@ class MultiPsyllidProvider(core.Provider, core.Spime):
     
 
     def set_central_frequency(self, channel, cf):
-        logger.info('cf: {} '.format(cf))
         cf_in_MHz = round(cf*10**-6)
 	logger.info('Trying to set cf of channel {} to {} MHz'.format(channel, cf_in_MHz))
-        if True:
+        if False:
             request = '.active-config.ch'+str(self.channel_dict[channel])+'.strw.center-freq'
             payload_cf = {'center-freq': cf_in_MHz}
-            logger.info(request)
             result = self.provider.set(self.queue_dict[channel]+request, cf_in_MHz)
             logger.info('Set central frequency of streaming writer for channel {} to {} MHz'.format(channel, cf_in_MHz))
             self.freq_dict[channel]=cf
             return True
         else:
-            try:
-                request = '.node-config.ch'+str(self.channel_dict[channel])+'.ew.center-freq'
-                result = self.provider.set(self.queue_dict[channel]+request, cf_in_MHz)
+            if True:
+                request = 'active-config.ch'+str(self.channel_dict[channel])+'.ew.center-freq'
+                payload = {'center-freq':cf_in_MHz}
+                result = self.provider.set(self.queue_dict[channel]+'.'+request, cf_in_MHz)
                 logger.info('Set central frequency of egg writer for channel {} to {} MHz'.format(channel, cf_in_MHz))
                 self.freq_dict[channel]=cf
-            except:
+		return True
+            else:
                 logger.error('Could not set central frequency')
                 self.freq_dict[channel]=None
                 return False
 
-        return self.reactivate(channel)
+        #return self.reactivate(channel)
 
     
     

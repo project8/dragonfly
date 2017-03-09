@@ -138,7 +138,7 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
         self.cfg_list = []
         self.daq_name = daq_name
         self.central_freq = central_freq
-        self.gain = gain
+        self.gain_dict = {'a':gain, 'b':gain, 'c':gain}
         self.configured=False
         self.calibrated=False
         
@@ -182,7 +182,7 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
 
         for s in self.channel_list:
             self.set_central_frequency(self.central_freq, channel=s)
-            self.set_gain(self.gain,channel=s)
+            self.set_gain(self.gain_dict[s],channel=s)
             self.set_fft_shift('1101010101010', tag='ab')
             self.set_fft_shift('1101010101010', tag='cd')
         return self.configured
