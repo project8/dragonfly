@@ -170,18 +170,18 @@ class PsyllidProvider(core.Provider, core.Spime):
 
     def make_trigger_mask(self, channel='a', filename='~/fmt_mask.json'):
         request = '.run-daq-cmd.ch'+str(self.channel_dict[channel])+'.tfrr.freq-only'
-        result = self.provider(self.queue_dict[channel]+request)
+        result = self.provider.cmd(self.queue_dict[channel]+request)
         request = '.run-daq-cmd.ch'+str(self.channel_dict[channel])+'.fmt.update-mask'
-        result = self.provider(self.queue_dict[channel]+request)
+        result = self.provider.cmd(self.queue_dict[channel]+request)
         request = '.start-run'
-        result = self.provider(self.queue_dict[channel]+request)
+        result = self.provider.cmd(self.queue_dict[channel]+request)
         request = 'run-daq-cmd.ch'+str(self.channel_dict[channel])+'.fmt.write-mask'
         payload = {'filename': filename}
-        result = self.provider(self.queue_dict[channel]+request, payload=payload)
+        result = self.provider.cmd(self.queue_dict[channel]+request, payload=payload)
         request = '.run-daq-cmd.ch'+str(self.channel_dict[channel])+'.tfrr.time-and-freq'
-        result = self.provider(self.queue_dict[channel]+request)
+        result = self.provider.cmd(self.queue_dict[channel]+request)
         request = '.run-daq-cmd.ch'+str(self.channel_dict[channel])+'.fmt.apply-trigger'
-        result = self.provider(self.queue_dict[channel]+request)
+        result = self.provider.cmd(self.queue_dict[channel]+request)
 
 
 
@@ -357,17 +357,17 @@ class MultiPsyllidProvider(core.Provider, core.Spime):
 
     def make_trigger_mask(self, channel='a', filename='~/fmt_mask.json'):
         request = '.run-daq-cmd.ch0.tfrr.freq-only'
-        result = self.provider(self.queue_dict[channel]+request)
+        result = self.provider.cmd(self.queue_dict[channel]+request)
         request = '.run-daq-cmd.ch0.fmt.update-mask'
-        result = self.provider(self.queue_dict[channel]+request)
+        result = self.provider.cmd(self.queue_dict[channel]+request)
         request = '.start-run'
-        result = self.provider(self.queue_dict[channel]+request)
+        result = self.provider.cmd(self.queue_dict[channel]+request)
         request = 'run-daq-cmd.ch0.fmt.write-mask'
         payload = {'filename': filename}
-        result = self.provider(self.queue_dict[channel]+request, payload=payload)
+        result = self.provider.cmd(self.queue_dict[channel]+request, payload=payload)
         request = '.run-daq-cmd.ch0.tfrr.time-and-freq'
-        result = self.provider(self.queue_dict[channel]+request)
+        result = self.provider.cmd(self.queue_dict[channel]+request)
         request = '.run-daq-cmd.ch0.fmt.apply-trigger'
-        result = self.provider(self.queue_dict[channel]+request)
+        result = self.provider.cmd(self.queue_dict[channel]+request)
 
         
