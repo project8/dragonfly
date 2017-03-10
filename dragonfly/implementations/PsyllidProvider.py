@@ -41,7 +41,12 @@ class PsyllidProvider(core.Provider, core.Spime):
         
         
     def _finish_configure(self):
-        self.request_status()
+        try:
+            if self.request_status()==0:
+                self.activate()
+        except:
+            raise core.exceptions.DriplineGenericDAQError('Psyllid instance with this queue is not responding')
+        
         self.set_default_central_frequencies()
         self.get_number_of_streams()
         
@@ -68,7 +73,8 @@ class PsyllidProvider(core.Provider, core.Spime):
             self.status_value=None
             logger.info('Status is {}'.format(self.status))
             return self.status_value
-    
+
+
     def activate(self):
         logger.info('Trying to activate Psyllid. Status value is {}'.format(self.status_value))
         if self.status_value == 6:
@@ -160,7 +166,25 @@ class PsyllidProvider(core.Provider, core.Spime):
     def get_active_streams(self):
         active_channels = [i for i in self.freq_dict.keys() if self.freq_dict[i]!=None]
         return active_channels
-        
+
+
+    def make_trigger_mask(self, channel='a', filename='~/fmt_mask.json'):
+        request = '.run-daq-cmd.ch'+str(self.channel_dict[channel])+'.tfrr.freq-only'
+        result = self.provider(self.queue_dict[channel]+request)
+        request = '.run-daq-cmd.ch'+str(self.channel_dict[channel])+'.fmt.update-mask'
+        result = self.provider(self.queue_dict[channel]+request)
+        request = '.start-run'
+        result = self.provider(self.queue_dict[channel]+request)
+        request = 'run-daq-cmd.ch'+str(self.channel_dict[channel])+'.fmt.write-mask'
+        payload = {'filename': filename}
+        result = self.provider(self.queue_dict[channel]+request, payload=payload)
+        request = '.run-daq-cmd.ch'+str(self.channel_dict[channel])+'.tfrr.time-and-freq'
+        result = self.provider(self.queue_dict[channel]+request)
+        request = '.run-daq-cmd.ch'+str(self.channel_dict[channel])+'.fmt.apply-trigger'
+        result = self.provider(self.queue_dict[channel]+request)
+
+
+
 __all__.append('MultiPsyllidProvider')
 class MultiPsyllidProvider(core.Provider, core.Spime):
     '''
@@ -271,7 +295,7 @@ class MultiPsyllidProvider(core.Provider, core.Spime):
 
     def set_central_frequency(self, channel, cf):
         cf_in_MHz = round(cf*10**-6)
-	logger.info('Trying to set cf of channel {} to {} MHz'.format(channel, cf_in_MHz))
+        logger.info('Trying to set cf of channel {} to {} MHz'.format(channel, cf_in_MHz))
         if False:
             request = '.active-config.ch'+str(self.channel_dict[channel])+'.strw.center-freq'
             payload_cf = {'center-freq': cf_in_MHz}
@@ -330,3 +354,20 @@ class MultiPsyllidProvider(core.Provider, core.Spime):
                 pass        
         logger.info('Number of streams: {}'.format(channel_count))
         return channel_count
+
+    def make_trigger_mask(self, channel='a', filename='~/fmt_mask.json'):
+        request = '.run-daq-cmd.ch0.tfrr.freq-only'
+        result = self.provider(self.queue_dict[channel]+request)
+        request = '.run-daq-cmd.ch0.fmt.update-mask'
+        result = self.provider(self.queue_dict[channel]+request)
+        request = '.start-run'
+        result = self.provider(self.queue_dict[channel]+request)
+        request = 'run-daq-cmd.ch0.fmt.write-mask'
+        payload = {'filename': filename}
+        result = self.provider(self.queue_dict[channel]+request, payload=payload)
+        request = '.run-daq-cmd.ch0.tfrr.time-and-freq'
+        result = self.provider(self.queue_dict[channel]+request)
+        request = '.run-daq-cmd.ch0.fmt.apply-trigger'
+        result = self.provider(self.queue_dict[channel]+request)
+
+        
