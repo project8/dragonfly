@@ -392,7 +392,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
             raise core.exceptions.DriplineGenericDAQError('The ROACH2 is not ready for data taking')
 
         else:
-            logge.info('Setting Psyllid central frequency identical to ROACH2 central frequency')
+            logger.info('Setting Psyllid central frequency identical to ROACH2 central frequency')
             freqs = self._get_roach_central_freqs()
             logger.info(freqs[self.channel_id])
             self.set_central_frequency(freqs[self.channel_id])
@@ -429,19 +429,19 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         logger.info('Checking Psyllid service & instance')
         
         #check psyllid is responding by requesting status
+        self.payload_channel = {'channel':self.channel_id}
         self.status_value = self.provider.cmd(self.psyllid_interface, 'request_status', payload = self.payload_channel)['values'][0]
         if self.status_value == None:
             raise core.exceptions.DriplineGenericDAQError('Psyllid is not responding')        
         
         #check channel match
         Nstreams = self.provider.cmd(self.psyllid_interface, 'get_number_of_streams', payload = self.payload_channel)['values'][0]
-        if Nstreams != self.number_of_channels:
+        if Nstreams != 1:
             raise core.exceptions.DriplineValueError('Wrong number of Psyllid channels are active under this queue')
 
-        active_channels = self.provider.cmd(self.psyllid_interface, 'get_active_streams', payload = self.payload_channel)['values'][0]
-        for i in self.channel_ids:
-            if i in active_channels==False:
-                raise core.exceptions.DriplineGenericDAQError('The Psyllid and ROACH channel interfaces do not match')
+        active_channels = self.provider.cmd(self.psyllid_interface, 'get_active_channels')['values'][0]
+        if self.channel_id in active_channels==False:
+            raise core.exceptions.DriplineGenericDAQError('The Psyllid and ROACH channel interfaces do not match')
 
 
     def _do_checks(self):
@@ -512,7 +512,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
                 result = self.provider.cmd(self.psyllid_interface, 'start_run', payload=payload)
             
             else:
-                logger.info('Doing {} acquisitions'.format(int(NAcquisitions)+1))
+                logger.info('Doing {} acquisitions'.format(int(NAcquisitions)))
                 
                 for i in range(int(NAcquisitions)):
                     total_run_time = 0.0
@@ -523,13 +523,13 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
     
                     if total_run_time > duration-self._max_duration:
                         duration = duration-total_run_time
-                        logger.info('Going to tell psyllid to start the run')
+                        logger.info('Going to tell psyllid to start the last run')
                         payload = {'channel':self.channel_id, 'filename': os.path.join(directory, psyllid_filename), 'duration':duration}
                         result = self.provider.cmd(self.psyllid_interface, 'start_run', payload=payload)
-                        return
+
                     else:
                         total_run_time+=self._max_duration
-                        logger.info('Going to tell psyllid to start the run')
+                        logger.info('Going to tell psyllid to start run')
                         payload = {'channel':self.channel_id, 'filename': os.path.join(directory, psyllid_filename), 'duration':self._max_duration}
                         result = self.provider.cmd(self.psyllid_interface, 'start_run', payload=payload)
         except:
@@ -538,9 +538,10 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         logger.info('unblock channel')
         payload = {'channel': self.channel_id}
         result = self.provider.cmd(self.daq_target, 'unblock_channel', payload=payload)
+        #self.emergency_stop()
 
 
-    def emergeny_stop(self):
+    def emergency_stop(self):
         result = self.provider.cmd(self.psyllid_interface, 'quit_psyllid', payload = self.payload_channel)
         result = self.provider.cmd(self.daq_target, 'unblock_channel', payload=self.payload_channel)        
         return 
