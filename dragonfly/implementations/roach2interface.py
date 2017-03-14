@@ -362,7 +362,7 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
 
 
 
-    def get_multiple_T_packets(self,dsoc_desc=None, channel='a', NPackets=10):
+    def get_multiple_T_packets(self,dsoc_desc=None, channel='a', NPackets=10, mean=True):
         if channel=='a':
             dsoc_desc = (str(self.dest_ip),self.dest_port)
         elif channel=='b':
@@ -384,10 +384,13 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
             if pkts[i].freq_not_time==False:  
                 x=pkts[i].interpret_data()
                 p.append(np.abs(np.fft.fftshift(np.fft.fft(x)))/N)
-        np.save(self.monitor_target+'/T_packets_channel'+channel+'_cf_'+str(np.round(cf))+'MHz_gain_'+str(gain), np.array(p))
+        p = np.array(p)
+        if mean == True:
+            p = np.mean(p, axis = 0)
+        np.save(self.monitor_target+'/T_packets_channel'+channel+'_cf_'+str(np.round(cf))+'MHz_gain_'+str(gain), p)
 
 
-    def get_multiple_F_packets(self,dsoc_desc=None, channel='a', NPackets=100):
+    def get_multiple_F_packets(self,dsoc_desc=None, channel='a', NPackets=100, mean=True):
         if channel=='a':
             dsoc_desc = (str(self.dest_ip),self.dest_port)
         elif channel=='b':
@@ -409,18 +412,25 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
             if pkts[i].freq_not_time==True:
                 f=pkts[i].interpret_data()
                 p.append(np.abs(f))
-        np.save(self.monitor_target+'/F_packets_channel_'+channel+'_cf_'+str(np.round(cf))+'MHz_gain_'+str(gain), np.array(p))
+        p = np.array(p)
+        if mean == True:
+            p = np.mean(p, axis = 0)
+        np.save(self.monitor_target+'/F_packets_channel_'+channel+'_cf_'+str(np.round(cf))+'MHz_gain_'+str(gain), p)
         
 
-    def get_raw_adc_data(self, count=0):
-        x = ArtooDaq._snap_per_core(self, zdok=0)
-        x_all = x.flatten('C')
-        logger.info('shape x is {} shape x_all is {}'.format(np.shape(x), np.shape(x_all)))
+    def get_raw_adc_data(self, count=0, N=1, mean = True)
         p = []
-        x_all = x_all/128.0*0.05
-        for i in range(16):
-            p.append(np.abs(np.fft.fftshift(np.fft.fft(x_all[i*16384:(i+1)*16384])))/16384)
-        np.save(self.monitor_target+'/raw_adc'+str(count), np.array(p))
+        for i in range(N)::
+            x = ArtooDaq._snap_per_core(self, zdok=0)
+            x_all = x.flatten('C')
+            logger.info('shape x is {} shape x_all is {}'.format(np.shape(x), np.shape(x_all)))
+            x_all = x_all/128.0*0.25
+            for i in range(16):
+                p.append(np.abs(np.fft.fftshift(np.fft.fft(x_all[i*16384:(i+1)*16384])))/16384)
+        p = np.array(p)
+        if mean == True:
+            p = np.mean(p, axis = 0)
+        np.save(self.monitor_target+'/raw_adc'+str(count), p)
 	logger.info('Raw data saved to {}'.format(self.monitor_target+'/raw_adc'+str(count)+'.npy'))
 
 
