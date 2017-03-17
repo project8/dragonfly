@@ -2,9 +2,9 @@
 Implementing a provider which is a pure client in a second dripline mesh,
 allowing a *one directional* link between otherwise independent meshes.
 '''
-from __future__ import absolute import
+from __future__ import absolute_import
 
-from dripline.core import Provider, Interface
+from dripline.core import Provider, Interface, Endpoint
 
 import logging
 logger=logging.getLogger(__name__)
@@ -25,8 +25,8 @@ class MeshRepeater(Provider):
         target_user (str): username used for connecting to the target mesh
         target_password (str): password used for connecting to the target mesh
         '''
-        Provider.__init(**kwargs):
-        self._interface = Interface(amqp_url, name=self.name+'_client', broker=target_broker, exchange='requests')
+        Provider.__init__(self, **kwargs)
+        self._interface = Interface(amqp_url=target_broker, name=self.name+'_client')
 
     def forward_request(self, target, request):
         '''send a request message to a target in the remote mesh
@@ -55,4 +55,4 @@ class ProxyEndpoint(Endpoint):
         # we could easily apply arbitrarly complex logic here if we wish to do so,
         # but it is not currently clear what that could/should be.
         # There is a certain cleanness to the current version.
-        self.provider.forward_request(method.routing_key.(self.name, self._target, 1)
+        self.provider.forward_request(method.routing_key.replace(self.name, self._target, 1), request)
