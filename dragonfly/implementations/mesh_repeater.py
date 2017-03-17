@@ -4,6 +4,7 @@ allowing a *one directional* link between otherwise independent meshes.
 '''
 from __future__ import absolute_import
 
+import dripline
 from dripline.core import Provider, Interface, Endpoint
 
 import logging
@@ -27,6 +28,7 @@ class MeshRepeater(Provider):
         '''
         Provider.__init__(self, **kwargs)
         self._interface = Interface(amqp_url=target_broker, name=self.name+'_client')
+        #self._interface.connect()
 
     def forward_request(self, target, request):
         '''send a request message to a target in the remote mesh
@@ -34,8 +36,9 @@ class MeshRepeater(Provider):
         target (str): full routing key to which request is sent
         request (RequestMessage): dripline.core.RequestMessage to send to target
         '''
-        self._interface.send_request(target, request)
-
+        logger.warning('forwarding request')
+        reply = self._interface.send_request(target, request)
+        return reply
 
 
 class ProxyEndpoint(Endpoint):
@@ -50,9 +53,12 @@ class ProxyEndpoint(Endpoint):
         Endpoint.__init__(self, **kwargs)
         self._target = target
 
-    def handle_requests(self, channel, method, properties, request):
+    def handle_request(self, channel, method, properties, request):
         # This blindly sends *all* requests received to the target,
         # we could easily apply arbitrarly complex logic here if we wish to do so,
         # but it is not currently clear what that could/should be.
         # There is a certain cleanness to the current version.
-        self.provider.forward_request(method.routing_key.replace(self.name, self._target, 1), request)
+        msg = dripline.core.Message.from_encoded(request, properties.content_encoding)
+        logger.info("proxy forwarding request")
+        reply = self.provider.forward_request(method.routing_key.replace(self.name, self._target, 1), msg)
+        self.service.send_reply(properties, reply)
