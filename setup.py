@@ -20,6 +20,7 @@ extras_require={
     'database': ['psycopg2', 'sqlalchemy'], #this may also require system packages
     'debug': ['ipdb'],
     'doc': ['sphinx', 'sphinx_rtd_theme', 'sphinxcontrib-programoutput'],
+    'gpio': ['rpi.gpio']
     'slack': ['slackclient'],
 }
 everything = set()
