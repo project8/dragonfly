@@ -385,7 +385,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         self._check_psyllid_instance()
         
         if self.status_value == 0:
-            result = self.provider.cmd(self.psyllid_interface, 'activate')
+            result = self.provider.cmd(self.psyllid_interface, 'activate', payload = self.payload_channel)
             self.status_value = self.provider.cmd(self.psyllid_interface, 'request_status', payload = self.payload_channel)['values'][0]
                 
         if self._check_roach2_status() == False:
@@ -395,7 +395,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
             logger.info('Setting Psyllid central frequency identical to ROACH2 central frequency')
             freqs = self._get_roach_central_freqs()
             logger.info(freqs[self.channel_id])
-            self.set_central_frequency(freqs[self.channel_id])
+            self.central_frequency = freqs[self.channel_id]
         return True
 
 
@@ -457,7 +457,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         self._check_psyllid_instance()
 
         if self.status_value!=4:
-            raise core.exceptions.DriplineGenericDAQError('Psyllid DAQ is not in activated status')
+            raise core.exceptions.DriplineGenericDAQError('Psyllid DAQ is not activated')
 
         #checking roach
         if self._check_roach2_status == False:
@@ -573,7 +573,12 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         return result
 
 
-    def set_central_frequency(self, cf):
+    @property
+    def central_frequency(self):
+        return self.freq_dict[self.channel_id]
+
+    @central_frequency.setter
+    def central_frequency(self, cf):
         payload={'cf':cf, 'channel':self.channel_id}
         result = self.provider.cmd(self.daq_target, 'set_central_frequency', payload=payload)
         self.freq_dict[self.channel_id]=result['values'][0]
@@ -581,10 +586,6 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         result = self.provider.cmd(self.psyllid_interface, 'set_central_frequency', payload=payload)
         if result['values'][0]!=True:
             logger.warning('Could not set central frequency in Psyllid')
-
-
-    def get_central_frequency(self):
-        return self.freq_dict[self.channel_id]
 
 
     def make_trigger_mask(self):
