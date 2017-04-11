@@ -261,6 +261,7 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
         if gain>-8 and gain <7.93:
             logger.info('setting gain of channel {} to {}'.format(channel, gain))
             ArtooDaq.set_gain(self, gain, tag=channel)
+            self.gain_dict[channel] = gain
             return True
         else:
             logger.error('Only gain values between -8 and 7.93 are allowed')
@@ -321,12 +322,13 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
             f = pkts[0].interpret_data()
             pkt_id=pkts[1].pkt_in_batch
 
-        x = np.abs(np.fft.fftshift(np.fft.fft(x)))/N
+        p = np.abs(np.fft.fftshift(np.fft.fft(x)))/4096
         logger.info('first 10 entries in time domain array: ')
         logger.info(x[0:10])
         cf = cf*10**-6
         gain = self.gain_dict[channel]
-        np.save(self.monitor_target+'/T_packet_channel_'+channel+'_cf_'+str(round(cf))+'MHz_gain_'+str(gain), x)
+        np.save(self.monitor_target+'/T_packet_channel_'+channel+'_cf_'+str(round(cf))+'MHz_gain_'+str(gain), p)
+        np.save(self.monitor_target+'/time_domain_T_packet_channel_'+channel+'_cf_'+str(round(cf))+'MHz_gain_'+str(gain), x)
 
     def get_F_packet(self,dsoc_desc=None,close_soc=True, channel='a'):
         if channel=='a':
@@ -418,9 +420,9 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
         np.save(self.monitor_target+'/F_packets_channel_'+channel+'_cf_'+str(np.round(cf))+'MHz_gain_'+str(gain), p)
         
 
-    def get_raw_adc_data(self, count=0, N=1, mean = True)
+    def get_raw_adc_data(self, count=0, N=1, mean = True):
         p = []
-        for i in range(N)::
+        for i in range(N):
             x = ArtooDaq._snap_per_core(self, zdok=0)
             x_all = x.flatten('C')
             logger.info('shape x is {} shape x_all is {}'.format(np.shape(x), np.shape(x_all)))
@@ -430,6 +432,7 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
         p = np.array(p)
         if mean == True:
             p = np.mean(p, axis = 0)
+        logger.info('shape of saved array is: {}'.format(np.shape(p)))
         np.save(self.monitor_target+'/raw_adc'+str(count), p)
 	logger.info('Raw data saved to {}'.format(self.monitor_target+'/raw_adc'+str(count)+'.npy'))
 
