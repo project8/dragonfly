@@ -126,7 +126,7 @@ class PsyllidProvider(core.Provider, core.Spime):
     
 
     def set_central_frequency(self, channel='a', cf=800e6):
-        cf_in_MHz = round(cf*10**-6)
+        cf_in_MHz = cf #round(cf*10**-6)
 	
         try:
             request = '.active-config.ch'+str(self.channel_dict[channel])+'.strw.center-freq'
@@ -297,7 +297,7 @@ class MultiPsyllidProvider(core.Provider, core.Spime):
     
 
     def set_central_frequency(self, channel, cf):
-        cf_in_MHz = round(cf*10**-6)
+        cf_in_MHz = cf #round(cf*10**-6)
         logger.info('Trying to set cf of channel {} to {} MHz'.format(channel, cf_in_MHz))
         try:
             request = '.active-config.ch'+str(self.channel_dict[channel])+'.strw.center-freq'
@@ -343,7 +343,7 @@ class MultiPsyllidProvider(core.Provider, core.Spime):
     def get_number_of_streams(self, channel):
         channel_count = 0
         try:
-            cf_in_MHz = round(self.freq_dict[channel])*10**-6
+            cf_in_MHz = self.freq_dict[channel]
             request = '.node-config.ch'+str(self.channel_dict[channel])+'.strw.center-freq'
             logger.info(request)
             result = self.provider.set(self.queue_dict[channel]+request, cf_in_MHz)

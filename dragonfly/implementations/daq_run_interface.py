@@ -108,13 +108,13 @@ class DAQProvider(core.Provider):
         '''
         Do the prerun_gets and send the metadata to the recording associated computer
         '''
-        self._run_name = run_name
+        self.run_name = run_name
         self._run_meta = {'DAQ': self.daq_name,
                           'run_time': self._run_time,
                          }
 
         self._do_prerun_gets()
-       # self._send_metadata()
+        self._send_metadata()
         logger.debug('these meta will be {}'.format(self._run_meta))
         logger.info('start_run finished')
 
@@ -367,12 +367,12 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         self.daq_target = daq_target
         
         self.filename_prefix = filename_prefix
-        self.run_id = 0
+        #self.run_id = 0
 
         self.status_value = None
         self.channel_id = channel
         self.freq_dict = {self.channel_id: None}
-        self._max_duration = 1000.0
+        self._max_duration = 100.0
 
         if hf_lo_freq is None:
             raise core.exceptions.DriplineValueError('the Psyllid acquisition interface requires a "hf_lo_freq" in its config file')
@@ -447,6 +447,8 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
     def _do_checks(self):
         if self._run_time ==0:
             raise core.exceptions.DriplineValueError('run time is zero')
+        elif self._run_time >= self._max_duration:
+            raise core.exceptions.DriplineValueError('run time exceeds max duration')
 
         #checking psyllid
         if self.is_running()==True:
@@ -499,39 +501,40 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
             duration = self._run_time*1000
             logger.info('run duration in ms: {}'.format(duration))
             
-            NAcquisitions = duration/self._max_duration
+#            NAcquisitions = duration/self._max_duration
             
-            if NAcquisitions<=1:
-                psyllid_filename = filename+'_'+self._run_name+'.egg'
+#            if NAcquisitions<=1:
+            psyllid_filename = filename+'_'+self._run_name+'.egg'
     
-                if not os.path.exists(directory):
-                    os.makedirs(directory)
+            if not os.path.exists(directory):
+                os.makedirs(directory)
     
-                logger.info('Going to tell psyllid to start the run')
-                payload = {'channel':self.channel_id, 'filename': os.path.join(directory, psyllid_filename), 'duration':duration}
-                result = self.provider.cmd(self.psyllid_interface, 'start_run', payload=payload)
+            logger.info('Going to tell psyllid to start the run')
+            payload = {'channel':self.channel_id, 'filename': os.path.join(directory, psyllid_filename), 'duration':duration}
+            result = self.provider.cmd(self.psyllid_interface, 'start_run', payload=payload)
             
-            else:
-                logger.info('Doing {} acquisitions'.format(int(NAcquisitions)))
+#            else:
+#                logger.info('Doing {} acquisitions'.format(int(NAcquisitions)))
                 
-                for i in range(int(NAcquisitions)):
-                    total_run_time = 0.0
-                    psyllid_filename = filename+'_'+self._run_name+'_'+str(i)+'.egg'
+#                for i in range(int(NAcquisitions)):
+#                    total_run_time = 0.0
+#                    psyllid_filename = filename+'_'+self._run_name+'_'+str(i)+'.egg'
     
-                    if not os.path.exists(directory):
-                        os.makedirs(directory)
+#                    if not os.path.exists(directory):
+#                        os.makedirs(directory)
     
-                    if total_run_time > duration-self._max_duration:
-                        duration = duration-total_run_time
-                        logger.info('Going to tell psyllid to start the last run')
-                        payload = {'channel':self.channel_id, 'filename': os.path.join(directory, psyllid_filename), 'duration':duration}
-                        result = self.provider.cmd(self.psyllid_interface, 'start_run', payload=payload)
+#                    if total_run_time > duration-self._max_duration:
+#                        duration = duration-total_run_time
+#                        logger.info('Going to tell psyllid to start the last run')
+#                        payload = {'channel':self.channel_id, 'filename': os.path.join(directory, psyllid_filename), 'duration':duration}
+#                        result = self.provider.cmd(self.psyllid_interface, 'start_run', payload=payload)
 
-                    else:
-                        total_run_time+=self._max_duration
-                        logger.info('Going to tell psyllid to start run')
-                        payload = {'channel':self.channel_id, 'filename': os.path.join(directory, psyllid_filename), 'duration':self._max_duration}
-                        result = self.provider.cmd(self.psyllid_interface, 'start_run', payload=payload)
+#                    else:
+#                        total_run_time+=self._max_duration
+#                        logger.info('Going to tell psyllid to start run')
+#                        payload = {'channel':self.channel_id, 'filename': os.path.join(directory, psyllid_filename), 'duration':self._max_duration}
+#                        result = self.provider.cmd(self.psyllid_interface, 'start_run', payload=payload)
+#                    time.sleep(1)
         except:
             logger.error('Starting Psyllid run failed')
 
@@ -560,13 +563,13 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
 
     def _get_roach_central_freqs(self):
         result = self.provider.cmd(self.daq_target, 'get_all_central_frequencies')
-        logger.info('central freqs {}'.format(result))
+        logger.info('ROACH central freqs {}'.format(result))
         return result
 
 
     def _get_psyllid_central_freqs(self):
         result = self.provider.cmd(self.psyllid_interface, 'get_all_central_frequencies')
-        logger.info('central freqs {}'.format(result))
+        logger.info('Psyllid central freqs {}'.format(result))
         return result
 
 
@@ -620,7 +623,7 @@ class ROACHMultiChAcquisitionInterface(DAQProvider, core.Spime):
         self.run_id = 0
 
         self.status_value = None
-        self._max_duration = 1000
+        self._max_duration = 1000000
         self.ROI_overlap = ROI_overlap
 
         self.mode = mode
