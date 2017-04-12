@@ -12,6 +12,7 @@ Spime catalog (in order of ease-of-use):
 - FormatSpime: utility spime with expanded functionality
 - ErrorQueueSpime: spime for iterating through error queue to clear it and return all erros
 - GPIOSpime: spime to handle GPIO pin control on RPi
+- IonGaugeGetSpime: spime to handle communication with Lesker/B-RAX ion gauges
 - LockinSpime: spime to handle antiquated lockin IEEE 488 formatting
 -* LockinGetSpime: limited instance of above with disabled Set
 - MuxerGetSpime: spime to handle glenlivet muxer formatting
@@ -251,6 +252,37 @@ class GPIOSpime(Spime):
         GPIO.output(self._outpin, value)
         if not all(GPIO.input(pin)==value for pin in self._outpin):
             raise DriplineHardwareError("Error setting GPIO output pins")
+
+
+__all__.append('IonGaugeGetSpime')
+@fancy_doc
+class IonGaugeGetSpime(Spime):
+    '''
+    Spime for interacting with ion gauges over RS485
+    '''
+
+    def __init__(self,
+                 get_str=None,
+                 **kwargs):
+        '''
+        get_str (str): sent verbatim in the event of on_get;
+        '''
+        Spime.__init__(self, **kwargs)
+        self._get_str = get_str
+        self._address = '*'+get_str[1:3]
+
+    @calibrate()
+    def on_get(self):
+        result = self.provider.send([self._get_str])
+
+        formatted_result = result.split(' ',1)
+        if formatted_result[0] != self._address:
+            raise DriplineHardwareError('Response address mismatch!')
+
+        return formatted_result[1]
+
+    def on_set(self, value):
+        raise DriplineMethodNotSupportedError('setting not available for {}'.format(self.name))
 
 
 __all__.append('LockinSpime')
