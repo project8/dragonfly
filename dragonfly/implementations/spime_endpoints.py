@@ -12,7 +12,7 @@ Spime catalog (in order of ease-of-use):
 - FormatSpime: utility spime with expanded functionality
 - ErrorQueueSpime: spime for iterating through error queue to clear it and return all erros
 - GPIOSpime: spime to handle GPIO pin control on RPi
-- IonGaugeGetSpime: spime to handle communication with Lesker/B-RAX ion gauges
+- IonGaugeSpime: spime to handle communication with Lesker/B-RAX pressure gauges
 - LockinSpime: spime to handle antiquated lockin IEEE 488 formatting
 -* LockinGetSpime: limited instance of above with disabled Set
 - MuxerGetSpime: spime to handle glenlivet muxer formatting
@@ -254,35 +254,53 @@ class GPIOSpime(Spime):
             raise DriplineHardwareError("Error setting GPIO output pins")
 
 
-__all__.append('IonGaugeGetSpime')
+__all__.append('IonGaugeSpime')
 @fancy_doc
-class IonGaugeGetSpime(Spime):
+class IonGaugeSpime(Spime):
     '''
     Spime for interacting with ion gauges over RS485
     '''
 
     def __init__(self,
                  get_str=None,
+                 set_str=None,
+                 set_value_map=None,
                  **kwargs):
         '''
-        get_str (str): sent verbatim in the event of on_get;
+        get_str (str): sent verbatim in the event of on_get
+        set_str (str): sent as set_str.format(value) in the event of on_set; if None, setting of endpoint is disabled
+        set_value_map (dict): dictionary of mappings for values to on_set; no error if not value not present in dictionary keys
         '''
         Spime.__init__(self, **kwargs)
         self._get_str = get_str
         self._address = '*'+get_str[1:3]
+        self._set_str = set_str
+        self._set_value_map = set_value_map
+        if set_value_map is not None and not isinstance(set_value_map, dict):
+            raise DriplineValueError("Invalid set_value_map config for {}; type is {}, not dict".format(self.name, type(set_value_map)))
 
     @calibrate()
     def on_get(self):
         result = self.provider.send([self._get_str])
-
-        formatted_result = result.split(' ',1)
-        if formatted_result[0] != self._address:
-            raise DriplineHardwareError('Response address mismatch!')
-
-        return formatted_result[1]
+        if result[:3] != self._address:
+            raise DriplineHardwareError("Response address mismatch!  Response address is {}, expected address is {}".format(result, self._address))
+        return result[4:]
 
     def on_set(self, value):
-        raise DriplineMethodNotSupportedError('setting not available for {}'.format(self.name))
+        if self._set_str is None:
+            raise DriplineMethodNotSupportedError("setting not available for {}".format(self.name))
+        if isinstance(value, (str,unicode)):
+            value = value.lower()
+        if (self._set_value_map is not None) and (value in self._set_value_map):
+            mapped_value = self._set_value_map[value]
+            logger.debug('value is {}; mapped value is: {}'.format(value, mapped_value))
+        else:
+            mapped_value = value
+            logger.debug('value not in set_value_map, using given value of {}'.format(mapped_value))
+        result = self.provider.send([self._set_str.format(mapped_value)])
+        if result != self._address + ' PROGM OK':
+            raise DriplineHardwareError("Error response returned when setting endpoint {}".format(self.name))
+        return
 
 
 __all__.append('LockinSpime')
