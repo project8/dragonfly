@@ -35,6 +35,29 @@ def status_calibration(value):
     return "; ".join(status)
 
 
+def leak_valve_status_calibration(value):
+    '''Calibration for the leak_valve_status endpoint'''
+    status = []
+    comm = value/10000000
+    mode = (value/1000000)%10
+    other = value%1000000
+    if mode == 2:
+        status.append("valve in position control")
+    elif mode == 3:
+        status.append("valve closed")
+    elif mode == 4:
+        status.append("valve open")
+    else:
+        status.append("WARNING: unknown mode")
+    if comm == 1:
+        status.append("remote communication")
+    else:
+        status.append("WARNING: unknown communication")
+    if other != 0:
+        status.append("WARNING: unknown status flags")
+    return "; ".join(status)
+
+
 def pt100_calibration(resistance):
     '''Calibration for the (many) muxer pt100 temperature sensor endpoints'''
     r = resistance

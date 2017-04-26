@@ -13,6 +13,7 @@ Spime catalog (in order of ease-of-use):
 - ErrorQueueSpime: spime for iterating through error queue to clear it and return all erros
 - GPIOSpime: spime to handle GPIO pin control on RPi
 - IonGaugeSpime: spime to handle communication with Lesker/B-RAX pressure gauges
+- LeakValveSpime: spime to handle VAT leak valve get responses
 - LockinSpime: spime to handle antiquated lockin IEEE 488 formatting
 -* LockinGetSpime: limited instance of above with disabled Set
 - MuxerGetSpime: spime to handle glenlivet muxer formatting
@@ -142,7 +143,6 @@ class FormatSpime(Spime):
         logger.debug('result is: {}'.format(result))
         if self._get_reply_float:
             logger.debug('desired format is: float')
-            logger.debug('formatting result')
             formatted_result = map(float, re.findall("[-+]?\d+\.\d+",format(result)))
             # formatted_result = map(float, re.findall("[-+]?(?: \d* \. \d+ )(?: [Ee] [+-]? \d+ )",format(result)))
             logger.debug('formatted result is {}'.format(formatted_result[0]))
@@ -301,6 +301,36 @@ class IonGaugeSpime(Spime):
         if result != self._address + ' PROGM OK':
             raise DriplineHardwareError("Error response returned when setting endpoint {}".format(self.name))
         return
+
+
+__all__.append('LeakValveSpime')
+@fancy_doc
+class LeakValveSpime(FormatSpime):
+    '''
+    Special implementation of FormatSpime for T2 VAT leak valve
+    on_get has specific formatting rules, otherwise just a FormatSpime
+    '''
+
+    def __init__(self,
+                 **kwargs):
+        '''
+        '''
+        FormatSpime.__init__(self, **kwargs)
+
+    @calibrate([leak_valve_status_calibration])
+    def on_get(self):
+        # if self._get_str is None:
+        #     raise DriplineMethodNotSupportedError('<{}> has no get string available'.format(self.name))
+        result = self.provider.send([self._get_str])
+        logger.debug('raw result is: {}'.format(repr(result)))
+        # Leak valve returns pseduo-reply_echo_cmd, only need treatment on get
+        result = result[len(self._get_str):]
+        # Leak valve has zero-padded int responses which get badly calibrated
+        result = result.lstrip('0')
+        if result == '':
+            result = '0'
+        logger.debug('formatted result is: {}'.format(repr(result)))
+        return result
 
 
 __all__.append('LockinSpime')
