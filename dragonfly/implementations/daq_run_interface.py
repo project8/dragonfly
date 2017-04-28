@@ -372,7 +372,10 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         self.status_value = None
         self.channel_id = channel
         self.freq_dict = {self.channel_id: None}
-        self._max_duration = 100.0
+        self._max_duration = 0.5
+        self._run_time = 10
+        self._run_name = "test"
+
 
         if hf_lo_freq is None:
             raise core.exceptions.DriplineValueError('the Psyllid acquisition interface requires a "hf_lo_freq" in its config file')
@@ -388,17 +391,14 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
             result = self.provider.cmd(self.psyllid_interface, 'activate', payload = self.payload_channel)
             self.status_value = self.provider.cmd(self.psyllid_interface, 'request_status', payload = self.payload_channel)['values'][0]
                 
-        if self._check_roach2_status() == False:
-            raise core.exceptions.DriplineGenericDAQError('The ROACH2 is not ready for data taking')
-
-        else:
+        if self._check_roach2_status()==True:
             logger.info('Setting Psyllid central frequency identical to ROACH2 central frequency')
             freqs = self._get_roach_central_freqs()
             logger.info(freqs[self.channel_id])
             self.central_frequency = freqs[self.channel_id]
-        return True
+            return True
 
-
+    @property
     def is_running(self):
         self.status_value = self.provider.cmd(self.psyllid_interface, 'request_status', payload = self.payload_channel)
         if self.status_value==5:
@@ -406,20 +406,25 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         else:
             return False
 
+    def set_max_duration(self, duration):
+        self._max_duration = duration
+        return self._max_duration
 
     def _check_roach2_status(self):
-
+        logger.info('Checking ROACH2 status')
         #call is_running
         try: 
             result = self.provider.cmd(self.daq_target, 'is_running')
         except:
+            logger.error('Failed to request ROACH2 status')
             raise core.exceptions.DriplineGenericDAQError('Cannot request roach status from {}'.format(self.daq_target))
             
         if result['values'][0]==False:
-            logger.warning('The ROACH is not ready!')
-            return False
+            logger.error('ROACH2 status request returned False')
+            raise core.exceptions.DriplineGenericDAQError('ROACH2 not ready for data taking')
 
         elif result['values'][0]==True:
+            logger.info('ROACH2 is ready')
             return True
         else:
             return False
@@ -432,26 +437,29 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         self.payload_channel = {'channel':self.channel_id}
         self.status_value = self.provider.cmd(self.psyllid_interface, 'request_status', payload = self.payload_channel)['values'][0]
         if self.status_value == None:
+            logger.error('Psyllid is not responding')
             raise core.exceptions.DriplineGenericDAQError('Psyllid is not responding')        
         
         #check channel match
         Nstreams = self.provider.cmd(self.psyllid_interface, 'get_number_of_streams', payload = self.payload_channel)['values'][0]
         if Nstreams != 1:
+            logger.error('Wrong number od Psyllid channels are active under this queue')
             raise core.exceptions.DriplineValueError('Wrong number of Psyllid channels are active under this queue')
 
         active_channels = self.provider.cmd(self.psyllid_interface, 'get_active_channels')['values'][0]
         if self.channel_id in active_channels==False:
+            logger.error('The Psyllid and ROACH2 channel interfaces do not match')
             raise core.exceptions.DriplineGenericDAQError('The Psyllid and ROACH channel interfaces do not match')
 
 
     def _do_checks(self):
         if self._run_time ==0:
             raise core.exceptions.DriplineValueError('run time is zero')
-        elif self._run_time >= self._max_duration:
-            raise core.exceptions.DriplineValueError('run time exceeds max duration')
+        #elif self._run_time >= self._max_duration:
+        #    raise core.exceptions.DriplineValueError('run time exceeds max duration')
 
         #checking psyllid
-        if self.is_running()==True:
+        if self.is_running==True:
             raise core.exceptions.DriplineGenericDAQError('Psyllid is already running')
 
         self._check_psyllid_instance()
@@ -460,7 +468,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
             raise core.exceptions.DriplineGenericDAQError('Psyllid DAQ is not activated')
 
         #checking roach
-        if self._check_roach2_status == False:
+        if self._check_roach2_status() == False:
             raise core.exceptions.DriplineGenericDAQError('ROACH2 is not ready')
 
         #check frequency matches
@@ -498,43 +506,44 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         
         try:
             # switching from seconds to milisecons
-            duration = self._run_time*1000
+            duration = self._run_time*1000.0
+            max_duration = self._max_duration*1000.0
             logger.info('run duration in ms: {}'.format(duration))
             
-#            NAcquisitions = duration/self._max_duration
+            NAcquisitions = duration/max_duration
             
-#            if NAcquisitions<=1:
-            psyllid_filename = filename+'_'+self._run_name+'.egg'
+            if NAcquisitions<=1:
+                psyllid_filename = filename+'.egg'
     
-            if not os.path.exists(directory):
-                os.makedirs(directory)
+                if not os.path.exists(directory):
+                    os.makedirs(directory)
     
-            logger.info('Going to tell psyllid to start the run')
-            payload = {'channel':self.channel_id, 'filename': os.path.join(directory, psyllid_filename), 'duration':duration}
-            result = self.provider.cmd(self.psyllid_interface, 'start_run', payload=payload)
+                logger.info('Going to tell psyllid to start the run')
+                payload = {'channel':self.channel_id, 'filename': os.path.join(directory, psyllid_filename), 'duration':duration}
+                result = self.provider.cmd(self.psyllid_interface, 'start_run', payload=payload)
             
-#            else:
-#                logger.info('Doing {} acquisitions'.format(int(NAcquisitions)))
+            else:
+                logger.info('Doing {} acquisitions'.format(int(NAcquisitions)))
                 
-#                for i in range(int(NAcquisitions)):
-#                    total_run_time = 0.0
-#                    psyllid_filename = filename+'_'+self._run_name+'_'+str(i)+'.egg'
+                for i in range(int(NAcquisitions)):
+                    total_run_time = 0.0
+                    psyllid_filename = filename+'_'+str(i)+'.egg'
+                    logger.info('Data will be written to {}/{}'.format(directory, psyllid_filename))
+                    if not os.path.exists(directory):
+                        os.makedirs(directory)
     
-#                    if not os.path.exists(directory):
-#                        os.makedirs(directory)
-    
-#                    if total_run_time > duration-self._max_duration:
-#                        duration = duration-total_run_time
-#                        logger.info('Going to tell psyllid to start the last run')
-#                        payload = {'channel':self.channel_id, 'filename': os.path.join(directory, psyllid_filename), 'duration':duration}
-#                        result = self.provider.cmd(self.psyllid_interface, 'start_run', payload=payload)
+                    if total_run_time > duration-max_duration:
+                        duration = duration-total_run_time
+                        logger.info('Going to tell psyllid to start the last run')
+                        payload = {'channel':self.channel_id, 'filename': os.path.join(directory, psyllid_filename), 'duration':duration}
+                        result = self.provider.cmd(self.psyllid_interface, 'start_run', payload=payload)
 
-#                    else:
-#                        total_run_time+=self._max_duration
-#                        logger.info('Going to tell psyllid to start run')
-#                        payload = {'channel':self.channel_id, 'filename': os.path.join(directory, psyllid_filename), 'duration':self._max_duration}
-#                        result = self.provider.cmd(self.psyllid_interface, 'start_run', payload=payload)
-#                    time.sleep(1)
+                    else:
+                        total_run_time+=max_duration
+                        logger.info('Going to tell psyllid to start run')
+                        payload = {'channel':self.channel_id, 'filename': os.path.join(directory, psyllid_filename), 'duration':max_duration}
+                        result = self.provider.cmd(self.psyllid_interface, 'start_run', payload=payload)
+                    time.sleep(self._max_duration)
         except:
             logger.error('Starting Psyllid run failed')
 

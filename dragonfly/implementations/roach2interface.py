@@ -181,7 +181,7 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
             self.do_adc_ogp_calibration()
 
         for s in self.channel_list:
-            self.set_central_frequency(self.central_freq, channel=s)
+            self.set_central_frequency(800.0e6, channel=s)
             self.set_gain(self.gain_dict[s],channel=s)
             self.set_fft_shift('1101010101010', tag='ab')
             self.set_fft_shift('1101010101010', tag='cd')
@@ -240,10 +240,17 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
 
     def set_central_frequency(self, cf, channel='a'):
         if self.block_dict[channel]==False:
-            logger.info('setting central frequency of channel {} to {}'.format(channel, cf))
-            cf = ArtooDaq.tune_ddc_1st_to_freq(self, cf, tag=channel)
-            self.freq_dict[channel]=cf
-            return cf
+            try:
+                logger.info('setting central frequency of channel {} to {}'.format(channel, cf))
+                cf = ArtooDaq.tune_ddc_1st_to_freq(self, cf, tag=channel)
+                self.freq_dict[channel]=cf
+                return cf
+            except:
+                logger.error('setting central frequency failed')
+                self.freq_dict[channel]=None
+                self.calibrated = False
+                self.configured = False
+                raise core.exceptions.DriplineGenericDAQError('Setting central frequency failed in roach2_service')
         else:
             logger.error('Channel blocked')
             return False    
@@ -325,10 +332,10 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
         p = np.abs(np.fft.fftshift(np.fft.fft(x)))/4096
         logger.info('first 10 entries in time domain array: ')
         logger.info(x[0:10])
-        cf = cf*10**-6
+        #cf = cf*10**-6
         gain = self.gain_dict[channel]
-        np.save(self.monitor_target+'/T_packet_channel_'+channel+'_cf_'+str(round(cf))+'MHz_gain_'+str(gain), p)
-        np.save(self.monitor_target+'/time_domain_T_packet_channel_'+channel+'_cf_'+str(round(cf))+'MHz_gain_'+str(gain), x)
+        np.save(self.monitor_target+'/T_packet_channel_'+channel+'_cf_'+str(cf)+'Hz_gain_'+str(gain), p)
+        np.save(self.monitor_target+'/time_domain_T_packet_channel_'+channel+'_cf_'+str(cf)+'Hz_gain_'+str(gain), x)
 
     def get_F_packet(self,dsoc_desc=None,close_soc=True, channel='a'):
         if channel=='a':
@@ -358,13 +365,13 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
         logger.info('first 10 entries in frequency domain array: ')
         logger.info(f[0:10])
         logger.info('cf={}'.format(cf))
-        cf = cf*10**-6
-        np.save(self.monitor_target+'/F_packet_channel_'+channel+'_cf_'+cf+'MHz_gain_'+str(gain), f)
+        #cf = cf*10**-6
+        np.save(self.monitor_target+'/F_packet_channel_'+channel+'_cf_'+cf+'Hz_gain_'+str(gain), f)
         logger.info('file saved to {}'.format(self.monitor_target))
 
 
 
-    def get_multiple_T_packets(self,dsoc_desc=None, channel='a', NPackets=10, mean=True):
+    def get_multiple_T_packets(self,dsoc_desc=None, channel='a', NPackets=10, mean=True, path=None):
         if channel=='a':
             dsoc_desc = (str(self.dest_ip),self.dest_port)
         elif channel=='b':
@@ -379,7 +386,7 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
         pkts=ArtooDaq.grab_packets(self, NPackets*2, dsoc_desc, True)
         #logger.info('grabbing {} packets to {} seconds'.format(NPackets, (end-start)))
         logger.info('cf={}'.format(cf))
-        cf = cf*10**-6
+        #cf = cf*10**-6
         N = 4096
         p = []
         for i in range(int(NPackets*2)):
@@ -387,9 +394,12 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
                 x=pkts[i].interpret_data()
                 p.append(np.abs(np.fft.fftshift(np.fft.fft(x)))/N)
         p = np.array(p)
+        NPackets = np.shape(p)[0] 
         if mean == True:
             p = np.mean(p, axis = 0)
-        np.save(self.monitor_target+'/T_packets_channel'+channel+'_cf_'+str(np.round(cf))+'MHz_gain_'+str(gain), p)
+        if path==None:
+            path=self.monitor_target
+        np.save(path+'/T_packets_channel'+channel+'_cf_'+str(cf)+'Hz_gain_'+str(gain)+'_N_'+str(NPackets), p)
 
 
     def get_multiple_F_packets(self,dsoc_desc=None, channel='a', NPackets=100, mean=True):
@@ -407,7 +417,7 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
         pkts=ArtooDaq.grab_packets(self, NPackets*2, dsoc_desc, True)
         #logger.info('grabbing {} packets to {} seconds'.format(NPackets, (end-start)))
         logger.info('cf={}'.format(cf))
-        cf = cf*10**-6
+        #cf = cf*10**-6
         N = 4096
         p = []
         for i in range(int(NPackets*2)):
@@ -417,7 +427,7 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
         p = np.array(p)
         if mean == True:
             p = np.mean(p, axis = 0)
-        np.save(self.monitor_target+'/F_packets_channel_'+channel+'_cf_'+str(np.round(cf))+'MHz_gain_'+str(gain), p)
+        np.save(self.monitor_target+'/F_packets_channel_'+channel+'_cf_'+str(cf)+'Hz_gain_'+str(gain), p)
         
 
     def get_raw_adc_data(self, count=0, N=1, mean = True):
