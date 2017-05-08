@@ -308,8 +308,8 @@ class RSAAcquisitionInterface(DAQProvider):
         datenow = datetime.now()
         filename = "{0:%Y}/{0:%m%d}/{0:%Y%m%d_%H%M%S}/{0:%Y%m%d_%H%M%S}_Trace{1}_{2}".format(datenow,trace,comment)
 
-        logger.info('saving trace')
-        path = self.trace_path + "{}_data".format(filename)
+        logger.debug('saving trace')
+        path = self.trace_path + filename
         self.provider.cmd('rsa_interface','_save_trace',[trace,path])
         logger.info("saving {}: successful".format(path))
 
