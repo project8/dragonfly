@@ -372,7 +372,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         self._max_duration = 1
         self._run_time = 1
         self._run_name = "test"
-
+        self.payload_channel = {'channel':self.channel_id}
 
         if hf_lo_freq is None:
             raise core.exceptions.DriplineValueError('the Psyllid acquisition interface requires a "hf_lo_freq" in its config file')
@@ -392,7 +392,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
             logger.info('Setting Psyllid central frequency identical to ROACH2 central frequency')
             freqs = self._get_roach_central_freqs()
             self.central_frequency = freqs[self.channel_id]
-            return True
+
 
     @property
     def is_running(self):
@@ -431,7 +431,6 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         logger.info('Checking Psyllid service & instance')
 
         #check psyllid is responding by requesting status
-        self.payload_channel = {'channel':self.channel_id}
         self.status_value = self.provider.cmd(self.psyllid_interface, 'request_status', payload = self.payload_channel)['values'][0]
         if self.status_value == None:
             logger.error('Psyllid is not responding')
@@ -440,8 +439,8 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         #check channel match
         Nstreams = self.provider.cmd(self.psyllid_interface, 'get_number_of_streams', payload = self.payload_channel)['values'][0]
         if Nstreams != 1:
-            logger.error('Wrong number of Psyllid channels are active under this queue')
-            raise core.exceptions.DriplineValueError('Wrong number of Psyllid channels are active under this queue')
+            logger.error('Wrong number of Psyllid streams are active under this queue')
+            raise core.exceptions.DriplineValueError('Wrong number of Psyllid streams are active under this queue')
 
         active_channels = self.provider.cmd(self.psyllid_interface, 'get_active_channels')['values'][0]
         if self.channel_id in active_channels==False:
@@ -469,6 +468,8 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
             raise core.exceptions.DriplineGenericDAQError('ROACH2 is not ready')
 
         #check frequency matches
+        self.central_frequency = self.freq_dict[self.channel_id]
+
         roach_freqs = self._get_roach_central_freqs()
         psyllid_freqs = self._get_psyllid_central_freqs()
         if roach_freqs[self.channel_id]!=psyllid_freqs[self.channel_id]:
@@ -550,6 +551,14 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         result = self.provider.cmd(self.daq_target, 'unblock_channel', payload=payload)
 
 
+    def _stop_data_taking(self):
+        result = self.provider.cmd(self.psyllid_interface, 'stop_run', payload = self.payload_channel)
+
+
+    def adopt_new_psyllid_instance(self):
+        self._finish_configure()
+
+
     def stop_psyllid(self):
         # in case things go really wrong...
         result = self.provider.cmd(self.psyllid_interface, 'quit_psyllid', payload = self.payload_channel)
@@ -594,6 +603,8 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         result = self.provider.cmd(self.psyllid_interface, 'set_central_frequency', payload=payload)
         if result['values'][0]!=True:
             logger.warning('Could not set central frequency in Psyllid')
+            self.freq_dict[self.channel_id]=None
+            raise core.exceptions.DriplineGenericDAQError('Could not set central frequency in Psyllid stream')
 
 
     def make_trigger_mask(self, snr = 11, filename = '/home/roach/trigger_masks/psyllid_trigger_mask'):

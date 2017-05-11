@@ -199,9 +199,13 @@ class MultiPsyllidProvider(core.Provider, core.Spime):
                     self.mode_dict[channel]='streaming'
                     if self.set_central_frequency(channel=channel, cf=800e6)==False:
                         self.mode_dict[channel]='triggered'
-                        self.set_central_frequency(channel=channel, cf=800e6)
-                    if self.get_number_of_streams(channel)>1:
-                        raise core.DriplineGenericDaqError("Psyllid instance for channel {} has too many streams".format(channel))
+                        if self.set_central_frequency(channel=channel, cf=800e6)==False:
+                            self.mode_dict[channel]=None
+                            raise core.DriplineGenericFaqError("Streams of Psyllid instance for channel {} are not configured correctly".format(channel))
+                    if self.get_number_of_streams(channel)!=1:
+                        raise core.DriplineGenericDaqError("Streams of Psyllid instance for channel {} are not configured correctly".format(channel))
+                else:
+                    logger.info('No Psyllid instance responding for channel {}'.format(channel))
             except:
                 logger.info('No matching Psyllid instance for channel {} present'.format(i))
         # Summary after startup
@@ -235,6 +239,7 @@ class MultiPsyllidProvider(core.Provider, core.Spime):
         else:
             logger.warning('Cannot activate Psyllid instance of channel {}'.format(channel))
             return False
+        time.sleep(1)
         self.request_status(channel)
         if self.status_value_dict[channel]!=4:
             logger.warning('Activating failed')
@@ -257,15 +262,14 @@ class MultiPsyllidProvider(core.Provider, core.Spime):
 
 
     def reactivate(self, channel):
-        if self.status_value_dict[channel] != 0:
+        if self.status_value_dict[channel] == 4:
             logger.info('Reactivating Psyllid instance of channel {}'.format(channel))
             result = self.provider.cmd(self.queue_dict[channel], 'reactivate-daq')
             logger.info(result)
-        elif self.status_value_dict[channel]==0:
-	    self.activate(channel)
         else:
             logger.warning('Cannot not reactivate Psyllid instance of channel {}'.format(channel))
             return False
+        time.sleep(1)
         self.request_status(channel)
         if self.status_value_dict[channel]!=4:
             logger.warning('Reactivating failed')
@@ -289,17 +293,15 @@ class MultiPsyllidProvider(core.Provider, core.Spime):
         try:
             if self.mode_dict[channel] == 'streaming':
                 request = '.active-config.ch'+str(self.channel_dict[channel])+'.strw.center-freq'
-                payload_cf = {'center-freq': cf}
                 result = self.provider.set(self.queue_dict[channel]+request, cf)
-                logger.info('Set central frequency of streaming writer for channel {} to {} MHz'.format(channel, cf))
+                logger.info('Set central frequency of streaming writer for channel {} to {} Hz'.format(channel, cf))
                 self.freq_dict[channel]=cf
                 return True
 
             elif self.mode_dict[channel] == 'triggered':
                 request = 'active-config.ch'+str(self.channel_dict[channel])+'.trw.center-freq'
-                payload = {'center-freq':cf}
                 result = self.provider.set(self.queue_dict[channel]+'.'+request, cf)
-                logger.info('Set central frequency of egg writer for channel {} to {} MHz'.format(channel, cf))
+                logger.info('Set central frequency of egg writer for channel {} to {} Hz'.format(channel, cf))
                 self.freq_dict[channel]=cf
                 return True
         except:
@@ -316,6 +318,10 @@ class MultiPsyllidProvider(core.Provider, core.Spime):
         return True
 
 
+    def stop_run(self, channel):
+        result = self.provider.cmd(self.queue_dict[channel], 'stop-run')
+
+
     def get_number_of_channels(self):
         active_channels = [i for i in self.freq_dict.keys() if self.freq_dict[i]!=None]
         logger.info('Active channels are {}'.format(active_channels))
@@ -328,28 +334,31 @@ class MultiPsyllidProvider(core.Provider, core.Spime):
 
 
     def get_number_of_streams(self, channel):
-        channel_count = 0
+        stream_count = 0
         cf = self.freq_dict[channel]
-        for q in self.queue_dict.keys():
+        for i in range(3):
             try:
-                request = '.node-config.ch'+str(self.channel_dict[channel])+'.strw.center-freq'
-                result = self.provider.set(self.queue_dict[q]+request, cf)
-                channel_count += 1
+                request = '.node-config.ch'+str(i)+'.strw.center-freq'
+                result = self.provider.set(self.queue_dict[channel]+request, cf)
+                stream_count += 1
+                self.mode_dict[channel]='streaming'
             except:
                 try:
-                    request = '.node-config.ch'+str(self.channel_dict[channel])+'.ew.center-freq'
-                    result = self.provider.set(self.queue_dict[q]+request, cf)
-                    channel_count += 1
+                    request = '.node-config.ch'+str(i)+'.trw.center-freq'
+                    result = self.provider.set(self.queue_dict[channel]+request, cf)
+                    stream_count += 1
+                    self.mode_dict[channel]='triggered'
                 except:
-                    pass        
-        logger.info('Number of streams for channel {}: {}'.format(channel, channel_count))
-        return channel_count
+                    pass  
+        logger.info('Number of streams for channel {}: {}'.format(channel, stream_count))
+        return stream_count
 
 
     def set_fmt_snr_threshold(self, channel='a', snr=6):
         if self.mode_dict[channel] == 'streaming':
+            logger.warning('Psyllid not in streaming mode')
             return False
-        
+#        request = 'active-config.ch'+str(self.channel_dict[channel])+'.fmt.threshold-power'
         request = '.node-config.ch'+str(self.channel_dict[channel])+'.fmt.threshold-power-snr'
         result = self.provider.set(self.queue_dict[channel]+request, snr)
         self.deactivate(channel)
@@ -377,7 +386,6 @@ class MultiPsyllidProvider(core.Provider, core.Spime):
 
         logger.info('run')
         request = 'start-run'
-        payload = {'duration': 1000}
         result = self.provider.cmd(self.queue_dict[channel], request)
         time.sleep(1)
 
