@@ -16,9 +16,6 @@ import traceback
 # 3rd party libraries
 try:
     import sqlalchemy
-    __all__.append('PostgreSQLInterface')
-    __all__.append("SQLTable")
-    __all__.append('SQLSnapshot')
 except ImportError:
     pass
 from datetime import datetime
@@ -33,6 +30,9 @@ import logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
+__all__.append('PostgreSQLInterface')
+__all__.append("SQLTable")
+__all__.append('SQLSnapshot')
 
 @fancy_doc
 class PostgreSQLInterface(Provider):
@@ -46,6 +46,8 @@ class PostgreSQLInterface(Provider):
         database_server (str): network resolvable hostname of database server
         metadata_target (str): target to send metadata to
         '''
+        if not 'sqlalchemy' in globals():
+            raise ImportError('SQLAlchemy not found, required for PostgreSQLInterface class')
         Provider.__init__(self, **kwargs)
         self._connect_to_db(database_server, database_name)
         self._metadata_target = metadata_target
@@ -89,14 +91,14 @@ class PostgreSQLInterface(Provider):
             run_snapshot.setdefault(latest_endpoint,[]).append(latest_snap[latest_endpoint][0])
         for endpoint_name in sorted(run_snapshot.keys()):
             if not set([endpoint_name])<=self._endpoint_name_set:
-                run_snapshot.pop(endpoint_name) 
+                run_snapshot.pop(endpoint_name)
         logger.info('snapshot of the slow control database should broadcast')
         logger.debug('should request snapshot file: {}'.format(filename))
         this_payload = {'contents': run_snapshot,
                         'filename': filename}
         req_result = self.provider.cmd(self._metadata_target, None, payload=this_payload)
         logger.debug('snapshot sent')
-        return       
+        return
 
 
 @fancy_doc
@@ -119,6 +121,8 @@ class SQLTable(Endpoint):
         optional_insert_names (list): list of names (str) of columns which the user may specify on an insert request, but which may be omitted
         default_insert_values (dict): dictionary of {column_names: values} to serve as defaults when inserting, any values provided explicitly on the insert request will override these values
         '''
+        if not 'sqlalchemy' in globals():
+            raise ImportError('SQLAlchemy not found, required for SQLTable class')
         Endpoint.__init__(self, *args, **kwargs)
         self.table = None
         self.table_name = table_name
@@ -204,7 +208,7 @@ class SQLSnapshot(SQLTable):
         target_items (list): items (str) to take snapshot of
         '''
         if not 'sqlalchemy' in globals():
-                raise ImportError('SQLAlchemy not found, required for SQLSnapshot class')
+            raise ImportError('SQLAlchemy not found, required for SQLSnapshot class')
         SQLTable.__init__(self, table_name, schema, *args, **kwargs)
         self.target_items = target_items
 
@@ -213,18 +217,18 @@ class SQLSnapshot(SQLTable):
         Both inputs must be follow the format of constants.TIME_FORMAT, i.e. YYYY-MM-DDThh:mm:ssZ
         start_timestamp (str): oldest timestamp for query into database
         ending_timesamp (str): most recent timestamp for query into database
-        '''    
+        '''
         start_timestamp = str(start_timestamp)
-        end_timestamp = str(end_timestamp)                
+        end_timestamp = str(end_timestamp)
 
         # Parsing timestamps
         self._try_parsing_date(start_timestamp)
         self._try_parsing_date(end_timestamp)
         if not end_timestamp > start_timestamp:
             raise DriplineValueError('end_timestamp ("{}") must be > start_timestamp ("{}")!'.format(end_timestamp,start_timestamp))
-        
+
         # Connect to id map table + assign alises
-        self._connect_id_table()          
+        self._connect_id_table()
         t = self.table.alias()
         id_t = self.it.alias()
 
@@ -267,7 +271,7 @@ class SQLSnapshot(SQLTable):
                 index += 1
             ept_timestamp_results = ', '.join(ept_timestamp_list)
             val_cal_list.append('{} -> {}'.format(endpoint,ept_timestamp_results))
-        
+
         return {'value_raw': val_raw_dict, 'value_cal': '\n'.join(val_cal_list)}
 
 
@@ -281,7 +285,7 @@ class SQLSnapshot(SQLTable):
             endpoint_list = [str(item) for item in endpoint_list]
         else:
             logger.error('Received type "{}" for argument endpoint_list instead of Python list'.format(type(endpoint_list).__name__))
-            raise DriplineValueError('expecting a list but received type {}'.format(type(endpoint_list).__name__)) 
+            raise DriplineValueError('expecting a list but received type {}'.format(type(endpoint_list).__name__))
 
         # Parsing timestamp
         self._try_parsing_date(timestamp)
@@ -293,7 +297,7 @@ class SQLSnapshot(SQLTable):
 
         # Select query + result
         val_cal_list = []
-        val_raw_dict = {}                      
+        val_raw_dict = {}
 
         for name in endpoint_list:
 
@@ -324,14 +328,14 @@ class SQLSnapshot(SQLTable):
                 val_raw_dict[name] = [{'timestamp' : query_return[0]['timestamp'].strftime(constants.TIME_FORMAT),
                                       'value_cal' : query_return[0]['value_cal']}]
                 val_cal_list.append('{} -> {} {{{}}}'.format(name,val_raw_dict[name][0]['value_cal'],val_raw_dict[name][0]['timestamp']))
-                              
+
         return {'value_raw': val_raw_dict, 'value_cal': '\n'.join(val_cal_list)}
 
 
     def _try_parsing_date(self, timestamp):
         '''
         Checks if timestamp (str) is in correct format for database query
-        '''        
+        '''
         try:
             return datetime.strptime(timestamp, constants.TIME_FORMAT)
         except ValueError:
@@ -342,7 +346,7 @@ class SQLSnapshot(SQLTable):
     def _connect_id_table(self):
         '''
         Connects to the 'endpoint_id_map' table in database
-        '''        
+        '''
         try:
             self.it = sqlalchemy.Table('endpoint_id_map',self.provider.meta, autoload=True, schema=self.schema)
         except DriplineDatabaseError as dripline_error:

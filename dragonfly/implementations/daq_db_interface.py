@@ -15,7 +15,6 @@ import types
 # 3rd party libraries
 try:
     import sqlalchemy
-    __all__.append('RunDBInterface')
 except ImportError:
     pass
 from datetime import datetime
@@ -28,12 +27,14 @@ import logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
+__all__.append('RunDBInterface')
+
 
 class RunDBInterface(Provider):
     '''
     A not-so-flexible provider for getting run_id values.
     '''
-    
+
     def __init__(self, database_name, database_server, tables, *args, **kwargs):
         '''
         ~Params
@@ -42,6 +43,8 @@ class RunDBInterface(Provider):
             tables (list): list of names (str) of tables in the database
         ~Params
         '''
+        if not 'sqlalchemy' in globals():
+            raise ImportError('SQLAlchemy not found, required for RunDBInterface class')
         if isinstance(tables, types.StringType):
             tables = [tables]
         Provider.__init__(self, *args, **kwargs)

@@ -10,7 +10,10 @@ import os
 import re
 from datetime import datetime, timedelta
 
-import slackclient
+try:
+    import slackclient
+except ImportError:
+    pass
 
 import dripline
 from dripline.core import Gogol
@@ -27,7 +30,6 @@ class SlackInterface(Gogol):
                  speaking_time = 60,
                  time_between_warnings=600,
                  number_sentence_per_speaking_time = 30,
-                 slack_channel='p8_alerts',
                  **kwargs):
         '''
         prime_speakers: define which users are allowed to speak as much as they want and we are not allowed to stop them from it
@@ -35,6 +37,8 @@ class SlackInterface(Gogol):
         number_sentence_per_speaking_time: number of messages allowed during speaking_time before being muted
         time_between_warnings: time between sending warnings
         '''
+        if not 'slackclient' in globals():
+            raise ImportError('slackclient not found, required for SlackInterface class')
         # listen to status_message alerts channel
         #kwargs.update({'exchange':'alerts','keys':['status_message.#.#']})
         kwargs.update({'keys':['status_message.#.#']})
@@ -67,7 +71,6 @@ class SlackInterface(Gogol):
         self._speaking_time = speaking_time
         self._time_between_warnings = time_between_warnings
         self._nspst = number_sentence_per_speaking_time
-        self.slack_channel = '#'+slack_channel
 
 
     def on_alert_message(self, channel, method, properties, message):
@@ -83,8 +86,7 @@ class SlackInterface(Gogol):
         if self._is_allowed_to_talk(routing_info['from']):
             logger.debug('posting message: {}'.format(str(msg.payload)))
             api_out = self.slackclient.api_call('chat.postMessage',
-                                        #    channel='#'+routing_info['channel'],
-                                           channel=self.slack_channel,
+                                           channel='#'+routing_info['channel'],
                                            text=str(msg.payload),
                                            username=username,
                                         #    username='toto',
@@ -98,8 +100,7 @@ class SlackInterface(Gogol):
                 logger.debug('sending warning')
                 message = '{} spoke {} times over the last {} s: muted!'.format(routing_info['from'],len(self.history[username]['last_talks']), self._speaking_time)
                 api_out = self.slackclient.api_call('chat.postMessage',
-                                                #    channel='#'+routing_info['channel'],
-                                                   channel=self.slack_channel,
+                                                   channel='#'+routing_info['channel'],
                                                    text=message,
                                                    username='Slack Security',
                                                 #    username='toto',

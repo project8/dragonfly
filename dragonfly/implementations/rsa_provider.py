@@ -40,7 +40,13 @@ class RSAProvider(EthernetProvider):
 
     # DO NOT USE THIS METHOD!  Use RSAAcquisitionInterface.save_trace instead!
     def _save_trace(self, trace, path):
-        self.send(['MMEMory:DPX:STORe:TRACe{} "{}"; *OPC?'.format(trace,path)])
+        tracepath = path + "_data"
+        self.send(['MMEMory:DPX:STORe:TRACe{} "{}"; *OPC?'.format(trace,tracepath)])
+        self._save_setup(path)
+
+    # Method called by save_trace and start_run to save an RSA setup file
+    def _save_setup(self,path):
+        self.send(['MMEM:STOR:STAT "{}";*OPC?'.format(path)])
 
     @property
     def trigger_status(self):
@@ -50,7 +56,7 @@ class RSAProvider(EthernetProvider):
         self.send("TRIG:SEQUENCE:STATUS {}; *OPC?".format(value))
         return getattr(self, "trigger_status")
 
-    # DO NOT USE THIS METHOD!  Use RSAAcquisitionInterface.save_trace instead!
+    # DO NOT USE THIS METHOD!  Use RSAAcquisitionInterface.start_timed_run instead!
     def start_run(self, directory, filename):
         # set output directory and file prefix
         self.send('SENS:ACQ:FSAV:LOC "{}";*OPC?'.format(directory))
@@ -65,7 +71,7 @@ class RSAProvider(EthernetProvider):
 
         full_name = "{}/{}".format(directory, filename)
         # saving the instrument status in hot
-        self.send(['MMEM:STOR:STAT "{}";*OPC?'.format(full_name)])
+        self._save_setup(full_name)
         # saving the frequency mask in hot
         self.send(['TRIG:MASK:SAVE "{}";*OPC?'.format(full_name)])
 
