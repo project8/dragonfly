@@ -32,4 +32,4 @@ from .muxer_provider import *
 #from .sql_snapshot import *
 from .roach2interface import *
 from .r2daq import *
-from .PsyllidProvider import *
+from .psyllid_provider import *

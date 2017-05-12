@@ -3,6 +3,7 @@
 
 from __future__ import absolute_import
 
+
 # standard imports
 import logging
 import uuid
@@ -411,16 +412,8 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
     def _check_roach2_status(self):
         logger.info('Checking ROACH2 status')
         #call is_running from roach2_interface
-        try: 
-            result = self.provider.cmd(self.daq_target, 'is_running')
-        except:
-            logger.error('Failed to request ROACH2 status')
-            raise core.exceptions.DriplineGenericDAQError('Cannot request roach status from {}'.format(self.daq_target))
-
-        if result['values'][0]==False:
-            logger.error('ROACH2 status request returned False')
-            raise core.exceptions.DriplineGenericDAQError('ROACH2 not ready for data taking')
-        elif result['values'][0]==True:
+        result = self.provider.cmd(self.daq_target, 'is_running')
+        if result['values'][0]==True:
             logger.info('ROACH2 is ready')
             return True
         else:
@@ -468,11 +461,9 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
             raise core.exceptions.DriplineGenericDAQError('ROACH2 is not ready')
 
         #check frequency matches
-        self.central_frequency = self.freq_dict[self.channel_id]
-
         roach_freqs = self._get_roach_central_freqs()
-        psyllid_freqs = self._get_psyllid_central_freqs()
-        if roach_freqs[self.channel_id]!=psyllid_freqs[self.channel_id]:
+        psyllid_freq = self._get_psyllid_central_freq()
+        if roach_freqs[self.channel_id]!=psyllid_freq:
             raise core.exceptions.DriplineGenericDAQError('Frequency mismatch')
 
         return "checks successful"
@@ -502,50 +493,67 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         result = self.provider.cmd(self.daq_target, 'block_channel', payload=self.payload_channel)
         logger.info('start data taking')
 
-        try:
-            # switching from seconds to milisecons
-            duration = self._run_time*1000.0
-            max_duration = self._max_duration*1000.0
-            logger.info('run duration in ms: {}'.format(duration))
+        # switching from seconds to milisecons
+        duration = self._run_time*1000.0
+        max_duration = self._max_duration*1000.0
+        logger.info('run duration in ms: {}'.format(duration))
 
-            NAcquisitions = duration/max_duration
+        NAcquisitions = duration/max_duration
+        if NAcquisitions<=1:
+            psyllid_filename = filename+'.egg'
+            if not os.path.exists(directory):
+                os.makedirs(directory)
 
-            if NAcquisitions<=1:
-                psyllid_filename = filename+'.egg'
+            logger.info('Going to tell psyllid to start the run')
+            payload = {'channel':self.channel_id, 'filename': os.path.join(directory, psyllid_filename), 'duration':duration}
+            try:
+                result = self.provider.cmd(self.psyllid_interface, 'start_run', payload=payload)
+            except:
+                logger.error('Starting Psyllid run failed')
+                logger.info('unblock channel')
+                payload = {'channel': self.channel_id}
+                result = self.provider.cmd(self.daq_target, 'unblock_channel', payload=payload)
+                raise core.exceptions.DriplineGenericDAQError('Starting Psyllid run failed')
 
+        # if the run time exceeds the set max duration the run is split into sub acquisitions
+        # this will be removed once we are sure psyllid can handle it even for long runs
+        else:
+            logger.info('Doing {} acquisitions'.format(int(NAcquisitions)))
+            for i in range(int(NAcquisitions)):
+                total_run_time = 0.0
+                psyllid_filename = filename+'_'+str(i)+'.egg'
+                logger.info('Data will be written to {}/{}'.format(directory, psyllid_filename))
                 if not os.path.exists(directory):
                     os.makedirs(directory)
 
-                logger.info('Going to tell psyllid to start the run')
-                payload = {'channel':self.channel_id, 'filename': os.path.join(directory, psyllid_filename), 'duration':duration}
-                result = self.provider.cmd(self.psyllid_interface, 'start_run', payload=payload)
-
-            # if the run time exceeds the set max duration the run is split into sub acquisitions
-            else:
-                logger.info('Doing {} acquisitions'.format(int(NAcquisitions)))
-
-                for i in range(int(NAcquisitions)):
-                    total_run_time = 0.0
-                    psyllid_filename = filename+'_'+str(i)+'.egg'
-                    logger.info('Data will be written to {}/{}'.format(directory, psyllid_filename))
-                    if not os.path.exists(directory):
-                        os.makedirs(directory)
-                    # last acquisition
-                    if total_run_time > duration-max_duration:
-                        duration = duration-total_run_time
-                        logger.info('Going to tell psyllid to start the last run')
-                        payload = {'channel':self.channel_id, 'filename': os.path.join(directory, psyllid_filename), 'duration':duration}
+                # last acquisition
+                if total_run_time > duration-max_duration:
+                    duration = duration-total_run_time
+                    logger.info('Going to tell psyllid to start the last run')
+                    payload = {'channel':self.channel_id, 'filename': os.path.join(directory, psyllid_filename), 'duration':duration}
+                    try:
                         result = self.provider.cmd(self.psyllid_interface, 'start_run', payload=payload)
-                    # acquisitions with duration = max_duration
-                    else:
-                        total_run_time+=max_duration
-                        logger.info('Going to tell psyllid to start run')
-                        payload = {'channel':self.channel_id, 'filename': os.path.join(directory, psyllid_filename), 'duration':max_duration}
-                        result = self.provider.cmd(self.psyllid_interface, 'start_run', payload=payload)
-                    time.sleep(self._max_duration)
-        except:
-            logger.error('Starting Psyllid run failed')
+                    except:
+                        logger.error('Starting Psyllid run failed')
+                        logger.info('unblock channel')
+                        payload = {'channel': self.channel_id}
+                        result = self.provider.cmd(self.daq_target, 'unblock_channel', payload=payload)
+                        raise core.exceptions.DriplineGenericDAQError('Starting Psyllid run failed')
 
+                # acquisitions with duration = max_duration
+                else:
+                    total_run_time+=max_duration
+                    logger.info('Going to tell psyllid to start run')
+                    payload = {'channel':self.channel_id, 'filename': os.path.join(directory, psyllid_filename), 'duration':max_duration}
+                    try:
+                        result = self.provider.cmd(self.psyllid_interface, 'start_run', payload=payload)
+                    except:
+                        logger.error('Starting Psyllid run failed')
+                        logger.info('unblock channel')
+                        payload = {'channel': self.channel_id}
+                        result = self.provider.cmd(self.daq_target, 'unblock_channel', payload=payload)
+                        raise core.exceptions.DriplineGenericDAQError('Starting Psyllid run failed')
+                time.sleep(self._max_duration)
         logger.info('unblock channel')
         payload = {'channel': self.channel_id}
         result = self.provider.cmd(self.daq_target, 'unblock_channel', payload=payload)
@@ -582,10 +590,10 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         return result
 
 
-    def _get_psyllid_central_freqs(self):
-        result = self.provider.cmd(self.psyllid_interface, 'get_all_central_frequencies')
-        logger.info('Psyllid central freqs {}'.format(result))
-        return result
+    def _get_psyllid_central_freq(self):
+        result = self.provider.cmd(self.psyllid_interface, 'get_central_frequency', payload=self.payload_channel)
+        logger.info('Psyllid central freqs {}'.format(result['values'][0]))
+        return result['values'][0]
 
 
     @property

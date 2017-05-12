@@ -1,5 +1,5 @@
 name: my_store
-broker: higgsino.physics.ucsb.edu
+broker: localhost
 module: Spimescape
 endpoints:
   - name: my_price_list

@@ -11,7 +11,6 @@ import adc5g
 import numpy as np
 #import time
 from dripline import core
-from .ethernet_provider import EthernetProvider
 
 
 logger = logging.getLogger(__name__)
@@ -45,7 +44,7 @@ class Roach2Provider(ArtooDaq, core.Provider):
 
 
 __all__.append('Roach2Interface')
-class Roach2Interface(Roach2Provider, EthernetProvider):
+class Roach2Interface(Roach2Provider):
     def __init__(self,
                  roach2_hostname = 'led',
                  source_ip_a = None,
@@ -77,10 +76,7 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
                  do_adc_ogp_calibration = False,
                  central_freq = 800e6,
                  gain = 7.0,
-
-                 hf_lo_freq=24.2e9,
-                 analysis_bandwidth=50e6,
-                 monitor_target = '/home/project8/roach_plots',
+                 monitor_target = None,
                  **kwargs):
 
 
@@ -216,8 +212,8 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
 
     def set_central_frequency(self, cf, channel='a'):
         if self.block_dict[channel]==False:
+            logger.info('setting central frequency of channel {} to {}'.format(channel, cf))
             try:
-                logger.info('setting central frequency of channel {} to {}'.format(channel, cf))
                 cf = ArtooDaq.tune_ddc_1st_to_freq(self, cf, tag=channel)
                 self.freq_dict[channel]=cf
                 return cf
@@ -263,17 +259,12 @@ class Roach2Interface(Roach2Provider, EthernetProvider):
             dsoc_desc = (str(self.dest_ip_c), self.dest_port_c)
         else:
             dsoc_desc = (str(self.dest_ip), self.dest_port)
-        try:
-            logger.info('grabbing packets from {}'.format(dsoc_desc))
-            pkts=ArtooDaq.grab_packets(self,n,dsoc_desc,close_soc)
-            logger.info('Freq not time: {}'.format(pkts[0].freq_not_time))
-            x = pkts[0].interpret_data()
-            logger.info('first 10 entries are:')
-            logger.info(x[0:10])
-            return True
-        except:
-            logger.warning('cannot grab packets')
-            return False
+        logger.info('grabbing packets from {}'.format(dsoc_desc))
+        pkts=ArtooDaq.grab_packets(self,n,dsoc_desc,close_soc)
+        logger.info('Freq not time: {}'.format(pkts[0].freq_not_time))
+        x = pkts[0].interpret_data()
+        logger.info('first 10 entries are:')
+        logger.info(x[0:10])
 
 
     def get_roach2_clock(self):
