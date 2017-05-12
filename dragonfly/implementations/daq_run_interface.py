@@ -30,7 +30,6 @@ class DAQProvider(core.Provider):
                  directory_path=None,
                  data_directory_path=None,
                  meta_data_directory_path=None,
-                 #Linux_not_Windows_DAQ = True,
                  filename_prefix='',
                  snapshot_state_target='',
                  metadata_state_target='',
@@ -72,7 +71,6 @@ class DAQProvider(core.Provider):
         self._metadata_target = metadata_target
         self._snapshot_state_target = snapshot_state_target
         self.filename_prefix = filename_prefix
-        #self.Linux_not_Windows_DAQ = Linux_not_Windows_DAQ
 
         self._stop_handle = None
         self._run_name = None
@@ -202,10 +200,6 @@ class DAQProvider(core.Provider):
                                                                     runNx=self.run_id/1000,
                                                                     runN=self.run_id
                                                                    )
-	#if self.Linux_not_Windows_DAQ!=True:
-        #    directory = os.path.join("\\",self.data_directory_path, '{:09d}'.format(self.run_id))
-        #else:
-        #    directory = os.path.join(self.data_directory_path, '{:09}'.format(self.run_id))
 
         filename = "{}{:09d}".format(self.filename_prefix, self.run_id)
         self._start_data_taking(directory,filename)
