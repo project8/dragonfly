@@ -397,17 +397,21 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         else:
             return False
 
-
-    def set_max_duration(self, duration):
-        self._max_duration = duration
+    @property
+    def max_duration(self):
         return self._max_duration
+
+    @max_duration.setter
+    def max_duration(self, duration):
+        self._max_duration = duration
 
 
     def _check_roach2_status(self):
         logger.info('Checking ROACH2 status')
         #call is_running from roach2_interface
-        result = self.provider.cmd(self.daq_target, 'is_running')
-        if result['values'][0]==True:
+        result = self.provider.get(self.daq_target+'.is_running')['values'][0]
+        logger.info(result)
+        if result==True:
             logger.info('ROACH2 is ready')
             return True
         else:
@@ -424,12 +428,8 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
             raise core.exceptions.DriplineGenericDAQError('Psyllid is not responding')        
 
         #check channel match
-        Nstreams = self.provider.cmd(self.psyllid_interface, 'get_number_of_streams', payload = self.payload_channel)['values'][0]
-        if Nstreams != 1:
-            logger.error('Wrong number of Psyllid streams are active under this queue')
-            raise core.exceptions.DriplineValueError('Wrong number of Psyllid streams are active under this queue')
-
-        active_channels = self.provider.cmd(self.psyllid_interface, 'get_active_channels')['values'][0]
+        active_channels = self.provider.get(self.psyllid_interface + '.active_channels')
+        logger.info(active_channels)
         if self.channel_id in active_channels==False:
             logger.error('The Psyllid and ROACH2 channel interfaces do not match')
             raise core.exceptions.DriplineGenericDAQError('The Psyllid and ROACH channel interfaces do not match')
@@ -453,6 +453,10 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         #checking roach
         if self._check_roach2_status() == False:
             raise core.exceptions.DriplineGenericDAQError('ROACH2 is not ready')
+        blocked_channels = self.provider.get(self.daq_target+ '.blocked_channels')
+        logger.info(blocked_channels)
+        if self.channel_id in blocked_channels: 
+            raise core.exceptions.DriplineGenericDAQError('Channel is blocked')
 
         #check frequency matches
         roach_freqs = self._get_roach_central_freqs()
@@ -579,7 +583,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
 # frequency settings and gettings
 
     def _get_roach_central_freqs(self):
-        result = self.provider.cmd(self.daq_target, 'get_all_central_frequencies')
+        result = self.provider.get(self.daq_target + '.all_central_frequencies')
         logger.info('ROACH central freqs {}'.format(result))
         return result
 

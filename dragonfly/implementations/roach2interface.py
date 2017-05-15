@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """
+Interface for controlling the roach2
 """
 
 
@@ -9,7 +10,6 @@ import logging
 import os
 import adc5g
 import numpy as np
-#import time
 from dripline import core
 
 
@@ -47,98 +47,58 @@ __all__.append('Roach2Interface')
 class Roach2Interface(Roach2Provider):
     def __init__(self,
                  roach2_hostname = 'led',
-                 source_ip_a = None,
-                 source_port_a = None,
-                 source_mac_a = None,
-                 dest_ip_a = None,
-                 dest_port_a = None,
-                 dest_mac_a = None,
-                 channel_tag_a = 'a',
+                 channel_a_config = None,
+                 channel_b_config = None,
+                 channel_c_config = None,
 
-                 source_ip_b = None,
-                 source_port_b = None,
-                 source_mac_b = None,
-                 dest_ip_b = None,
-                 dest_port_b = None,
-                 dest_mac_b = None,
-                 channel_tag_b = 'b',
-
-                 source_ip_c = None,
-                 source_port_c = None,
-                 source_mac_c = None,
-                 dest_ip_c = None,
-                 dest_port_c = None,
-                 dest_mac_c = None,
-                 channel_tag_c = 'c',
-
-                 Nchannels = 1,
                  daq_name = None,
                  do_adc_ogp_calibration = False,
-                 central_freq = 800e6,
+                 default_frequency = 800e6,
                  gain = 7.0,
+                 fft_shift = '1101010101010',
                  monitor_target = None,
                  **kwargs):
 
 
         Roach2Provider.__init__(self, **kwargs)
 
-
         self.roach2_hostname = roach2_hostname
         self.monitor_target = monitor_target
 
-	#channel a
-        self.source_ip = str(source_ip_a)
-        self.source_port = source_port_a
-        self.source_mac = str(source_mac_a)
-        self.dest_ip = str(dest_ip_a)
-        self.dest_port = dest_port_a
-        self.dest_mac = str(dest_mac_a)
+        self.channel_a_config = channel_a_config
+        self.channel_b_config = channel_b_config
+        self.channel_c_config = channel_c_config
 
-	#channel b
-        self.source_ip_b = str(source_ip_b)
-        self.source_port_b = source_port_b
-        self.source_mac_b = str(source_mac_b)
-        self.dest_ip_b = str(dest_ip_b)
-        self.dest_port_b = dest_port_b
-        self.dest_mac_b = str(dest_mac_b)
-
-	#channel c
-        self.source_ip_c = str(source_ip_c)
-        self.source_port_c = source_port_c
-        self.source_mac_c = str(source_mac_c)
-        self.dest_ip_c = str(dest_ip_c)
-        self.dest_port_c = dest_port_c
-        self.dest_mac_c = str(dest_mac_c)
-
-
-        self.channel_list = []
         self.freq_dict = {'a':None, 'b':None, 'c':None}
         self.block_dict = {'a': False, 'b': False, 'c':False}
-        self.cfg_list = []
         self.daq_name = daq_name
-        self.central_freq = central_freq
+        self.default_frequency = default_frequency
         self.gain_dict = {'a':gain, 'b':gain, 'c':gain}
+        self.fft_shift = fft_shift
         self.configured=False
         self.calibrated=False
         
 
 
-    def configure(self, do_ogp_cal=False, do_adcif_cal=True, boffile=None):
+    def _finish_configure(self, do_ogp_cal=False, do_adcif_cal=True, boffile=None):
         self.channel_list = []
         self.cfg_list = []
         # make list with interface dictionaries
-        if self.source_port != None:
-            cfg_a = self.make_interface_config_dictionary(self.source_ip, self.source_port,self.dest_ip, self.dest_port, src_mac=self.source_mac, dest_mac=self.dest_mac, tag='a')
+        if self.channel_a_config != None:
+            cfg_a = self.make_interface_config_dictionary(src_ip=self.channel_a_config['source_ip'], src_port=self.channel_a_config['source_port'], src_mac=self.channel_a_config['source_mac'], 
+                                                          dest_ip=self.channel_a_config['dest_ip'], dest_port=self.channel_a_config['dest_port'], dest_mac=self.channel_a_config['dest_mac'], tag='a')
             self.cfg_list.append(cfg_a)
             self.channel_list.append('a')
 
-        if self.source_port_b != None:
-            cfg_b = self.make_interface_config_dictionary(self.source_ip_b, self.source_port_b,self.dest_ip_b, self.dest_port_b, src_mac=self.source_mac_b, dest_mac=self.dest_mac_b, tag ='b')
+        if self.channel_b_config != None:
+            cfg_b = self.make_interface_config_dictionary(src_ip=self.channel_b_config['source_ip'], src_port=self.channel_b_config['source_port'], src_mac=self.channel_b_config['source_mac'],
+                                                          dest_ip=self.channel_b_config['dest_ip'], dest_port=self.channel_b_config['dest_port'], dest_mac=self.channel_b_config['dest_mac'], tag='b')
             self.cfg_list.append(cfg_b)
             self.channel_list.append('b')
 
-        if self.source_port_c != None:
-            cfg_c = self.make_interface_config_dictionary(self.source_ip_c, self.source_port_c,self.dest_ip_c, self.dest_port_c, src_mac=self.source_mac_c, dest_mac=self.dest_mac_c, tag ='c')
+        if self.channel_c_config != None:
+            cfg_c = self.make_interface_config_dictionary(src_ip=self.channel_c_config['source_ip'], src_port=self.channel_c_config['source_port'], src_mac=self.channel_c_config['source_mac'],
+                                                          dest_ip=self.channel_c_config['dest_ip'], dest_port=self.channel_c_config['dest_port'], dest_mac=self.channel_c_config['dest_mac'], tag='c')
             self.cfg_list.append(cfg_c)
             self.channel_list.append('c')
 
@@ -152,10 +112,10 @@ class Roach2Interface(Roach2Provider):
             self.do_adc_ogp_calibration()
 
         for s in self.channel_list:
-            self.set_central_frequency(800.0e6, channel=s)
-            self.set_gain(self.gain_dict[s],channel=s)
-            self.set_fft_shift('1101010101010', tag='ab')
-            self.set_fft_shift('1101010101010', tag='cd')
+            self.set_central_frequency(self.default_frequency, s)
+            self.gain = (self.gain_dict[s], s)
+            self.fft_shift_vector = (self.fft_shift, 'ab')
+            self.fft_shift_vector = (self.fft_shift, 'cd')
         return self.configured
 
 
@@ -176,6 +136,7 @@ class Roach2Interface(Roach2Provider):
         return self.calibrated
 
 
+    @property
     def is_running(self):
         logger.info('Pinging ROACH2')
         response = os.system("ping -c 1 " + self.roach2_hostname)
@@ -195,147 +156,78 @@ class Roach2Interface(Roach2Provider):
 
 
     def block_channel(self, channel):
-        if self.block_dict.has_key(channel)==False:
-            logger.info('{} is not a valid channel label'.format(channel))
-            return False
         self.block_dict[channel]=True
-        return self.block_dict
 
 
     def unblock_channel(self, channel):
-        if self.block_dict.has_key(channel)==False:
-            logger.info('{} is not a valid channel label'.format(channel))
-            return False
         self.block_dict[channel]=False
-        return self.block_dict
 
 
-    def set_central_frequency(self, cf, channel='a'):
-        if self.block_dict[channel]==False:
-            logger.info('setting central frequency of channel {} to {}'.format(channel, cf))
-            try:
-                cf = ArtooDaq.tune_ddc_1st_to_freq(self, cf, tag=channel)
-                self.freq_dict[channel]=cf
-                return cf
-            except:
-                logger.error('setting central frequency failed')
-                self.freq_dict[channel]=None
-                self.calibrated = False
-                self.configured = False
-                raise core.exceptions.DriplineGenericDAQError('Setting central frequency failed in roach2_service')
-        else:
-            logger.error('Channel blocked')
-            return False    
+    @property
+    def blocked_channels(self):
+        bc = [i for i in self.block_dict.keys() if self.block_dict[i]==True]
+        return bc
 
 
-    def get_central_frequency(self, channel='a'):
+    def get_central_frequency(self, channel):
         return self.freq_dict[channel]
 
 
-    def get_all_central_frequencies(self):
+    def set_central_frequency(self, cf, channel):
+        if self.block_dict[channel]==False:
+            logger.info('setting central frequency of channel {} to {}'.format(channel, cf))
+            cf = ArtooDaq.tune_ddc_1st_to_freq(self, cf, tag=channel)
+            self.freq_dict[channel]=cf
+            return cf
+        else:
+            raise core.exceptions.DriplineGenericDAQError('Channel {} is blocked'.format(channel))
+
+
+    @property
+    def all_central_frequencies(self):
         return self.freq_dict
             
 
-    def set_gain(self, gain, channel='a'):
-        if gain>-8 and gain <7.93:
-            logger.info('setting gain of channel {} to {}'.format(channel, gain))
-            ArtooDaq.set_gain(self, gain, tag=channel)
-            self.gain_dict[channel] = gain
-            return True
+    @property
+    def gain(self):
+        return self.gain_dict
+
+
+    @gain.setter
+    def gain(self, val):
+        gain, channel= val
+        if self.block_dict[channel]==False:
+            if gain>-8 and gain <7.93:
+                logger.info('setting gain of channel {} to {}'.format(channel, gain))
+                ArtooDaq.set_gain(self, gain, tag=channel)
+                self.gain_dict[channel] = gain
+            else:
+                raise core.exceptions.DriplineGenericDAQError('Only gains between -8 and 7.93 are allowed')
         else:
-            logger.error('Only gain values between -8 and 7.93 are allowed')
-            return False
+            raise core.exceptions.DriplineGenericDAQError('Channel {} is blocked'.format(channel))
 
 
-    def set_fft_shift(self, shift, tag):
+    @property
+    def fft_shift_vector(self):
+        return self.fft_shift
+
+
+    @fft_shift_vector.setter
+    def fft_shift_vector(self, val):
+        shift, tag = val
+        self.fft_shift = shift
         logger.info('setting fft shift of channel {} to {}'.format(tag, shift))
         ArtooDaq.set_fft_shift(self, str(shift), tag=tag)
 
 
-    def get_packets(self,n=1,channel='a',close_soc=True):
-        if channel == 'b':
-            dsoc_desc = (str(self.dest_ip_b),self.dest_port_b)
-        elif channel == 'c':
-            dsoc_desc = (str(self.dest_ip_c), self.dest_port_c)
-        else:
-            dsoc_desc = (str(self.dest_ip), self.dest_port)
-        logger.info('grabbing packets from {}'.format(dsoc_desc))
-        pkts=ArtooDaq.grab_packets(self,n,dsoc_desc,close_soc)
-        logger.info('Freq not time: {}'.format(pkts[0].freq_not_time))
-        x = pkts[0].interpret_data()
-        logger.info('first 10 entries are:')
-        logger.info(x[0:10])
+
+    @property
+    def roach2_clock(self):
+        board_clock = self.roach2.est_brd_clk()
+        return board_clock
 
 
-    def get_roach2_clock(self):
-        a = self.roach2.est_brd_clk()
-        logger.info('{}'.format(a))
-        return a
-
-
-    def get_T_packet(self,dsoc_desc=None,close_soc=True, channel='a'):
-        if channel=='a':
-            dsoc_desc = (str(self.dest_ip),self.dest_port)
-        elif channel=='b':
-            dsoc_desc = (str(self.dest_ip_b),self.dest_port_b)
-        elif channel=='c':
-            dsoc_desc = (str(self.dest_ip_c),self.dest_port_c)
-
-        cf = self.freq_dict[channel]
-        gain = self.gain_dict[channel]
-
-        logger.info('grabbing packets from {}'.format(dsoc_desc))
-        pkts=ArtooDaq.grab_packets(self,2,dsoc_desc,close_soc)
-
-        if pkts[0].freq_not_time==False:
-            x = pkts[0].interpret_data()
-            f = pkts[1].interpret_data()
-            pkt_id=pkts[0].pkt_in_batch
-        elif pkts[1].freq_not_time==False:
-            x = pkts[1].interpret_data()
-            f = pkts[0].interpret_data()
-            pkt_id=pkts[1].pkt_in_batch
-
-        p = np.abs(np.fft.fftshift(np.fft.fft(x)))/4096
-        logger.info('first 10 entries in time domain array: ')
-        logger.info(x[0:10])
-        gain = self.gain_dict[channel]
-        np.save(self.monitor_target+'/T_packet_channel_'+channel+'_cf_'+str(cf)+'Hz_gain_'+str(gain), p)
-        np.save(self.monitor_target+'/time_domain_T_packet_channel_'+channel+'_cf_'+str(cf)+'Hz_gain_'+str(gain), x)
-
-
-    def get_F_packet(self,dsoc_desc=None,close_soc=True, channel='a'):
-        if channel=='a':
-            dsoc_desc = (str(self.dest_ip),self.dest_port)
-        elif channel=='b':
-            dsoc_desc = (str(self.dest_ip_b),self.dest_port_b)
-        elif channel=='c':
-            dsoc_desc = (str(self.dest_ip_c),self.dest_port_c)
-
-        cf = self.freq_dict[channel]
-        gain = self.gain_dict[channel]
-
-        logger.info('grabbing packets from {}'.format(dsoc_desc))
-        pkts=ArtooDaq.grab_packets(self,2,dsoc_desc,close_soc)
-
-        if pkts[0].freq_not_time==False:
-            x = pkts[0].interpret_data()
-            f = pkts[1].interpret_data()
-            pkt_id=pkts[1].pkt_in_batch
-
-        elif pkts[1].freq_not_time==False:
-            x = pkts[1].interpret_data()
-            f = pkts[0].interpret_data()
-            pkt_id=pkts[0].pkt_in_batch
-
-        logger.info('first 10 entries in frequency domain array: ')
-        logger.info(f[0:10])
-        logger.info('cf={}'.format(cf))
-        np.save(self.monitor_target+'/F_packet_channel_'+channel+'_cf_'+cf+'Hz_gain_'+str(gain), f)
-        logger.info('file saved to {}'.format(self.monitor_target))
-
-
-    def get_multiple_T_packets(self,dsoc_desc=None, channel='a', NPackets=10, mean=True, path=None):
+    def get_T_packets(self,dsoc_desc=None, channel='a', NPackets=10, mean=True, path=None):
         if channel=='a':
             dsoc_desc = (str(self.dest_ip),self.dest_port)
         elif channel=='b':
@@ -351,20 +243,24 @@ class Roach2Interface(Roach2Provider):
         logger.info('cf={}'.format(cf))
         N = 4096
         p = []
+        t = []
         for i in range(int(NPackets*2)):
             if pkts[i].freq_not_time==False:  
                 x=pkts[i].interpret_data()
+                t.append(x)
                 p.append(np.abs(np.fft.fftshift(np.fft.fft(x)))/N)
         p = np.array(p)
+        t = nparray(t)
         NPackets = np.shape(p)[0] 
         if mean == True:
             p = np.mean(p, axis = 0)
         if path==None:
             path=self.monitor_target
-        np.save(path+'/T_packets_channel'+channel+'_cf_'+str(cf)+'Hz_gain_'+str(gain)+'_N_'+str(NPackets), p)
+        np.save(path+'/T_packets_ft_channel'+channel+'_cf_'+str(cf)+'Hz_gain_'+str(gain)+'_N_'+str(NPackets), p)
+        np.save(path+'/T_packets_channel'+channel+'_cf_'+str(cf)+'Hz_gain_'+str(gain)+'_N_'+str(NPackets), t)
 
 
-    def get_multiple_F_packets(self,dsoc_desc=None, channel='a', NPackets=100, mean=True):
+    def get_F_packets(self,dsoc_desc=None, channel='a', NPackets=100, mean=True):
         if channel=='a':
             dsoc_desc = (str(self.dest_ip),self.dest_port)
         elif channel=='b':
