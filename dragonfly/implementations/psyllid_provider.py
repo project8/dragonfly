@@ -26,7 +26,7 @@ class PsyllidProvider(core.Provider):
                  set_condition_list = [],
                  **kwargs):
 
-	core.Provider.__init__(self, **kwargs)        
+        core.Provider.__init__(self, **kwargs)        
         self.psyllid_queue = psyllid_queue
         self._set_condition_list = set_condition_list
         self.status = None
@@ -35,8 +35,8 @@ class PsyllidProvider(core.Provider):
         self.channel_dict = {'a': 0, 'b': 1, 'c': 2}
         self.freq_dict = {'a': None, 'b': None, 'c': None}
         self.mode = None
-        
-        
+
+
     def _finish_configure(self):
         try:
             if self.request_status()==0:
@@ -51,16 +51,16 @@ class PsyllidProvider(core.Provider):
             self.mode = 'triggered'
             self.set_default_central_frequencies()
         self.get_number_of_streams()
-        
-        
+
+
     def set_default_central_frequencies(self):
         freq_dict = {'a': 800e6, 'b': 800e6, 'c': 800e6}
         self.set_all_central_frequencies(freq_dict)
-        
+
 
     def request_status(self):
         logger.info('Checking Psyllid status')
-        
+
         try:
             result = self.provider.get(self.psyllid_queue+'.daq-status', timeout=10)
             self.status = result['server']['status']
@@ -110,7 +110,7 @@ class PsyllidProvider(core.Provider):
             self.request_status()
             return True
         elif self.status_value==0:
-	    self.activate()
+            self.activate()
         else:
              logger.warning('Cannot reactivate Psyllid')
              return False
@@ -127,7 +127,7 @@ class PsyllidProvider(core.Provider):
 
     def set_central_frequency(self, channel='a', cf=800e6):
         cf_in_MHz = cf
-	
+
         if self.mode == 'streaming':
             request = '.active-config.ch'+str(self.channel_dict[channel])+'.strw.center-freq'
             logger.info(request)
@@ -143,7 +143,7 @@ class PsyllidProvider(core.Provider):
 
     def set_all_central_frequencies(self, freq_dict):
         for ichannel in freq_dict.keys():
-	    self.set_central_frequency(channel=ichannel, cf=freq_dict[ichannel])
+            self.set_central_frequency(channel=ichannel, cf=freq_dict[ichannel])
 
 
     def start_run(self, duration, filename):

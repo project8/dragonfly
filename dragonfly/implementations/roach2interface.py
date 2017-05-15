@@ -300,7 +300,7 @@ class Roach2Interface(Roach2Provider):
             p = np.mean(p, axis = 0)
         logger.info('shape of saved array is: {}'.format(np.shape(p)))
         np.save(self.monitor_target+'/raw_adc'+str(count), p)
-	logger.info('Raw data saved to {}'.format(self.monitor_target+'/raw_adc'+str(count)+'.npy'))
+        logger.info('Raw data saved to {}'.format(self.monitor_target+'/raw_adc'+str(count)+'.npy'))
 
 
     def calibrate_manually(self, gain1=0.0, gain2=0.42, gain3=0.42, gain4=1.55, off1=3.14, off2=-0.39, off3=2.75, off4=-1.18):
