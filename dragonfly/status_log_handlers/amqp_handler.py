@@ -22,7 +22,7 @@ class AMQPHandler(logging.Handler):
     def __init__(self, broker,name=None,*args, **kwargs):
         # setting the logger listening
         logging.Handler.__init__(self, *args, **kwargs)
-        self.setLevel(logging.CRITICAL)
+        self.setLevel(logging.WARNING)
 
         # setting the interface
         self.connection_to_alert = dripline.core.Service(broker=broker, exchange='alerts',keys='status_message.#.#')
@@ -42,16 +42,18 @@ class AMQPHandler(logging.Handler):
 
     def setLevel(self, level):
         '''
-        for now, force the to critical...
+        for now, force the to warning...
         '''
-        if level != logging.CRITICAL:
-            print('warning: slack is only ever critical, setting that')
+        if level < logging.WARNING:
+            print('warning: slack is only ever warning, setting that')
         else:
             super(AMQPHandler, self).setLevel(level)
-
+        # print(level)
 
     def emit(self, record):
-        this_channel = 'p8_alerts'
-        severity = 'status_message.{}.{}'.format(this_channel,self.username)
+        # print(record.levelname)
+        if record.levelno != 35: # prevent troubles with the MonitorMessage class
+            this_channel = 'p8_alerts'
+            severity = 'status_message.{}.{}'.format(record.levelname.lower(),self.username)
 
-        self.connection_to_alert.send_status_message(severity=severity,alert=record.msg)
+            self.connection_to_alert.send_status_message(severity=severity,alert=record.msg)

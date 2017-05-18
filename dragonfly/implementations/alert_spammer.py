@@ -31,17 +31,17 @@ class AlertSpammer(Endpoint):
         self.connection_to_alert = dripline.core.Service(broker=broker, exchange='alerts',keys='status_message.p8_alerts.dripline')
 
         #sending a welcome message
-        self.this_channel = 'p8_alerts'
+        self.level = 'warning'
         self.username = self.name
         self.sleep_time = sleep_time
 
     def spam(self):
         while (True):
 
-            severity = 'status_message.{}.{}'.format(self.this_channel,self.username)
+            severity = 'status_message.{}.{}'.format(self.level,self.username)
             print('sending to alerts exchange with severity {} message ({})'.format(severity,'Redundant informations'))
             self.connection_to_alert.send_status_message(severity=severity,alert='Redundant informations')
-            logger.critical('I am critical')
+            logger.warning('I am critical')
             sleep(self.sleep_time)
 
     def _set_condition(self,number):
