@@ -39,9 +39,9 @@ class AlertSpammer(Endpoint):
         while (True):
 
             severity = 'status_message.{}.{}'.format(self.level,self.username)
-            print('sending to alerts exchange with severity {} message ({})'.format(severity,'Redundant informations'))
+            logger.info('sending to alerts exchange with severity {} message ({})'.format(severity,'Redundant informations'))
             self.connection_to_alert.send_status_message(severity=severity,alert='Redundant informations')
-            logger.warning('I am critical')
+            logger.critical('I am critical')
             sleep(self.sleep_time)
 
     def _set_condition(self,number):
