@@ -23,15 +23,15 @@ class AlertSpammer(Endpoint):
     '''
     Spammer of Alerts
     '''
-    def __init__(self,broker=None,sleep_time = 10,*args, **kwargs):
+    def __init__(self,broker=None,sleep_time = 10,channel='p8_alerts',*args, **kwargs):
 
         Endpoint.__init__(self,**kwargs)
 
         # setting the interface
-        self.connection_to_alert = dripline.core.Service(broker=broker, exchange='alerts',keys='status_message.p8_alerts.dripline')
+        self.connection_to_alert = dripline.core.Service(broker=broker, exchange='alerts',keys='status_message.#.#')
 
         #sending a welcome message
-        self.this_channel = 'p8_alerts'
+        self.this_channel = channel
         self.username = self.name
         self.sleep_time = sleep_time
 

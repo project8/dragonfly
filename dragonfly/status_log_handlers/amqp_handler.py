@@ -19,7 +19,7 @@ class AMQPHandler(logging.Handler):
     A custom handler for sending messages to AMQP server
     '''
     argparse_flag_str = 'amqp'
-    def __init__(self, broker,name=None,*args, **kwargs):
+    def __init__(self, broker,slack_channel = 'p8_alerts',name=None,*args, **kwargs):
         # setting the logger listening
         logging.Handler.__init__(self, *args, **kwargs)
         self.setLevel(logging.CRITICAL)
@@ -28,7 +28,7 @@ class AMQPHandler(logging.Handler):
         self.connection_to_alert = dripline.core.Service(broker=broker, exchange='alerts',keys='status_message.#.#')
 
         #sending a welcome message
-        this_channel = 'p8_alerts'
+        self.slack_channel = slack_channel
         if name is None:
             self.username = 'dripline'
         else:
@@ -51,7 +51,5 @@ class AMQPHandler(logging.Handler):
 
 
     def emit(self, record):
-        this_channel = 'p8_alerts'
-        severity = 'status_message.{}.{}'.format(this_channel,self.username)
-
+        severity = 'status_message.{}.{}'.format(self.slack_channel,self.username)
         self.connection_to_alert.send_status_message(severity=severity,alert=record.msg)

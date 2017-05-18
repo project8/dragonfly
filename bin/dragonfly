@@ -39,6 +39,7 @@ class DriplineParser(argparse.ArgumentParser):
                  amqp_broker=False,
                  config_file=False,
                  tmux_support=False,
+                 slack_support=False,
                  **kwargs):
         '''
         Keyword Args:
@@ -82,6 +83,14 @@ class DriplineParser(argparse.ArgumentParser):
                                           '--config',
                                           help='path (absolute or relative) to configuration file',
                                          )
+        if slack_support:
+            self.base_parser.add_argument('-s',
+                                          '--slack_channel',
+                                          help='define the Slack channel where to send the critical messages',
+                                          default=None,
+                                          nargs='?',
+                                          const='p8_alerts',
+                                         )
         if tmux_support:
             self.base_parser.add_argument('-t',
                                           '--tmux',
@@ -90,6 +99,7 @@ class DriplineParser(argparse.ArgumentParser):
                                           default=None, # value if option not given
                                           const=False, # value if option given with no argument
                                          )
+
         self.add_dragonfly_subcommands()
 
 
@@ -103,7 +113,7 @@ class DriplineParser(argparse.ArgumentParser):
         for handler_class in [getattr(dragonfly.status_log_handlers, h) for h in dragonfly.status_log_handlers.__all__]:
             if str(handler_class.__name__) is 'AMQPHandler':
                 try:
-                    a_handler = handler_class(broker=kwargs['broker'],name=kwargs['name'])
+                    a_handler = handler_class(broker=kwargs['broker'],name=kwargs['name'], slack_channel=kwargs['slack_channel'])
                     a_handler.update_parser(self.base_parser)
                     self._handlers[a_handler.argparse_flag_str] = a_handler
                 except:
@@ -217,15 +227,21 @@ class DriplineParser(argparse.ArgumentParser):
                     if 'broker' in args_dict and 'broker' in conf_file:
                         if args_dict['broker'] is None:
                             del args_dict['broker']
+                    if 'slack_channel' in args_dict and 'slack_channel' in conf_file:
+                        if args_dict['slack_channel'] is None:
+                            del args_dict['slack_channel']
                     conf_file.update(args_dict)
                     extra_args.update({'broker':conf_file['broker']})
                     if 'name' in conf_file:
                         extra_args.update({'name':conf_file['name']})
                     else:
                         extra_args.update({'name':'dripline'})
+                    if 'slack_channel' in conf_file and conf_file['slack_channel'] is not None:
+                        extra_args.update({'slack_channel':conf_file['slack_channel']})
+                    else:
+                        extra_args.update({'slack_channel':'p8_alerts'})
                     these_args = DotAccess(conf_file)
                 except:
-                    print("parsing of config failed")
                     raise
             else:
                 extra_args.update({'broker':args_dict['broker']})
@@ -233,6 +249,10 @@ class DriplineParser(argparse.ArgumentParser):
                     extra_args.update({'name':args_dict['name']})
                 else:
                     extra_args.update({'name':'dripline'})
+                if 'slack_channel' in args_dict and args_dict['slack_channel'] is not None:
+                    extra_args.update({'slack_channel':args_dict['slack_channel']})
+                else:
+                    extra_args.update({'slack_channel':'p8_alerts'})
 
         # initialize the handlers and subcommands of dragonfly
         self.add_dragonfly_handlers(extra_args)
@@ -263,6 +283,7 @@ if __name__ == '__main__':
     parser = DriplineParser(amqp_broker=True,
                             config_file=True,
                             tmux_support=True,
+                            slack_support=True
                            )
     args = parser.parse_args()
     logger.debug('calling {} with args:\n{}'.format(args.func, vars(args)))
