@@ -1,9 +1,11 @@
 name: spammer_service
 broker: localhost
 module: Spimescape
+slack_channel: test_operator # set the channel where the logger.critical will be sent
 endpoints:
       - name: spammer
         module: AlertSpammer
         username: Spammer
         broker: higgsino.physics.ucsb.edu
         sleep_time: 10
+        channel: test_operator # set the channel where a standard message will be sent
