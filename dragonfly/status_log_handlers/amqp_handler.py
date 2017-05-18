@@ -46,6 +46,7 @@ class AMQPHandler(logging.Handler):
         '''
         if level < logging.WARNING:
             print('warning: slack is only ever warning, setting that')
+            super(AMQPHandler, self).setLevel(logging.WARNING)
         else:
             super(AMQPHandler, self).setLevel(level)
         # print(level)
