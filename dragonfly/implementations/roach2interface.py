@@ -229,11 +229,11 @@ class Roach2Interface(Roach2Provider):
 
     def get_T_packets(self,dsoc_desc=None, channel='a', NPackets=10, mean=True, path=None):
         if channel=='a':
-            dsoc_desc = (str(self.dest_ip),self.dest_port)
+            dsoc_desc = (self.channel_a_config['dest_ip'],self.channel_a_config['dest_port'])
         elif channel=='b':
-            dsoc_desc = (str(self.dest_ip_b),self.dest_port_b)
+            dsoc_desc = (self.channel_b_config['dest_ip'],self.channel_b_config['dest_port'])
         elif channel=='c':
-            dsoc_desc = (str(self.dest_ip_c),self.dest_port_c)
+            dsoc_desc = (self.channel_c_config['dest_ip'],self.channel_c_config['dest_port'])
 
         cf = self.freq_dict[channel]
         gain = self.gain_dict[channel]
@@ -250,7 +250,7 @@ class Roach2Interface(Roach2Provider):
                 t.append(x)
                 p.append(np.abs(np.fft.fftshift(np.fft.fft(x)))/N)
         p = np.array(p)
-        t = nparray(t)
+        t = np.array(t)
         NPackets = np.shape(p)[0] 
         if mean == True:
             p = np.mean(p, axis = 0)

@@ -57,6 +57,9 @@ class MultiPsyllidProvider(core.Provider):
 
                 except core.exceptions.DriplineGenericDAQError:
                     logger.warning('No matching Psyllid instance for channel {} present'.format(channel))
+                except Exception as e:
+                    logger.error('Unexpected error during startup')
+                    raise 
 
         # Summary after startup
         logger.info('Status of channels: {}'.format(self.status_value_dict))
@@ -68,11 +71,14 @@ class MultiPsyllidProvider(core.Provider):
         logger.info('Checking Psyllid status of channel {}'.format(channel))
         try:
             result = self.provider.get(self.queue_dict[channel]+'.daq-status', timeout=10)
-        except:
-            logger.warning('Psyllid instance for channel {} is not running or sth. else is wrong'.format(channel))
+        except core.exceptions.DriplineError:
+            logger.warning('Psyllid instance for channel {} is not running or returned error'.format(channel))
             self.status_dict[channel]=None
             self.status_value_dict[channel]=None
             return self.status_value_dict[channel]
+        except Exception as e:
+            logger.error('Something else went wrong')
+            raise
         else:
             self.status_dict[channel] = result['server']['status']
             self.status_value_dict[channel] = result['server']['status-value']
@@ -173,10 +179,13 @@ class MultiPsyllidProvider(core.Provider):
                 return True
             else:
                 return False
-        except:
-            logger.error('Could not set central frequency')
+        except core.exceptions.DriplineError:
+            logger.error('Could not set central frequency of Psyllid instance for channel {}'.format(channel))
             self.freq_dict[channel]=None
             return False
+        except Exception as e:
+            logger.error('Unexpected error in set_central_frequency')
+            raise 
 
 
     def start_run(self, channel, duration, filename):
@@ -209,19 +218,19 @@ class MultiPsyllidProvider(core.Provider):
                 result = self.provider.get(self.queue_dict[channel]+request)
                 stream_count += 1
                 self.mode_dict[channel]='streaming'
-            except:
+            except core.exceptions.DriplineError:
                 try:
                     request = '.node-config.ch'+str(i)+'.trw'
                     result = self.provider.get(self.queue_dict[channel]+request)
                     stream_count += 1
                     self.mode_dict[channel]='triggered'
-                except:
+                except core.exceptions.DriplineError:
                     pass  
         logger.info('Number of streams for channel {}: {}'.format(channel, stream_count))
         return stream_count
 
 
-    def set_fmt_snr_threshold(self, channel='a', snr=6):
+    def set_fmt_snr_threshold(self, snr, channel='a'):
         if self.mode_dict[channel] == 'streaming':
             logger.warning('Psyllid not in streaming mode')
             return False

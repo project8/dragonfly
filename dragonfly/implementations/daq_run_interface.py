@@ -364,7 +364,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         self.status_value = None
         self.channel_id = channel
         self.freq_dict = {self.channel_id: None}
-        self._max_duration = 1
+        self._max_duration = 0
         self._run_time = 1
         self._run_name = "test"
         self.payload_channel = {'channel':self.channel_id}
@@ -410,7 +410,6 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         logger.info('Checking ROACH2 status')
         #call is_running from roach2_interface
         result = self.provider.get(self.daq_target+'.is_running')['values'][0]
-        logger.info(result)
         if result==True:
             logger.info('ROACH2 is ready')
             return True
@@ -496,7 +495,12 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         max_duration = self._max_duration*1000.0
         logger.info('run duration in ms: {}'.format(duration))
 
-        NAcquisitions = duration/max_duration
+        if self._max_duration == 0.0:
+            logger.info('no max duration set in dragonfly')
+            NAcquisitions = 1
+        else:
+            NAcquisitions = duration/max_duration
+
         if NAcquisitions<=1:
             psyllid_filename = filename+'.egg'
             if not os.path.exists(directory):
@@ -506,12 +510,23 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
             payload = {'channel':self.channel_id, 'filename': os.path.join(directory, psyllid_filename), 'duration':duration}
             try:
                 result = self.provider.cmd(self.psyllid_interface, 'start_run', payload=payload)
-            except:
-                logger.error('Starting Psyllid run failed')
-                logger.info('unblock channel')
+            except core.exceptions.DriplineError:
+                logger.error('Error from psyllid provider or psyllid')
                 payload = {'channel': self.channel_id}
-                result = self.provider.cmd(self.daq_target, 'unblock_channel', payload=payload)
-                raise core.exceptions.DriplineGenericDAQError('Starting Psyllid run failed')
+                try:
+                    result = self.provider.cmd(self.daq_target, 'unblock_channel', payload = payload)
+                finally:
+                    raise core.exceptions.DriplineGenericDAQError('Starting psyllid run failed')
+            except Exception as e:
+                logger.error('Local error')
+                payload = {'channel': self.channel_id}
+                try:
+                    result = self.provider.cmd(self.daq_target, 'unblock_channel', payload=payload)
+                finally:
+                    raise e
+            else:
+                logger.info('waiting for {}s for run to finish'.format(self._run_time))
+                time.sleep(self._run_time)
 
         # if the run time exceeds the set max duration the run is split into sub acquisitions
         # this will be removed once we are sure psyllid can handle it even for long runs
@@ -531,27 +546,45 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
                     payload = {'channel':self.channel_id, 'filename': os.path.join(directory, psyllid_filename), 'duration':duration}
                     try:
                         result = self.provider.cmd(self.psyllid_interface, 'start_run', payload=payload)
-                    except:
-                        logger.error('Starting Psyllid run failed')
-                        logger.info('unblock channel')
+                    except core.exceptions.DriplineError:
+                        logger.error('Error from psyllid provider or psyllid')
                         payload = {'channel': self.channel_id}
-                        result = self.provider.cmd(self.daq_target, 'unblock_channel', payload=payload)
-                        raise core.exceptions.DriplineGenericDAQError('Starting Psyllid run failed')
+                        try:
+                            result = self.provider.cmd(self.daq_target, 'unblock_channel', payload = payload)
+                        finally:
+                            raise core.exceptions.DriplineGenericDAQError('Starting psyllid run failed')
+                    except Exception as e:
+                        logger.error('Local error')
+                        payload = {'channel': self.channel_id}
+                        try:
+                            result = self.provider.cmd(self.daq_target, 'unblock_channel', payload=payload)
+                        finally:
+                            raise e
 
                 # acquisitions with duration = max_duration
                 else:
                     total_run_time+=max_duration
                     logger.info('Going to tell psyllid to start run')
                     payload = {'channel':self.channel_id, 'filename': os.path.join(directory, psyllid_filename), 'duration':max_duration}
+
                     try:
                         result = self.provider.cmd(self.psyllid_interface, 'start_run', payload=payload)
-                    except:
-                        logger.error('Starting Psyllid run failed')
-                        logger.info('unblock channel')
+                    except core.exceptions.DriplineError:
+                        logger.error('Error from psyllid provider or psyllid')
                         payload = {'channel': self.channel_id}
-                        result = self.provider.cmd(self.daq_target, 'unblock_channel', payload=payload)
-                        raise core.exceptions.DriplineGenericDAQError('Starting Psyllid run failed')
+                        try:
+                            result = self.provider.cmd(self.daq_target, 'unblock_channel', payload = payload)
+                        finally:
+                            raise core.exceptions.DriplineGenericDAQError('Starting psyllid run failed')
+                    except Exception as e:
+                        logger.error('Local error')
+                        payload = {'channel': self.channel_id}
+                        try:
+                            result = self.provider.cmd(self.daq_target, 'unblock_channel', payload=payload)
+                        finally:
+                            raise e
                 time.sleep(self._max_duration)
+
         logger.info('unblock channel')
         payload = {'channel': self.channel_id}
         result = self.provider.cmd(self.daq_target, 'unblock_channel', payload=payload)
@@ -613,7 +646,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
             raise core.exceptions.DriplineGenericDAQError('Could not set central frequency in Psyllid stream')
 
 
-    def make_trigger_mask(self, snr = 11, filename = '/home/roach/trigger_masks/psyllid_trigger_mask'):
+    def make_trigger_mask(self, snr, filename = '/home/roach/trigger_masks/psyllid_trigger_mask'):
         # Set threshold snr
         payload = {'channel':self.channel_id, 'snr':snr}
         result = self.provider.cmd(self.psyllid_interface, 'set_fmt_snr_threshold', payload = payload)
