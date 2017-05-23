@@ -30,6 +30,7 @@ class SlackInterface(Gogol):
                  speaking_time = 60,
                  time_between_warnings=600,
                  number_sentence_per_speaking_time = 30,
+                 mapping = {"critical":"p8_alerts"},
                  **kwargs):
         '''
         prime_speakers: define which users are allowed to speak as much as they want and we are not allowed to stop them from it
@@ -72,22 +73,28 @@ class SlackInterface(Gogol):
         self._time_between_warnings = time_between_warnings
         self._nspst = number_sentence_per_speaking_time
 
+        self._mapping = mapping
+
 
     def on_alert_message(self, channel, method, properties, message):
         # parse the routing key
         logger.debug('parsing routing key')
-        key_parser = r'status_message.(?P<channel>[\w]+).(?P<from>[\w]+)'
+        key_parser = r'status_message.(?P<level>[\w]+).(?P<from>[\w]+)'
         routing_info = re.search(key_parser, method.routing_key).groupdict()
         # parse the message
         msg = dripline.core.Message.from_encoded(message, properties.content_encoding)
 
         self._update_history(routing_info['from'])
         username = routing_info['from']
+        if routing_info['level'] not in self._mapping:
+            logger.debug("don't know this level: {}".format(level))
+            return
         if self._is_allowed_to_talk(routing_info['from']):
             logger.debug('posting message: {}'.format(str(msg.payload)))
+
             api_out = self.slackclient.api_call('chat.postMessage',
-                                           channel='#'+routing_info['channel'],
-                                           text=str(msg.payload),
+                                           channel='#'+self._mapping[routing_info['level']],
+                                           text=routing_info['level'] + ": " + str(msg.payload),
                                            username=username,
                                         #    username='toto',
                                            as_user='false', #false allows to send messages with unregistred username (like toto) in the channel
@@ -100,7 +107,7 @@ class SlackInterface(Gogol):
                 logger.debug('sending warning')
                 message = '{} spoke {} times over the last {} s: muted!'.format(routing_info['from'],len(self.history[username]['last_talks']), self._speaking_time)
                 api_out = self.slackclient.api_call('chat.postMessage',
-                                                   channel='#'+routing_info['channel'],
+                                                   channel='#'+self._mapping[routing_info['level']],
                                                    text=message,
                                                    username='Slack Security',
                                                 #    username='toto',
