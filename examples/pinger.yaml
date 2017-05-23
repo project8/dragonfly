@@ -1,0 +1,13 @@
+name: pinger_service
+broker: localhost
+module: Spimescape
+endpoints:
+      - name: pinger
+        module: Pinger
+        username: Pinger
+        broker: higgsino.physics.ucsb.edu
+        sleep_time: 10
+        ping_timeout: 10
+        services_to_ping:
+          - slack_interface
+          - slack_interface_fake
