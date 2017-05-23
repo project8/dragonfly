@@ -4,7 +4,6 @@ module: Spimescape
 endpoints:
       - name: pinger
         module: Pinger
-        username: Pinger
         broker: higgsino.physics.ucsb.edu
         sleep_time: 10
         ping_timeout: 10
