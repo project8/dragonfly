@@ -15,6 +15,7 @@ from .kv_store import *
 from .mesh_repeater import *
 from .multido import *
 from .pid_loop import *
+from .pinger import *
 from .postgres_interface import *
 from .prologix_provider import *
 from .random_sensor import *
