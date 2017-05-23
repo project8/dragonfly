@@ -18,10 +18,11 @@ from time import sleep
 __all__ = []
 __all__.append('Pinger')
 
-
 class Pinger(Endpoint):
     '''
-    Spammer of Alerts
+    Ping on a regular basis a list of service.
+    It sends a request to target.ping, if a response is not given within the timeout,
+    it reports a logger.critical, which sends a alert to status_message.critical.<service_name>.
     '''
     def __init__(self,
                  broker=None,
@@ -32,12 +33,6 @@ class Pinger(Endpoint):
 
         Endpoint.__init__(self,**kwargs)
 
-        # setting the interface
-        self.connection_to_alert = dripline.core.Service(broker=broker, exchange='alerts',keys='status_message.p8_alerts.dripline')
-
-        #sending a welcome message
-        self.this_channel = 'p8_alerts'
-        self.username = self.name
         self.sleep_time = sleep_time
         self.services_to_ping = services_to_ping
         self.ping_timeout = ping_timeout
@@ -54,8 +49,3 @@ class Pinger(Endpoint):
                 except Exception as err:
                     logger.critical("{} is not responding".format(item))
             sleep(self.sleep_time)
-
-    def emit(self, record):
-        this_channel = 'p8_alerts'
-        severity = 'status_message.{}.{}'.format(this_channel,self.username)
-        self.connection_to_alert.send_status_message(severity=severity,alert=record.msg)
