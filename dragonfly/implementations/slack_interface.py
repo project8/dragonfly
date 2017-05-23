@@ -94,7 +94,7 @@ class SlackInterface(Gogol):
 
             api_out = self.slackclient.api_call('chat.postMessage',
                                            channel='#'+self._mapping[routing_info['level']],
-                                           text=routing_info['level'] + ": " + str(msg.payload),
+                                           text=str(msg.payload),
                                            username=username,
                                         #    username='toto',
                                            as_user='false', #false allows to send messages with unregistred username (like toto) in the channel
