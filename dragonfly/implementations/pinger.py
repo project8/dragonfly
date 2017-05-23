@@ -22,7 +22,8 @@ class Pinger(Endpoint):
     '''
     Ping on a regular basis a list of service.
     It sends a request to target.ping, if a response is not given within the timeout,
-    it reports a logger.critical, which sends a alert to status_message.critical.<service_name>.
+    it reports a logger.critical, which sends a alert to status_message.critical.<service_name>
+    via the AMQPHandler.
     '''
     def __init__(self,
                  broker=None,
