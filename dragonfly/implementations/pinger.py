@@ -40,7 +40,6 @@ class Pinger(Endpoint):
 
     def start_ping(self):
         while (True):
-            print(self.services_to_ping)
             for item in self.services_to_ping:
                 logger.info("pinging {}".format(item))
                 try:
