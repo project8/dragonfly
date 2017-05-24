@@ -20,7 +20,8 @@ extras_require={
     'database': ['psycopg2', 'sqlalchemy'], #this may also require system packages
     'debug': ['ipdb'],
     'doc': ['sphinx', 'sphinx_rtd_theme', 'sphinxcontrib-programoutput'],
-    'slack': ['slackclient'],
+    'roach': ['corr==0.7.3','katcp==0.5.5','construct==2.5.2','scipy==0.19.0','netifaces==0.10.5','gearman==2.0.0beta'],
+    'slack': ['slackclient']
 }
 everything = set()
 for deps in extras_require.values():
@@ -33,6 +34,7 @@ setup(
     packages=['dragonfly','dragonfly/implementations','dragonfly/status_log_handlers','dragonfly/subcommands'],
     scripts=['bin/dragonfly'],
     install_requires=['dripline', 'asteval'],
+    dependency_links=["http://github.com/sma-wideband/adc_tests/tarball/master#egg=gearman-2.0.0beta"],
     extras_require=extras_require,
     url='http://www.github.com/project8/dragonfly',
 )
