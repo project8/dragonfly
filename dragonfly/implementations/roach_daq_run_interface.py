@@ -10,7 +10,7 @@ import time
 import os
 from .daq_run_interface import DAQProvider
 # internal imports
-#from dripline import core
+from dripline import core
 
 __all__ = []
 
