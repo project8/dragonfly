@@ -33,3 +33,4 @@ from .muxer_provider import *
 from .roach2interface import *
 from .r2daq import *
 from .psyllid_provider import *
+from .roach_daq_run_interface import *

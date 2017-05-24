@@ -340,7 +340,7 @@ class RSAAcquisitionInterface(DAQProvider):
             logger.debug("things have been dumped in file")
             logger.info("saving {}: successful".format(path))
 
-
+"""
 
 __all__.append('ROACH1ChAcquisitionInterface')
 class ROACH1ChAcquisitionInterface(DAQProvider):
@@ -659,3 +659,4 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         if result['values'][0]!=True:
             return False
         else: return True
+"""
