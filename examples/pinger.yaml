@@ -5,8 +5,11 @@ endpoints:
       - name: pinger
         module: Pinger
         broker: higgsino.physics.ucsb.edu
-        sleep_time: 10
+        ping_interval: 10
         ping_timeout: 10
         services_to_ping:
           - slack_interface
           - slack_interface_fake
+setup_calls:
+  - target: pinger
+    method: start_ping

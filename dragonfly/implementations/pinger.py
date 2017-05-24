@@ -27,25 +27,33 @@ class Pinger(Endpoint):
     '''
     def __init__(self,
                  broker=None,
-                 sleep_time = 10,
+                 ping_interval = 60,
                  services_to_ping = [],
                  ping_timeout = 10,
                  *args, **kwargs):
 
         Endpoint.__init__(self,**kwargs)
 
-        self.sleep_time = sleep_time
+        self.ping_interval = ping_interval
         self.services_to_ping = services_to_ping
         self.ping_timeout = ping_timeout
 
+        logger.info('sleep before starting pinging the services')
+        sleep(self.ping_interval)
+
+
     def start_ping(self):
         while (True):
+            message = ""
             for item in self.services_to_ping:
                 logger.info("pinging {}".format(item))
                 try:
-                    result = self.provider.cmd(target=str(item), method_name="ping", value=[], timeout=self.ping_timeout)
+                    result = self.provider.cmd(target=str(item), method_name="ping", value=[], timeout=self.ping_interval)
                     if result:
                         logger.info("{} is responding".format(item))
                 except Exception as err:
-                    logger.critical("{} is not responding".format(item))
-            sleep(self.sleep_time)
+                    logger.info(err)
+                    message = message + "{}\n".format(item)
+            if message != "":
+                logger.critical("The following services are not responding:\n{}".format(message))
+            sleep(self.ping_interval)
