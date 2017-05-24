@@ -38,12 +38,9 @@ class Pinger(Endpoint):
         self.services_to_ping = services_to_ping
         self.ping_timeout = ping_timeout
 
-        # sleep before starting pinging the services
+        logger.info('sleep before starting pinging the services')
         sleep(self.ping_interval)
 
-        # start the ping
-        # logger.info("Starting ping")
-        # self.start_ping()
 
     def start_ping(self):
         while (True):
