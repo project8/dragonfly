@@ -17,7 +17,7 @@ from __future__ import absolute_import
 import socket
 import threading
 
-from dripline.core import Provider, Endpoint, exceptions, fancy_doc
+from dripline.core import Provider, exceptions, fancy_doc
 
 import logging
 logger = logging.getLogger(__name__)
@@ -42,8 +42,8 @@ class EthernetProvider(Provider):
         > Connection-related options:
         socket_timeout (float): time in seconds for the socket to timeout
         socket_info (tuple): (<network_address_as_str>, <port_as_int>)
-        cmd_at_reconnect (list): list of command(s) to send to the instrument following (re)connection to the instrument
-                               : still must return a reply!
+        cmd_at_reconnect (list||None): list of command(s) to send to the instrument following (re)connection to the instrument, still must return a reply!
+                                     : if impossible, set as None to skip
         > Query-related options:
         command_terminator (str): string to append to commands
         response_terminator (str||None): string to strip from responses, this MUST exist for get method to function properly!
@@ -62,7 +62,8 @@ class EthernetProvider(Provider):
         if response_terminator is None or response_terminator == '':
             raise exceptions.DriplineValueError("Invalid response terminator: <{}>! Expect string".format(repr(response_terminator)))
         if not isinstance(cmd_at_reconnect, list) or len(cmd_at_reconnect)==0:
-            raise exceptions.DriplineValueError("Invalid cmd_at_reconnect: <{}>! Expect non-zero length list".format(repr(cmd_at_reconnect)))
+            if cmd_at_reconnect is not None:
+                raise exceptions.DriplineValueError("Invalid cmd_at_reconnect: <{}>! Expect non-zero length list".format(repr(cmd_at_reconnect)))
 
         self.alock = threading.Lock()
         self.socket = socket.socket()
@@ -91,6 +92,9 @@ class EthernetProvider(Provider):
         self.socket.settimeout(self.socket_timeout)
         logger.info("Ethernet socket {} established".format(self.socket_info))
 
+        # Lantronix xDirect adapters have no query options
+        if self.cmd_at_reconnect is None:
+            return
         commands = self.cmd_at_reconnect[:]
         # Agilent/Keysight instruments give an unprompted *IDN? response on
         #   connection. This must be cleared before communicating with a blank

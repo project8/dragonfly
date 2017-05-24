@@ -29,3 +29,4 @@ from .step_attenuator import *
 # keep these out of sequence, they inherit from elsewhere in dragonfly
 from .lockin_provider import *
 from .muxer_provider import *
+from .rpi_gpio_provider import *
