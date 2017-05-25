@@ -1,0 +1,18 @@
+name: pinger_service
+broker: localhost
+module: Spimescape
+endpoints:
+  - name: pinger
+    module: Pinger
+    broker: higgsino.physics.ucsb.edu
+    ping_timeout: 10
+    log_interval: 10 # define the ping interval
+    services_to_ping:
+      - slack_interface
+      - slack_interface_fake
+setup_calls:
+  - target: pinger
+    method: _on_set
+    args: "on"
+    kwargs:
+        routing_key_specifier: logging_status

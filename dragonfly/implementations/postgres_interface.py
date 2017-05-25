@@ -214,7 +214,8 @@ class SQLSnapshot(SQLTable):
 
     def get_logs(self, start_timestamp, end_timestamp):
         '''
-        Both inputs must be follow the format of constants.TIME_FORMAT, i.e. YYYY-MM-DDThh:mm:ssZ
+        Method to retrieve all database values for all endpoints between two timestamps.  Used as part of standard DAQ operation
+        Both input timestamps must be follow the format of constants.TIME_FORMAT, i.e. YYYY-MM-DDThh:mm:ssZ
         start_timestamp (str): oldest timestamp for query into database
         ending_timesamp (str): most recent timestamp for query into database
         '''
@@ -275,8 +276,51 @@ class SQLSnapshot(SQLTable):
         return {'value_raw': val_raw_dict, 'value_cal': '\n'.join(val_cal_list)}
 
 
+    def get_single_log(self, start_timestamp, end_timestamp, *args):
+        '''
+        Method to retrieve all database values for subset of endpoints between two timestamps.
+        Both input timestamps must be follow the format of constants.TIME_FORMAT, i.e. YYYY-MM-DDThh:mm:ssZ
+        start_timestamp (str): oldest timestamp for query into database
+        ending_timesamp (str): most recent timestamp for query into database
+        *args: list of endpoints of interest
+        '''
+        start_timestamp = str(start_timestamp)
+        end_timestamp = str(end_timestamp)
+        if len(args) == 0:
+            raise DriplineValueError('requires at least one endpoint arg provided')
+
+        # Parsing timestamps
+        self._try_parsing_date(start_timestamp)
+        self._try_parsing_date(end_timestamp)
+        if not end_timestamp > start_timestamp:
+            raise DriplineValueError('end_timestamp ("{}") must be > start_timestamp ("{}")!'.format(end_timestamp,start_timestamp))
+
+        # Connect to id map table + assign alises
+        self._connect_id_table()
+        t = self.table.alias()
+
+        outdict = {}
+        for endpoint in args:
+            ept_id = self._get_endpoint_id(endpoint)
+            # Select query + result
+            logger.debug('querying database for endpoint "{}" entries between "{}" and "{}"'.format(endpoint,start_timestamp,end_timestamp))
+            s = sqlalchemy.select([t]).where(sqlalchemy.and_(t.c.endpoint_id==ept_id,t.c.timestamp>start_timestamp,t.c.timestamp<end_timestamp)).order_by(t.c.timestamp.asc())
+            query_return = self.provider.engine.execute(s).fetchall()
+            if not query_return:
+                logger.warning('no entries found between "{}" and "{}"'.format(start_timestamp,end_timestamp))
+
+            outdict[endpoint] = [[entry['timestamp'].strftime(constants.TIME_FORMAT),entry['value_cal']]for entry in query_return]
+
+        fp = open(os.path.expanduser('~')+'/sqldump.txt','w')
+        json.dump(obj=outdict,fp=fp)
+        fp.close()
+
+        return {'value_raw': True, 'value_cal': "Files written to ~/sqldump.txt"}
+
+
     def get_latest(self, timestamp, endpoint_list):
         '''
+        Method to retrieve last database value for all endpoints in list.  Used as part of standard DAQ operation
         timestamp (str): timestamp upper bound for selection. Format must follow constants.TIME_FORMAT, i.e. YYYY-MM-DDThh:mm:ssZ
         endpoint_list (list): list of endpoint names (str) of interest. Usage for dragonfly CLI e.g. endpoint_list='["endpoint_name1","endpoint_name_2",...]'
         '''
@@ -293,7 +337,6 @@ class SQLSnapshot(SQLTable):
         # Connect to id map table + assign alises
         self._connect_id_table()
         t = self.table.alias()
-        id_t = self.it.alias()
 
         # Select query + result
         val_cal_list = []
@@ -301,19 +344,8 @@ class SQLSnapshot(SQLTable):
 
         for name in endpoint_list:
 
-            logger.debug('querying database for endpoint with name "{}"'.format(name))
-            s = sqlalchemy.select([id_t.c.endpoint_id]).where(id_t.c.endpoint_name == name)
-            try:
-                query_return = self.provider.engine.execute(s).fetchall()
-            except DriplineDatabaseError as dripline_error:
-                logger.error('{}; in executing SQLAlchemy select statement to obtain endpoint_id for endpoint "{}"'.format(dripline_error.message,name))
-                return
-            if not query_return:
-                logger.critical('endpoint with name "{}" not found in database hence failed to take snapshot of its value; might need to add it to the db'.format(name))
-                continue
-            else:
-                ept_id = query_return[0]['endpoint_id']
-            logger.debug('endpoint id "{}" matched to endpoint "{}"'.format(ept_id,name))
+            ept_id = self._get_endpoint_id(endpoint)
+
             s = sqlalchemy.select([t]).where(sqlalchemy.and_(t.c.endpoint_id == ept_id,t.c.timestamp < timestamp))
             s = s.order_by(t.c.timestamp.desc()).limit(1)
             try:
@@ -339,8 +371,7 @@ class SQLSnapshot(SQLTable):
         try:
             return datetime.strptime(timestamp, constants.TIME_FORMAT)
         except ValueError:
-            pass
-        raise DriplineValueError('"{}" is not a valid timestamp format'.format(timestamp))
+            raise DriplineValueError('"{}" is not a valid timestamp format, use "YYYY-MM-DDThh:mm:ssZ"'.format(timestamp))
 
 
     def _connect_id_table(self):
@@ -351,3 +382,16 @@ class SQLSnapshot(SQLTable):
             self.it = sqlalchemy.Table('endpoint_id_map',self.provider.meta, autoload=True, schema=self.schema)
         except DriplineDatabaseError as dripline_error:
             logger.error('{}; when establishing connection to the "endpoint_id_map" table'.format(dripline_error.message))
+
+    def _get_endpoint_id(self, endpoint):
+        '''
+        Queries database to match endpoint to endpoint id
+        '''
+        id_table = self.it.alias()
+        s = sqlalchemy.select([id_table.c.endpoint_id]).where(id_table.c.endpoint_name == endpoint)
+        query_return = self.provider.engine.execute(s).fetchall()
+        if not query_return:
+            raise DriplineDatabaseError("Endpoint with name '{}' not found in database".format(endpoint))
+        ept_id = query_return[0]['endpoint_id']
+        logger.info("Endpoint id '{}' matched to endpoint '{}'".format(ept_id, endpoint))
+        return ept_id
