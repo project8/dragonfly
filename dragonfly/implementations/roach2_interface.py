@@ -9,7 +9,8 @@ from __future__ import absolute_import
 import logging
 import os
 import adc5g
-import numpy as np
+import json
+#import numpy as np
 from dripline import core
 
 
@@ -113,17 +114,17 @@ class Roach2Interface(Roach2Provider):
 
         for s in self.channel_list:
             self.set_central_frequency(self.default_frequency, s)
-            self.gain = (self.gain_dict[s], s)
-            self.fft_shift_vector = (self.fft_shift, 'ab')
-            self.fft_shift_vector = (self.fft_shift, 'cd')
-        return self.configured
+            self.gain = (s, self.gain_dict[s])
+            self.fft_shift_vector = ('ab', self.fft_shift)
+            self.fft_shift_vector = ('cd', self.fft_shift)
+        return self.configuration_status
 
-
-    def get_calibration_status(self):
+    @property
+    def calibration_status(self):
         return self.calibrated
 
-
-    def get_configuration_status(self):
+    @property
+    def configuration_status(self):
         return self.configured
 
 
@@ -144,9 +145,9 @@ class Roach2Interface(Roach2Provider):
         if response == 0:
             logger.info('ROACH2 is switched on')
 
-            if not self.get_configuration_status:
+            if not self.configuration_status:
                 logger.info('ROACH2 is not configured')
-            if not self.get_calibration_status:
+            if not self.calibration_status:
                 logger.info('Roach2 is not calibrated')
         else:
             self.configured=False
@@ -195,7 +196,13 @@ class Roach2Interface(Roach2Provider):
 
     @gain.setter
     def gain(self, val):
-        gain, channel= val
+        """
+        Method to set the gain of a channel. The gain is applied after the first down conversion step.
+        ----
+        val : tuple
+              The first element of this tuple is the channel tag (string) and the second element the gain (float)
+        """
+        channel, gain = val
         if self.block_dict[channel]==False:
             if gain>-8 and gain <7.93:
                 logger.info('setting gain of channel {} to {}'.format(channel, gain))
@@ -214,7 +221,14 @@ class Roach2Interface(Roach2Provider):
 
     @fft_shift_vector.setter
     def fft_shift_vector(self, val):
-        shift, tag = val
+        """
+        Method to set the fft_shift. See set_fft_shift in r2daq for more details.
+        ----
+        val : tuple
+              The first element of this tuple is the FFT engine tag (string) and the second element the shift vector (string)
+        """
+
+        tag, shift = val
         self.fft_shift = shift
         logger.info('setting fft shift of channel {} to {}'.format(tag, shift))
         ArtooDaq.set_fft_shift(self, str(shift), tag=tag)
@@ -227,7 +241,7 @@ class Roach2Interface(Roach2Provider):
         return board_clock
 
 
-    def get_T_packets(self,dsoc_desc=None, channel='a', NPackets=10, mean=True, path=None):
+    def get_T_packets(self, channel='a', NPackets=10, path=None):
         if channel=='a':
             dsoc_desc = (self.channel_a_config['dest_ip'],self.channel_a_config['dest_port'])
         elif channel=='b':
@@ -240,7 +254,6 @@ class Roach2Interface(Roach2Provider):
 
         logger.info('grabbing {} packets from {}'.format(NPackets*2,dsoc_desc))
         pkts=ArtooDaq.grab_packets(self, NPackets*2, dsoc_desc, True)
-        logger.info('cf={}'.format(cf))
         N = 4096
         p = []
         t = []
@@ -258,6 +271,7 @@ class Roach2Interface(Roach2Provider):
             path=self.monitor_target
         np.save(path+'/T_packets_ft_channel'+channel+'_cf_'+str(cf)+'Hz_gain_'+str(gain)+'_N_'+str(NPackets), p)
         np.save(path+'/T_packets_channel'+channel+'_cf_'+str(cf)+'Hz_gain_'+str(gain)+'_N_'+str(NPackets), t)
+
 
 
     def get_F_packets(self,dsoc_desc=None, channel='a', NPackets=100, mean=True):
