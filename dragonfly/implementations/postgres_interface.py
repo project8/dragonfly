@@ -344,7 +344,7 @@ class SQLSnapshot(SQLTable):
 
         for name in endpoint_list:
 
-            ept_id = self._get_endpoint_id(endpoint)
+            ept_id = self._get_endpoint_id(name)
 
             s = sqlalchemy.select([t]).where(sqlalchemy.and_(t.c.endpoint_id == ept_id,t.c.timestamp < timestamp))
             s = s.order_by(t.c.timestamp.desc()).limit(1)
