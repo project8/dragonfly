@@ -7,6 +7,9 @@ import math
 
 from dripline.core.exceptions import DriplineValueError
 
+import logging
+logger = logging.getLogger(__name__)
+
 def acquisition_calibration(value):
     '''Calibration for the lockin_curve_status endpoint'''
     if value[0] == 0:
@@ -37,23 +40,27 @@ def status_calibration(value):
 
 def leak_valve_status_calibration(value):
     '''Calibration for the leak_valve_status endpoint'''
+    value = str(value).zfill(8)
+    logger.debug('Calibrating padded value <{}>'.format(value))
     status = []
-    comm = value/10000000
-    mode = (value/1000000)%10
-    other = value%1000000
-    if mode == 2:
-        status.append("valve in position control")
-    elif mode == 3:
-        status.append("valve closed")
-    elif mode == 4:
-        status.append("valve open")
-    else:
-        status.append("WARNING: unknown mode")
-    if comm == 1:
+    comm = value[0]
+    mode = value[1]
+    other = value[2:]
+    if comm == '1':
         status.append("remote communication")
     else:
         status.append("WARNING: unknown communication")
-    if other != 0:
+    if mode == '2':
+        status.append("valve in position control")
+    elif mode == '3':
+        status.append("valve closed")
+    elif mode == '4':
+        status.append("valve open")
+    elif mode == 'D':
+        status.append("WARNING: safety mode, remove motor interlock")
+    else:
+        status.append("WARNING: unknown mode")
+    if other != '000000':
         status.append("WARNING: unknown status flags")
     return "; ".join(status)
 
