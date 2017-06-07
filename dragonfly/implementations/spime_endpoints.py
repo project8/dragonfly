@@ -10,6 +10,10 @@ Spime catalog (in order of ease-of-use):
 - SimpleSCPISpime: quick and simple minimal spime
 -* SimpleSCPIGetSpime/SimpleSCPISetSpime: limited instance of above with disabled Get/Set
 - FormatSpime: utility spime with expanded functionality
+- ErrorQueueSpime: spime for iterating through error queue to clear it and return all erros
+- GPIOSpime: spime to handle GPIO pin control on RPi
+- IonGaugeSpime: spime to handle communication with Lesker/B-RAX pressure gauges
+- LeakValveSpime: spime to handle VAT leak valve get responses
 - LockinSpime: spime to handle antiquated lockin IEEE 488 formatting
 -* LockinGetSpime: limited instance of above with disabled Set
 - MuxerGetSpime: spime to handle glenlivet muxer formatting
@@ -18,6 +22,11 @@ Spime catalog (in order of ease-of-use):
 from __future__ import absolute_import
 
 import re
+
+try:
+    import RPi.GPIO as GPIO
+except ImportError:
+    pass
 
 from dripline.core import Spime, fancy_doc, calibrate
 from dripline.core.exceptions import *
@@ -134,7 +143,6 @@ class FormatSpime(Spime):
         logger.debug('result is: {}'.format(result))
         if self._get_reply_float:
             logger.debug('desired format is: float')
-            logger.debug('formatting result')
             formatted_result = map(float, re.findall("[-+]?\d+\.\d+",format(result)))
             # formatted_result = map(float, re.findall("[-+]?(?: \d* \. \d+ )(?: [Ee] [+-]? \d+ )",format(result)))
             logger.debug('formatted result is {}'.format(formatted_result[0]))
@@ -182,6 +190,147 @@ class ErrorQueueSpime(Spime):
 
     def on_set(self, value):
         raise DriplineMethodNotSupportedError('setting not available for {}'.format(self.name))
+
+
+__all__.append('GPIOSpime')
+@fancy_doc
+class GPIOSpime(Spime):
+    '''
+    Spime for interacting with GPIO pins on Raspberry Pi
+    '''
+    def __init__(self,
+                 inpin=None,
+                 outpin=None,
+                 set_value_map=None,
+                 **kwargs
+                 ):
+        '''
+        inpin (int||list): pin(s) to read for get
+        outpin (int||list): pin(s) to program for set
+        set_value_map (dict): dictionary of mappings for values to on_set; note that the result of set_value_map[value] will be used as the input to set_str.format(value) if this dict is present
+        '''
+        if not 'GPIO' in globals():
+            raise ImportError('RPi.GPIO not found, required for GPIOSpime class')
+        if 'get_on_set' not in kwargs:
+            kwargs['get_on_set'] = True
+        Spime.__init__(self, **kwargs)
+
+        if inpin is not None:
+            if not isinstance(inpin, list):
+                inpin = [inpin]
+            if not all(isinstance(pin, int) for pin in inpin):
+                raise exceptions.DriplineValueError("Invalid inpin <{}> for {}, requires int or list of int".format(repr(inpin), self.name))
+        self._inpin = inpin
+        if outpin is not None:
+            if not isinstance(outpin, list):
+                outpin = [outpin]
+            if not all(isinstance(pin,int) for pin in outpin):
+                raise exceptions.DriplineValueError("Invalid outpin <{}> for {}, requires int or list of int".format(repr(outpin), self.name))
+        self._outpin = outpin
+        if set_value_map is not None and not isinstance(set_value_map, dict):
+            raise DriplineValueError("Invalid set_value_map config for {}; type is {} not dict".format(self.name, type(set_value_map)))
+        self._set_value_map = set_value_map
+
+    @calibrate()
+    def on_get(self):
+        if self._inpin is None:
+            raise DriplineMethodNotSupportedError("<{}> has no get pin available".format(self.name))
+        result = 0
+        for i, pin in enumerate(self._inpin):
+            result += GPIO.input(pin)<<i
+        return result
+
+    def on_set(self, value):
+        if self._outpin is None:
+            raise DriplineMethodNotSupportedError("<{}> has no set pin available".format(self.name))
+        if isinstance(self._set_value_map, dict) and value in self._set_value_map:
+            raw_value = value
+            if isinstance(value, (str,unicode)):
+                value = value.lower()
+            value = self._set_value_map[value]
+            logger.debug('raw set value is {}; mapped value is: {}'.format(raw_value, value))
+        GPIO.output(self._outpin, value)
+        if not all(GPIO.input(pin)==value for pin in self._outpin):
+            raise DriplineHardwareError("Error setting GPIO output pins")
+
+
+__all__.append('IonGaugeSpime')
+@fancy_doc
+class IonGaugeSpime(Spime):
+    '''
+    Spime for interacting with ion gauges over RS485
+    '''
+
+    def __init__(self,
+                 get_str=None,
+                 set_str=None,
+                 set_value_map=None,
+                 **kwargs):
+        '''
+        get_str (str): sent verbatim in the event of on_get
+        set_str (str): sent as set_str.format(value) in the event of on_set; if None, setting of endpoint is disabled
+        set_value_map (dict): dictionary of mappings for values to on_set; no error if not value not present in dictionary keys
+        '''
+        Spime.__init__(self, **kwargs)
+        self._get_str = get_str
+        self._address = '*'+get_str[1:3]
+        self._set_str = set_str
+        self._set_value_map = set_value_map
+        if set_value_map is not None and not isinstance(set_value_map, dict):
+            raise DriplineValueError("Invalid set_value_map config for {}; type is {}, not dict".format(self.name, type(set_value_map)))
+
+    @calibrate()
+    def on_get(self):
+        result = self.provider.send([self._get_str])
+        if result[:3] != self._address:
+            raise DriplineHardwareError("Response address mismatch!  Response address is {}, expected address is {}".format(result, self._address))
+        return result[4:]
+
+    def on_set(self, value):
+        if self._set_str is None:
+            raise DriplineMethodNotSupportedError("setting not available for {}".format(self.name))
+        if isinstance(value, (str,unicode)):
+            value = value.lower()
+        if (self._set_value_map is not None) and (value in self._set_value_map):
+            mapped_value = self._set_value_map[value]
+            logger.debug('value is {}; mapped value is: {}'.format(value, mapped_value))
+        else:
+            mapped_value = value
+            logger.debug('value not in set_value_map, using given value of {}'.format(mapped_value))
+        result = self.provider.send([self._set_str.format(mapped_value)])
+        if result != self._address + ' PROGM OK':
+            raise DriplineHardwareError("Error response returned when setting endpoint {}".format(self.name))
+        return
+
+
+__all__.append('LeakValveSpime')
+@fancy_doc
+class LeakValveSpime(FormatSpime):
+    '''
+    Special implementation of FormatSpime for T2 VAT leak valve
+    on_get has specific formatting rules, otherwise just a FormatSpime
+    '''
+
+    def __init__(self,
+                 **kwargs):
+        '''
+        '''
+        FormatSpime.__init__(self, **kwargs)
+
+    @calibrate([leak_valve_status_calibration])
+    def on_get(self):
+        # if self._get_str is None:
+        #     raise DriplineMethodNotSupportedError('<{}> has no get string available'.format(self.name))
+        result = self.provider.send([self._get_str])
+        logger.debug('raw result is: {}'.format(repr(result)))
+        # Leak valve returns pseduo-reply_echo_cmd, only need treatment on get
+        result = result[len(self._get_str):]
+        # Leak valve has zero-padded int responses which get badly calibrated
+        result = result.lstrip('0')
+        if result == '':
+            result = '0'
+        logger.debug('formatted result is: {}'.format(repr(result)))
+        return result
 
 
 __all__.append('LockinSpime')

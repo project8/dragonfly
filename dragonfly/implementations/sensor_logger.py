@@ -27,7 +27,7 @@ class SensorLogger(Gogol, PostgreSQLInterface):
         data_tables_dict (dict): dictionary mapping types (in the sensor_type_map_table) to child endpoints of this instance which provide access to the data_table for that type
         '''
         # listen to sensor_value alerts channel
-        kwargs.update({'exchange':'alerts','keys':['sensor_value.#']})
+        kwargs.update({'keys':['sensor_value.#']})
         Gogol.__init__(self, **kwargs)
         PostgreSQLInterface.__init__(self, **kwargs)
 

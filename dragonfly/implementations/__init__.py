@@ -15,6 +15,7 @@ from .kv_store import *
 from .mesh_repeater import *
 from .multido import *
 from .pid_loop import *
+from .pinger import *
 from .postgres_interface import *
 from .prologix_provider import *
 from .psyllid_provider import *
@@ -32,5 +33,4 @@ from .step_attenuator import *
 # keep these out of sequence, they inherit from elsewhere in dragonfly
 from .lockin_provider import *
 from .muxer_provider import *
-
-#from .sql_snapshot import *
+from .rpi_gpio_provider import *
