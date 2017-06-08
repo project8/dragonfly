@@ -35,6 +35,7 @@ setup(
     packages=['dragonfly','dragonfly/implementations','dragonfly/status_log_handlers','dragonfly/subcommands'],
     scripts=['bin/dragonfly'],
     install_requires=['dripline', 'asteval'],
+    dependency_links=['git+https://github.com/sma-wideband/adc_tests.git@65a2ef4e1cf68bee35176a1171d923a73952e13e#egg=adc5g-0.0.1'],
     extras_require=extras_require,
     url='http://www.github.com/project8/dragonfly',
 )
