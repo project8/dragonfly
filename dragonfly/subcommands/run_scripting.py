@@ -214,7 +214,7 @@ __all__ = []
 __all__.append('RunScript')
 class RunScript(object):
     '''
-    use configuration file to configure system state and take data
+    use execution script to configure system state and take data
     '''
     name = 'execute'
 
@@ -239,7 +239,7 @@ class RunScript(object):
         if execution_file.count('.') == 1:
             cache_file_name = cache_file_name[0:cache_file_name.find('.')]
         else:
-            logger.warning('cannot parse execution_file punctuation: {}'.format(execution_file))
+            logger.debug('cannot parse execution_file punctuation: {}'.format(execution_file))
             cache_file_name = ""
         if cache_file_name.find('/') != -1:
             cache_file_name = cache_file_name[cache_file_name.rfind('/')+1:len(cache_file_name)]
@@ -249,7 +249,7 @@ class RunScript(object):
             logger.info('new cache file is {}'.format(self._cache_file_name))
         else:
             self._cache_file_name = '/tmp/execution_cache.json'
-            logger.warning('empty cache_file_name: using default {}'.format(self._cache_file_name))
+            logger.debug('empty cache_file_name: using default {}'.format(self._cache_file_name))
 
     def update_from_cache_file(self):
         try:
@@ -270,7 +270,7 @@ class RunScript(object):
             logger.info('removing cache file {}'.format(self._cache_file_name))
             os.remove(self._cache_file_name)
         except OSError:
-            logger.warning('warning: cannot remove the cache file (maybe the file does not exist)')
+            logger.debug('cannot remove the cache file (maybe the file does not exist)')
 
     def update_parser(self, parser):
         parser.add_argument('execution_file',
@@ -307,7 +307,7 @@ class RunScript(object):
             # do each of the actions listed in the execution file
             actions = yaml.load(open(kwargs.execution_file))
             if self._last_action == len(actions)-1:
-                logger.warning('cache file indicates this execution is already complete')
+                logger.debug('cache file indicates this execution is already complete')
                 return
             for i_action,action in enumerate(actions):
                 logger.info('doing action [{}]: {}'.format(i_action, action['action']))
@@ -320,7 +320,7 @@ class RunScript(object):
                 method_name = 'action_' + action.pop('action')
                 this_method = getattr(self, method_name, False)
                 if not this_method:
-                    logger.warning('action <{}> not supported, perhaps your execution file has a typo?'.format(method_name.replace('action_','')))
+                    logger.debug('action <{}> not supported, perhaps your execution file has a typo?'.format(method_name.replace('action_','')))
                     raise dripline.core.DriplineMethodNotSupportedError('RunScript class has no method <{}>'.format(method_name))
                 this_method(**action)
                 self._last_action = i_action
@@ -333,6 +333,7 @@ class RunScript(object):
         logger.info('execution complete')
         # remove the cache to prepare for a new execution script
         self.remove_cache()
+        logger.
 
 
     def update_cache(self):
@@ -370,7 +371,7 @@ class RunScript(object):
                 if target not in self._to_unlock:
                     self._to_unlock.append(target)
             else:
-                logger.warning('unable to lock <{}>'.format(target))
+                logger.debug('unable to lock <{}>'.format(target))
                 raise dripline.core.exception_map[result.retcode](result.return_msg)
 
     def action_cmd(self, cmds, **kwargs):
@@ -406,7 +407,7 @@ class RunScript(object):
             if result.retcode == 0:
                 logger.debug('...set of {}->{} complete'.format(this_set['name'], this_set['value']))
             else:
-                logger.warning('unable to set <{}>'.format(this_set['name']))
+                logger.critical('unable to set <{}>'.format(this_set['name']))
                 raise dripline.core.exception_map[result.retcode](result.return_msg)
             if 'no_check' in this_set:
                 if this_set['no_check']==True:
@@ -476,7 +477,7 @@ class RunScript(object):
                     try:
                         target_value = float(target_value)
                     except ValueError:
-                        logger.warning('target_value is not the same type as the value get: going to use the set value ({}) as target_value'.format(this_set['value']))
+                        logger.debug('target_value is not the same type as the value get: going to use the set value ({}) as target_value'.format(this_set['value']))
                         target_value==this_set['value']
                 if isinstance(target_value, (int,float)):
                     if 'tolerance' in this_set:
@@ -487,7 +488,7 @@ class RunScript(object):
                         logger.debug('No tolerance given: assigning an arbitrary tolerance (1.)')
                         tolerance = 1.
                     if not isinstance(tolerance,float) and not isinstance(tolerance,int) and not isinstance(tolerance,types.StringType):
-                        logger.warning('tolerance is not a float or a string: assigning an arbitrary tolerance (1.)')
+                        logger.debug('tolerance is not a float or a string: assigning an arbitrary tolerance (1.)')
                         tolerance = 1.
                     if isinstance(tolerance,float) or isinstance(tolerance,int):
                         if tolerance == 0:
@@ -518,7 +519,7 @@ class RunScript(object):
             # if the value we are checking is a string
             elif isinstance(value_get, types.StringType):
                 if not isinstance(target_value,types.StringType):
-                    logger.warning('target_value is not the same type as the value get: going to use the set value ({}) as target_value'.format(this_set['value']))
+                    logger.debug('target_value is not the same type as the value get: going to use the set value ({}) as target_value'.format(this_set['value']))
                     target_value==this_set['value']
                 if isinstance(target_value,types.StringType):
                     target_value_backup = target_value
@@ -544,7 +545,7 @@ class RunScript(object):
             # if the value we are checking is a bool
             elif isinstance(value_get, bool):
                 if not isinstance(target_value,bool):
-                    logger.warning('target_value is not the same type as the value get: going to use the set value ({}) as target_value'.format(this_set['value']))
+                    logger.debug('target_value is not the same type as the value get: going to use the set value ({}) as target_value'.format(this_set['value']))
                     target_value==this_set['value']
                 if isinstance(target_value,bool):
                     if value_get==target_value:
@@ -608,29 +609,38 @@ class RunScript(object):
 
     # take a single run using one or several daq.
     # this method depends on a method named "start_timed_run" defined in the associated daq class
-    def action_single_run(self, run_duration, run_name, daq_targets, timeout=None, **kwargs):
+    def action_single_run(self, daq_config, run_name, timeout=None, **kwargs):
         logger.info('taking single run')
         if self._dry_run_mode:
             logger.info('--dry-run flag: not starting an electron run')
             return
         run_kwargs = {'endpoint':None,
                       'method_name':'start_timed_run',
-                      'run_name':None,
-                      'run_time':run_duration,
+                      'run_name':None
                      }
+        max_duration = -1
+        for item in daq_config:
+            if item['run_duration']>max_duration:
+                max_duration = item['run_duration']
+        # daq_targets = daq_config['daq_targets']
+        # run_durations = daq_config['run_durations']
+        # if not len(daq_targets)=len(run_durations):
+            # raise dripline.core.DriplineGenericDAQError("lengths of daq_targets and run_durations are not identical")
         if self._lockout_key:
             run_kwargs.update({'lockout_key':self._lockout_key})
         start_of_runs = datetime.datetime.now()
-        for daq in daq_targets:
-            run_kwargs.update({'endpoint':daq, 'run_name':run_name.format(daq)})
+        for item in daq_config:
+            run_kwargs.update({'endpoint':item['daq_target'],
+                               'run_name':run_name.format(item['daq_target']),
+                               'run_time':item['run_duration']})
             run_kwargs.update({'timeout': timeout})
             logger.debug('run_kwargs are: {}'.format(run_kwargs))
             self.interface.cmd(**run_kwargs)
         logger.info('daq all started, now wait for requested livetime')
-        logger.info('time remaining >= {:.0f} seconds'.format(run_duration-(datetime.datetime.now()-start_of_runs).total_seconds()))
+        logger.info('time remaining >= {:.0f} seconds'.format(max_duration-(datetime.datetime.now()-start_of_runs).total_seconds()))
         # Checking the status of the daq
         a_daq_in_safe_mode = False
-        while (datetime.datetime.now() - start_of_runs).total_seconds() < run_duration:
+        while (datetime.datetime.now() - start_of_runs).total_seconds() < max_duration:
             logger.info('checking the daq for a set_condition')
             list_is_running = []
             for daq in daq_targets:
@@ -651,8 +661,8 @@ class RunScript(object):
                     logger.critical(response)
                 logger.critical('Run scripting is stopping')
                 sys.exit()
-            logger.info('time remaining >= {:.0f} seconds'.format(run_duration-(datetime.datetime.now()-start_of_runs).total_seconds()))
-            time.sleep(min(7*60,max(10,run_duration/14.)))
+            logger.info('time remaining >= {:.0f} seconds'.format(max_duration-(datetime.datetime.now()-start_of_runs).total_seconds()))
+            time.sleep(min(7*60,max(10,max_duration/14.)))
 
         # run duration is over, checking the status of the daq more often
         all_done = False
@@ -677,8 +687,9 @@ class RunScript(object):
                     for name in list_is_running:
                         response = response + '\n ' + name
                     logger.critical(response)
-                logger.critical('Run scripting is stopping')
-                sys.exit()
+                else:
+                    logger.critical('Run scripting is stopping')
+                    sys.exit()
             time.sleep(5)
         logger.info('acquistions complete')
 
@@ -762,9 +773,9 @@ class RunScript(object):
                 elif key == 'sleep':
                     evaluated_operations.append({'sleep':a_do[key]})
                 elif key == 'Runs':
-                    logger.warning('Runs should not be declared in the operations section: skipping!')
+                    logger.debug('Runs should not be declared in the operations section: skipping!')
                 else:
-                    logger.warning('Operation unknown: skipping!')
+                    logger.debug('Operation unknown: skipping!')
             logger.info('computed operations are:\n{}'.format(evaluated_operations))
             self.action_do(evaluated_operations)
 
@@ -786,28 +797,62 @@ class RunScript(object):
                 logger.debug('timeout set to {} s'.format(this_timeout))
                 for this_daq in  save_trace['daq']:
                     logger.info('{} trace save will be on trace {} with name "{}"'.format(this_daq,this_trace_number, this_trace_save_name))
-                    self.action_single_trace(daq=this_daq, name=this_trace_save_name, trace = this_trace_number , timeout = this_timeout)
+                    self.action_single_trace(daq=this_daq, name=this_trace_save_name, trace = this_trace_number, timeout = this_timeout)
 
             # compute args for, and call, action_single_run, based on run_count
             if runs is not None:
-                this_run_duration = None
-                if isinstance(runs['run_duration'], (float,int)):
-                    this_run_duration = runs['run_duration']
-                elif isinstance(runs['run_duration'], (dict,list)):
-                    this_run_duration = runs['run_duration'][run_count]
-                elif isinstance(runs['run_duration'], str):
-                    this_run_duration = evaluator(runs['run_duration'].format(run_count))
-                else:
-                    logger.info('failed to compute run duration for run: {}'.format(run_count))
-                    raise dripline.core.DriplineValueError('set value not a dictionary or evaluatable expression')
-                this_run_name = runs['run_name'].format(daq_target='{}', run_count=run_count)
-                logger.info('run will be [{}] seconds with name "{}"'.format(this_run_duration, this_run_name))
                 if 'timeout' in runs:
                     this_timeout = runs['timeout']
                 else:
                     this_timeout=None
                 logger.debug('timeout set to {} s'.format(this_timeout))
-                self.action_single_run(this_run_duration, this_run_name, runs['daq_targets'],this_timeout)
+
+                # defining the run duration as a global variable is set in the 'run_duration'
+                this_run_duration = None
+                if 'run_duration' is in runs:
+                    if isinstance(runs['run_duration'], (float,int)):
+                        this_run_duration = runs['run_duration']
+                    elif isinstance(runs['run_duration'], (dict,list)):
+                        this_run_duration = runs['run_duration'][run_count]
+                    elif isinstance(runs['run_duration'], str):
+                        this_run_duration = evaluator(runs['run_duration'].format(run_count))
+                    else:
+                        logger.info('failed to compute run duration for run: {}'.format(run_count))
+
+                # this_run_duration = None
+                daq_configs = {}
+                if 'daq_configs' is in runs:
+                    for a_daq_config in runs['daq_config']:
+                        # if isinstance(a_daq_config,str):
+                        a_daq_target = a_daq_config['daq_target']
+                        # elif isinstance(a_daq_config,dict):
+                            # this_daq_target =a_daq_config['daq_target']
+                        # else:
+                        #     raise dripline.core.DriplineGenericDAQError('daq_target should be a list or a dict')
+                        if this_run_duration is None:
+                            a_run_duration = a_daq_config['run_duration']
+                        else:
+                            a_run_duration = this_run_duration
+                    # daq_targets = runs['daq_config']
+                        daq_configs.append({'daq_target': a_daq_target,
+                                           'run_duration': a_run_duration})
+                else:
+                    for a_daq_target in runs['daq_targets']:
+                        # if isinstance(a_daq_config,str):
+                        # a_daq_target = a_daq_config
+                        # elif isinstance(a_daq_config,dict):
+                            # this_daq_target =a_daq_config['daq_target']
+                        # else:
+                        #     raise dripline.core.DriplineGenericDAQError('daq_target should be a list or a dict')
+                        if this_run_duration is None:
+                            raise dripline.core.DriplineGenericDAQError('run_duration must be given when using daq_targets list')
+                        else:
+                            a_run_duration = this_run_duration
+                    # daq_targets = runs['daq_config']
+                        daq_configs.append({'daq_targets': a_daq_target,
+                                           'run_durations': a_run_duration})
+                this_run_name = runs['run_name'].format(daq_target='{}', run_count=run_count)
+                self.action_single_run(daq_configs, this_run_name,this_timeout)
 
 
             # update cache variable with this run being complete and update the cache file
@@ -821,6 +866,6 @@ class RunScript(object):
             if result.retcode == 0:
                 unlocked.append(target)
             else:
-                logger.warning('unable to unlock <{}>'.format(target))
+                logger.debug('unable to unlock <{}>'.format(target))
         for a_name in unlocked:
             self._to_unlock.remove(a_name)
