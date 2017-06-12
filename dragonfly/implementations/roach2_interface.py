@@ -10,7 +10,7 @@ import logging
 import os
 import adc5g
 import json
-#import numpy as np
+import numpy as np
 from dripline import core
 
 
@@ -75,7 +75,7 @@ class Roach2Interface(Roach2Provider):
         self.daq_name = daq_name
         self.default_frequency = default_frequency
         self.gain_dict = {'a':gain, 'b':gain, 'c':gain}
-        self.fft_shift = fft_shift
+        self.fft_shift_vector = {'ab': fft_shift, 'cd': fft_shift}
         self.configured=False
         self.calibrated=False
         
@@ -112,27 +112,24 @@ class Roach2Interface(Roach2Provider):
         if boffile!=None:
             self.do_adc_ogp_calibration()
 
-        for s in self.channel_list:
-            self.set_central_frequency(self.default_frequency, s)
-            self.gain = (s, self.gain_dict[s])
-            self.fft_shift_vector = ('ab', self.fft_shift)
-            self.fft_shift_vector = ('cd', self.fft_shift)
-        return self.configuration_status
+        for channel in self.channel_list:
+            self.set_central_frequency(channel, self.default_frequency)
+            self.set_gain(channel, self.gain_dict[channel])
+
+        self.set_fft_shift_vector('ab', self.fft_shift_vector['ab'])
+        self.set_fft_shift_vector('cd', self.fft_shift_vector['cd'])
+        return self.configured
 
     @property
     def calibration_status(self):
         return self.calibrated
-
-    @property
-    def configuration_status(self):
-        return self.configured
 
 
     def do_adc_ogp_calibration(self, **kwargs):
         logger.info('Calibrating ROACH2, this will take a while.')
         logger.info('Doing adc ogp calibration')
         adc_dictionary = ArtooDaq.calibrate_adc_ogp(self, **kwargs)
-        logger.info(adc_dictionary)
+        logger.info('ADC calibration returned: {}'.format(adc_dictionary))
         self.calibrated=True
         return self.calibrated
 
@@ -144,16 +141,11 @@ class Roach2Interface(Roach2Provider):
         #and then check the response...
         if response == 0:
             logger.info('ROACH2 is switched on')
-
-            if not self.configuration_status:
-                logger.info('ROACH2 is not configured')
-            if not self.calibration_status:
-                logger.info('Roach2 is not calibrated')
         else:
             self.configured=False
             self.calibrated=False
 
-        return self.calibrated
+        return self.configured
 
 
     def block_channel(self, channel):
@@ -174,13 +166,14 @@ class Roach2Interface(Roach2Provider):
         return self.freq_dict[channel]
 
 
-    def set_central_frequency(self, cf, channel):
+    def set_central_frequency(self, channel, cf):
         if self.block_dict[channel]==False:
             logger.info('setting central frequency of channel {} to {}'.format(channel, cf))
             cf = ArtooDaq.tune_ddc_1st_to_freq(self, cf, tag=channel)
             self.freq_dict[channel]=cf
             return cf
         else:
+            logger.error('Channel {} is blocked'.format(channel))
             raise core.exceptions.DriplineGenericDAQError('Channel {} is blocked'.format(channel))
 
 
@@ -194,15 +187,10 @@ class Roach2Interface(Roach2Provider):
         return self.gain_dict
 
 
-    @gain.setter
-    def gain(self, val):
+    def set_gain(self, channel, gain):
         """
         Method to set the gain of a channel. The gain is applied after the first down conversion step.
-        ----
-        val : tuple
-              The first element of this tuple is the channel tag (string) and the second element the gain (float)
         """
-        channel, gain = val
         if self.block_dict[channel]==False:
             if gain>-8 and gain <7.93:
                 logger.info('setting gain of channel {} to {}'.format(channel, gain))
@@ -214,24 +202,18 @@ class Roach2Interface(Roach2Provider):
             raise core.exceptions.DriplineGenericDAQError('Channel {} is blocked'.format(channel))
 
 
-    @property
-    def fft_shift_vector(self):
-        return self.fft_shift
+    def get_fft_shift_vector(self, tag):
+        return self.fft_shift_vector[tag]
 
 
-    @fft_shift_vector.setter
-    def fft_shift_vector(self, val):
+    def set_fft_shift_vector(self, tag, fft_shift):
         """
         Method to set the fft_shift. See set_fft_shift in r2daq for more details.
-        ----
-        val : tuple
-              The first element of this tuple is the FFT engine tag (string) and the second element the shift vector (string)
         """
 
-        tag, shift = val
-        self.fft_shift = shift
-        logger.info('setting fft shift of channel {} to {}'.format(tag, shift))
-        ArtooDaq.set_fft_shift(self, str(shift), tag=tag)
+        self.fft_shift_vector[tag] = fft_shift
+        logger.info('setting fft shift of channel {} to {}'.format(tag, fft_shift))
+        ArtooDaq.set_fft_shift(self, str(fft_shift), tag=tag)
 
 
 
@@ -248,39 +230,43 @@ class Roach2Interface(Roach2Provider):
             dsoc_desc = (self.channel_b_config['dest_ip'],self.channel_b_config['dest_port'])
         elif channel=='c':
             dsoc_desc = (self.channel_c_config['dest_ip'],self.channel_c_config['dest_port'])
+        else:
+            raise ValueError('{} is not a valid channel tag'.format(channel))
+
+        if path == None:
+            path = self.monitor_target
 
         cf = self.freq_dict[channel]
         gain = self.gain_dict[channel]
 
         logger.info('grabbing {} packets from {}'.format(NPackets*2,dsoc_desc))
         pkts=ArtooDaq.grab_packets(self, NPackets*2, dsoc_desc, True)
-        N = 4096
         p = []
-        t = []
         for i in range(int(NPackets*2)):
             if pkts[i].freq_not_time==False:  
                 x=pkts[i].interpret_data()
-                t.append(x)
-                p.append(np.abs(np.fft.fftshift(np.fft.fft(x)))/N)
-        p = np.array(p)
-        t = np.array(t)
-        NPackets = np.shape(p)[0] 
-        if mean == True:
-            p = np.mean(p, axis = 0)
-        if path==None:
-            path=self.monitor_target
-        np.save(path+'/T_packets_ft_channel'+channel+'_cf_'+str(cf)+'Hz_gain_'+str(gain)+'_N_'+str(NPackets), p)
-        np.save(path+'/T_packets_channel'+channel+'_cf_'+str(cf)+'Hz_gain_'+str(gain)+'_N_'+str(NPackets), t)
+                p.append(np.abs(np.fft.fftshift(np.fft.fft(x)))/4096)
+        NPackets = len(p) 
+        p = np.mean(np.array(p), axis = 0)
+
+        filename = '{}/mean_of_{}_T_packets_channel{}_cf_{}Hz.json'.format(path, NPackets, channel, str(cf))
+        with open(filename, 'w') as outfile:
+            json.dump(p.tolist(), outfile)
 
 
 
-    def get_F_packets(self,dsoc_desc=None, channel='a', NPackets=100, mean=True):
+    def get_F_packets(self,dsoc_desc=None, channel='a', NPackets=10, path = None):
         if channel=='a':
-            dsoc_desc = (str(self.dest_ip),self.dest_port)
+            dsoc_desc = (self.channel_a_config['dest_ip'],self.channel_a_config['dest_port'])
         elif channel=='b':
-            dsoc_desc = (str(self.dest_ip_b),self.dest_port_b)
+            dsoc_desc = (self.channel_b_config['dest_ip'],self.channel_b_config['dest_port'])
         elif channel=='c':
-            dsoc_desc = (str(self.dest_ip_c),self.dest_port_c)
+            dsoc_desc = (self.channel_c_config['dest_ip'],self.channel_c_config['dest_port'])
+        else:
+            raise ValueError('{} is not a valid channel tag'.format(channel))
+
+        if path == None:
+            path = self.monitor_target
 
         cf = self.freq_dict[channel]
         gain = self.gain_dict[channel]
@@ -288,33 +274,34 @@ class Roach2Interface(Roach2Provider):
         logger.info('grabbing packets from {}'.format(dsoc_desc))
         pkts=ArtooDaq.grab_packets(self, NPackets*2, dsoc_desc, True)
         logger.info('cf={}'.format(cf))
-        N = 4096
+
         p = []
         for i in range(int(NPackets*2)):
             if pkts[i].freq_not_time==True:
                 f=pkts[i].interpret_data()
                 p.append(np.abs(f))
-        p = np.array(p)
-        if mean == True:
-            p = np.mean(p, axis = 0)
-        np.save(self.monitor_target+'/F_packets_channel_'+channel+'_cf_'+str(cf)+'Hz_gain_'+str(gain), p)
+        NPackets = len(p)
+        p = np.mean(np.array(p), axis = 0)
+
+        filename = '{}/mean_of_{}_F_packets_channel{}_cf_{}Hz.json'.format(path, NPackets, channel, str(cf))
+        with open(filename, 'w') as outfile:
+            json.dump(p.tolist(), outfile)
 
 
-    def get_raw_adc_data(self, count=0, N=1, mean = True):
+    def get_raw_adc_data(self, N=1, path = None):
+        if path == None:
+            path = self.monitor_target
         p = []
         for i in range(N):
             x = ArtooDaq._snap_per_core(self, zdok=0)
             x_all = x.flatten('C')
-            logger.info('shape x is {} shape x_all is {}'.format(np.shape(x), np.shape(x_all)))
-            x_all = x_all/128.0*0.25
             for i in range(16):
                 p.append(np.abs(np.fft.fftshift(np.fft.fft(x_all[i*16384:(i+1)*16384])))/16384)
-        p = np.array(p)
-        if mean == True:
-            p = np.mean(p, axis = 0)
-        logger.info('shape of saved array is: {}'.format(np.shape(p)))
-        np.save(self.monitor_target+'/raw_adc'+str(count), p)
-        logger.info('Raw data saved to {}'.format(self.monitor_target+'/raw_adc'+str(count)+'.npy'))
+        p = np.mean(np.array(p), axis = 0)
+
+        filename = '{}/mean_of_{}_raw_adc_spectra.json'.format(path, str(16*N))
+        with open(filename, 'w') as outfile:
+            json.dump(p.tolist(), outfile)
 
 
     def calibrate_manually(self, gain1=0.0, gain2=0.42, gain3=0.42, gain4=1.55, off1=3.14, off2=-0.39, off3=2.75, off4=-1.18):

@@ -957,7 +957,7 @@ class ArtooDaq(object):
         core_phases = zeros(4)
         for ic in xrange(1,5):
             core_phases[ic-1] = adc5g.get_spi_phase(self.roach2,zdok,ic)
-        logger.warning("    ...phase: tuning not implemented yet, phase parameters are [{0}]".format(
+        logger.info("    ...phase: tuning not implemented yet, phase parameters are [{0}]".format(
             ", ".join(["{0:+06.2f}".format(icp) for icp in core_phases])
         ))
         return core_phases

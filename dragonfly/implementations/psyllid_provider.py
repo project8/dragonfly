@@ -42,14 +42,10 @@ class PsyllidProvider(core.Provider):
     def _finish_configure(self):
         for channel in self.channel_dict.keys():
             if self.request_status(channel)!=None:
-                self.mode_dict[channel]='streaming'
-
-                try: 
-                    if self.set_central_frequency(channel=channel, cf=800e6)==False:
-                       self.mode_dict[channel]='triggered'
-                       if self.set_central_frequency(channel=channel, cf=800e6)==False:
-                            self.mode_dict[channel]=None
-                            raise core.exceptions.DriplineGenericDAQError("Stream writer of Psyllid instance for channel {} is not configured correctly".format(channel))
+                try:
+                    self.get_acquisition_mode(channel)
+                    if self.mode_dict[channel]==None:
+                        raise core.exceptions.DriplineGenericDAQError("Stream writer of Psyllid instance for channel {} is not configured correctly".format(channel))
 
                     if self.get_number_of_streams(channel)!=1:
                         self.mode_dict[channel]=None
@@ -72,7 +68,7 @@ class PsyllidProvider(core.Provider):
         try:
             result = self.provider.get(self.queue_dict[channel]+'.daq-status', timeout=10)
         except core.exceptions.DriplineError:
-            logger.warning('Psyllid instance for channel {} is not running or returned error'.format(channel))
+            logger.info('Psyllid instance for channel {} is not running or returned error'.format(channel))
             self.status_dict[channel]=None
             self.status_value_dict[channel]=None
             return self.status_value_dict[channel]
@@ -86,6 +82,14 @@ class PsyllidProvider(core.Provider):
             logger.info('Status in numbers: {}'.format(self.status_value_dict[channel]))
             return self.status_value_dict[channel]
 
+
+    def get_acquisition_mode(self, channel):
+        self.mode_dict[channel]='streaming'
+        if self.set_central_frequency(channel=channel, cf=800e6)==False:
+           self.mode_dict[channel]='triggered'
+           if self.set_central_frequency(channel=channel, cf=800e6)==False:
+                self.mode_dict[channel]=None
+        return self.mode_dict[channel]
 
 
     def activate(self, channel):
@@ -149,10 +153,10 @@ class PsyllidProvider(core.Provider):
 
     def get_central_frequency(self, channel):
         routing_key_map = {
-                           'streaming':'.strw',
-                           'triggered':'.trw'
+                           'streaming':'strw',
+                           'triggered':'trw'
                           }
-        request = 'active-config.'+self.channel_dict[channel]+routing_key_map[self.mode_dict[channel]]
+        request = 'active-config.{}.{}'.format(self.channel_dict[channel], routing_key_map[self.mode_dict[channel]])
         result = self.provider.get(self.queue_dict[channel]+'.'+request)
         logger.info('Psyllid says cf is {}'.format(result['center-freq']))
         self.freq_dict[channel]=result['center-freq']
@@ -163,10 +167,10 @@ class PsyllidProvider(core.Provider):
     def set_central_frequency(self, channel, cf):
         #logger.info('Trying to set cf of channel {} to {}'.format(channel, cf))
         routing_key_map = {
-                           'streaming':'.strw',
-                           'triggered':'.trw'
+                           'streaming':'strw',
+                           'triggered':'trw'
                           }
-        request = '.active-config.'+self.channel_dict[channel]+routing_key_map[self.mode_dict[channel]]
+        request = '.active-config.{}.{}.center-freq'.format(self.channel_dict[channel], routing_key_map[self.mode_dict[channel]])
         try:
             self.provider.set(self.queue_dict[channel]+request, cf)
             logger.info('Set central frequency of {} writer for channel {} to {} Hz'.format(self.mode_dict[channel], channel, cf))
@@ -204,7 +208,7 @@ class PsyllidProvider(core.Provider):
         return active_channels
 
     # this method counts how many streams (stremaing or triggered) are set up in a psyllid instance. 
-    # If we trust that we don't mix up multi stream and single stream config files in the furture we dont need
+    # If we trust that we don't mix up multi stream and single stream config files in the furture we dont need it
     def get_number_of_streams(self, channel):
         stream_count = 0
         for i in range(3):
@@ -225,6 +229,7 @@ class PsyllidProvider(core.Provider):
         return stream_count
 
 
+    # These methods shoud not be used yet
     def set_fmt_snr_threshold(self, snr, channel='a'):
         if self.mode_dict[channel] == 'streaming':
             logger.warning('Psyllid not in streaming mode')
