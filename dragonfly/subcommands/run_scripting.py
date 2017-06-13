@@ -333,7 +333,7 @@ class RunScript(object):
         logger.info('execution complete')
         # remove the cache to prepare for a new execution script
         self.remove_cache()
-        logger.
+        logger.info('Execution script is over! Good job!')
 
 
     def update_cache(self):
