@@ -809,7 +809,7 @@ class RunScript(object):
 
                 # defining the run duration as a global variable is set in the 'run_duration'
                 this_run_duration = None
-                if 'run_duration' is in runs:
+                if 'run_duration' in runs:
                     if isinstance(runs['run_duration'], (float,int)):
                         this_run_duration = runs['run_duration']
                     elif isinstance(runs['run_duration'], (dict,list)):
@@ -821,7 +821,7 @@ class RunScript(object):
 
                 # this_run_duration = None
                 daq_configs = {}
-                if 'daq_configs' is in runs:
+                if 'daq_configs' in runs:
                     for a_daq_config in runs['daq_config']:
                         # if isinstance(a_daq_config,str):
                         a_daq_target = a_daq_config['daq_target']
