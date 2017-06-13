@@ -18,8 +18,12 @@ from .pid_loop import *
 from .pinger import *
 from .postgres_interface import *
 from .prologix_provider import *
+from .psyllid_provider import *
 from .random_sensor import *
 from .repeater_provider import *
+from .r2daq import *
+from .roach2_interface import *
+from .roach_daq_run_interface import *
 from .rsa_provider import *
 from .sensor_logger import *
 from .simple_shell import *
