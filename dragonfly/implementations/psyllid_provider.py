@@ -84,10 +84,14 @@ class PsyllidProvider(core.Provider):
 
 
     def get_acquisition_mode(self, channel):
+        if self.freq_dict[channel]!=None:
+            cf = self.freq_dict[channel]
+        else:
+            cf = 800e6
         self.mode_dict[channel]='streaming'
-        if self.set_central_frequency(channel=channel, cf=800e6)==False:
+        if self.set_central_frequency(channel=channel, cf=cf)==False:
            self.mode_dict[channel]='triggered'
-           if self.set_central_frequency(channel=channel, cf=800e6)==False:
+           if self.set_central_frequency(channel=channel, cf=cf)==False:
                 self.mode_dict[channel]=None
         return self.mode_dict[channel]
 
