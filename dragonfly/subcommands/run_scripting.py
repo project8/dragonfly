@@ -563,7 +563,6 @@ class RunScript(object):
 
     def action_do(self, operations, **kwargs):
         logger.info('doing do block')
-        set_kwargs = {'endpoint':None, 'value':None}
         for i_do,this_do in enumerate(operations):
             logger.info('doing operation #{}'.format(i_do))
             for i_key,key in enumerate(this_do):
@@ -609,17 +608,18 @@ class RunScript(object):
 
     # take a single run using one or several daq.
     # this method depends on a method named "start_timed_run" defined in the associated daq class
-    def action_single_run(self, daq_config, run_name, timeout=None, **kwargs):
+    def action_single_run(self, daq_configs, run_name, timeout=None, **kwargs):
         logger.info('taking single run')
         if self._dry_run_mode:
             logger.info('--dry-run flag: not starting an electron run')
             return
         run_kwargs = {'endpoint':None,
                       'method_name':'start_timed_run',
-                      'run_name':None
+                      'run_name':None,
+                      'run_time':None
                      }
         max_duration = -1
-        for item in daq_config:
+        for item in daq_configs:
             if item['run_duration']>max_duration:
                 max_duration = item['run_duration']
         # daq_targets = daq_config['daq_targets']
@@ -629,7 +629,7 @@ class RunScript(object):
         if self._lockout_key:
             run_kwargs.update({'lockout_key':self._lockout_key})
         start_of_runs = datetime.datetime.now()
-        for item in daq_config:
+        for item in daq_configs:
             run_kwargs.update({'endpoint':item['daq_target'],
                                'run_name':run_name.format(item['daq_target']),
                                'run_time':item['run_duration']})
@@ -641,18 +641,18 @@ class RunScript(object):
         # Checking the status of the daq
         a_daq_in_safe_mode = False
         while (datetime.datetime.now() - start_of_runs).total_seconds() < max_duration:
-            logger.info('checking the daq for a set_condition')
+            logger.debug('checking the daq for a set_condition')
             list_is_running = []
-            for daq in daq_targets:
-                if self.interface.get(daq+'.is_running')['payload']['values'][0] == 2:
-                    logger.critical('{} is in safe_mode (maybe due to a set_condition)'.format(daq))
+            for item in daq_configs:
+                if self.interface.get(item['daq_target']+'.is_running')['payload']['values'][0] == 2:
+                    logger.critical('{} is in safe_mode (maybe due to a set_condition)'.format(item['daq_target']))
                     a_daq_in_safe_mode = True
-                elif self.interface.get(daq+'.is_running')['payload']['values'][0] == 1:
+                elif self.interface.get(item['daq_target']+'.is_running')['payload']['values'][0] == 1:
                     all_done = False
-                    logger.info('still waiting on <{}> (maybe others)'.format(daq))
-                    list_is_running.append(daq)
-                elif self.interface.get(daq+'.is_running')['payload']['values'][0] == 0:
-                    logger.info('{} is already done!'.format(daq))
+                    logger.info('still waiting on <{}> (maybe others)'.format(item['daq_target']))
+                    list_is_running.append(item['daq_target'])
+                elif self.interface.get(item['daq_target']+'.is_running')['payload']['values'][0] == 0:
+                    logger.info('{} is already done!'.format(item['daq_target']))
             if a_daq_in_safe_mode == True:
                 if len(list_is_running)>0:
                     response = 'daq still running: '
@@ -671,16 +671,16 @@ class RunScript(object):
         while all_done == False:
             all_done = True
             list_is_running = []
-            for daq in daq_targets:
-                if self.interface.get(daq+'.is_running')['payload']['values'][0] == 2:
-                    logger.critical('{} is in safe_mode (maybe due to a set_condition)'.format(daq))
+            for item in daq_configs:
+                if self.interface.get(item['daq_target']+'.is_running')['payload']['values'][0] == 2:
+                    logger.critical('{} is in safe_mode (maybe due to a set_condition)'.format(item['daq_target']))
                     a_daq_in_safe_mode = True
-                elif self.interface.get(daq+'.is_running')['payload']['values'][0] == 1:
+                elif self.interface.get(item['daq_target']+'.is_running')['payload']['values'][0] == 1:
                     all_done = False
-                    logger.info('still waiting on <{}> (maybe others)'.format(daq))
-                    list_is_running.append(daq)
-                elif self.interface.get(daq+'.is_running')['payload']['values'][0] == 0:
-                    logger.info('{} is done!'.format(daq))
+                    logger.info('still waiting on <{}> (maybe others)'.format(item['daq_target']))
+                    list_is_running.append(item['daq_target'])
+                elif self.interface.get(item['daq_target']+'.is_running')['payload']['values'][0] == 0:
+                    logger.info('{} is done!'.format(item['daq_target']))
             if a_daq_in_safe_mode == True:
                 if len(list_is_running)>0:
                     response = 'daq still running: '
@@ -722,9 +722,9 @@ class RunScript(object):
             evaluator = asteval.Interpreter()
             evaluated_operations = []
             for i_do,a_do in enumerate(operations):
-                logger.info('doing operation #{}'.format(i_do))
                 these_operations = []
                 key = a_do.keys()[0]
+                # logger.info('doing operation #{}: {}'.format(i_do,key))
                 if key == 'sets':
                     these_sets = []
                     for a_set in a_do[key]:
@@ -776,7 +776,7 @@ class RunScript(object):
                     logger.debug('Runs should not be declared in the operations section: skipping!')
                 else:
                     logger.debug('Operation unknown: skipping!')
-            logger.info('computed operations are:\n{}'.format(evaluated_operations))
+            logger.debug('computed operations are:\n{}'.format(evaluated_operations))
             self.action_do(evaluated_operations)
 
             #ESR Scan
@@ -820,9 +820,9 @@ class RunScript(object):
                         logger.info('failed to compute run duration for run: {}'.format(run_count))
 
                 # this_run_duration = None
-                daq_configs = {}
+                daq_configs = []
                 if 'daq_configs' in runs:
-                    for a_daq_config in runs['daq_config']:
+                    for a_daq_config in runs['daq_configs']:
                         # if isinstance(a_daq_config,str):
                         a_daq_target = a_daq_config['daq_target']
                         # elif isinstance(a_daq_config,dict):
@@ -849,8 +849,8 @@ class RunScript(object):
                         else:
                             a_run_duration = this_run_duration
                     # daq_targets = runs['daq_config']
-                        daq_configs.append({'daq_targets': a_daq_target,
-                                           'run_durations': a_run_duration})
+                        daq_configs.append({'daq_target': a_daq_target,
+                                           'run_duration': a_run_duration})
                 this_run_name = runs['run_name'].format(daq_target='{}', run_count=run_count)
                 self.action_single_run(daq_configs, this_run_name,this_timeout)
 
