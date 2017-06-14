@@ -15,7 +15,7 @@ pip install -U pip # pip version >= 7.0.0 required
 pip install ${REPOSPATH}/dragonfly[extra1,extra2,...]
 ```
 
-On claude, the command will be `pip install ~/Repos/dragonfly[colorlog]`, on myrna it will be `pip install ~/Repos/dragonfly[colorlog,database,slack]` to handle the additional services.
+On claude, the command will be `pip install ~/Repos/dragonfly[colorlog]`, on myrna it will be `pip install ~/Repos/dragonfly[colorlog,database,slack]` to handle the additional services, on zeppelin, it will be `pip install ~/Repos/dragonfly[colorlog,roach]`.
 
 To install in "develop" mode, use `pip install -e` flag.
 

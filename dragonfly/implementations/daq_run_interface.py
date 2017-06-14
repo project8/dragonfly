@@ -3,8 +3,12 @@
 
 from __future__ import absolute_import
 
+
 # standard imports
 import logging
+import uuid
+import time
+import os
 import json
 from datetime import datetime
 
@@ -107,6 +111,7 @@ class DAQProvider(core.Provider):
         self._run_meta = {'DAQ': self.daq_name,
                           'run_time': self._run_time,
                          }
+
         self._do_prerun_gets()
         self._send_metadata()
         logger.debug('these meta will be {}'.format(self._run_meta))
@@ -195,6 +200,7 @@ class DAQProvider(core.Provider):
                                                                     runNx=self.run_id/1000,
                                                                     runN=self.run_id
                                                                    )
+
         filename = "{}{:09d}".format(self.filename_prefix, self.run_id)
         self._start_data_taking(directory,filename)
         return self.run_id
@@ -332,4 +338,5 @@ class RSAAcquisitionInterface(DAQProvider):
             logger.debug("things are about to be dumped in file")
             json.dump(result_meta, outfile, indent=4)
             logger.debug("things have been dumped in file")
-        logger.info("saving {}: successful".format(path))
+            logger.info("saving {}: successful".format(path))
+

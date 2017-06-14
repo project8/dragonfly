@@ -28,10 +28,9 @@ class Pinger(Endpoint,Scheduler):
     ping_timeout: duration before considering a ping failed
     '''
     def __init__(self,
-                 broker=None,
                  services_to_ping = [],
                  ping_timeout = 10,
-                 *args, **kwargs):
+                 **kwargs):
 
         Endpoint.__init__(self,**kwargs)
         Scheduler.__init__(self, **kwargs)
@@ -39,14 +38,15 @@ class Pinger(Endpoint,Scheduler):
         self.services_to_ping = services_to_ping
         self.ping_timeout = ping_timeout
 
-    # FIXME: the following method is called by Scheduler on a regular basis.
-    # Should be replaced with a more generic method name.
-    def _log_a_value(self):
+    def scheduled_action(self):
+        '''
+        Override Scheduler method with Pinger-specific action
+        '''
         message = ""
         for item in self.services_to_ping:
-            logger.info("pinging {}".format(item))
+            logger.debug("pinging {}".format(item))
             try:
-                result = self.provider.cmd(target=str(item), method_name="ping", value=[], timeout=self.ping_timeout)
+                result = self.provider.cmd(target=item, method_name="ping", value=[], timeout=self.ping_timeout)
                 if result:
                     logger.info("{} is responding".format(item))
             except Exception as err:
@@ -54,6 +54,3 @@ class Pinger(Endpoint,Scheduler):
                 message = message + "{}\n".format(item)
         if message != "":
             logger.critical("The following services are not responding:\n{}".format(message))
-
-        # start to sleep before restarting
-        self._timeout_handle = self.service._connection.add_timeout(self._log_interval, self._log_a_value)
