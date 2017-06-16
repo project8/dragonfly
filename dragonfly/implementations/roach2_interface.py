@@ -8,9 +8,12 @@ from __future__ import absolute_import
 
 import logging
 import os
-import adc5g
+try:
+    import adc5g
+    import numpy as np
+except ImportError:
+    pass
 import json
-import numpy as np
 from dripline import core
 
 
@@ -78,7 +81,7 @@ class Roach2Interface(Roach2Provider):
         self.fft_shift_vector = {'ab': fft_shift, 'cd': fft_shift}
         self.configured=False
         self.calibrated=False
-        
+
 
 
     def _finish_configure(self, do_ogp_cal=False, do_adcif_cal=True, boffile=None):
@@ -86,7 +89,7 @@ class Roach2Interface(Roach2Provider):
         self.cfg_list = []
         # make list with interface dictionaries
         if self.channel_a_config != None:
-            cfg_a = self.make_interface_config_dictionary(src_ip=self.channel_a_config['source_ip'], src_port=self.channel_a_config['source_port'], src_mac=self.channel_a_config['source_mac'], 
+            cfg_a = self.make_interface_config_dictionary(src_ip=self.channel_a_config['source_ip'], src_port=self.channel_a_config['source_port'], src_mac=self.channel_a_config['source_mac'],
                                                           dest_ip=self.channel_a_config['dest_ip'], dest_port=self.channel_a_config['dest_port'], dest_mac=self.channel_a_config['dest_mac'], tag='a')
             self.cfg_list.append(cfg_a)
             self.channel_list.append('a')
@@ -180,7 +183,7 @@ class Roach2Interface(Roach2Provider):
     @property
     def all_central_frequencies(self):
         return self.freq_dict
-            
+
 
     @property
     def gain(self):
@@ -243,10 +246,10 @@ class Roach2Interface(Roach2Provider):
         pkts=ArtooDaq.grab_packets(self, NPackets*2, dsoc_desc, True)
         p = []
         for i in range(int(NPackets*2)):
-            if pkts[i].freq_not_time==False:  
+            if pkts[i].freq_not_time==False:
                 x=pkts[i].interpret_data()
                 p.append(np.abs(np.fft.fftshift(np.fft.fft(x)))/4096)
-        NPackets = len(p) 
+        NPackets = len(p)
         p = np.mean(np.array(p), axis = 0)
 
         filename = '{}/mean_of_{}_T_packets_channel{}_cf_{}Hz.json'.format(path, NPackets, channel, str(cf))
@@ -314,4 +317,3 @@ class Roach2Interface(Roach2Provider):
         adc5g.set_spi_offset(self.roach2,0, 3, off3)
         adc5g.set_spi_offset(self.roach2,0, 4, off4)
         return True
-
