@@ -5,30 +5,34 @@
 
 from __future__ import division
 
-import adc5g
+
+try:
+    import adc5g
+    from numpy import (
+        abs,
+        array,
+        ceil,
+        complex64,
+        concatenate,
+        float32,
+        floor,
+        int8,
+        ones,
+        pi,
+        uint32,
+        uint64,
+        uint8,
+        zeros,
+        )
+    from scipy.signal import firwin2, freqz
+    import netifaces as ni
+    from corr.katcp_wrapper import FpgaClient
+except ImportError:
+    pass
 from copy import deepcopy
-from corr.katcp_wrapper import FpgaClient
 from datetime import datetime
 import logging
-import netifaces as ni
-from numpy import (
-    abs, 
-    array, 
-    ceil, 
-    complex64, 
-    concatenate, 
-    float32, 
-    floor, 
-    int8, 
-    ones, 
-    pi, 
-    uint32, 
-    uint64, 
-    uint8, 
-    zeros,
-    )
 import re
-from scipy.signal import firwin2, freqz
 from socket import inet_aton, socket, AF_INET, SOCK_DGRAM
 from struct import unpack
 from time import sleep, time
@@ -38,53 +42,53 @@ logger = logging.getLogger(__name__)
 class Packet():
     """
     Encapsulate an R2DAQ packet
-    
+
     """
-    
+
     BYTES_IN_PAYLOAD = 8192
     BYTES_IN_HEADER = 32
     BYTES_IN_PACKET = BYTES_IN_PAYLOAD + BYTES_IN_HEADER
-    
+
     @property
     def unix_time(self):
         return self._unix_time
-    
+
     @property
     def pkt_in_batch(self):
         return self._pkt_in_batch
-    
+
     @property
     def digital_id(self):
         return self._digital_id
-    
+
     @property
     def if_id(self):
         return self._if_id
-    
+
     @property
     def user_data_1(self):
         return self._user_data_1
-    
+
     @property
     def user_data_0(self):
         return self._user_data_0
-    
+
     @property
     def reserved_0(self):
         return self._reserved_0
-    
+
     @property
     def reserverd_1(self):
         return self._reserved_1
-    
+
     @property
     def freq_not_time(self):
         return self._freq_not_time
-    
+
     @property
     def data(self):
         return self._data
-    
+
     def __init__(self,ut=0,pktnum=0,did=0,ifid=0,ud0=0,ud1=0,res0=0,res1=0,fnt=False,data=None):
         """
         Initialize Packet with the given attributes
@@ -100,11 +104,11 @@ class Packet():
         self._reserved_1 = res1
         self._freq_not_time = fnt
         self._data = data
-    
+
     def interpret_data(self):
         """
         Interprets the raw 8bit data as complex-valued Fix_8_7.
-        
+
         Returns
         -------
         x : ndarray
@@ -112,7 +116,7 @@ class Packet():
         """
         x = array(self.data[1::2] + 1j*self.data[0::2],dtype=complex64)
         return x
-    
+
     @classmethod
     def FromByteString(cls,bytestr):
         """
@@ -145,9 +149,9 @@ class ArtooDaq(object):
     """
     Encapsulate R2DAQ
     """
-    
+
     _TIMEOUT = 5
-    
+
     _FPGA_CLOCK = 200e6
     _DEMUX = 16
     _ADC_SAMPLE_RATE = _FPGA_CLOCK * _DEMUX
@@ -155,66 +159,66 @@ class ArtooDaq(object):
     _DIGITAL_CHANNELS = ['a','b','c','d','e','f']
     _FFT_ENGINES = ['ab','cd','ef']
     _PHASE_LOOKUP_DEPTH = 10
-    
+
     @property
     def FPGA_CLOCK(self):
         return self._FPGA_CLOCK
-    
+
     @property
     def DEMUX(self):
         return self._DEMUX
-    
+
     @property
     def ADC_SAMPLE_RATE(self):
         return self._ADC_SAMPLE_RATE
-    
+
     @property
     def DIGITAL_CHANNEL_WIDTH(self):
         return self._DIGITAL_CHANNEL_WIDTH
-    
+
     @property
     def DIGITAL_CHANNELS(self):
         return self._DIGITAL_CHANNELS
-    
+
     @property
     def FFT_ENGINES(self):
         return self._FFT_ENGINES
-    
+
     @property
     def PHASE_LOOKUP_DEPTH(self):
         return self._PHASE_LOOKUP_DEPTH
-    
+
     @property
     def implemented_digital_channels(self):
         return self._implemented_digital_channels
-    
+
     @property
     def registers(self):
         registers = dict()
         for k in self.roach2.listdev():
             registers[k] = self.roach2.read_int(k)
         return registers
-    
+
     @property
     def roach2(self):
         return self._roach2
-    
+
     @property
     def version(self):
         reg = self.registers
         return (reg['rcs_lib'],reg['rcs_app'],reg['rcs_user'])
-    
+
     def string_version(self,ver=None):
         """
         Return human-readable detailed bitcode version information.
-        
+
         Parameters
         ----------
         ver : tuple
-            The version tuple to interpret, as returned by the 
+            The version tuple to interpret, as returned by the
             ArtooDaq.version property. If None, then the tuple is first
             obtained from the current ArtooDaq instance. Default is None.
-        
+
         Returns
         -------
         str : str
@@ -224,15 +228,15 @@ class ArtooDaq(object):
             b31_format = ('revision system','timestamp')
             _FORMAT_REVISION = 0
             _FORMAT_TIMESTAMP = 1
-            
+
             b30_rtype = ('git','svn')
             _RTYPE_GIT = 0
             _RTYPE_SVN = 1
-            
+
             b28_dirty = ('all changes in revision control','changes not in revision control')
             _DIRTY_SAVED = 0
             _DRITY_UNSAVED = 1
-            
+
             str_out = ''
             v_format = (v & 0x80000000) >> 31
             str_out = '   Format: {0}'.format(b31_format[v_format])
@@ -275,7 +279,7 @@ class ArtooDaq(object):
         str_out = '\n'.join([str_out,'===='])
         str_out = '\n'.join([str_out,'  Version: {0:10d}'.format(vu)])
         return str_out
-        
+
     @classmethod
     def make_interface_config_dictionary(cls,
         src_ip,src_port,
@@ -287,52 +291,52 @@ class ArtooDaq(object):
     ):
         """
         Make interface dictionary to initialize 10GbE cores.
-        
-        This method is a temporary workaround to avoid calling 
+
+        This method is a temporary workaround to avoid calling
         _config_channel_net directly.
-        
+
         Parameters
         ----------
         src_ip : str or int
-            IP address for the ROACH2 10GbE interface associated with 
+            IP address for the ROACH2 10GbE interface associated with
             the given channel in dot-decimal notation (str) or as int.
         src_port : int
-            Port number for the ROACH2 10GbE interface associated with 
+            Port number for the ROACH2 10GbE interface associated with
             the given channel.
         dest_ip : str or int
-            IP address for the destination of packets associated with 
+            IP address for the destination of packets associated with
             the given channel in dot-decimal notation (str) or as int.
         dest_port : int
-            Port number for the destination of packets associated with 
+            Port number for the destination of packets associated with
             the given channel.
         src_mac : str or int
             MAC address for the ROACH2 10GbE interface associated with
             the given channel in colon-separated-hexadecimal notation
-            (str) or as int. If None then the MAC is automatically 
+            (str) or as int. If None then the MAC is automatically
             determined from src_ip. Default is None.
         arp : list
-            ARP table supplied as a 256-element list of integers. Each 
-            entry contains the MAC address of the device on the /24 
-            network. If None then the MAC address of the device 
-            associated with dest_ip must be supplied in dest_mac and 
-            the ARP is automatically generated by filling other entries 
+            ARP table supplied as a 256-element list of integers. Each
+            entry contains the MAC address of the device on the /24
+            network. If None then the MAC address of the device
+            associated with dest_ip must be supplied in dest_mac and
+            the ARP is automatically generated by filling other entries
             with the broadcast address. Default is None.
         dest_mac : str or int
-            MAC address for the destination of packets associated with 
-            the given channel in colon-separated-hexadecimal notation 
-            (str) or as int. If supplied then the ARP table entry for 
-            src_ip is replaced with the given MAC address. If None then 
+            MAC address for the destination of packets associated with
+            the given channel in colon-separated-hexadecimal notation
+            (str) or as int. If supplied then the ARP table entry for
+            src_ip is replaced with the given MAC address. If None then
             the ARP table is used as-is. Default is None.
         tag : str
             Tag associated with the digital channel, should be one of
             {'a','b','c','d','e','f'}. Default is 'a'.
-        
+
         Return
         ------
         ifd : dict
             The returned dictionary can be used in a configuration list
             when initializing the ArtooDaq object.
-        
+
         Example
         -------
         cfg_a = ArtooDaq.make_interface_config_dictionary(
@@ -348,7 +352,7 @@ class ArtooDaq(object):
         cfg_list = [cfg_a,cfg_b]
         r2 = ArtooDaq('led',boffile='latest-build',ifcfg=cfg_list):
         """
-        
+
         return {
             'src_ip':src_ip,
             'src_port':src_port,
@@ -359,30 +363,30 @@ class ArtooDaq(object):
             'dest_mac':dest_mac,
             'tag':tag
         }
-    
+
     def __init__(self,hostname,dsoc_desc=None,boffile=None,ifcfg=None,
         do_ogp_cal=True,do_adcif_cal=True
     ):
         """
         Initialize an ArtooDaq object.
-        
+
         Parameters
         ----------
         hostname : string
             Address of the roach2 on the 1GbE (control) network.
         dsoc_desc : tuple
-            A tuple with the first element the IP address / hostname and 
+            A tuple with the first element the IP address / hostname and
             the second element the port where data is to be received. This
-            argument, if not None, is passed directly to socket.bind(); see 
-            the documentation of that class for details. In this case a 
+            argument, if not None, is passed directly to socket.bind(); see
+            the documentation of that class for details. In this case a
             socket is opened and bound to the given address. If None, then
             the data socket is not opened. Default is None.
         boffile : string
-            Program the device with this bitcode if not None. The special 
+            Program the device with this bitcode if not None. The special
             filename 'latest-build' uses the current build of the bit-code.
             Default is None.
         ifcfg : list
-            List of dictionaries built with calls to 
+            List of dictionaries built with calls to
             make_interface_config_dictionary. If this parameter is None
             then a default list is created. Default is None.
         do_ogp_cal : bool
@@ -431,21 +435,21 @@ class ArtooDaq(object):
         # if requested, open data socket
         if not dsoc_desc is None:
             self.open_dsoc(dsoc_desc)
-    
+
     def grab_packets(self,n=1,dsoc_desc=None,close_soc=False):
         """
         Grab packets using open data socket.
-        
-        Calls to this method should only be made while a data socket is 
-        open, unless a socket descriptor is provided. See open_dsoc() for 
+
+        Calls to this method should only be made while a data socket is
+        open, unless a socket descriptor is provided. See open_dsoc() for
         details.
-        
+
         Parameters
         ----------
         n : int
             Number of packets to grab, default is 1.
         dsoc_desc : tuple
-            Socket descriptor tuple as for open_dsoc() method. If None, 
+            Socket descriptor tuple as for open_dsoc() method. If None,
             a data socket should already be open. Default is None.
         close_soc : boolean
             Close socket after grabbing the given number of packets.
@@ -463,11 +467,11 @@ class ArtooDaq(object):
         if close_soc:
             self.close_dsoc()
         return pkts
-    
+
     def open_dsoc(self,dsoc_desc):
         """
         Open socket for data reception and bind.
-        
+
         Parameters
         ----------
         dsoc_desc: tuple
@@ -476,13 +480,13 @@ class ArtooDaq(object):
         self._data_socket = socket(AF_INET,SOCK_DGRAM)
         self._data_socket.bind(dsoc_desc)
         return self._data_socket
-    
+
     def close_dsoc(self):
         """
         Close socket used for data reception.
         """
         self._data_socket.close()
-    
+
     def _config_channel_net(self,
         src_ip=None,src_port=None,
         dest_ip=None,dest_port=None,
@@ -493,62 +497,62 @@ class ArtooDaq(object):
     ):
         """
         Configure network output for digital channel.
-        
+
         This method is a work-in-progress and should not be called in
         its current form, except for the call in _start. Future bitcode
-        changes will enable this method to be called at any time to 
-        reconfigure the network setup of a particular 10GbE interface 
+        changes will enable this method to be called at any time to
+        reconfigure the network setup of a particular 10GbE interface
         on the ROACH2.
-        
+
         Parameters
         ----------
         src_ip : str or int
-            IP address for the ROACH2 10GbE interface associated with 
+            IP address for the ROACH2 10GbE interface associated with
             the given channel in dot-decimal notation (str) or as int.
         src_port : int
-            Port number for the ROACH2 10GbE interface associated with 
+            Port number for the ROACH2 10GbE interface associated with
             the given channel.
         dest_ip : str or int
-            IP address for the destination of packets associated with 
+            IP address for the destination of packets associated with
             the given channel in dot-decimal notation (str) or as int.
         dest_port : int
-            Port number for the destination of packets associated with 
+            Port number for the destination of packets associated with
             the given channel.
         src_mac : str or int
             MAC address for the ROACH2 10GbE interface associated with
             the given channel in colon-separated-hexadecimal notation
-            (str) or as int. If None then the MAC is automatically 
+            (str) or as int. If None then the MAC is automatically
             determined from src_ip. Default is None.
         arp : list
-            ARP table supplied as a 256-element list of integers. Each 
-            entry contains the MAC address of the device on the /24 
-            network. If None then the MAC address of the device 
-            associated with dest_ip must be supplied in dest_mac and 
-            the ARP is automatically generated by filling other entries 
+            ARP table supplied as a 256-element list of integers. Each
+            entry contains the MAC address of the device on the /24
+            network. If None then the MAC address of the device
+            associated with dest_ip must be supplied in dest_mac and
+            the ARP is automatically generated by filling other entries
             with the broadcast address. Default is None.
         dest_mac : str or int
-            MAC address for the destination of packets associated with 
-            the given channel in colon-separated-hexadecimal notation 
-            (str) or as int. If supplied then the ARP table entry for 
-            src_ip is replaced with the given MAC address. If None then 
+            MAC address for the destination of packets associated with
+            the given channel in colon-separated-hexadecimal notation
+            (str) or as int. If supplied then the ARP table entry for
+            src_ip is replaced with the given MAC address. If None then
             the ARP table is used as-is. Default is None.
         tag : str
             Tag associated with the digital channel, should be one of
             {'a','b','c','d','e','f'}. Default is 'a'.
-        
+
         Notes
         -----
         Only one of arp and dest_mac is allowed to be None and if both
-        variables are None a ValueError is raised. If dest_mac is not 
-        None then it determines the ARP table entry associated with 
+        variables are None a ValueError is raised. If dest_mac is not
+        None then it determines the ARP table entry associated with
         dest_ip, possibly overriding the table supplied in arp.
         """
-        
+
         # retrieve IP value from parameter
         def _get_ip_val(ip):
             ip_str = str(ip)
             return unpack("!L",inet_aton(ip_str))[0]
-        
+
         # retrieve MAC value from parameter
         def _get_mac_val(mac):
             mac_str = str(dest_mac)
@@ -559,12 +563,12 @@ class ArtooDaq(object):
             else:
                 mac_val = int(mac_str)
             return mac_val
-        
+
         self._check_valid_digital_channel(tag)
         # check if valid arp / dest_mac combo given
         if arp is None and dest_mac is None:
             raise ValueError("One of arp or dest_mac must be supplied, both cannot be None.")
-        
+
         src_ip_int = _get_ip_val(src_ip)
         dest_ip_int = _get_ip_val(dest_ip)
         # set 10GbE interface MAC
@@ -578,7 +582,7 @@ class ArtooDaq(object):
         if dest_mac is not None:
             dest_mac_int = _get_mac_val(dest_mac)
             arp[dest_ip_int & 0x000000FF] = dest_mac_int
-        
+
         ### -------
         ### This breaks the network interface, will have to change bitcode
         #~ # disable data interface for this channel
@@ -596,11 +600,11 @@ class ArtooDaq(object):
         #~ # and release reset
         #~ self._tengbe_reset_lo(tag=tag)
         ### -------
-        
+
     def tune_ddc_1st_to_freq(self,f_c,tag='a'):
         """
         Tune 1st stage DDC to the given center frequency.
-        
+
         Parameters
         ----------
         fc : float
@@ -608,11 +612,11 @@ class ArtooDaq(object):
         tag : string
             Tag associated with the digital channel, should be one of
             {'a','b','c','d','e','f'}. Default is 'a'.
-        
+
         Returns
         -------
         fc_d : float
-            Actual center frequency of the 100MHz digital channel, 
+            Actual center frequency of the 100MHz digital channel,
             taking into account the finite frequency resolution of the
             digitally synthesized LO in the first downconversion stage.
         """
@@ -648,21 +652,21 @@ class ArtooDaq(object):
         }
         cfg = self.read_ddc_1st_config(tag=tag)
         return cfg['digital']['f_c']
-    
+
     def read_ddc_1st_config(self,tag='a'):
         """
         Extract configuration of 1st stage DDC.
-        
+
         Parameters
         ----------
         tag : string
             Tag associated with the digital channel, should be one of
             {'a','b','c','d','e','f'}. Default is 'a'.
-        
+
         Returns
         -------
         ddc1_cfg : dict
-            Dictionary containing configuration information of 1st stage 
+            Dictionary containing configuration information of 1st stage
             DDC.
         """
         self._check_valid_digital_channel(tag)
@@ -671,8 +675,8 @@ class ArtooDaq(object):
         d_B = self._extract_filterbank_assignments(tag)
         if cfg is None:
             # precise 'analog' (or 'ideal') values are not available, so
-            # we determine the filter response magnitude maximum to the 
-            # nearest 50MHz (using actual filter coefficients set in the 
+            # we determine the filter response magnitude maximum to the
+            # nearest 50MHz (using actual filter coefficients set in the
             # roach2 registers), subtract from it the digital LO frequency
             # (also using the actual LO setting in the roach2 register)
             # and assign that as the center frequency.
@@ -694,22 +698,22 @@ class ArtooDaq(object):
             'B': d_B
         }
         return cfg
-    
+
     def set_gain(self,g=1.0,tag='a'):
         """
         Set gain on output of 1st stage DDC.
-        
+
         Parameters
         ----------
         g : float
-            Real-valued gain to apply to output of first downconversion 
-            module. Binary representation is Fix_8_4 and the caller should 
+            Real-valued gain to apply to output of first downconversion
+            module. Binary representation is Fix_8_4 and the caller should
             ensure that the gain is within the allowable range [-8,7.9375].
             Values outside this range will saturate. Default is 1.0.
         tag : string
             Tag associated with the digital channel, should be one of
             {'a','b','c','d','e','f'}. Default is 'a'.
-        
+
         Notes
         -----
         No gain control register for channels {'e','f'} yet.
@@ -727,20 +731,20 @@ class ArtooDaq(object):
         regname = 'gain_ctrl'
         masked_val = self.registers[regname] & uint32(~(0xFF<<idx*8))
         self._make_assignment({regname: masked_val | (g_8bit<<(idx*8))})
-    
+
     def set_fft_shift(self,shift_vec='1101010101010',tag='ab'):
         """
         Set shift vector for FFT engine.
-        
+
         Parameters
         ----------
         shift_vec : string
-            String given in bit-format, '1's and '0's where 1 indicates 
-            right-shift at stage associated with the bit position. Only 
-            the first 13 characters in the string are used. Default  is 
+            String given in bit-format, '1's and '0's where 1 indicates
+            right-shift at stage associated with the bit position. Only
+            the first 13 characters in the string are used. Default  is
             '1101010101010' which ensures no overflow.
         tag : string
-            Tag selects the FFT engine to which the shift-vector is 
+            Tag selects the FFT engine to which the shift-vector is
             applied. Default is 'ab'.
         """
         self._check_valid_fft_engine(tag)
@@ -762,7 +766,7 @@ class ArtooDaq(object):
         Each of the four cores internal to each ADC has an offset, gain,
         phase, and a number of integrated non-linearity parameters that
         can be independently tuned. This method attempts to match the
-        cores within the specified ADC by tuning a subset of these 
+        cores within the specified ADC by tuning a subset of these
         parameters.
 
         Parameters
@@ -775,10 +779,10 @@ class ArtooDaq(object):
             is 10).
         otol : float
             If the absolute value of the mean of snapshot data normalized to
-            the standard deviation from one core is below this value then the 
+            the standard deviation from one core is below this value then the
             offset-tuning is considered sufficient (default is 0.005).
         giter : int
-            Maximum number of iterations to fine-tune gain parameter (default 
+            Maximum number of iterations to fine-tune gain parameter (default
             is 10).
         gtol : float
             If the distance between the standard deviation of the data in one
@@ -789,7 +793,7 @@ class ArtooDaq(object):
             Phase calibration not yet implemented.
         ptol : float
             Phase calibration not yet implemented.
-        
+
         Returns
         -------
         ogp : dict
@@ -947,7 +951,7 @@ class ArtooDaq(object):
     def calibrate_adc_phase(self,zdok=0,piter=0,ptol=1.0):
         """
         Attempt to match the core phases within the ADC.
-        
+
         See ArtooDaq.calibrate_adc_ogp for more details.
         """
         # phase controlled by float varying over [-14,14] ps with 0.11 ps resolution
@@ -961,7 +965,7 @@ class ArtooDaq(object):
             ", ".join(["{0:+06.2f}".format(icp) for icp in core_phases])
         ))
         return core_phases
-                
+
     def _snap_per_core(self,zdok=0,groups=1):
         """
         Get a snapshot of 8-bit data per core from the ADC.
@@ -973,12 +977,12 @@ class ArtooDaq(object):
         groups : int
             Each snapshot grabs groups*(2**16) samples per core
             (default is 1).
-        
+
         Returns
         -------
         x : ndarray
-            A (groups*(2**16), 4)-shaped array in which data along the 
-            first dimension contains consecutive samples taken form the 
+            A (groups*(2**16), 4)-shaped array in which data along the
+            first dimension contains consecutive samples taken form the
             same core. The data is ordered such that the index along
             the second dimension matches core-indexing in the spi-
             family of functions used to tune the core parameters.
@@ -990,27 +994,27 @@ class ArtooDaq(object):
             x_ = x_.reshape((x_.size//4,4))
             x = concatenate((x,x_))
         return x[:,[0,2,1,3]]
-    
+
     def _make_assignment(self,assign_dict):
         """
         Assign values to ROACH2 software registers.
-        
+
         Assignments are made as roach2.write_int(key,val).
-        
+
         Parameters
         ----------
         assign_dict : dict
-            Each key in assign_dict should correspond to a valid ROACH2 
+            Each key in assign_dict should correspond to a valid ROACH2
             software register name, and each val should be int compatible.
         """
         for key in assign_dict.keys():
             val = assign_dict[key]
             self.roach2.write_int(key,val)
-    
+
     def _built_in_filter_design(self,f_ch):
         """
         Design basic shape-matching 127th order FIR filter.
-        
+
         The filter will attempt to match the following gain envelope:
             w = [0, s1, p1, p2, s1, 1]
             h = [0,  0,  1,  1,  0, 0]
@@ -1019,14 +1023,14 @@ class ArtooDaq(object):
             p1 = f_ch - DIGITAL_CHANNEL_WIDTH*0.4
             p2 = f_ch + DIGITAL_CHANNEL_WIDTH*0.4
             s2 = f_ch + DIGITAL_CHANNEL_WIDTH*0.6,
-        h is normalized to a maximum of 1, and w is the angular frequency 
+        h is normalized to a maximum of 1, and w is the angular frequency
         normalized to pi.
-        
+
         Parameters
         ----------
         f_ch : float
             Center frequency of bandpass filter.
-        
+
         Returns
         -------
         B : ndarray
@@ -1048,11 +1052,11 @@ class ArtooDaq(object):
         # normalize to absolute maximum of 0.5
         B = 0.5*B/(abs(B).max())
         return B
-    
+
     def _build_synth_assignments(self,f_lo,phase_offset=0,tag='a'):
         """
         Build phase increment words for synthesizer.
-        
+
         Parameters
         ----------
         f_lo : float
@@ -1062,7 +1066,7 @@ class ArtooDaq(object):
         tag : string
             Tag associated with the downconverter, should be one of
             {'a','b','c','d','e','f'}. Default is 'a'.
-        
+
         Returns
         -------
         assign_synth : dict
@@ -1079,22 +1083,22 @@ class ArtooDaq(object):
         word = ((dphi_demux&mask)<<(self.PHASE_LOOKUP_DEPTH*2)) | ((dphi&mask)<<self.PHASE_LOOKUP_DEPTH) | (phi0&mask)
         assign_synth = {'ddc_1st_' + tag + '_synth_input_dphi':word}
         return assign_synth
-    
+
     def _extract_synth_assignments(self,tag='a'):
         """
         Extract synthesizer settings from the contents of the control registers.
-        
+
         Parameters
         ----------
         tag : string
             Tag associated with the downconverter, should be one of
             {'a','b','c','d','e','f'}. Default is 'a'.
-        
+
         Returns
         -------
         f_lo : float
-            Digital local oscillator frequency in Hz. If this value is 
-            equal to half the sampling rate it is negated, and for larger 
+            Digital local oscillator frequency in Hz. If this value is
+            equal to half the sampling rate it is negated, and for larger
             values it wraps toward -0.
         phi0 : float
             Phase offset in radians.
@@ -1117,20 +1121,20 @@ class ArtooDaq(object):
     def _build_filterbank_assignments(self,B,tag='a'):
         """
         Build FIR filter words for anti-aliasing filter.
-        
+
         Parameters
         ----------
         B : ndarray
-            Filter coefficients for 127th order filter, or 128 coefficients 
-            in total. These values are discretized as Fix_8_7, or 8-bit 
-            fixed-point with a single integer bit. The range of values that 
-            can be represented is [-1.0,0.9921875] and it is up to the 
-            caller to ensure that the values of all filter coefficients 
+            Filter coefficients for 127th order filter, or 128 coefficients
+            in total. These values are discretized as Fix_8_7, or 8-bit
+            fixed-point with a single integer bit. The range of values that
+            can be represented is [-1.0,0.9921875] and it is up to the
+            caller to ensure that the values of all filter coefficients
             are properly distributed.
         tag : string
             Tag associated with the downconverter, should be one of
             {'a','b','c','d','e','f'}. Default is 'a'.
-        
+
         Returns
         -------
         assign_filter : dict
@@ -1166,17 +1170,17 @@ class ArtooDaq(object):
                 this_val = words[nn]
                 assign_filter[this_key] = this_val
         return assign_filter
-    
+
     def _extract_filterbank_assignments(self,tag='a'):
         """
         Extract FIR filter coefficients from the contents of the control registers.
-        
+
         Parameters
         ----------
         tag : string
             Tag associated with the downconverter, should be one of
             {'a','b','c','d','e','f'}. Default is 'a'.
-        
+
         Returns
         -------
         B : ndarray
@@ -1210,7 +1214,7 @@ class ArtooDaq(object):
             B[bb] = b_int8
         B = B/128.0
         return B
-    
+
     def _populate_digital_channels(self):
         """
         Add digital channels available in running bitcode.
@@ -1233,18 +1237,18 @@ class ArtooDaq(object):
             except RuntimeError:
                 pass
         logger.info("Valid channels in this build: {0}".format(self.implemented_digital_channels))
-    
+
     def _check_valid_digital_channel(self,tag):
         """
         Check if digital channel tag is valid.
-        
+
         If the tag is invalid a RuntimeError is raised.
-        
+
         Parameters
         ----------
         tag : string
             Digital channel tag. Valid tags are any of {'a','b','c','d','e','f'}.
-        
+
         Returns
         -------
         None
@@ -1253,18 +1257,18 @@ class ArtooDaq(object):
             raise RuntimeError("Invalid digital channel tag '{0}', should be one of {1}".format(tag,self.DIGITAL_CHANNELS))
         if not tag in self.implemented_digital_channels:
             raise Warning("Digital channels '{0}' not implemented in bitcode".format(tag))
-    
+
     def _check_valid_fft_engine(self,tag):
         """
         Check if FFT engine tag is valid.
-        
+
         If the tag is invalid a RuntimeError is raised.
-        
+
         Parameters
         ----------
         tag : string
             FFT engine tag. Valid tags are any of {'ab','cd','ef'}.
-        
+
         Returns
         -------
         None
@@ -1273,65 +1277,65 @@ class ArtooDaq(object):
             raise RuntimeError("Invalid FFT engine tag '{0}', should be one of {1}".format(tag,self.FFT_ENGINES))
         if self.FFT_ENGINES.index(tag) > 1:
             raise Warning("FFT engine 'ef' not yet implemented in bitcode")
-    
+
     def _master_reset_hi(self):
         """
         Pull master reset signal up.
         """
         master_ctrl = self.roach2.read_int('master_ctrl')
         self.roach2.write_int('master_ctrl',master_ctrl|0x00000001)
-    
+
     def _master_reset_lo(self):
         """
         Pull master reset signal down.
         """
         master_ctrl = self.roach2.read_int('master_ctrl')
         self.roach2.write_int('master_ctrl',master_ctrl&0xFFFFFFFE)
-    
+
     def _manual_sync_hi(self):
         """
         Pull manual sync signal high.
         """
         master_ctrl = self.roach2.read_int('master_ctrl')
         self.roach2.write_int('master_ctrl',master_ctrl|0x00000002)
-    
+
     def _manual_sync_lo(self):
         """
         Pull manual sync signal low.
         """
         master_ctrl = self.roach2.read_int('master_ctrl')
         self.roach2.write_int('master_ctrl',master_ctrl&0xFFFFFFFD)
-    
+
     def _tengbe_reset_hi(self,tag='a'):
         """
         Pull tengbe reset signal high for given tag.
-        
+
         Parameters
         ----------
         tag : string
             FFT engine tag. Valid tags are any of {'ab','cd','ef'}.
-        
+
         """
         self._check_valid_digital_channel(tag)
         dev = 'tengbe_{0}_ctrl'.format(tag)
         ctrl = self.roach2.read_int(dev)
         self.roach2.write_int(dev,ctrl|0x00000001)
-    
+
     def _tengbe_reset_lo(self,tag='a'):
         """
         Pull tengbe reset signal low for given tag.
-        
+
         Parameters
         ----------
         tag : string
             FFT engine tag. Valid tags are any of {'ab','cd','ef'}.
-        
+
         """
         self._check_valid_digital_channel(tag)
         dev = 'tengbe_{0}_ctrl'.format(tag)
         ctrl = self.roach2.read_int(dev)
         self.roach2.write_int(dev,ctrl&0xFFFFFFFE)
-    
+
     def _load_time(self):
         """
         Load current time reference into ROACH2.
@@ -1342,7 +1346,7 @@ class ArtooDaq(object):
         # when the system starts running it will be the next second
         ut0 = int(time())+1
         self.roach2.write_int('unix_time0',ut0)
-    
+
     def _tmp_add_iface_dict(self,
         src_ip=None,src_port=None,
         dest_ip=None,dest_port=None,
@@ -1353,15 +1357,15 @@ class ArtooDaq(object):
     ):
         """
         Make network interface dictionary for configuring network at startup.
-        
+
         Parameters are the same as for _config_channel_net. This method
         is a temporary solution to ease construction of the dictionary
         that should be passed to _start to configure the network channels.
-        
-        Future implementations of config_channel_net will have the same 
+
+        Future implementations of config_channel_net will have the same
         interface as this method.
         """
-        
+
         self._tmp_iface_dict[tag] = {
             'src_ip':src_ip,
             'src_port':src_port,
@@ -1372,36 +1376,36 @@ class ArtooDaq(object):
             'dest_mac':dest_mac,
             'tag':tag
         }
-    
+
     def _start(self,boffile='latest-build',do_ogp_cal=True,do_adcif_cal=True):
         """
         Program bitcode on device.
-        
+
         Parameters
         ----------
         boffile : string
-            Filename of the bitcode to program. If 'latest-build' then 
+            Filename of the bitcode to program. If 'latest-build' then
             use the current build. Default is 'latest-build'.
         do_ogp_cal : bool
             If True then do ADC core calibration. Default is True.
         do_adcif_cal : bool
             If True then do ADC interface calibration. Default is True.
-        
+
         Returns
         -------
         """
-        
+
         if boffile == "latest-build":
             boffile = "r2daq_2016_May_18_1148.bof"
-                
+
         # program bitcode
         self.roach2.progdev(boffile)
         self.roach2.wait_connected()
         logger.info("Bitcode '{0}' programmed successfully".format(boffile))
-        
+
         # display clock speed
         logger.debug("Board clock is {0} MHz".format(self.roach2.est_brd_clk()))
-        
+
         # ADC interface calibration
         if do_adcif_cal:
             logger.info("Performing ADC interface calibration... (only doing ZDOK0)")
@@ -1415,21 +1419,21 @@ class ArtooDaq(object):
             logger.info("...ADC interface calibration done.")
             logger.debug("if0: opt0 = {0}\nglitches0 = {1}\n".format(opt0,array(glitches0)))
             #~ logger.debug("if0: opt0 = ",opt0, ", glitches0 = \n", array(glitches0)) #<<---- ZDOK1 not yet in bitcode
-        
+
         # ADC core calibration
         if do_ogp_cal:
             self.calibrate_adc_ogp(zdok=0)
-        
+
         # keep system in reset
         self._master_reset_hi()
         self._manual_sync_hi()
         # hold master reset signal and arm the manual sync
         #~ self.roach2.write_int('master_ctrl',0x00000001 | 0x00000002)
         #~ master_ctrl = self.roach2.read_int('master_ctrl')
-        
-        
+
+
         self._load_time()
-        
+
         # release reset
         self._master_reset_lo()
         self._manual_sync_lo()
@@ -1437,6 +1441,5 @@ class ArtooDaq(object):
         #~ master_ctrl = self.roach2.read_int('master_ctrl')
         #~ master_ctrl = master_ctrl & 0xFFFFFFFC
         #~ self.roach2.write_int('master_ctrl',master_ctrl)
-        
-        logger.info("Configuration done, system should be running")
 
+        logger.info("Configuration done, system should be running")
