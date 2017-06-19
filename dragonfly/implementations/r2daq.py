@@ -1156,7 +1156,7 @@ class ArtooDaq(object):
         words = zeros(N_w,uint32)
         for bb in xrange(N):
             gg = bb % groupsize
-            nn = floor(bb/groupsize)
+            nn = int(floor(bb/groupsize))
             b_uint32 = uint32(B[bb])
             words[nn] = words[nn] | ((b_uint32&mask)<<(w*gg))
         # setup assignment dictionary
