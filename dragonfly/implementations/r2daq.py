@@ -1207,7 +1207,7 @@ class ArtooDaq(object):
         B = zeros(N,float32)
         for bb in xrange(N):
             gg = bb % groupsize
-            nn = floor(bb/groupsize)
+            nn = int(floor(bb/groupsize))
             b_int8 = ((words[nn] & (mask<<(w*gg)))>>(w*gg))
             if b_int8 > 127: # fix negative values
                 b_int8 = b_int8 - (1<<w)
