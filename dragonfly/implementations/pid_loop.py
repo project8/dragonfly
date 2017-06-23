@@ -4,6 +4,7 @@
 from __future__ import print_function
 __all__ = []
 
+import time
 import datetime
 
 import dripline
@@ -164,9 +165,11 @@ class PidController(Gogol):
             new_current = 0.
 
         self.set_current(new_current)
-        logger.debug("checking the current value")
+        logger.debug("allow settling time and checking the current value")
+        # FIXME: remove sleep when set_and_check handled properly
+        time.sleep(1)
         current_get = self.__get_current()
-        if abs(current_get-new_current) <self.tolerance:
+        if abs(current_get-new_current) < self.tolerance:
             logger.info("current set is equal to current get")
         else:
             raise  dripline.core.DriplineValueError("set value ({}) is not equal to checked value ({})".format(new_current,current_get))
