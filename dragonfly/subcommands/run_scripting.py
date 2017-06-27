@@ -327,7 +327,7 @@ class RunScript(object):
                 self._action_cache = {}
                 self.update_cache()
         # except block as in dripline_agent to spam error message
-        except exceptions.DriplineException as dripline_error:
+        except dripline.core.exceptions.DriplineException as dripline_error:
             logger.critical(dripline_error.message)
             return
         # finally, unlock anything we locked (even if there's an exception along the way)
