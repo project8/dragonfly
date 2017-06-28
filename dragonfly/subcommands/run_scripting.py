@@ -419,7 +419,7 @@ class RunScript(object):
                     continue
             if 'sleep_time_before_check' in this_set:
                 logger.info('sleeping for {} s before check'.format(this_set['sleep_time_before_check']))
-                self.action_sleep(sleep_time_before_check)
+                self.action_sleep(this_set['sleep_time_before_check'])
             if 'get_name' in this_set:
                 logger.debug('checking the set value using {}'.format(this_set['get_name']))
                 get_kwargs.update({'endpoint':this_set['get_name']})
