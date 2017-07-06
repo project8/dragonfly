@@ -66,7 +66,7 @@ class PsyllidProvider(core.Provider):
     def request_status(self, channel):
         logger.info('Checking Psyllid status of channel {}'.format(channel))
         try:
-            result = self.provider.get(self.queue_dict[channel]+'.daq-status', timeout=10)
+            result = self.provider.get(self.queue_dict[channel]+'.daq-status', timeout=5)
         except core.exceptions.DriplineError:
             logger.info('Psyllid instance for channel {} is not running or returned error'.format(channel))
             self.status_dict[channel]=None

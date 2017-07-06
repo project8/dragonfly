@@ -67,7 +67,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
 
     @property
     def is_running(self):
-        self.status_value = self.provider.cmd(self.psyllid_interface, 'request_status', payload = self.payload_channel)
+        self.status_value = self.provider.cmd(self.psyllid_interface, 'request_status', payload = self.payload_channel, timeout=10)
         if self.status_value==5:
             return True
         else:
@@ -202,12 +202,31 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
 
 
     def _stop_data_taking(self):
-        if self.is_running:
-            logger.info('Psyllid still running. Telling it to stop the run')
-            self.provider.cmd(self.psyllid_interface, 'stop_run', payload = self.payload_channel)
-        logger.info('unblock channel')
-        payload = {'channel': self.channel_id}
-        result = self.provider.cmd(self.daq_target, 'unblock_channel', payload=payload)
+        try:
+            if self.is_running:
+                logger.info('Psyllid still running. Telling it to stop the run')
+                self.provider.cmd(self.psyllid_interface, 'stop_run', payload = self.payload_channel)
+        except core.exceptions.DriplineError:
+            logger.error('Getting Psyllid status at end of run failed')
+            logger.info('unblock channel')
+            payload = {'channel': self.channel_id}
+            try:
+                self.provider.cmd(self.daq_target, 'unblock_channel', payload=payload)
+            finally:
+                raise core.exceptions.DriplineGenericDAQError('Error at end of run')
+        except Exception as e:
+            logger.error('Local error at end of run')
+            logger.info('unblock channel')
+            payload = {'channel': self.channel_id}
+            try:
+                self.provider.cmd(self.daq_target, 'unblock_channel', payload=payload)
+            finally:
+                raise e
+        else:
+            payload = {'channel': self.channel_id}
+            self.provider.cmd(self.daq_target, 'unblock_channel', payload=payload)
+            is self.status_value==None:
+                raise core.exceptions.DriplineGenericDAQError('Psyllid must have crashed during run')
 
 
     def adopt_new_psyllid_instance(self):
@@ -242,7 +261,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
 
     @central_frequency.setter
     def central_frequency(self, cf):
-        payload={'cf':cf, 'channel':self.channel_id}
+        payload={'cf':float(cf), 'channel':self.channel_id}
         result = self.provider.cmd(self.daq_target, 'set_central_frequency', payload=payload)
         # The roach frequency can differ from the requested frequency. Psyllid should have the same frequency settings as the ROACH
         self.freq_dict[self.channel_id]=result['values'][0]
