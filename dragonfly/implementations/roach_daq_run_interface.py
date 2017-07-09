@@ -67,7 +67,9 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
 
     @property
     def is_running(self):
-        self.status_value = self.provider.cmd(self.psyllid_interface, 'request_status', payload = self.payload_channel, timeout=10)
+        result = self.provider.cmd(self.psyllid_interface, 'request_status', payload = self.payload_channel, timeout=10)
+        self.status_value = result['values'][0]
+        logger.info('psyllid status is {}'.format(self.status_value))
         if self.status_value==5:
             return True
         else:
@@ -225,7 +227,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         else:
             payload = {'channel': self.channel_id}
             self.provider.cmd(self.daq_target, 'unblock_channel', payload=payload)
-            is self.status_value==None:
+            if self.status_value==None:
                 raise core.exceptions.DriplineGenericDAQError('Psyllid must have crashed during run')
 
 
