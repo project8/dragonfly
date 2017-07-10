@@ -79,8 +79,9 @@ class PostgreSQLInterface(Provider):
         logger.info('doing logs-snapshot gets')
         for child in self.endpoints:
             snapshot_result = self.endpoints[child].get_logs(start_time,end_time)
-            these_snaps = snapshot_result['value_raw']
-            run_snapshot.update(these_snaps)
+            run_snapshot.update(snapshot_result['value_raw'])
+        if run_snapshot == {}:
+            logger.critical('No entries found in database between "{}" and "{}" hence producing empty snapshot'.format(start_time, end_time))
         logger.info('doing latest-snapshot gets')
         latest_snap = {}
         for child in self.endpoints:
@@ -243,7 +244,7 @@ class SQLSnapshot(SQLTable):
             logger.error('{}; in executing SQLAlchemy select statement'.format(dripline_error.message))
             return
         if not query_return:
-            logger.critical('no entries found in database between "{}" and "{}" hence producing empty snapshot'.format(start_timestamp,end_timestamp))
+            return {'value_raw': {}}
 
         # Counting how many times each endpoint is present
         endpoint_name_raw = []
