@@ -78,9 +78,11 @@ class PostgreSQLInterface(Provider):
         run_snapshot = {}
         logger.info('doing logs-snapshot gets')
         for child in self.endpoints:
+            logger.info('performing logs snapshot for {}'.format(child))
             snapshot_result = self.endpoints[child].get_logs(start_time,end_time)
-            these_snaps = snapshot_result['value_raw']
-            run_snapshot.update(these_snaps)
+            run_snapshot.update(snapshot_result['value_raw'])
+        if run_snapshot == {}:
+            logger.critical('No entries found in database between "{}" and "{}" hence producing empty snapshot'.format(start_time, end_time))
         logger.info('doing latest-snapshot gets')
         latest_snap = {}
         for child in self.endpoints:
@@ -243,7 +245,8 @@ class SQLSnapshot(SQLTable):
             logger.error('{}; in executing SQLAlchemy select statement'.format(dripline_error.message))
             return
         if not query_return:
-            logger.critical('no entries found in database between "{}" and "{}" hence producing empty snapshot'.format(start_timestamp,end_timestamp))
+            logger.info('returning empty record')
+            return {'value_raw': {}}
 
         # Counting how many times each endpoint is present
         endpoint_name_raw = []
@@ -260,6 +263,7 @@ class SQLSnapshot(SQLTable):
         val_raw_dict = {}
         val_cal_list = []
         index = 0
+        logger.debug('Database log query return for endpoints {}'.format(endpoint_dict.keys()))
         for endpoint,times in endpoint_dict.items():
             val_raw_dict[endpoint] = []
             ept_timestamp_list = []
@@ -309,7 +313,7 @@ class SQLSnapshot(SQLTable):
             if not query_return:
                 logger.warning('no entries found between "{}" and "{}"'.format(start_timestamp,end_timestamp))
 
-            outdict[endpoint] = [[entry['timestamp'].strftime(constants.TIME_FORMAT),entry['value_cal']]for entry in query_return]
+            outdict[endpoint] = [[entry['timestamp'].strftime(constants.TIME_FORMAT),entry['value_cal'],entry['value_raw']]for entry in query_return]
 
         fp = open(os.path.expanduser('~')+'/sqldump.txt','w')
         json.dump(obj=outdict,fp=fp)
@@ -393,5 +397,5 @@ class SQLSnapshot(SQLTable):
         if not query_return:
             raise DriplineDatabaseError("Endpoint with name '{}' not found in database".format(endpoint))
         ept_id = query_return[0]['endpoint_id']
-        logger.info("Endpoint id '{}' matched to endpoint '{}'".format(ept_id, endpoint))
+        logger.debug("Endpoint id '{}' matched to endpoint '{}'".format(ept_id, endpoint))
         return ept_id
