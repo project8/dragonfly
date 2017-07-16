@@ -36,6 +36,13 @@ class DiskMonitor(Gogol):
         self._time_between_warnings = time_between_warnings
         self._disk_space_alert = disk_space_alert
         self._disk_space_critical = disk_space_critical
+        for condition in action_conditions:
+            try:
+                if not isinstance(condition['condition_to_set'],int):
+                    condition['condition_to_set'] = int(condition['condition_to_set'])
+            except ValueError:
+                logger.critical('Invalid "condition_to_set" <{}> in action_condition for {}'.format(condition['condition_to_set'], condition['name']))
+                condition['name'] = None
         self._action_when_critical = actions_conditions
 
 
@@ -67,14 +74,11 @@ class DiskMonitor(Gogol):
         if usedspacepourcent > self._disk_space_critical:
             # change here to critical for sending an alert on Slack
             for a_dict in self._action_when_critical:
-                if computername is a_dict['name']:
-                    if isinstance(a_dict['condition_to_set'],int):
-                        logger.critical("{}:{} -> Free space below critical ({}%); setting condition {}!".format(computername,disk,100-int(usedspacepourcent*100),a_dict['condition_to_set']))
-                        result = self.provider.cmd('broadcast','set_condition', a_dict['condition_to_set'], timeout=30)
-                        logger.critical("Result of broadcast.set_condition {}: \n {}".format(a_dict['condition_to_set'],result))
-                        return
-                    else:
-                        logger.critical("{}:{} -> Free space below critical ({}%); {} is not an integer: require manual operations!".format(computername,disk,100-int(usedspacepourcent*100),a_dict['condition_to_set']))
+                if computername == a_dict['name']:
+                    logger.critical("{}:{} -> Free space below critical ({}%); setting condition {}!".format(computername,disk,100-int(usedspacepourcent*100),a_dict['condition_to_set']))
+                    result = self.provider.cmd('broadcast','set_condition', a_dict['condition_to_set'], timeout=30)
+                    logger.critical("Result of broadcast.set_condition {}: \n {}".format(a_dict['condition_to_set'],result))
+                    return
             logger.critical("{}:{} -> Free space below critical ({}%); no condition defined: require manual operations!".format(computername,disk,100-int(usedspacepourcent*100)))
 
             # Add here the set condition thing (broadcast?)
