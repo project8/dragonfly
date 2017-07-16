@@ -36,7 +36,7 @@ class DiskMonitor(Gogol):
         self._time_between_warnings = time_between_warnings
         self._disk_space_alert = disk_space_alert
         self._disk_space_critical = disk_space_critical
-        for condition in action_conditions:
+        for condition in actions_conditions:
             try:
                 if not isinstance(condition['condition_to_set'],int):
                     condition['condition_to_set'] = int(condition['condition_to_set'])
@@ -76,7 +76,7 @@ class DiskMonitor(Gogol):
             for a_dict in self._action_when_critical:
                 if computername == a_dict['name']:
                     logger.critical("{}:{} -> Free space below critical ({}%); setting condition {}!".format(computername,disk,100-int(usedspacepourcent*100),a_dict['condition_to_set']))
-                    result = self.provider.cmd('broadcast','set_condition', a_dict['condition_to_set'], timeout=30)
+                    result = self.provider.cmd('broadcast','set_condition', [a_dict['condition_to_set']], timeout=30)
                     logger.critical("Result of broadcast.set_condition {}: \n {}".format(a_dict['condition_to_set'],result))
                     return
             logger.critical("{}:{} -> Free space below critical ({}%); no condition defined: require manual operations!".format(computername,disk,100-int(usedspacepourcent*100)))
