@@ -77,7 +77,6 @@ class DiskMonitor(Gogol):
                 if computername == a_dict['name']:
                     logger.critical("{}:{} -> Free space below critical ({}%); setting condition {}!".format(computername,disk,100-int(usedspacepourcent*100),a_dict['condition_to_set']))
                     result = self.provider.cmd('broadcast','set_condition', [a_dict['condition_to_set']], timeout=30)
-                    logger.critical("Result of broadcast.set_condition {}: \n {}".format(a_dict['condition_to_set'],result))
                     return
             logger.critical("{}:{} -> Free space below critical ({}%); no condition defined: require manual operations!".format(computername,disk,100-int(usedspacepourcent*100)))
 
