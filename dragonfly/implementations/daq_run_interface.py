@@ -210,11 +210,11 @@ class DAQProvider(core.Provider):
         if number in self._set_condition_list:
             logger.debug('putting myself in safe_mode')
             self._daq_in_safe_mode = True
-            logger.critical('Condition {} reached!'.format(number))
+            logger.critical('Condition {} reached!  DAQ in safe mode!'.format(number))
         elif number == 0:
             logger.debug('getting out of safe_mode')
             self._daq_in_safe_mode = False
-            logger.critical('Condition {} reached!'.format(number))
+            logger.critical('Condition {} reached!  Not in safe mode.'.format(number))
         else:
             logger.debug('condition {} is unknown: ignoring!'.format(number))
 
@@ -339,4 +339,3 @@ class RSAAcquisitionInterface(DAQProvider):
             json.dump(result_meta, outfile, indent=4)
             logger.debug("things have been dumped in file")
             logger.info("saving {}: successful".format(path))
-
