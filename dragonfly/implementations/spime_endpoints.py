@@ -16,13 +16,16 @@ Spime catalog (in order of ease-of-use):
 - LeakValveSpime: spime to handle VAT leak valve get responses
 - LockinSpime: spime to handle antiquated lockin IEEE 488 formatting
 -* LockinGetSpime: limited instance of above with disabled Set
+- Max31856Spime: spime to handle thermocouple reading through GPIO on RPi
 - MuxerGetSpime: spime to handle glenlivet muxer formatting
 - ProviderAttributeSpime: spime for provider @property
 '''
 from __future__ import absolute_import
 
+# re used for FormatSpime
 import re
 
+# RPi.GPIO used for GPIOSpime (directly) and Max31856Spime (indirectly)
 try:
     import RPi.GPIO as GPIO
 except ImportError:
@@ -377,6 +380,30 @@ class LockinGetSpime(LockinSpime):
     def on_set(self, value):
         raise DriplineMethodNotSupportedError('setting not available for {}'.format(self.name))
 
+
+__all__.append('Max31856Spime')
+@fancy_doc
+class Max31856Spime(Spime):
+    '''
+    Spime for interacting with Max31856 temperature sensor via GPIO pins on Raspberry Pi
+    '''
+    def __init__(self,
+                 **kwargs
+                 ):
+        '''
+        SPI GPIO pins on RPi must be configured via setup_calls with configure_max31856 method
+        '''
+        if not 'GPIO' in globals():
+            raise ImportError('RPi.GPIO not found, required for Max31856Spime class')
+        Spime.__init__(self, **kwargs)
+
+    @calibrate()
+    def on_get(self):
+        result = self.provider.max31856.read_temp_c()
+        return result
+
+    def on_set(self, value):
+        raise DriplineMethodNotSupportedError('setting not available for {}'.format(self.name))
 
 __all__.append('MuxerGetSpime')
 class MuxerGetSpime(Spime):

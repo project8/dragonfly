@@ -67,7 +67,9 @@ class PostgreSQLInterface(Provider):
         self.meta = sqlalchemy.MetaData(self.engine)
 
     def add_endpoint(self, endpoint):
-        Provider.add_endpoint(self, endpoint)
+        # Catch if sent here from sensor_logger
+        if endpoint.name not in self._endpoints:
+            Provider.add_endpoint(self, endpoint)
         if isinstance(endpoint, SQLTable):
             logger.debug('Adding endpoint {} to the table'.format(endpoint.table_name))
             endpoint.table = sqlalchemy.Table(endpoint.table_name, self.meta, autoload=True, schema=endpoint.schema)

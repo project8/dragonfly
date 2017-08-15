@@ -28,15 +28,18 @@ class SensorLogger(Gogol, PostgreSQLInterface):
         '''
         # listen to sensor_value alerts channel
         kwargs.update({'keys':['sensor_value.#']})
-        Gogol.__init__(self, **kwargs)
         PostgreSQLInterface.__init__(self, **kwargs)
+        Gogol.__init__(self, **kwargs)
 
         self._sensor_type_map_table = sensor_type_map_table
         self._sensor_types = {}
         self._data_tables = data_tables_dict
         self.service = self
 
+    # add_endpoint is a mess here because of method overrides
     def add_endpoint(self, endpoint):
+        # establish Spimescape add_endpoint as a starter
+        Gogol.add_endpoint(self,endpoint)
         # forcing PostgreSQLInterface add_endpoint usage
         PostgreSQLInterface.add_endpoint(self,endpoint)
 

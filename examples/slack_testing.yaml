@@ -1,11 +1,15 @@
+# Slack interface for testing
+# redirect AMQP messages to the slack_test channel
+# Updated (MG): 06/26/2017
+
 name: slack_interface
 module: SlackInterface
-broker: myrna.p8
+broker: localhost
 prime_speakers: ['dripline','hornet']
 speaking_time: 300
 number_sentence_per_speaking_time: 30
 time_between_warnings: 3600
 mapping:
-  critical: test_operator
-  error: test_operator
-  warning: test_operator
+  critical: slack_test
+  error: slack_test
+  warning: slack_test
