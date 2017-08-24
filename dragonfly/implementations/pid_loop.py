@@ -100,7 +100,7 @@ class PidController(Gogol):
         return value
 
     def this_consume(self, message, method):
-        logger.info('comsuming message')
+        logger.info('consuming message')
         this_value = message.payload[self.payload_field]
         if this_value is None:
             logger.info('value is None')

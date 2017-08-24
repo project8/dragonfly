@@ -26,6 +26,7 @@ from .roach2_interface import *
 from .roach_daq_run_interface import *
 from .rsa_provider import *
 from .sensor_logger import *
+from .sensor_monitor import *
 from .simple_shell import *
 from .slack_interface import *
 from .spime_endpoints import *
