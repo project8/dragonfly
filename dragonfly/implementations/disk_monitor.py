@@ -46,18 +46,16 @@ class DiskMonitor(Gogol):
         self._action_when_critical = actions_conditions
 
 
-    def on_alert_message(self, channel, method, properties, message):
+    def this_consume(self, message, method):
         # parse the routing key
         logger.debug('parsing routing key')
         key_parser = r'disk_status.(?P<computername>[\w]+)'
         routing_info = re.search(key_parser, method.routing_key).groupdict()
-        # parse the message
-        msg = dripline.core.Message.from_encoded(message, properties.content_encoding)
 
         computername = routing_info['computername']
-        disk = msg.payload["directory"]
-        usedspace = msg.payload["used"]
-        usedspacepourcent = usedspace/msg.payload["all"]
+        disk = message.payload["directory"]
+        usedspace = message.payload["used"]
+        usedspacepourcent = usedspace/message.payload["all"]
 
         self._update_history(computername,disk)
 
