@@ -90,6 +90,8 @@ class SlackInterface(Gogol):
             logger.debug("don't know this level: {}".format(level))
             return
         if self._is_allowed_to_talk(routing_info['from']):
+            if msg.payload == "":
+                msg.payload = None
             logger.debug('posting message: {}'.format(str(msg.payload)))
 
             api_out = self.slackclient.api_call('chat.postMessage',
