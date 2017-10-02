@@ -94,13 +94,15 @@ class SlackInterface(Gogol):
                 msg.payload = None
             logger.debug('posting message: {}'.format(str(msg.payload)))
 
-            api_out = self.slackclient.api_call('chat.postMessage',
-                                           channel='#'+self._mapping[routing_info['level']],
-                                           text=str(msg.payload),
-                                           username=username,
-                                        #    username='toto',
-                                           as_user='false', #false allows to send messages with unregistred username (like toto) in the channel
-                                          )
+            try:
+                api_out = self.slackclient.api_call('chat.postMessage',
+                                               channel='#'+self._mapping[routing_info['level']],
+                                               text=str(msg.payload),
+                                               username=username,
+                                               as_user='false', #false allows to send messages with unregistred username (like toto) in the channel
+                                              )
+            except ValueError as err:
+                logger.warning("Failed communication with Slack:\n{}".format(err))
             logger.debug('api call returned:{}'.format(api_out))
             logger.debug('updating history')
             self.history[username]['last_talks'].append(datetime.now())
