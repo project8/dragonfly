@@ -54,4 +54,4 @@ class AMQPHandler(logging.Handler):
         if record.levelno != 35: # prevent troubles with the MonitorMessage class
             this_channel = 'p8_alerts'
             severity = 'status_message.{}.{}'.format(record.levelname.lower(),self.username)
-            self.connection_to_alert.send_status_message(severity=severity,alert=record.msg)
+            self.connection_to_alert.send_alert(severity=severity,alert=record.msg)

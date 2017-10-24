@@ -54,7 +54,7 @@ class Pinger(Endpoint,Scheduler):
                 if result:
                     logger.info("{} is responding".format(item))
             except Exception as err:
-                logger.info(err)
+                logger.info("Exception: {}".format(err))
                 message = message + "{}\n".format(item)
         if message != "":
             logger.critical("The following services are not responding:\n{}".format(message))
