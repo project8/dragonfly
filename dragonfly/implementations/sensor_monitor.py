@@ -152,6 +152,7 @@ class SensorMonitor(Gogol):
         # Check if alarm suppressed due to alarm_limit
         if alarm['alarm_limit'] and alarm['alarm_count']==alarm['alarm_limit']:
             if 'alarm_recurrence' not in alarm.keys():
+                logger.debug('Suppressed alarm due to count over limit.')
                 return
             interval = (datetime.datetime.utcnow()-alarm['last_alarm']).total_seconds()
             if interval < alarm['alarm_recurrence']:
@@ -164,12 +165,11 @@ class SensorMonitor(Gogol):
         if alarm['alarm_limit']:
             alarm['alarm_count'] += 1
             if alarm['alarm_count'] == alarm['alarm_limit']:
-                if alarm['alarm_recurrence']:
+                if 'alarm_recurrence' in alarm.keys():
+                    alarm['last_alarm'] = datetime.datetime.utcnow()
                     message += '.  Suppressing further alarms for {} s due to <alarm_limit> setting.'.format(alarm['alarm_recurrence'])
                 else:
                     message += '.  Suppressing further alarms due to <alarm_limit> setting.'
-            if alarm['alarm_recurrence']:
-                alarm['last_alarm'] = datetime.datetime.utcnow()
         logger.critical(message)
         if 'set_condition' in alarm:
             self.provider.cmd('broadcast','set_condition', [alarm['set_condition']], timeout=5)
