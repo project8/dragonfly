@@ -164,7 +164,7 @@ class SensorMonitor(Gogol):
         if alarm['alarm_limit']:
             alarm['alarm_count'] += 1
             if alarm['alarm_count'] == alarm['alarm_limit']:
-                if alarm['alarm_recurrence']:
+                if 'alarm_recurrence' in alarm.keys():
                     alarm['last_alarm'] = datetime.datetime.utcnow()
                     message += '.  Suppressing further alarms for {} s due to <alarm_limit> setting.'.format(alarm['alarm_recurrence'])
                 else:

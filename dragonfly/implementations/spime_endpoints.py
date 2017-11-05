@@ -388,6 +388,8 @@ class Max31856Spime(Spime):
     Spime for interacting with Max31856 temperature sensor via GPIO pins on Raspberry Pi
     '''
     def __init__(self,
+                 min_value=None,
+                 max_value=None,
                  **kwargs
                  ):
         '''
@@ -395,12 +397,19 @@ class Max31856Spime(Spime):
         '''
         if not 'GPIO' in globals():
             raise ImportError('RPi.GPIO not found, required for Max31856Spime class')
+        self.min_value = min_value
+        self.max_value = max_value
         Spime.__init__(self, **kwargs)
 
     @calibrate()
     def on_get(self):
         result = self.provider.max31856.read_temp_c()
-        return result
+        if isinstance(self.min_value, (int,float)) and result<self.min_value:
+            logger.warning("Temperature value {} below minimum bound <{}>".format(result,self.min_value))
+        elif isinstance(self.max_value, (int,float)) and result>self.max_value:
+            logger.warning("Temperature value {} above maximum bound <{}>".format(result,self.max_value))
+        else:
+            return result
 
     def on_set(self, value):
         raise DriplineMethodNotSupportedError('setting not available for {}'.format(self.name))
