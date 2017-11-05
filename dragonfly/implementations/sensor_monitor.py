@@ -165,11 +165,10 @@ class SensorMonitor(Gogol):
             alarm['alarm_count'] += 1
             if alarm['alarm_count'] == alarm['alarm_limit']:
                 if alarm['alarm_recurrence']:
+                    alarm['last_alarm'] = datetime.datetime.utcnow()
                     message += '.  Suppressing further alarms for {} s due to <alarm_limit> setting.'.format(alarm['alarm_recurrence'])
                 else:
                     message += '.  Suppressing further alarms due to <alarm_limit> setting.'
-            if alarm['alarm_recurrence']:
-                alarm['last_alarm'] = datetime.datetime.utcnow()
         logger.critical(message)
         if 'set_condition' in alarm:
             self.provider.cmd('broadcast','set_condition', [alarm['set_condition']], timeout=5)
