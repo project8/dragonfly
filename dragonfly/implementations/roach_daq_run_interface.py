@@ -141,7 +141,8 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         #check frequency matches
         roach_freqs = self._get_roach_central_freqs()
         psyllid_freq = self._get_psyllid_central_freq()
-        if roach_freqs[self.channel_id]!=psyllid_freq:
+        if abs(roach_freqs[self.channel_id]-psyllid_freq)>1:
+            logger.error('Frequency mismatch: roach cf is {}Hz, psyllid cf is {}Hz'.format(roach_freqs[self.channel_id], psyllid_freq))
             raise core.exceptions.DriplineGenericDAQError('Frequency mismatch')
 
         return "checks successful"
@@ -265,8 +266,9 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
     def central_frequency(self, cf):
         payload={'cf':float(cf), 'channel':self.channel_id}
         result = self.provider.cmd(self.daq_target, 'set_central_frequency', payload=payload)
+        logger.info('The roach central frequency is now {}Hz'.format(result['values'][0]))
         # The roach frequency can differ from the requested frequency. Psyllid should have the same frequency settings as the ROACH
-        self.freq_dict[self.channel_id]=result['values'][0]
+        self.freq_dict[self.channel_id]=round(result['values'][0])
         payload={'channel':self.channel_id, 'cf':self.freq_dict[self.channel_id], 'channel':self.channel_id}
         result = self.provider.cmd(self.psyllid_interface, 'set_central_frequency', payload=payload)
         if result['values'][0]!=True:

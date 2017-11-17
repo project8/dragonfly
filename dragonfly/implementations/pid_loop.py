@@ -99,8 +99,8 @@ class PidController(Gogol):
             raise DriplineValueError('value get ({}) is not floatable'.format(value))
         return value
 
-    def this_consume(self, message, basic_deliver=None):
-        logger.info('comsuming message')
+    def this_consume(self, message, method):
+        logger.info('consuming message')
         this_value = message.payload[self.payload_field]
         if this_value is None:
             logger.info('value is None')
