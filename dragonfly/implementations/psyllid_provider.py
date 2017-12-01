@@ -233,8 +233,60 @@ class PsyllidProvider(core.Provider):
         return stream_count
 
 
+    def set_trigger_configuration(self, threshold=16, threshold_high=0, n_triggers=1, channel='a'):
+        if self.mode_dict[channel] != 'triggered':
+            logger.warning('Psyllid not in triggered mode')
+            return False
+
+        request = '.node-config.{}.fmt.threshold-power-snr'.format(str(self.channel_dict[channel]))
+        self.provider.set(self.queue_dict[channel]+request, threshold)
+        logger.info('Setting psyllid power snr threshold to {}'.format(threshold))
+
+        # if the high threshold is zero it is not used
+        request = '.node-config.{}.fmt.threshold-power-snr-high'.format(str(self.channel_dict[channel]))
+        self.provider.set(self.queue_dict[channel]+request, threshold_high)
+        logger.info('Setting psyllid power snr high threshold to {}'.format(threshold_high))
+
+        request = '.node-config.{}.eb.n-triggers'.format(str(self.channel_dict[channel]))
+        self.provider.set(self.queue_dict[channel]+request, n_triggers)
+        logger.info('Setting psyllid n-trigger/skip-tolerance to {}'.format(n_triggers))
+
+        self.deactivate(channel)
+        self.activate(channel)
+
+        # after reactivation the central frequency needs to be reset
+        self.set_central_frequency(channel, self.freq_dict[channel])
+
+        return True
+
+
+    def set_time_window(self, pretrigger_time=2e-3, skip_tolerance=5e-3, channel='a'):
+        if self.mode_dict[channel] != 'triggered':
+            logger.warning('Psyllid not in triggered mode')
+            return False
+
+        n_pretrigger_packets = int(pretrigger_time/4.096e-5)
+        logger.info('Setting psyllid pretrigger to {} packets'.format(n_pretrigger_packets))
+        request = '.node-config.{}.eb.pretrigger'.format(str(self.channel_dict[channel]))
+        self.provider.set(self.queue_dict[channel]+request, n_pretrigger_packets)
+
+        n_skipped_packets = int(skip_tolerance/4.096e-5)
+        logger.info('Setting psyllid skip tolerance to {} packets'.format(n_skipped_packets))
+        request = '.node-config.{}.eb.skip-tolerance'.format(str(self.channel_dict[channel]))
+        self.provider.set(self.queue_dict[channel]+request, n_skipped_packets)
+
+        self.deactivate(channel)
+        self.activate(channel)
+
+        # after reactivation the central frequency needs to be reset
+        self.set_central_frequency(channel, self.freq_dict[channel])
+
+        return True
+
+
+
     def set_pretrigger_time(self, pretrigger_time, channel='a'):
-        if self.mode_dict[channel] == 'streaming':
+        if self.mode_dict[channel] != 'triggered':
             logger.warning('Psyllid not in triggered mode')
             return False
         n_pretrigger_packets = int(pretrigger_time/4.096e-5)
@@ -247,7 +299,7 @@ class PsyllidProvider(core.Provider):
 
 
     def get_pretrigger_time(self, channel='a'):
-        if self.mode_dict[channel] == 'streaming':
+        if self.mode_dict[channel] != 'triggered':
             logger.warning('Psyllid not in triggered mode')
             return False
         request = '.node-config.{}.eb.pretrigger'.format(str(self.channel_dict[channel]))
@@ -256,7 +308,7 @@ class PsyllidProvider(core.Provider):
 
 
     def set_skip_tolerance(self, skip_tolerance, channel='a'):
-        if self.mode_dict[channel] == 'streaming':
+        if self.mode_dict[channel] != 'triggered':
             logger.warning('Psyllid not in triggered mode')
             return False
         n_skipped_packets = int(skip_tolerance/4.096e-5)
@@ -269,7 +321,7 @@ class PsyllidProvider(core.Provider):
 
 
     def get_skip_tolerance(self, channel='a'):
-        if self.mode_dict[channel] == 'streaming':
+        if self.mode_dict[channel] != 'triggered':
             logger.warning('Psyllid not in triggered mode')
             return False
         request = '.node-config.{}.eb.skip-tolerance'.format(str(self.channel_dict[channel]))
@@ -278,10 +330,10 @@ class PsyllidProvider(core.Provider):
 
 
     def set_fmt_snr_threshold(self, snr, channel='a'):
-        if self.mode_dict[channel] == 'streaming':
+        if self.mode_dict[channel] != 'triggered':
             logger.warning('Psyllid not in triggered mode')
             return False
-        request = '.node-config.'+str(self.channel_dict[channel])+'.fmt.threshold-power-snr'
+        request = '.node-config.{}.fmt.threshold-power-snr'.format(str(self.channel_dict[channel]))
         self.provider.set(self.queue_dict[channel]+request, snr)
         logger.info('Setting psyllid power snr threshold to {}'.format(snr))
         #self.reactivate(channel)
@@ -291,34 +343,56 @@ class PsyllidProvider(core.Provider):
 
 
     def get_fmt_snr_threshold(self, channel='a'):
-        if self.mode_dict[channel] == 'streaming':
+        if self.mode_dict[channel] != 'triggered':
             logger.warning('Psyllid not in triggered mode')
             return False
-        request = '.node-config.'+str(self.channel_dict[channel])+'.fmt.threshold-power-snr'
+        request = '.node-config.{}.fmt.threshold-power-snr'.format(str(self.channel_dict[channel]))
         snr = self.provider.get(self.queue_dict[channel]+request)['threshold-power-snr']
         return snr
 
 
-    def set_fmt_threshold_db(self, snr, channel='a'):
-        if self.mode_dict[channel] == 'streaming':
+    def set_fmt_snr_high_threshold(self, snr, channel='a'):
+        if self.mode_dict[channel] != 'triggered':
             logger.warning('Psyllid not in triggered mode')
             return False
-        request = '.node-config.'+str(self.channel_dict[channel])+'.fmt.threshold-db'
+        request = '.node-config.{}.fmt.threshold-power-snr-high'.format(str(self.channel_dict[channel]))
         self.provider.set(self.queue_dict[channel]+request, snr)
-        logger.info('Setting psyllid threshold to {} dB'.format(snr))
+        logger.info('Setting psyllid power snr threshold to {}'.format(snr))
         #self.reactivate(channel)
         self.deactivate(channel)
         self.activate(channel)
-        return self.get_fmt_threshold_db(channel)
+        return self.get_fmt_snr_high_threshold(channel)
 
 
-    def get_fmt_threshold_db(self, channel='a'):
-        if self.mode_dict[channel] == 'streaming':
+    def get_fmt_snr_high_threshold(self, channel='a'):
+        if self.mode_dict[channel] != 'triggered':
             logger.warning('Psyllid not in triggered mode')
             return False
-        request = '.node-config.'+str(self.channel_dict[channel])+'.fmt.threshold-db'
-        snr = self.provider.get(self.queue_dict[channel]+request)['threshold-db']
+        request = '.node-config.{}.fmt.threshold-power-snr-high'.format(str(self.channel_dict[channel]))
+        snr = self.provider.get(self.queue_dict[channel]+request)['threshold-power-snr-high']
         return snr
+
+
+    def set_n_triggers(self, n_triggers, channel='a'):
+        if self.mode_dict[channel] != 'triggered':
+            logger.warning('Psyllid not in triggered mode')
+            return False
+        request = '.node-config.{}.eb.n-triggers'.format(str(self.channel_dict[channel]))
+        self.provider.set(self.queue_dict[channel]+request, n_triggers)
+        logger.info('Setting psyllid n-trigger/skip-tolerance to {}'.format(n_triggers))
+        self.deactivate(channel)
+        self.activate(channel)
+        return self.get_n_triggers(channel)
+
+
+    def get_n_triggers(self, channel='a'):
+        if self.mode_dict[channel] != 'triggered':
+            logger.warning('Psyllid not in triggered mode')
+            return False
+        request = '.node-config.{}.eb.n-triggers'.format(str(self.channel_dict[channel]))
+        n_triggers = self.provider.get(self.queue_dict[channel]+request)['n-triggers']
+        return n_triggers
+
 
 
     def make_trigger_mask(self, channel='a', filename='~/fmt_mask.json'):
@@ -330,30 +404,28 @@ class PsyllidProvider(core.Provider):
             self.activate(channel)
 
         logger.info('Switch tf_roach_receiver to freq-only')
-        request = 'run-daq-cmd.'+str(self.channel_dict[channel])+'.tfrr.freq-only'
+        request = 'run-daq-cmd.{}.tfrr.freq-only'.format(str(self.channel_dict[channel]))
         result = self.provider.cmd(self.queue_dict[channel],request)
 
         logger.info('Switch frequency_mask_trigger to update-mask')
-        request = 'run-daq-cmd.'+str(self.channel_dict[channel])+'.fmt.update-mask'
+        request = 'run-daq-cmd.{}.fmt.update-mask'.format(str(self.channel_dict[channel]))
         result = self.provider.cmd(self.queue_dict[channel],request)
         time.sleep(1)
 
         logger.info('Start short run to record mask')
-        self.start_run(channel ,1000, '/home/cclaessens/psyllid_test_data/fmt_update.egg')
-        #request = 'start-run'
-        #result = self.provider.cmd(self.queue_dict[channel], request)
+        self.start_run(channel ,1000, '/home/project8/fmt_update.egg')
         time.sleep(1)
 
-        logger.info('write-mask')
-        request = 'run-daq-cmd.'+str(self.channel_dict[channel])+'.fmt.write-mask'
+        logger.info('Write mask to file')
+        request = 'run-daq-cmd.{}.fmt.write-mask'.format(str(self.channel_dict[channel]))
         payload = {'filename': filename}
         result = self.provider.cmd(self.queue_dict[channel], request, payload=payload)
 
-        logger.info('back to time and freq')
-        request = 'run-daq-cmd.'+str(self.channel_dict[channel])+'.tfrr.time-and-freq'
+        logger.info('Switch tf_roach_receiver back to time and freq')
+        request = 'run-daq-cmd.{}.tfrr.time-and-freq'.format(str(self.channel_dict[channel]))
         result = self.provider.cmd(self.queue_dict[channel],request)
 
-        logger.info('apply-trigger')
-        request = 'run-daq-cmd.'+str(self.channel_dict[channel])+'.fmt.apply-trigger'
+        logger.info('Switch frequency mask trigger to apply-trigger')
+        request = 'run-daq-cmd.{}.fmt.apply-trigger'.format(str(self.channel_dict[channel]))
         result = self.provider.cmd(self.queue_dict[channel],request)
         return True 
