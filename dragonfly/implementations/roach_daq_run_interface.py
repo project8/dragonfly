@@ -360,10 +360,8 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
 
 
     def make_trigger_mask(self):
-        # Set threshold snr
-        payload = {'channel':self.channel_id}
         # Acquire and save new mask
-        timestr = time.strftime("%Y%m%d-%H%M%S")
+        timestr = time.strftime("%Y%m%d_%H%M%S")
         filename = '{}_frequency_mask_channel_{}_cf_{}.json'.format(timestr, self.channel_id, self.freq_dict[self.channel_id])
         path = os.path.join(self.mask_target, filename)
         payload = {'channel':self.channel_id, 'filename':path}
