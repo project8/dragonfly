@@ -29,6 +29,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
                  psyllid_interface='psyllid_interface',
                  daq_target = 'roach2_interface',
                  hf_lo_freq = None,
+                 mask_target = None,
                  **kwargs
                 ):
 
@@ -41,6 +42,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         self.freq_dict = {self.channel_id: None}
         self._run_time = 1
         self._run_name = "test"
+        self.mask_target = mask_target
         self.payload_channel = {'channel':self.channel_id}
 
         if hf_lo_freq is None:
@@ -276,16 +278,95 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
             self.freq_dict[self.channel_id]=None
             raise core.exceptions.DriplineGenericDAQError('Could not set central frequency in Psyllid stream')
 
-    # This method should not be used yet
-    def make_trigger_mask(self, snr, filename = '/home/roach/trigger_masks/psyllid_trigger_mask'):
+    @property
+    def trigger_type(self):
+        result = self.provider.cmd(self.psyllid_interface, 'get_trigger_configuration', payload=self.payload_channel)
+        logger.info(result)
+
+        if result['threshold'] == False:
+            trigger_type = 'untriggered'
+        if result['n_triggers'] >1:
+            trigger_type = 'multi_trigger'
+        elif result['threshold_high'] != None:
+            trigger_type = 'two_thresholds'
+        else:
+            trigger_type = 'single_threshold'
+
+        return trigger_type
+
+
+    @property
+    def single_threshold_trigger(self):
+        logger.info(self.trigger_type)
+        if self.trigger_type != 'single_threshold':
+            return False
+        threshold = self.provider.cmd(self.psyllid_interface, 'get_trigger_configuration', payload=self.payload_channel)['threshold']
+        return {'threshold' : threshold}
+
+    def set_single_threshold_trigger(self, threshold):
+        payload = {'threshold' : threshold, 'threshold_high' : 0.0, 'n_triggers' : 1, 'channel' : self.channel_id}
+        result = self.provider.cmd(self.psyllid_interface, 'set_trigger_configuration', payload=payload)
+        logger.info(result)
+        if result == False:
+            logger.error('Could not apply trigger settings')
+            raise core.exceptions.DriplineGenericDAQError('Could not apply trigger settings. Psyllid instance not in triggered mode')
+
+
+    @property
+    def two_threshold_trigger(self):
+        if self.trigger_type != 'two_thresholds':
+            return False
+        result = self.provider.cmd(self.psyllid_interface, 'get_trigger_configuration', payload=self.payload_channel)
+        return {'low_threshold': result['threshold'], 'high_threshold' : result['threshold_high']}
+
+    def set_two_threshold_trigger(self, high_threshold, low_threshold):
+        payload = {'threshold' : low_threshold, 'threshold_high' : high_threshold, 'n_triggers' : 1, 'channel' : self.channel_id}
+        result = self.provider.cmd(self.psyllid_interface, 'set_trigger_configuration', payload=payload)
+        logger.info(result)
+        if result== False:
+            logger.error('Could not apply trigger settings')
+            raise core.exceptions.DriplineGenericDAQError('Could not apply trigger settings. Psyllid instance not in triggered mode')
+
+
+    @property
+    def multi_trigger(self):
+        if self.trigger_type != 'multi_trigger':
+            return False
+        result = self.provider.cmd(self.psyllid_interface, 'get_trigger_configuration', payload=self.payload_channel)
+        skip_tolerance = self.provider.cmd(self.psyllid_interface, 'get_time_window', payload=self.payload_channel)['skip_tolerance']
+        return {'threshold' : result['threshold'], 'n_triggers' : result['n_triggers'], 'skip_tolerance': skip_tolerance}
+
+    def set_multi_trigger(self, threshold, n_triggers):
+        payload = {'threshold' : threshold, 'threshold_high' : 0.0, 'n_triggers' : n_triggers, 'channel' : self.channel_id}
+        result = self.provider.cmd(self.psyllid_interface, 'set_trigger_configuration', payload=payload)
+        logger.info(result)
+        if result== False:
+            logger.error('Could not apply trigger settings')
+            raise core.exceptions.DriplineGenericDAQError('Could not apply trigger settings. Psyllid instance not in triggered mode')
+
+
+    @property
+    def time_window(self):
+        result = self.provider.cmd(self.psyllid_interface, 'get_time_window', payload=self.payload_channel)
+        return {'skip_tolerance': result['skip_tolerance'], 'pretrigger_time': result['pretrigger_time']}
+
+    def set_time_window(self, pretrigger_time, skip_tolerance):
+        payload =  {'skip_tolerance': skip_tolerance, 'pretrigger_time': pretrigger_time, 'channel' : self.channel_id}
+        result = self.provider.cmd(self.psyllid_interface, 'set_time_window', payload=payload)
+        logger.info(result)
+        if result == False:
+            logger.error('Could not time window trigger settings')
+            raise core.exceptions.DriplineGenericDAQError('Could not timw window settings. Psyllid instance not in triggered mode')
+
+
+    def make_trigger_mask(self):
         # Set threshold snr
-        payload = {'channel':self.channel_id, 'snr':snr}
-        self.provider.cmd(self.psyllid_interface, 'set_fmt_snr_threshold', payload = payload)
-        time.sleep(1)
+        payload = {'channel':self.channel_id}
         # Acquire and save new mask
         timestr = time.strftime("%Y%m%d-%H%M%S")
-        filename = '{}_channel_{}_{}.json'.format(filename, self.channel_id, timestr)
-        payload = {'channel':self.channel_id, 'filename':filename}
+        filename = '{}_frequency_mask_channel_{}_cf_{}.json'.format(timestr, self.channel_id, self.freq_dict[self.channel_id])
+        path = os.path.join(self.mask_target, filename)
+        payload = {'channel':self.channel_id, 'filename':path}
         result = self.provider.cmd(self.psyllid_interface, 'make_trigger_mask', payload=payload)
         if result['values'][0]!=True:
             return False
