@@ -90,7 +90,6 @@ class GenericAgent(object):
                 logger.warning('no value cal present, unable to pretty-print')
             else:
                 print('\n{}\n'.format(reply[0].payload['value_cal']))
-        return reply[0].payload
 
 
     @staticmethod
