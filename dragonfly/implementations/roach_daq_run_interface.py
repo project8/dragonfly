@@ -171,7 +171,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
 
     def _start_data_taking(self, directory, filename):
         logger.info('block roach channel')
-        self.provider.cmd(self.daq_target, 'block_channel', payload=self.payload_channel)
+        self.provider.cmd(self.daq_target, 'block_channel', payload = self.payload_channel)
         logger.info('start data taking')
 
         # switching from seconds to milisecons
@@ -185,7 +185,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         logger.info('Going to tell psyllid to start the run')
         payload = {'channel':self.channel_id, 'filename': os.path.join(directory, psyllid_filename), 'duration':duration}
         try:
-            self.provider.cmd(self.psyllid_interface, 'start_run', payload=payload)
+            self.provider.cmd(self.psyllid_interface, 'start_run', payload = payload)
         except core.exceptions.DriplineError:
             logger.error('Error from psyllid provider or psyllid')
             payload = {'channel': self.channel_id}
@@ -197,7 +197,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
             logger.error('Local error')
             payload = {'channel': self.channel_id}
             try:
-                self.provider.cmd(self.daq_target, 'unblock_channel', payload=payload)
+                self.provider.cmd(self.daq_target, 'unblock_channel', payload = payload)
             finally:
                 raise e
         else:
@@ -216,7 +216,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
             logger.info('unblock channel')
             payload = {'channel': self.channel_id}
             try:
-                self.provider.cmd(self.daq_target, 'unblock_channel', payload=payload)
+                self.provider.cmd(self.daq_target, 'unblock_channel', payload = payload)
             finally:
                 raise core.exceptions.DriplineGenericDAQError('Error at end of run')
         except Exception as e:
@@ -224,12 +224,12 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
             logger.info('unblock channel')
             payload = {'channel': self.channel_id}
             try:
-                self.provider.cmd(self.daq_target, 'unblock_channel', payload=payload)
+                self.provider.cmd(self.daq_target, 'unblock_channel', payload = payload)
             finally:
                 raise e
         else:
             payload = {'channel': self.channel_id}
-            self.provider.cmd(self.daq_target, 'unblock_channel', payload=payload)
+            self.provider.cmd(self.daq_target, 'unblock_channel', payload = payload)
             if self.status_value==None:
                 raise core.exceptions.DriplineGenericDAQError('Psyllid must have crashed during run')
 
@@ -242,11 +242,10 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
     def stop_psyllid(self):
         # in case things go really wrong...
         self.provider.cmd(self.psyllid_interface, 'quit_psyllid', payload = self.payload_channel)
-        self.provider.cmd(self.daq_target, 'unblock_channel', payload=self.payload_channel)
+        self.provider.cmd(self.daq_target, 'unblock_channel', payload = self.payload_channel)
 
 
-# frequency settings and gettings
-
+    # frequency sets and gets
     def _get_roach_central_freqs(self):
         result = self.provider.get(self.daq_target + '.all_central_frequencies')
         logger.info('ROACH central freqs {}'.format(result))
@@ -254,7 +253,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
 
 
     def _get_psyllid_central_freq(self):
-        result = self.provider.cmd(self.psyllid_interface, 'get_central_frequency', payload=self.payload_channel)
+        result = self.provider.cmd(self.psyllid_interface, 'get_central_frequency', payload = self.payload_channel)
         logger.info('Psyllid central freqs {}'.format(result['values'][0]))
         return result['values'][0]
 
@@ -266,30 +265,30 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
 
     @central_frequency.setter
     def central_frequency(self, cf):
-        payload={'cf':float(cf), 'channel':self.channel_id}
-        result = self.provider.cmd(self.daq_target, 'set_central_frequency', payload=payload)
+        payload = {'cf':float(cf), 'channel':self.channel_id}
+        result = self.provider.cmd(self.daq_target, 'set_central_frequency', payload = payload)
         logger.info('The roach central frequency is now {}Hz'.format(result['values'][0]))
+
         # The roach frequency can differ from the requested frequency. Psyllid should have the same frequency settings as the ROACH
         self.freq_dict[self.channel_id]=round(result['values'][0])
-        payload={'channel':self.channel_id, 'cf':self.freq_dict[self.channel_id], 'channel':self.channel_id}
-        result = self.provider.cmd(self.psyllid_interface, 'set_central_frequency', payload=payload)
+        payload = {'channel':self.channel_id, 'cf':self.freq_dict[self.channel_id], 'channel':self.channel_id}
+        result = self.provider.cmd(self.psyllid_interface, 'set_central_frequency', payload = payload)
         if result['values'][0]!=True:
             logger.warning('Could not set central frequency in Psyllid')
             self.freq_dict[self.channel_id]=None
             raise core.exceptions.DriplineGenericDAQError('Could not set central frequency in Psyllid stream')
 
+
+    # trigger control
     @property
     def trigger_type(self):
-        result = self.provider.cmd(self.psyllid_interface, 'get_trigger_configuration', payload=self.payload_channel)
-        logger.info(result)
+        result = self.provider.cmd(self.psyllid_interface, 'get_trigger_configuration', payload = self.payload_channel)
 
-        if result['values'][0] == False:
-            trigger_type = 'untriggered'
-        elif result['n_triggers'] >1:
+        if result['n_triggers'] > 1:
             trigger_type = 'multi_trigger'
-        elif result['threshold_high'] != None:
+        elif type(result['threshold_high']) == float:
             trigger_type = 'two_thresholds'
-        elif result['threshold'] != False:
+        elif type(result['threshold']) == float:
             trigger_type = 'single_threshold'
         else:
             trigger_type = None
@@ -302,65 +301,104 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         logger.info(self.trigger_type)
         if self.trigger_type != 'single_threshold':
             return False
-        threshold = self.provider.cmd(self.psyllid_interface, 'get_trigger_configuration', payload=self.payload_channel)['threshold']
+        threshold = self.provider.cmd(self.psyllid_interface, 'get_trigger_configuration', payload = self.payload_channel)['threshold']
         return {'threshold' : threshold}
+
 
     def set_single_threshold_trigger(self, threshold):
         payload = {'threshold' : threshold, 'threshold_high' : 0.0, 'n_triggers' : 1, 'channel' : self.channel_id}
-        result = self.provider.cmd(self.psyllid_interface, 'set_trigger_configuration', payload=payload)
-        logger.info(result)
+        result = self.provider.cmd(self.psyllid_interface, 'set_trigger_configuration', payload = payload)
+
         if result['values'][0] == False:
             logger.error('Could not apply trigger settings')
             raise core.exceptions.DriplineGenericDAQError('Could not apply trigger settings. Psyllid instance not in triggered mode')
+        else:
+            result = self.provider.cmd(self.psyllid_interface, 'get_trigger_configuration', payload = self.payload_channel)
+            return {'threshold' : result['threshold']}
 
 
     @property
     def two_threshold_trigger(self):
         if self.trigger_type != 'two_thresholds':
             return False
-        result = self.provider.cmd(self.psyllid_interface, 'get_trigger_configuration', payload=self.payload_channel)
-        return {'low_threshold': result['threshold'], 'high_threshold' : result['threshold_high']}
+        result = self.provider.cmd(self.psyllid_interface, 'get_trigger_configuration', payload = self.payload_channel)
+        return {'low_threshold' : result['threshold'], 'high_threshold' : result['threshold_high']}
+
 
     def set_two_threshold_trigger(self, high_threshold, low_threshold):
         payload = {'threshold' : low_threshold, 'threshold_high' : high_threshold, 'n_triggers' : 1, 'channel' : self.channel_id}
-        result = self.provider.cmd(self.psyllid_interface, 'set_trigger_configuration', payload=payload)
-        logger.info(result)
+        result = self.provider.cmd(self.psyllid_interface, 'set_trigger_configuration', payload = payload)
+
         if result['values'][0] == False:
             logger.error('Could not apply trigger settins') 
             raise core.exceptions.DriplineGenericDAQError('Could not apply trigger settings. Psyllid instance not in triggered mode')
+        else:
+            result = self.provider.cmd(self.psyllid_interface, 'get_trigger_configuration', payload = self.payload_channel)
+            return {'low_threshold' : result['threshold'], 'high_threshold' : result['threshold_high']}
 
 
     @property
     def multi_trigger(self):
         if self.trigger_type != 'multi_trigger':
             return False
-        result = self.provider.cmd(self.psyllid_interface, 'get_trigger_configuration', payload=self.payload_channel)
-        skip_tolerance = self.provider.cmd(self.psyllid_interface, 'get_time_window', payload=self.payload_channel)['skip_tolerance']
+        result = self.provider.cmd(self.psyllid_interface, 'get_trigger_configuration', payload = self.payload_channel)
+        skip_tolerance = self.provider.cmd(self.psyllid_interface, 'get_time_window', payload = self.payload_channel)['skip_tolerance']
+
+        # In addition to threshold and n_triggers, returns skip_tolerance as it is n_triggers/skip_tolerance that defines this trigger
         return {'threshold' : result['threshold'], 'n_triggers' : result['n_triggers'], 'skip_tolerance': skip_tolerance}
+
 
     def set_multi_trigger(self, threshold, n_triggers):
         payload = {'threshold' : threshold, 'threshold_high' : 0.0, 'n_triggers' : n_triggers, 'channel' : self.channel_id}
-        result = self.provider.cmd(self.psyllid_interface, 'set_trigger_configuration', payload=payload)
-        logger.info(result)
+        result = self.provider.cmd(self.psyllid_interface, 'set_trigger_configuration', payload = payload)
+
         if result['values'][0] == False:
             logger.error('Could not apply trigger settings')
             raise core.exceptions.DriplineGenericDAQError('Could not apply trigger settings. Psyllid instance not in triggered mode')
+        else:
+            result = self.provider.cmd(self.psyllid_interface, 'get_trigger_configuration', payload = self.payload_channel)
+            return {'threshold' : result['threshold'], 'n_triggers' : result['n_triggers']}
+
+
+    @property
+    def all_tigger_parameters(self):
+        if self.trigger_type == None:
+            return False
+        result = self.provider.cmd(self.psyllid_interface, 'get_trigger_configuration', payload = self.payload_channel)
+        return result
+
+
+    def set_trigger_manually(self, low_threshold, high_threshold, n_triggers):
+        payload = {'threshold' : threshold, 'threshold_high' : high_threshold, 'n_triggers' : n_triggers, 'channel' : self.channel_id}
+        result = self.provider.cmd(self.psyllid_interface, 'set_trigger_configuration', payload = payload)
+
+        if result['values'][0] == False:
+            logger.error('Could not apply trigger settings')
+            raise core.exceptions.DriplineGenericDAQError('Could not apply trigger settings. Psyllid instance not in triggered mode')
+        else:
+            result = self.provider.cmd(self.psyllid_interface, 'get_trigger_configuration', payload = self.payload_channel)
+            return result
 
 
     @property
     def time_window(self):
-        result = self.provider.cmd(self.psyllid_interface, 'get_time_window', payload=self.payload_channel)
+        result = self.provider.cmd(self.psyllid_interface, 'get_time_window', payload = self.payload_channel)
         if result['values'][0] == False:
             return False
-        return {'skip_tolerance': result['skip_tolerance'], 'pretrigger_time': result['pretrigger_time']}
+        else:
+            return {'skip_tolerance': result['skip_tolerance'], 'pretrigger_time': result['pretrigger_time']}
+
 
     def set_time_window(self, pretrigger_time, skip_tolerance):
         payload =  {'skip_tolerance': skip_tolerance, 'pretrigger_time': pretrigger_time, 'channel' : self.channel_id}
-        result = self.provider.cmd(self.psyllid_interface, 'set_time_window', payload=payload)
+        result = self.provider.cmd(self.psyllid_interface, 'set_time_window', payload = payload)
         logger.info(result)
         if result['values'][0] == False:
             logger.error('Could not time window trigger settings')
             raise core.exceptions.DriplineGenericDAQError('Could not time window settings. Psyllid instance not in triggered mode')
+        else:
+            result = self.provider.cmd(self.psyllid_interface, 'get_time_window', payload = self.payload_channel)
+            return result
 
 
     def make_trigger_mask(self):
@@ -369,7 +407,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         filename = '{}_frequency_mask_channel_{}_cf_{}.json'.format(timestr, self.channel_id, self.freq_dict[self.channel_id])
         path = os.path.join(self.mask_target, filename)
         payload = {'channel':self.channel_id, 'filename':path}
-        result = self.provider.cmd(self.psyllid_interface, 'make_trigger_mask', payload=payload)
-        if result['values'][0]!=True:
+        result = self.provider.cmd(self.psyllid_interface, 'make_trigger_mask', payload = payload)
+        if result['values'][0] != True:
             return False
         else: return True
