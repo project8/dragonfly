@@ -283,14 +283,16 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         result = self.provider.cmd(self.psyllid_interface, 'get_trigger_configuration', payload=self.payload_channel)
         logger.info(result)
 
-        if result['threshold'] == False:
+        if result['values'][0] == False:
             trigger_type = 'untriggered'
-        if result['n_triggers'] >1:
+        elif result['n_triggers'] >1:
             trigger_type = 'multi_trigger'
         elif result['threshold_high'] != None:
             trigger_type = 'two_thresholds'
-        else:
+        elif result['threshold'] != False:
             trigger_type = 'single_threshold'
+        else:
+            trigger_type = None
 
         return trigger_type
 
@@ -307,7 +309,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         payload = {'threshold' : threshold, 'threshold_high' : 0.0, 'n_triggers' : 1, 'channel' : self.channel_id}
         result = self.provider.cmd(self.psyllid_interface, 'set_trigger_configuration', payload=payload)
         logger.info(result)
-        if result == False:
+        if result['values'][0] == False:
             logger.error('Could not apply trigger settings')
             raise core.exceptions.DriplineGenericDAQError('Could not apply trigger settings. Psyllid instance not in triggered mode')
 
@@ -323,8 +325,8 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         payload = {'threshold' : low_threshold, 'threshold_high' : high_threshold, 'n_triggers' : 1, 'channel' : self.channel_id}
         result = self.provider.cmd(self.psyllid_interface, 'set_trigger_configuration', payload=payload)
         logger.info(result)
-        if result== False:
-            logger.error('Could not apply trigger settings')
+        if result['values'][0] == False:
+            logger.error('Could not apply trigger settins') 
             raise core.exceptions.DriplineGenericDAQError('Could not apply trigger settings. Psyllid instance not in triggered mode')
 
 
@@ -340,7 +342,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         payload = {'threshold' : threshold, 'threshold_high' : 0.0, 'n_triggers' : n_triggers, 'channel' : self.channel_id}
         result = self.provider.cmd(self.psyllid_interface, 'set_trigger_configuration', payload=payload)
         logger.info(result)
-        if result== False:
+        if result['values'][0] == False:
             logger.error('Could not apply trigger settings')
             raise core.exceptions.DriplineGenericDAQError('Could not apply trigger settings. Psyllid instance not in triggered mode')
 
@@ -348,15 +350,17 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
     @property
     def time_window(self):
         result = self.provider.cmd(self.psyllid_interface, 'get_time_window', payload=self.payload_channel)
+        if result['values'][0] == False:
+            return False
         return {'skip_tolerance': result['skip_tolerance'], 'pretrigger_time': result['pretrigger_time']}
 
     def set_time_window(self, pretrigger_time, skip_tolerance):
         payload =  {'skip_tolerance': skip_tolerance, 'pretrigger_time': pretrigger_time, 'channel' : self.channel_id}
         result = self.provider.cmd(self.psyllid_interface, 'set_time_window', payload=payload)
         logger.info(result)
-        if result == False:
+        if result['values'][0] == False:
             logger.error('Could not time window trigger settings')
-            raise core.exceptions.DriplineGenericDAQError('Could not timw window settings. Psyllid instance not in triggered mode')
+            raise core.exceptions.DriplineGenericDAQError('Could not time window settings. Psyllid instance not in triggered mode')
 
 
     def make_trigger_mask(self):

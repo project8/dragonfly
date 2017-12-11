@@ -236,6 +236,9 @@ class PsyllidProvider(core.Provider):
 
 
     def set_trigger_configuration(self, threshold=16, threshold_high=0, n_triggers=1, channel='a'):
+        if self.mode_dict[channel] != 'triggered':
+            logger.warning('Psyllid not in triggered mode')
+            return False
 
         threshold = self.set_fmt_snr_threshold( threshold, channel)
         threshold_high = self.set_fmt_snr_high_threshold( threshold_high, channel)
@@ -249,6 +252,9 @@ class PsyllidProvider(core.Provider):
 
 
     def get_trigger_configuration(self, channel='a'):
+        if self.mode_dict[channel] != 'triggered':
+            logger.warning('Psyllid not in triggered mode')
+            return False
 
         threshold = self.get_fmt_snr_threshold( channel)
         threshold_high = self.get_fmt_snr_high_threshold( channel)
@@ -262,6 +268,9 @@ class PsyllidProvider(core.Provider):
 
 
     def set_time_window(self, pretrigger_time=2e-3, skip_tolerance=5e-3, channel='a'):
+        if self.mode_dict[channel] != 'triggered':
+            logger.warning('Psyllid not in triggered mode')
+            return False
 
         pretrigger_time = self.set_pretrigger_time( pretrigger_time, channel)
         skip_tolerance = self.set_skip_tolerance( skip_tolerance, channel)
@@ -270,6 +279,9 @@ class PsyllidProvider(core.Provider):
 
 
     def get_time_window(self, channel='a'):
+        if self.mode_dict[channel] != 'triggered':
+            logger.warning('Psyllid not in triggered mode')
+            return False
 
         pretrigger_time = self.get_pretrigger_time( channel)
         skip_tolerance = self.get_skip_tolerance( channel)
