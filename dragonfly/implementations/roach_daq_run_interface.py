@@ -361,7 +361,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
 
 
     @property
-    def all_tigger_parameters(self):
+    def all_trigger_settings(self):
         if self.trigger_type == None:
             return False
         result = self.provider.cmd(self.psyllid_interface, 'get_trigger_configuration', payload = self.payload_channel)
@@ -369,7 +369,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
 
 
     def set_trigger_manually(self, low_threshold, high_threshold, n_triggers):
-        payload = {'threshold' : threshold, 'threshold_high' : high_threshold, 'n_triggers' : n_triggers, 'channel' : self.channel_id}
+        payload = {'threshold' : low_threshold, 'threshold_high' : high_threshold, 'n_triggers' : n_triggers, 'channel' : self.channel_id}
         result = self.provider.cmd(self.psyllid_interface, 'set_trigger_configuration', payload = payload)
 
         if result['values'][0] == False:
@@ -383,10 +383,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
     @property
     def time_window(self):
         result = self.provider.cmd(self.psyllid_interface, 'get_time_window', payload = self.payload_channel)
-        if result['values'][0] == False:
-            return False
-        else:
-            return {'skip_tolerance': result['skip_tolerance'], 'pretrigger_time': result['pretrigger_time']}
+        return result
 
 
     def set_time_window(self, pretrigger_time, skip_tolerance):
