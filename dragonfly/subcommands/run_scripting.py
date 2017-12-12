@@ -233,6 +233,9 @@ class RunScript(object):
         self._cache_file_name = '/tmp/execution_cache.json'
         self._dry_run_mode = False
 
+        self.evaluator = asteval.Interpreter()
+        self.evaluator.symtable['datetime'] = datetime
+
 
     def init_cache_file(self, execution_file):
         cache_file_name = execution_file
@@ -327,7 +330,7 @@ class RunScript(object):
                 self._action_cache = {}
                 self.update_cache()
         # except block as in dripline_agent to spam error message
-        except dripline.core.exceptions.DriplineException as dripline_error:
+        except dripline.core.DriplineException as dripline_error:
             logger.critical(dripline_error.message)
             return
         # finally, unlock anything we locked (even if there's an exception along the way)
@@ -379,18 +382,19 @@ class RunScript(object):
                 raise dripline.core.exception_map[result.retcode](result.return_msg)
 
     def action_cmd(self, cmds, **kwargs):
+        # mandatory fields are <endpoint> and <method_name> for each cmd
         logger.info('doing cmd block')
-        for this_cmd in cmds:
-            cmd_kwargs={
-                        'endpoint':this_cmd['endpoint'],
-                        'method_name':this_cmd['method_name']
-                        }
-            if 'timeout' in this_cmd:
-                logger.debug('timeout set to {}'.format(this_cmd['timeout']))
-                cmd_kwargs.update({'timeout':this_cmd['timeout']})
-            for key in this_cmd:
-                if key is not 'endpoint' or 'method_name':
-                    cmd_kwargs.update({key:this_cmd[key]})
+        for cmd_kwargs in cmds:
+            if 'timeout' in cmd_kwargs:
+                logger.debug('timeout set to {}'.format(cmd_kwargs['timeout']))
+            reformat = cmd_kwargs.pop('asteval_format',{})
+            for key in reformat:
+                decoded = self.evaluator(reformat[key])
+                if decoded is not None:
+                    logger.debug('{} set to {} from {}'.format(key,decoded,reformat[key]))
+                    cmd_kwargs.update( {key:decoded} )
+                else:
+                    raise dripline.core.DriplineValueError('Cannot reformat {}:{}, type is {}'.format(key,reformat[key],type(reformat[key])))
             logger.info('sending cmd {}.{}'.format(cmd_kwargs['endpoint'],cmd_kwargs['method_name']))
             self.interface.cmd(**cmd_kwargs)
 
@@ -437,7 +441,7 @@ class RunScript(object):
                 elif 'value_raw' in result['payload'] and this_set['payload_field']=='value_raw':
                     value_get = result['payload']['value_raw']
                 else:
-                    raise DriplineInternalError('no payload matching!')
+                    raise dripline.core.DriplineInternalError('no payload matching!')
             else:
                 if 'value_cal' in result['payload']:
                     value_get = result['payload']['value_cal']
@@ -450,7 +454,7 @@ class RunScript(object):
                     logger.debug('no payload_field: using value_raw')
 
                 else:
-                    raise DriplineInternalError('no payload matching!')
+                    raise dripline.core.DriplineInternalError('no payload matching!')
 
             # sometimes the value get is in unicode (value_raw) -> switch to a readable value
             if isinstance(value_get, unicode):
@@ -710,7 +714,7 @@ class RunScript(object):
         self._action_cache.update(initial_state)
 
         if not isinstance(total_runs, int):
-            raise DriplineValueError("action_multi_run requires total_runs to be specified as int!")
+            raise dripline.core.DriplineValueError("action_multi_run requires total_runs to be specified as int!")
 
         for run_count in range(total_runs):
             # skip runs that were already completed (only relevant if restarting an execution)
@@ -723,7 +727,6 @@ class RunScript(object):
             # this will build a new dictionary "evaluated_operations"
             # for cmds, we simply add them to the dictionary
             # then the evaluated_operations dictionary is procceded using the action_do()
-            evaluator = asteval.Interpreter()
             evaluated_operations = []
             for i_do,a_do in enumerate(operations):
                 these_operations = []
@@ -739,10 +742,10 @@ class RunScript(object):
                         elif isinstance(a_set['value'], (int,float,bool)):
                             this_value = a_set['value']
                         elif isinstance(a_set['value'], str):
-                            if isinstance(evaluator(a_set['value'].format(run_count)), (int,float,str,bool)):
-                                this_value = evaluator(a_set['value'].format(run_count))
-                            elif isinstance(evaluator(a_set['value'].format(run_count)), list):
-                                old_list = evaluator(a_set['value'].format(run_count))
+                            if isinstance(self.evaluator(a_set['value'].format(run_count)), (int,float,str,bool)):
+                                this_value = self.evaluator(a_set['value'].format(run_count))
+                            elif isinstance(self.evaluator(a_set['value'].format(run_count)), list):
+                                old_list = self.evaluator(a_set['value'].format(run_count))
                                 new_list = []
                                 for i in range(len(old_list)):
                                     if isinstance(old_list[i],list):
@@ -754,10 +757,10 @@ class RunScript(object):
                                     else:
                                         raise dripline.core.DriplineValueError('run_scripting does not support list of lists of lists')
                                 this_value = new_list[run_count]
-                            elif isinstance(evaluator(a_set['value'].format(run_count)), dict):
-                                if isinstance(evaluator(a_set['value'].format(run_count))[run_count], (int,float,str,bool)):
-                                    this_value = evaluator(a_set['value'].format(run_count))[run_count]
-                                elif isinstance(evaluator(a_set['value'].format(run_count))[run_count], list):
+                            elif isinstance(self.evaluator(a_set['value'].format(run_count)), dict):
+                                if isinstance(self.evaluator(a_set['value'].format(run_count))[run_count], (int,float,str,bool)):
+                                    this_value = self.evaluator(a_set['value'].format(run_count))[run_count]
+                                elif isinstance(self.evaluator(a_set['value'].format(run_count))[run_count], list):
                                     raise dripline.core.DriplineValueError('run_scripting does not support dict of lists')
                                 else:
                                     raise dripline.core.DriplineValueError('rmissing value in the dict')
@@ -819,7 +822,7 @@ class RunScript(object):
                     elif isinstance(runs['run_duration'], (dict,list)):
                         this_run_duration = runs['run_duration'][run_count]
                     elif isinstance(runs['run_duration'], str):
-                        this_run_duration = evaluator(runs['run_duration'].format(run_count))
+                        this_run_duration = self.evaluator(runs['run_duration'].format(run_count))
                     else:
                         logger.info('failed to compute run duration for run: {}'.format(run_count))
 
