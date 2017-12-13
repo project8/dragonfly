@@ -38,6 +38,7 @@ class PidController(Gogol):
                  input_channel,
                  output_channel,
                  check_channel,
+                 status_channel,
                  payload_field='value_cal',
                  tolerance = 0.01,
                  target_value=110,
@@ -51,7 +52,8 @@ class PidController(Gogol):
         input_channel (str): name of the logging sensor to use as input to PID (this will override any provided values for keys)
         output_channel (str): name of the endpoint to be set() based on PID
         check_channel (str): name of the endpoint to be checked() after a set()
-        input_payload_field (str): name of the field in the payload when the sensor logs (default is 'value_cal' and 'value_raw' is the only other expected value)
+        status_channel (str): name of the endpoint which controls the status of the heater (enabled/disabled output)
+        payload_field (str): name of the field in the payload when the sensor logs (default is 'value_cal' and 'value_raw' is the only other expected value)
         target_value (float): numerical value to which the loop will try to lock the input_channel
         proportional (float): coefficient for the P term in the PID equation
         integral (float): coefficient for the I term in the PID equation
@@ -59,12 +61,14 @@ class PidController(Gogol):
         maximum_out (float): max value to which the output_channel may be set; if the PID equation gives a larger value this value is used instead
         delta_out_min (float): minimum value by which to change the output_channel; if the PID equation gives a smaller change, the value is left unchanged (no set is attempted)
         tolerance (float): acceptable difference between the set and get values (default: 0.01)
+        minimum_elapsed_time (float): minimum time interval to perform PID calculation over
         '''
         kwargs.update({'keys':['sensor_value.'+input_channel]})
         Gogol.__init__(self, **kwargs)
 
         self._set_channel = output_channel
         self._check_channel = check_channel
+        self._status_channel = status_channel
         self.payload_field = payload_field
         self.tolerance = tolerance
 
@@ -83,6 +87,7 @@ class PidController(Gogol):
         self.enable_offset_term = enable_offset_term
         self.minimum_elapsed_time = minimum_elapsed_time
 
+        self.__validate_status()
         self._old_current = self.__get_current()
         logger.info('starting current is: {}'.format(self._old_current))
 
@@ -90,14 +95,19 @@ class PidController(Gogol):
         value = self.provider.get(self._check_channel)[self.payload_field]
         logger.info('old current = {}'.format(value))
 
-        if type(value) is unicode:
-            logger.debug('result in unicode')
-            value = value.encode('utf-8')
         try:
             value = float(value)
         except:
             raise DriplineValueError('value get ({}) is not floatable'.format(value))
         return value
+
+    def __validate_status(self):
+        value = self.provider.get(self._status_channel)[self.payload_field]
+        if value == 'enabled':
+            logger.debug("{} returns {}".format(self._status_channel,value))
+        else:
+            logger.critical("Invalid status of {} for PID control by {}".format(self._status_channel,self.name))
+            raise dripline.core.DriplineHardwareError("{} returns {}".format(self._status_channel,value))
 
     def this_consume(self, message, method):
         logger.info('consuming message')
@@ -127,9 +137,8 @@ class PidController(Gogol):
         if (this_time - self._last_data['time']).total_seconds() < self.minimum_elapsed_time:
             logger.info("not enough time has elasped: {}[{}]".format((this_time - self._last_data['time']).total_seconds(),self.minimum_elapsed_time))
             return
-        logger.info('value is: {}'.format(value))
         delta = self.target_value - float(value)
-        logger.info("delta is: {}".format(delta))
+        logger.info('value is <{}>; delta is <{}>'.format(value, delta))
         #logger.info(this_time,abs((this_time - self._last_data['time']).seconds))
 
         self._integral += delta * (this_time - self._last_data['time']).total_seconds()
@@ -140,9 +149,8 @@ class PidController(Gogol):
             derivative = 0.
         self._last_data = {'delta': delta, 'time': this_time}
 
-        logger.info("proportional: {}".format(self.Kproportional*delta))
-        logger.info("integral: {}".format(self.Kintegral*self._integral))
-        logger.info("differential: {}".format(self.Kdifferential * derivative))
+        logger.info("proportional <{}>; integral <{}>; differential <{}>".format\
+            (self.Kproportional*delta, self.Kintegral*self._integral, self.Kdifferential*derivative))
         change_to_current = (self.Kproportional * delta +
                              self.Kintegral * self._integral +
                              self.Kdifferential * derivative
@@ -172,7 +180,8 @@ class PidController(Gogol):
         if abs(current_get-new_current) < self.tolerance:
             logger.info("current set is equal to current get")
         else:
-            raise  dripline.core.DriplineValueError("set value ({}) is not equal to checked value ({})".format(new_current,current_get))
+            self.__validate_status()
+            raise dripline.core.DriplineValueError("set value ({}) is not equal to checked value ({})".format(new_current,current_get))
 
         logger.info("current set is: {}".format(new_current))
         self._old_current = new_current
