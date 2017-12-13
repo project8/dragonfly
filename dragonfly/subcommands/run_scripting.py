@@ -331,8 +331,8 @@ class RunScript(object):
                 self.update_cache()
         # except block as in dripline_agent to spam error message
         except dripline.core.DriplineException as dripline_error:
-            logger.critical(dripline_error.message)
-            return
+            logger.critical("run script crashing with error: {}".format(dripline_error.message))
+            raise dripline.core.exception_map[dripline_error.retcode](dripline_error.message, dripline_error.result)
         # finally, unlock anything we locked (even if there's an exception along the way)
         finally:
             if self._lockout_key is not None:
