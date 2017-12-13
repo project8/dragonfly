@@ -64,9 +64,8 @@ class Pinger(Endpoint,Scheduler):
             logger.debug("pinging {}".format(service))
             try:
                 result = self.provider.cmd(target=service, method_name="ping", value=[], timeout=self.ping_timeout)
-                if result:
-                    logger.info("{} is responding".format(service))
-                    self.pinger_dict[service]['timestamp'] = datetime.datetime.utcnow()
+                logger.info("{} is responding".format(service))
+                self.pinger_dict[service]['timestamp'] = datetime.datetime.utcnow()
             except Exception as err:
                 logger.info("Exception: {}".format(err))
                 message = message + "{}\n".format(service)
