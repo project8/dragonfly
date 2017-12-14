@@ -234,8 +234,11 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
                 raise core.exceptions.DriplineGenericDAQError('Psyllid must have crashed during run')
 
 
-    def adopt_new_psyllid_instance(self):
-        self.provider.cmd(self.psyllid_interface, 'get_acquisition_mode', payload = self.payload_channel)
+    def prepare_daq_system(self):
+        acquisition_mode = self.provider.cmd(self.psyllid_interface, 'get_acquisition_mode', payload = self.payload_channel)
+        if acquisition_mode['values'][0] == None:
+            raise core.exceptions.DriplineGenericDAQError('Could not find running psyllid instance for this channel')
+        logger.info('Psyllid instance for this channel is in acquisition mode: {}'.format(acquisition_mode['values'][0]))
         self._finish_configure()
 
 

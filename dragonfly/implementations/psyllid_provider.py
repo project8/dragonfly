@@ -242,9 +242,9 @@ class PsyllidProvider(core.Provider):
         self._set_fmt_snr_threshold( threshold, channel)
         if threshold_high > threshold:
             self._set_fmt_snr_high_threshold( threshold_high, channel)
-            self._set_trigger_mode( 2, channel)
+            self._set_trigger_mode( "two-level-trigger", channel)
         else:
-            self._set_trigger_mode( 1, channel)
+            self._set_trigger_mode( "single-level-trigger", channel)
 
         result = self._set_n_triggers( n_triggers, channel)
 
@@ -354,11 +354,9 @@ class PsyllidProvider(core.Provider):
 
 
     def _set_trigger_mode(self, mode_id, channel='a'):
-        if not (0 < mode_id < 3):
-            return False
         request = '.active-config.{}.fmt.trigger-mode'.format(str(self.channel_dict[channel]))
-        self.provider.set(self.queue_dict[channel]+request, int(mode_id))
-        logger.info('Setting psyllid trigger mode to {} threshold trigger'.format(int(mode_id)))
+        self.provider.set(self.queue_dict[channel]+request, mode_id)
+        logger.info('Setting psyllid trigger mode to {} threshold trigger'.format(mode_id))
         return True
 
 
