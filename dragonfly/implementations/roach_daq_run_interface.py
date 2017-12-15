@@ -393,8 +393,12 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
             return result
 
 
+    # Acquire and save new mask
     def make_trigger_mask(self):
-        # Acquire and save new mask
+        if self.mask_target == None:
+            logger.error('No target path set for trigger mask')
+            raise core.exceptions.DriplineGenericDAQError('No target path set for trigger mask')
+
         timestr = time.strftime("%Y%m%d_%H%M%S")
         filename = '{}_frequency_mask_channel_{}_cf_{}.json'.format(timestr, self.channel_id, self.freq_dict[self.channel_id])
         path = os.path.join(self.mask_target, filename)
