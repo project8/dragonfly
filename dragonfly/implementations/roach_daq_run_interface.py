@@ -29,7 +29,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
                  psyllid_interface='psyllid_interface',
                  daq_target = 'roach2_interface',
                  hf_lo_freq = None,
-                 mask_target = None,
+                 mask_target_path = None,
                  **kwargs
                 ):
 
@@ -42,7 +42,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         self.freq_dict = {self.channel_id: None}
         self._run_time = 1
         self._run_name = "test"
-        self.mask_target = mask_target
+        self.mask_target_path = mask_target_path
         self.payload_channel = {'channel':self.channel_id}
 
         if hf_lo_freq is None:
@@ -395,15 +395,16 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
 
     # Acquire and save new mask
     def make_trigger_mask(self):
-        if self.mask_target == None:
+        if self.mask_target_path == None:
             logger.error('No target path set for trigger mask')
             raise core.exceptions.DriplineGenericDAQError('No target path set for trigger mask')
 
         timestr = time.strftime("%Y%m%d_%H%M%S")
         filename = '{}_frequency_mask_channel_{}_cf_{}.json'.format(timestr, self.channel_id, self.freq_dict[self.channel_id])
-        path = os.path.join(self.mask_target, filename)
+        path = os.path.join(self.mask_target_path, filename)
         payload = {'channel':self.channel_id, 'filename':path}
         result = self.provider.cmd(self.psyllid_interface, 'make_trigger_mask', payload = payload)
         if result['values'][0] != True:
             return False
-        else: return True
+        else:
+            return True

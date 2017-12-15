@@ -61,6 +61,7 @@ class PsyllidProvider(core.Provider):
         logger.info('Status of channels: {}'.format(self.status_value_dict))
         logger.info('Set central frequencies: {}'.format(self.freq_dict))
         logger.info('Streaming or triggered mode: {}'.format(self.mode_dict))
+        return self.mode_dict
 
 
     def request_status(self, channel):
