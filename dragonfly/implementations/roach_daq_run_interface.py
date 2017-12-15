@@ -67,6 +67,14 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         self.central_frequency = freqs[self.channel_id]
 
 
+    def prepare_daq_system(self):
+        acquisition_mode = self.provider.cmd(self.psyllid_interface, 'get_acquisition_mode', payload = self.payload_channel)
+        if acquisition_mode['values'][0] == None:
+            raise core.exceptions.DriplineGenericDAQError('Could not find running psyllid instance for this channel')
+        logger.info('Psyllid instance for this channel is in acquisition mode: {}'.format(acquisition_mode['values'][0]))
+        self._finish_configure()
+
+
     @property
     def is_running(self):
         result = self.provider.cmd(self.psyllid_interface, 'request_status', payload = self.payload_channel, timeout=10)
@@ -76,14 +84,6 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
             return True
         else:
             return False
-
-    @property
-    def max_duration(self):
-        return self._max_duration
-
-    @max_duration.setter
-    def max_duration(self, duration):
-        self._max_duration = duration
 
 
     def _check_roach2_is_ready(self):
@@ -232,14 +232,6 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
             self.provider.cmd(self.daq_target, 'unblock_channel', payload = payload)
             if self.status_value==None:
                 raise core.exceptions.DriplineGenericDAQError('Psyllid must have crashed during run')
-
-
-    def prepare_daq_system(self):
-        acquisition_mode = self.provider.cmd(self.psyllid_interface, 'get_acquisition_mode', payload = self.payload_channel)
-        if acquisition_mode['values'][0] == None:
-            raise core.exceptions.DriplineGenericDAQError('Could not find running psyllid instance for this channel')
-        logger.info('Psyllid instance for this channel is in acquisition mode: {}'.format(acquisition_mode['values'][0]))
-        self._finish_configure()
 
 
     def stop_psyllid(self):

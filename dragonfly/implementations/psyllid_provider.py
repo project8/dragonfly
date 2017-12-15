@@ -39,7 +39,7 @@ class PsyllidProvider(core.Provider):
         self.mode_dict = {'a':None, 'b':None, 'c':None}
 
 
-    def _finish_configure(self):
+    def check_all_psyllid_instances(self):
         for channel in self.channel_dict.keys():
             if self.request_status(channel)!=None:
                 try:
@@ -234,6 +234,7 @@ class PsyllidProvider(core.Provider):
         return stream_count
 
 
+    # trigger control
     def set_trigger_configuration(self, threshold=16, threshold_high=0, n_triggers=1, channel='a'):
         if self.mode_dict[channel] != 'triggered':
             logger.warning('Psyllid not in triggered mode')
@@ -272,6 +273,7 @@ class PsyllidProvider(core.Provider):
         return {'threshold': threshold, 'threshold_high' : threshold_high, 'n_triggers' : n_triggers}
 
 
+    # pre-trigger and skip-tolerance control
     def set_time_window(self, pretrigger_time=2e-3, skip_tolerance=5e-3, channel='a'):
         if self.mode_dict[channel] != 'triggered':
             logger.warning('Psyllid not in triggered mode')
@@ -298,7 +300,7 @@ class PsyllidProvider(core.Provider):
         return {'pretrigger_time': pretrigger_time, 'skip_tolerance': skip_tolerance}
 
 
-    # psyllid time window and trigger parameter sets and gets
+    # internal psyllid time window and trigger parameter sets and gets
     def _set_pretrigger_time(self, pretrigger_time, channel='a'):
         n_pretrigger_packets = int(round(pretrigger_time/4.096e-5))
         logger.info('Setting psyllid pretrigger to {} packets'.format(n_pretrigger_packets))
@@ -379,7 +381,7 @@ class PsyllidProvider(core.Provider):
         return n_triggers
 
 
-
+    # tell psyllid to record a frequency mask, write it to a json file and prepare for triggered run
     def make_trigger_mask(self, channel='a', filename='~/fmt_mask.json'):
         if self.mode_dict[channel] == 'streaming':
             return False
@@ -409,4 +411,4 @@ class PsyllidProvider(core.Provider):
         logger.info('Switch frequency mask trigger to apply-trigger')
         request = 'run-daq-cmd.{}.fmt.apply-trigger'.format(str(self.channel_dict[channel]))
         result = self.provider.cmd(self.queue_dict[channel],request)
-        return True 
+        return True
