@@ -187,7 +187,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         try:
             self.provider.cmd(self.psyllid_interface, 'start_run', payload = payload)
         except core.exceptions.DriplineError:
-            logger.error('Error from psyllid provider or psyllid')
+            logger.critical('Error from psyllid provider or psyllid')
             payload = {'channel': self.channel_id}
             try:
                 self.provider.cmd(self.daq_target, 'unblock_channel', payload = payload)
@@ -212,7 +212,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
                 logger.info('Psyllid still running. Telling it to stop the run')
                 self.provider.cmd(self.psyllid_interface, 'stop_run', payload = self.payload_channel)
         except core.exceptions.DriplineError:
-            logger.error('Getting Psyllid status at end of run failed')
+            logger.critical('Getting Psyllid status at end of run failed')
             logger.info('unblock channel')
             payload = {'channel': self.channel_id}
             try:
@@ -271,7 +271,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         if result['values'][0]!=True:
             logger.warning('Could not set central frequency in Psyllid')
             self.freq_dict[self.channel_id]=None
-            raise core.exceptions.DriplineGenericDAQError('Could not set central frequency in Psyllid stream')
+            raise core.exceptions.DriplineGenericDAQError('Could not set central frequency of psyllid instance')
 
 
     # trigger control

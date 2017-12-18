@@ -37,6 +37,7 @@ class PsyllidProvider(core.Provider):
         self.channel_dict = {'a': 'ch0', 'b': 'ch1', 'c': 'ch2'}
         self.freq_dict = {'a': None, 'b': None, 'c': None}
         self.mode_dict = {'a':None, 'b':None, 'c':None}
+        self.mode_testing = False
 
 
     def check_all_psyllid_instances(self):
@@ -53,9 +54,7 @@ class PsyllidProvider(core.Provider):
 
                 except core.exceptions.DriplineGenericDAQError:
                     logger.warning('No matching Psyllid instance for channel {} present'.format(channel))
-                except Exception as e:
-                    logger.error('Unexpected error during startup')
-                    raise 
+
 
         # Summary after startup
         logger.info('Status of channels: {}'.format(self.status_value_dict))
@@ -85,6 +84,7 @@ class PsyllidProvider(core.Provider):
 
 
     def get_acquisition_mode(self, channel):
+        self.mode_testing = True
         if self.freq_dict[channel]!=None:
             cf = self.freq_dict[channel]
         else:
@@ -96,6 +96,7 @@ class PsyllidProvider(core.Provider):
            if self.set_central_frequency(channel=channel, cf=cf)==False:
                 self.mode_dict[channel]=None
                 logger.info('Psyllid is not in triggered mode')
+        self.mode_testing = False
         return self.mode_dict[channel]
 
 
@@ -184,12 +185,14 @@ class PsyllidProvider(core.Provider):
             return True
 
         except core.exceptions.DriplineError:
-            logger.error('Could not set central frequency of Psyllid instance for channel {}'.format(channel))
-            self.freq_dict[channel]=None
-            return False
-        except Exception as e:
-            logger.error('Unexpected error in set_central_frequency')
-            raise e
+            if self.mode_testing == True:
+                self.freq_dict[channel]=None
+                logger.info('Could not set central frequency of Psyllid instance for channel {}'.format(channel))
+                return False
+            else:
+                logger.critical('Could not set central frequency of Psyllid instance for channel {}'.format(channel))
+                self.freq_dict[channel]=None
+                return False
 
 
     def start_run(self, channel, duration, filename):
