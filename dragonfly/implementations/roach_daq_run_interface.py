@@ -186,13 +186,13 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         payload = {'channel':self.channel_id, 'filename': os.path.join(directory, psyllid_filename), 'duration':duration}
         try:
             self.provider.cmd(self.psyllid_interface, 'start_run', payload = payload)
-        except core.exceptions.DriplineError:
-            logger.critical('Error from psyllid provider or psyllid')
+        except core.exceptions.DriplineError as e:
+            logger.critical('Error from psyllid provider or psyllid. Starting psyllid run failed')
             payload = {'channel': self.channel_id}
             try:
                 self.provider.cmd(self.daq_target, 'unblock_channel', payload = payload)
             finally:
-                raise core.exceptions.DriplineGenericDAQError('Starting psyllid run failed')
+                raise e
         except Exception as e:
             logger.error('Local error')
             payload = {'channel': self.channel_id}
@@ -238,6 +238,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         # in case things go really wrong...
         self.provider.cmd(self.psyllid_interface, 'quit_psyllid', payload = self.payload_channel)
         self.provider.cmd(self.daq_target, 'unblock_channel', payload = self.payload_channel)
+        return 'Psyllid stopped'
 
 
     # frequency sets and gets
@@ -378,4 +379,6 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         filename = '{}_frequency_mask_channel_{}_cf_{}.json'.format(timestr, self.channel_id, self.freq_dict[self.channel_id])
         path = os.path.join(self.mask_target_path, filename)
         payload = {'channel':self.channel_id, 'filename':path}
-        result = self.provider.cmd(self.psyllid_interface, 'make_trigger_mask', payload = payload)
+        self.provider.cmd(self.psyllid_interface, 'make_trigger_mask', payload = payload)
+
+        return 'Awesome, the mask has been generated'
