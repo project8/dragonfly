@@ -274,7 +274,7 @@ class PsyllidProvider(core.Provider):
 
 
     # pre-trigger and skip-tolerance control
-    def set_time_window(self, channel='a', pretrigger_time=2e-3, skip_tolerance=5e-3, channel='a'):
+    def set_time_window(self, channel='a', pretrigger_time=2e-3, skip_tolerance=5e-3):
         if self.mode_dict[channel] != 'triggered':
             logger.error('Psyllid instance is not in triggered mode')
             raise core.exceptions.DriplineGenericDAQError("Psyllid instance is not in triggered mode")
