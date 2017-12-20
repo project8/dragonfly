@@ -28,6 +28,7 @@ class PsyllidProvider(core.Provider):
                  queue_c = 'channel_c_psyllid',
                  set_condition_list = [],
                  channel_dict = {'a': 'ch0', 'b': 'ch1', 'c': 'ch2'},
+                 temp_file = '/temp/empty_egg_file.egg',
                  **kwargs):
 
         core.Provider.__init__(self, **kwargs)        
@@ -39,6 +40,7 @@ class PsyllidProvider(core.Provider):
         self.status_dict = {x: None for x in channel_dict.keys()}
         self.status_value_dict = {x: None for x in channel_dict.keys()}
         self.mode_testing = False
+        self.temp_file = temp_file
 
 
     # check_all_psyllid_instances populates all dictionaries by checking te configuarions of all psyllid instances
@@ -80,6 +82,45 @@ class PsyllidProvider(core.Provider):
         return active_channels
 
 
+    # tests whether psyllid is in streaming or triggering mode
+    def get_acquisition_mode(self, channel):
+        self.mode_testing = True
+        if self.freq_dict[channel]!=None:
+            cf = self.freq_dict[channel]
+        else:
+            cf = 800e6
+        self.mode_dict[channel]='streaming'
+        if self.set_central_frequency(channel=channel, cf=cf)==False:
+           logger.info('Psyllid is not in streaming mode')
+           self.mode_dict[channel]='triggering'
+           if self.set_central_frequency(channel=channel, cf=cf)==False:
+                self.mode_dict[channel]=None
+                logger.info('Psyllid is not in triggering mode')
+        self.mode_testing = False
+        return self.mode_dict[channel]
+
+
+    # counts how many streams (stremaing or triggering) are set up in psyllid and retuns number 
+    def get_number_of_streams(self, channel):
+        stream_count = 0
+        for i in range(3):
+            try:
+                request = '.node-config.ch'+str(i)+'.strw'
+                self.provider.get(self.queue_dict[channel]+request)
+                stream_count += 1
+                self.mode_dict[channel]='streaming'
+            except core.exceptions.DriplineError:
+                try:
+                    request = '.node-config.ch'+str(i)+'.trw'
+                    self.provider.get(self.queue_dict[channel]+request)
+                    stream_count += 1
+                    self.mode_dict[channel]='triggering'
+                except core.exceptions.DriplineError:
+                    pass  
+        logger.info('Number of streams for channel {}: {}'.format(channel, stream_count))
+        return stream_count
+
+
     # asks the psyllid instance what state it is in and returns that state
     # if no psyllid is running exception is caught and status set to None
     def request_status(self, channel):
@@ -100,24 +141,6 @@ class PsyllidProvider(core.Provider):
             logger.info('Psyllid is running. Status is {}'.format(self.status_dict[channel]))
             logger.info('Status in numbers: {}'.format(self.status_value_dict[channel]))
             return self.status_value_dict[channel]
-
-
-    # tests whether psyllid is in streaming or triggering mode
-    def get_acquisition_mode(self, channel):
-        self.mode_testing = True
-        if self.freq_dict[channel]!=None:
-            cf = self.freq_dict[channel]
-        else:
-            cf = 800e6
-        self.mode_dict[channel]='streaming'
-        if self.set_central_frequency(channel=channel, cf=cf)==False:
-           logger.info('Psyllid is not in streaming mode')
-           self.mode_dict[channel]='triggering'
-           if self.set_central_frequency(channel=channel, cf=cf)==False:
-                self.mode_dict[channel]=None
-                logger.info('Psyllid is not in triggering mode')
-        self.mode_testing = False
-        return self.mode_dict[channel]
 
 
     # tells psyllid to activate and checks whether activation was successful
@@ -216,6 +239,13 @@ class PsyllidProvider(core.Provider):
                 raise e
 
 
+    # check psyllid is using monarch
+    def is_psyllid_using_monarch(self, channel):
+        result =  self.provider.get(self.queue_dict[channel]+'.use-monarch')
+        logger.info('Psyllid channel {} is using monarch: {}'.format(channel, result))
+        return result
+
+
     # tells psyllid to start a run
     # sets duration and filename for this run in psyllid
     def start_run(self, channel, duration, filename):
@@ -228,27 +258,6 @@ class PsyllidProvider(core.Provider):
     # this method is for interrupting runs
     def stop_run(self, channel):
         self.provider.cmd(self.queue_dict[channel], 'stop-run')
-
-
-    # counts how many streams (stremaing or triggering) are set up in psyllid and retuns number 
-    def get_number_of_streams(self, channel):
-        stream_count = 0
-        for i in range(3):
-            try:
-                request = '.node-config.ch'+str(i)+'.strw'
-                self.provider.get(self.queue_dict[channel]+request)
-                stream_count += 1
-                self.mode_dict[channel]='streaming'
-            except core.exceptions.DriplineError:
-                try:
-                    request = '.node-config.ch'+str(i)+'.trw'
-                    self.provider.get(self.queue_dict[channel]+request)
-                    stream_count += 1
-                    self.mode_dict[channel]='triggering'
-                except core.exceptions.DriplineError:
-                    pass  
-        logger.info('Number of streams for channel {}: {}'.format(channel, stream_count))
-        return stream_count
 
 
     ### trigger control ###
@@ -395,26 +404,32 @@ class PsyllidProvider(core.Provider):
 
         logger.info('Switch tf_roach_receiver to freq-only')
         request = 'run-daq-cmd.{}.tfrr.freq-only'.format(str(self.channel_dict[channel]))
-        result = self.provider.cmd(self.queue_dict[channel],request)
+        self.provider.cmd(self.queue_dict[channel],request)
 
         logger.info('Switch frequency_mask_trigger to update-mask')
         request = 'run-daq-cmd.{}.fmt.update-mask'.format(str(self.channel_dict[channel]))
-        result = self.provider.cmd(self.queue_dict[channel],request)
+        self.provider.cmd(self.queue_dict[channel],request)
         time.sleep(1)
 
+        logger.info('Telling psyllid to not use monarch when starting next run')
+        sel.provider.set(self.queue_dict[channel]+'.use-monarch', False)
+
         logger.info('Start short run to record mask')
-        self.start_run(channel ,1000, '/home/project8/fmt_update.egg')
+        self.start_run(channel ,1000, self.temp_file)
         time.sleep(1)
 
         logger.info('Write mask to file')
         request = 'run-daq-cmd.{}.fmt.write-mask'.format(str(self.channel_dict[channel]))
         payload = {'filename': filename}
-        result = self.provider.cmd(self.queue_dict[channel], request, payload=payload)
+        self.provider.cmd(self.queue_dict[channel], request, payload=payload)
+
+        logger.info('Telling psyllid to use monarch again for next run')
+        sel.provider.set(self.queue_dict[channel]+'.use-monarch', True)
 
         logger.info('Switch tf_roach_receiver back to time and freq')
         request = 'run-daq-cmd.{}.tfrr.time-and-freq'.format(str(self.channel_dict[channel]))
-        result = self.provider.cmd(self.queue_dict[channel],request)
+        self.provider.cmd(self.queue_dict[channel],request)
 
         logger.info('Switch frequency mask trigger to apply-trigger')
         request = 'run-daq-cmd.{}.fmt.apply-trigger'.format(str(self.channel_dict[channel]))
-        result = self.provider.cmd(self.queue_dict[channel],request)
+        self.provider.cmd(self.queue_dict[channel],request)
