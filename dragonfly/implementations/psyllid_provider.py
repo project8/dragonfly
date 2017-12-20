@@ -61,7 +61,23 @@ class PsyllidProvider(core.Provider):
         logger.info('Status of channels: {}'.format(self.status_value_dict))
         logger.info('Set central frequencies: {}'.format(self.freq_dict))
         logger.info('Streaming or triggering mode: {}'.format(self.mode_dict))
+
+    @property
+    def acquisition_modes(self):
         return self.mode_dict
+
+
+    @property
+    def number_of_channels(self):
+        active_channels = [i for i in self.freq_dict.keys() if self.freq_dict[i]!=None]
+        logger.info('Active channels are {}'.format(active_channels))
+        return len(active_channels)
+
+
+    @property
+    def active_channels(self):
+        active_channels = [i for i in self.status_value_dict.keys() if self.status_value_dict[i]==4]
+        return active_channels
 
 
     def request_status(self, channel):
@@ -75,7 +91,7 @@ class PsyllidProvider(core.Provider):
             return self.status_value_dict[channel]
         except Exception as e:
             logger.error('Something else went wrong')
-            raise
+            raise e
         else:
             self.status_dict[channel] = result['server']['status']
             self.status_value_dict[channel] = result['server']['status-value']
@@ -106,15 +122,14 @@ class PsyllidProvider(core.Provider):
             logger.info('Activating Psyllid instance for channel {}'.format(channel))
             self.provider.cmd(self.queue_dict[channel], 'activate-daq')
         else:
-            logger.warning('Cannot activate Psyllid instance of channel {}'.format(channel))
-            return False
+            logger.error('Cannot activate Psyllid instance of channel {}'.format(channel))
+            raise core.exceptions.DriplineGenericDAQError('Psyllid is not deactivated')
         time.sleep(1)
         self.request_status(channel)
         if self.status_value_dict[channel]!=4:
-            logger.warning('Activating failed')
-            return False
-        else:
-            return True
+            logger.error('Activating failed')
+            raise core.exceptions.DriplineGenericDAQError('Activating psyllid failed')
+
 
 
     def deactivate(self, channel):
@@ -122,15 +137,13 @@ class PsyllidProvider(core.Provider):
             logger.info('Deactivating Psyllid instance of channel {}'.format(channel))
             self.provider.cmd(self.queue_dict[channel],'deactivate-daq')
         else:
-            logger.warning('Cannot deactivate Psyllid instance of channel {}'.format(channel))
-            return False
+            logger.error('Cannot deactivate Psyllid instance of channel {}'.format(channel))
+            raise core.exceptions.DriplineGenericDAQError('Psyllid is already deactivated')
         time.sleep(1)
         self.request_status(channel)
         if self.status_value_dict[channel]!=0:
-            logger.warning('Deactivating failed')
-            return False
-        else:
-            return True
+            logger.error('Deactivating failed')
+            raise core.exceptions.DriplineGenericDAQError('Deactivating psyllid failed')
 
 
     def reactivate(self, channel):
@@ -138,15 +151,13 @@ class PsyllidProvider(core.Provider):
             logger.info('Reactivating Psyllid instance of channel {}'.format(channel))
             self.provider.cmd(self.queue_dict[channel], 'reactivate-daq')
         else:
-            logger.warning('Cannot reactivate Psyllid instance of channel {}'.format(channel))
-            return False
+            logger.error('Cannot reactivate Psyllid instance of channel {}'.format(channel))
+            raise core.exceptions.DriplineGenericDAQError('Psyllid is not activated and can therefore not be reactivated')
         time.sleep(2)
         self.request_status(channel)
         if self.status_value_dict[channel]!=4:
-            logger.warning('Reactivating failed')
-            return False
-        else:
-            return True
+            logger.error('Reactivating failed')
+            raise core.exceptions.DriplineGenericDAQError('Reactivating psyllid failed')
 
 
     def quit_psyllid(self, channel):
@@ -185,7 +196,7 @@ class PsyllidProvider(core.Provider):
             self.freq_dict[channel]=cf
             return True
 
-        except core.exceptions.DriplineError:
+        except core.exceptions.DriplineError as e:
             if self.mode_testing == True:
                 self.freq_dict[channel]=None
                 logger.info('Could not set central frequency of Psyllid instance for channel {}'.format(channel))
@@ -193,7 +204,7 @@ class PsyllidProvider(core.Provider):
             else:
                 logger.critical('Could not set central frequency of Psyllid instance for channel {}'.format(channel))
                 self.freq_dict[channel]=None
-                return False
+                raise e
 
 
     def start_run(self, channel, duration, filename):
@@ -204,18 +215,6 @@ class PsyllidProvider(core.Provider):
     def stop_run(self, channel):
         self.provider.cmd(self.queue_dict[channel], 'stop-run')
 
-
-    @property
-    def number_of_channels(self):
-        active_channels = [i for i in self.freq_dict.keys() if self.freq_dict[i]!=None]
-        logger.info('Active channels are {}'.format(active_channels))
-        return len(active_channels)
-
-
-    @property
-    def active_channels(self):
-        active_channels = [i for i in self.status_value_dict.keys() if self.status_value_dict[i]==4]
-        return active_channels
 
     # this method counts how many streams (stremaing or triggering) are set up in a psyllid instance. 
     # If we trust that we don't mix up multi stream and single stream config files in the furture we dont need it
@@ -253,7 +252,7 @@ class PsyllidProvider(core.Provider):
         else:
             self._set_trigger_mode( "single-level-trigger", channel)
 
-        result = self._set_n_triggers( n_triggers, channel)
+        self._set_n_triggers( n_triggers, channel)
 
 
     def get_trigger_configuration(self, channel='a'):
