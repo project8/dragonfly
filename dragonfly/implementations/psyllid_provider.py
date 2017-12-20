@@ -27,16 +27,17 @@ class PsyllidProvider(core.Provider):
                  queue_b = 'channel_b_psyllid',
                  queue_c = 'channel_c_psyllid',
                  set_condition_list = [],
+                 channel_dict = {'a': 'ch0', 'b': 'ch1', 'c': 'ch2'},
                  **kwargs):
 
         core.Provider.__init__(self, **kwargs)        
         self.queue_dict = {'a':queue_a, 'b':queue_b, 'c':queue_c}
         self._set_condition_list = set_condition_list
-        self.status_dict = {'a':None, 'b':None, 'c':None}
-        self.status_value_dict = {'a':None, 'b':None, 'c':None}
-        self.channel_dict = {'a': 'ch0', 'b': 'ch1', 'c': 'ch2'}
-        self.freq_dict = {'a': None, 'b': None, 'c': None}
-        self.mode_dict = {'a':None, 'b':None, 'c':None}
+        self.channel_dict = channel_dict
+        self.freq_dict = {x: None for x in channel_dict.keys()}
+        self.mode_dict = {x: None for x in channel_dict.keys()}
+        self.status_dict = {x: None for x in channel_dict.keys()}
+        self.status_value_dict = {x: None for x in channel_dict.keys()}
         self.mode_testing = False
 
 
