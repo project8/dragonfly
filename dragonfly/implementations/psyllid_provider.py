@@ -41,6 +41,7 @@ class PsyllidProvider(core.Provider):
         self.mode_testing = False
 
 
+    # check_all_psyllid_instances populates all dictionaries by checking te configuarions of all psyllid instances
     def check_all_psyllid_instances(self):
         for channel in self.channel_dict.keys():
             if self.request_status(channel)!=None:
@@ -62,24 +63,25 @@ class PsyllidProvider(core.Provider):
         logger.info('Set central frequencies: {}'.format(self.freq_dict))
         logger.info('Streaming or triggering mode: {}'.format(self.mode_dict))
 
+
+    # returns mode_dict which contains the information which psyllid instance is in triggering or streaming mode
+    # stopped psyllid instances are in acquisition mode None
+    # content of mode_dict is not verified by (re-) checking psyllid
+    # content of mode_dict is updated by calling prepare_daq_system (in roach_daq_run_interface) or check_all_psyllid_instances
     @property
     def acquisition_modes(self):
         return self.mode_dict
 
 
-    @property
-    def number_of_channels(self):
-        active_channels = [i for i in self.freq_dict.keys() if self.freq_dict[i]!=None]
-        logger.info('Active channels are {}'.format(active_channels))
-        return len(active_channels)
-
-
+    # returns the number of psyllid instances that are in activated
     @property
     def active_channels(self):
         active_channels = [i for i in self.status_value_dict.keys() if self.status_value_dict[i]==4]
         return active_channels
 
 
+    # asks the psyllid instance what state it is in and returns that state
+    # if no psyllid is running exception is caught and status set to None
     def request_status(self, channel):
         logger.info('Checking Psyllid status of channel {}'.format(channel))
         try:
@@ -100,6 +102,7 @@ class PsyllidProvider(core.Provider):
             return self.status_value_dict[channel]
 
 
+    # tests whether psyllid is in streaming or triggering mode
     def get_acquisition_mode(self, channel):
         self.mode_testing = True
         if self.freq_dict[channel]!=None:
@@ -117,6 +120,7 @@ class PsyllidProvider(core.Provider):
         return self.mode_dict[channel]
 
 
+    # tells psyllid to activate and checks whether activation was successful
     def activate(self, channel):
         if self.status_value_dict[channel] == 0:
             logger.info('Activating Psyllid instance for channel {}'.format(channel))
@@ -131,7 +135,7 @@ class PsyllidProvider(core.Provider):
             raise core.exceptions.DriplineGenericDAQError('Activating psyllid failed')
 
 
-
+    # tells psyllid to deactivate and checks whether deactivation was successful
     def deactivate(self, channel):
         if self.status_value_dict[channel] != 0:
             logger.info('Deactivating Psyllid instance of channel {}'.format(channel))
@@ -146,6 +150,7 @@ class PsyllidProvider(core.Provider):
             raise core.exceptions.DriplineGenericDAQError('Deactivating psyllid failed')
 
 
+    # tells psyllid to reactivate and checks whether reactivation was successful
     def reactivate(self, channel):
         if self.status_value_dict[channel] == 4:
             logger.info('Reactivating Psyllid instance of channel {}'.format(channel))
@@ -160,16 +165,19 @@ class PsyllidProvider(core.Provider):
             raise core.exceptions.DriplineGenericDAQError('Reactivating psyllid failed')
 
 
+    # tells psyllid to quit
     def quit_psyllid(self, channel):
         self.provider.cmd(self.queue_dict[channel], 'quit-psyllid')
         logger.info('psyllid quit!')
 
 
+    # returns a dictionary with all central frequencies
     @property
     def all_central_frequencies(self):
         return self.freq_dict
 
 
+    # asks psyllid what the set central frequency is and returns it
     def get_central_frequency(self, channel):
         routing_key_map = {
                            'streaming':'strw',
@@ -182,7 +190,9 @@ class PsyllidProvider(core.Provider):
         return self.freq_dict[channel]
 
     
-
+    # sets central frequency in psyllid
+    # returns True in case of success and Fals in case of failure because this method is used by get_acquisition mode which checks the return
+    # if it is not used for testing the mode, failing to set the central frequency will result in error
     def set_central_frequency(self, channel, cf):
         #logger.info('Trying to set cf of channel {} to {}'.format(channel, cf))
         routing_key_map = {
@@ -195,7 +205,6 @@ class PsyllidProvider(core.Provider):
             logger.info('Set central frequency of {} writer for channel {} to {} Hz'.format(self.mode_dict[channel], channel, cf))
             self.freq_dict[channel]=cf
             return True
-
         except core.exceptions.DriplineError as e:
             if self.mode_testing == True:
                 self.freq_dict[channel]=None
@@ -207,17 +216,21 @@ class PsyllidProvider(core.Provider):
                 raise e
 
 
+    # tells psyllid to start a run
+    # sets duration and filename for this run in psyllid
     def start_run(self, channel, duration, filename):
         payload = {'duration':duration, 'filename':filename}
         self.provider.cmd(self.queue_dict[channel], 'start-run', payload=payload)
 
 
+    # tells psyllid to stop a run
+    # runs will stop automatically after the set duration
+    # this method is for interrupting runs
     def stop_run(self, channel):
         self.provider.cmd(self.queue_dict[channel], 'stop-run')
 
 
-    # this method counts how many streams (stremaing or triggering) are set up in a psyllid instance. 
-    # If we trust that we don't mix up multi stream and single stream config files in the furture we dont need it
+    # counts how many streams (stremaing or triggering) are set up in psyllid and retuns number 
     def get_number_of_streams(self, channel):
         stream_count = 0
         for i in range(3):
@@ -238,7 +251,8 @@ class PsyllidProvider(core.Provider):
         return stream_count
 
 
-    # trigger control
+    ### trigger control ###
+    # set all trigger parameters at once
     def set_trigger_configuration(self, channel='a', threshold=16, threshold_high=0, n_triggers=1,):
         if self.mode_dict[channel] != 'triggering':
             logger.error('Psyllid instance is not in triggering mode')
@@ -255,6 +269,7 @@ class PsyllidProvider(core.Provider):
         self.set_n_triggers( n_triggers, channel)
 
 
+    # returns all trigger parameters
     def get_trigger_configuration(self, channel='a'):
         if self.mode_dict[channel] != 'triggering':
             logger.error('Psyllid instance is not in triggering mode')
@@ -273,7 +288,7 @@ class PsyllidProvider(core.Provider):
         return {'threshold': threshold, 'threshold_high' : threshold_high, 'n_triggers' : n_triggers}
 
 
-    # pre-trigger and skip-tolerance control
+    # does all time window settings at once
     def set_time_window(self, channel='a', pretrigger_time=2e-3, skip_tolerance=5e-3):
         if self.mode_dict[channel] != 'triggering':
             logger.error('Psyllid instance is not in triggering mode')
@@ -285,6 +300,7 @@ class PsyllidProvider(core.Provider):
         self.set_central_frequency(channel, self.freq_dict[channel])
 
 
+    # returns all time window settings
     def get_time_window(self, channel='a'):
         if self.mode_dict[channel] != 'triggering':
             logger.error('Psyllid instance is not in triggering mode')
@@ -296,7 +312,7 @@ class PsyllidProvider(core.Provider):
         return {'pretrigger_time': pretrigger_time, 'skip_tolerance': skip_tolerance}
 
 
-    # internal psyllid time window and trigger parameter sets and gets
+    # individual time window and trigger parameter sets and gets
     def set_pretrigger_time(self, pretrigger_time, channel='a'):
         n_pretrigger_packets = int(round(pretrigger_time/4.096e-5))
         logger.info('Setting psyllid pretrigger to {} packets'.format(n_pretrigger_packets))
@@ -371,7 +387,7 @@ class PsyllidProvider(core.Provider):
         return n_triggers
 
 
-    # tell psyllid to record a frequency mask, write it to a json file and prepare for triggering run
+    # tells psyllid to record a frequency mask, write it to a json file and prepare for triggering run
     def make_trigger_mask(self, channel='a', filename='~/fmt_mask.json'):
         if self.mode_dict[channel] != 'triggering':
             logger.error('Psyllid instance is not in triggering mode')
