@@ -54,7 +54,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
 
 
 
-
+    # checks psyllid and roach, checks acquisition mode, sets roach frequency to psyllid frequency
     def prepare_daq_system(self):
         logger.info('Doing setup checks...')
         self._check_psyllid_instance()
@@ -74,6 +74,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         self.central_frequency = freqs[self.channel_id]
 
 
+    # asks roach2_interface whether roach is running and adc is calibrated
     def _check_roach2_is_ready(self):
         logger.info('Checking ROACH2 status')
         #call is_running from roach2_interface
@@ -91,6 +92,8 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
             raise core.exceptions.DriplineGenericDAQError('ROACH2 is not running')
 
 
+    # checks psyllid instance is running and matches channel settings
+    # activates psyllid if deactivates
     def _check_psyllid_instance(self):
         logger.info('Checking Psyllid service & instance')
 
@@ -113,6 +116,8 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
             raise core.exceptions.DriplineGenericDAQError('The Psyllid and ROACH channel interfaces do not match')
 
 
+    # requests status of psyllid
+    # returns True if status is 5
     @property
     def is_running(self):
         result = self.provider.cmd(self.psyllid_interface, 'request_status', payload = self.payload_channel, timeout=10)
@@ -123,7 +128,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         else:
             return False
 
-
+    # checks everything that could prevent a successful run (in theory)
     def _do_checks(self):
         if self._run_time ==0:
             raise core.exceptions.DriplineValueError('run time is zero')
@@ -161,6 +166,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         return "checks successful"
 
 
+    # sets frequency information in _run_metadata
     def determine_RF_ROI(self):
         logger.info('trying to determine roi')
 
@@ -179,7 +185,12 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         logger.debug('RF Max: {}'.format(self._run_meta['RF_ROI_MAX']))
 
 
-
+    # blocks roach channel
+    # converts seconds to miliseconds
+    # creates directory for data files
+    # tells psyllid_provider to tell psyllid to start the run
+    # unblocks roach channels if that fails
+    # sets run time in _stop_handle for end of run
     def _start_data_taking(self, directory, filename):
         logger.info('block roach channel')
         self.provider.cmd(self.daq_target, 'block_channel', payload = self.payload_channel)
@@ -215,7 +226,9 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
             self._stop_handle = self.service._connection.add_timeout(self._run_time, self.end_run)
 
 
-
+    # checks whether psyllid run has stopped
+    # if it hasn't, stops run
+    # unblocks roach channel no matter what
     def _stop_data_taking(self):
         try:
             if self.is_running:
@@ -243,11 +256,11 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
                 raise core.exceptions.DriplineGenericDAQError('Psyllid must have crashed during run')
 
 
+    # makes psyllid exit and unblocks roach channel
     def stop_psyllid(self):
         # in case things go really wrong...
         self.provider.cmd(self.psyllid_interface, 'quit_psyllid', payload = self.payload_channel)
         self.provider.cmd(self.daq_target, 'unblock_channel', payload = self.payload_channel)
-
 
 
     # frequency sets and gets
@@ -267,7 +280,10 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
     def central_frequency(self):
         return self.freq_dict[self.channel_id]
 
-
+    # sets central frequency in roach channel
+    # roach2_interface returns true frequency (can deviate from requested cf)
+    # sets same freqeuncy in psyllid instance
+    # raises error if setting in psyllid failed (exceptions are caught in psyllid_provider)
     @central_frequency.setter
     def central_frequency(self, cf):
         payload = {'cf':float(cf), 'channel':self.channel_id}
@@ -284,7 +300,8 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
             raise core.exceptions.DriplineGenericDAQError('Could not set central frequency of psyllid instance')
 
 
-    # trigger control
+    ### trigger control ###
+    # all trigger parameters are properties here
     @property
     def snr_threshold(self):
         result = self.provider.cmd(self.psyllid_interface, 'get_fmt_snr_threshold', payload = self.payload_channel)['values'][0]
@@ -317,6 +334,8 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         self.provider.cmd(self.psyllid_interface, 'set_n_triggers', payload = {'channel': self.channel_id, 'n_triggers': n_triggers})
 
 
+    # changing the pretrigger time or the skip tolerance requires reactivation of psyllid
+    # this results in the loss of all trigger settings
     @property
     def pretrigger_time(self):
         result = self.provider.cmd(self.psyllid_interface, 'get_pretrigger_time', payload = self.payload_channel)['values'][0]
@@ -339,6 +358,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         self.provider.cmd(self.psyllid_interface, 'reactivate', payload = self.payload_channel)
 
 
+    # returns the type of trigger that is currently set
     @property
     def trigger_type(self):
         result = self.provider.cmd(self.psyllid_interface, 'get_trigger_configuration', payload = self.payload_channel)
@@ -354,7 +374,12 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
 
         return trigger_type
 
+    @trigger_type.setter
+    def trigger_type(self):
+        raise core.exceptions.DriplineGenericDAQError('Trigger type is result of trigger settings and cannot be set directly')
 
+
+    # returns all trigger settings
     @property
     def all_trigger_settings(self):
         if self.trigger_type == None:
@@ -368,28 +393,31 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         raise core.exceptions.DriplineGenericDAQError('Use configure_trigger command to set all trigger parameters at once')
 
 
+    # set all trigger parameters with one command
     def configure_trigger(self, low_threshold, high_threshold, n_triggers):
         payload = {'threshold' : low_threshold, 'threshold_high' : high_threshold, 'n_triggers' : n_triggers, 'channel' : self.channel_id}
         self.provider.cmd(self.psyllid_interface, 'set_trigger_configuration', payload = payload)
 
 
+    # returns pretrigger time and skip tolerance
     @property
     def time_window_settings(self):
         result = self.provider.cmd(self.psyllid_interface, 'get_time_window', payload = self.payload_channel)
         return result
-
 
     @time_window_settings.setter
     def time_window_settings(self):
         raise core.exceptions.DriplineGenericDAQError('Use configure_time_window command to set skip_tolerance and pretrigger_time')
 
 
+    # set pretrigger time and skip tolerance with one command
     def configure_time_window(self, pretrigger_time, skip_tolerance):
         payload =  {'skip_tolerance': skip_tolerance, 'pretrigger_time': pretrigger_time, 'channel' : self.channel_id}
         self.provider.cmd(self.psyllid_interface, 'set_time_window', payload = payload)
 
 
-    # Acquire and save new mask
+    # acquire and save new mask
+    # raises exception if no mask_target_path was not set in config file
     def make_trigger_mask(self):
         if self.mask_target_path == None:
             logger.error('No target path set for trigger mask')
