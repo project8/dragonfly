@@ -267,15 +267,14 @@ class PsyllidProvider(core.Provider):
             logger.error('Psyllid instance is not in triggering mode')
             raise core.exceptions.DriplineGenericDAQError("Psyllid instance is not in triggering mode")
 
-
         self.set_fmt_snr_threshold( threshold, channel)
-        if threshold_high > threshold:
-            self.set_fmt_snr_high_threshold( threshold_high, channel)
-            self.set_trigger_mode( "two-level-trigger", channel)
-        else:
-            self.set_trigger_mode( "single-level-trigger", channel)
-
+        self.set_fmt_snr_high_threshold( threshold_high, channel)
         self.set_n_triggers( n_triggers, channel)
+
+        if threshold_high > threshold:
+            self._set_trigger_mode( "two-level-trigger", channel)
+        else:
+            self._set_trigger_mode( "single-level-trigger", channel)
 
 
     # returns all trigger parameters
@@ -284,17 +283,12 @@ class PsyllidProvider(core.Provider):
             logger.error('Psyllid instance is not in triggering mode')
             raise core.exceptions.DriplineGenericDAQError("Psyllid instance is not in triggering mode")
 
-        threshold = self.get_fmt_snr_threshold( channel)
-        threshold_high = self.get_fmt_snr_high_threshold( channel)
-        n_triggers = self.get_n_triggers( channel)
-        trigger_mode = self.get_trigger_mode( channel )
+        threshold = self.get_fmt_snr_threshold( channel )
+        threshold_high = self.get_fmt_snr_high_threshold( channel )
+        n_triggers = self.get_n_triggers( channel )
+        trigger_mode = self._get_trigger_mode( channel )
 
-        # threshold_high !> threhold results in trigger_mode = 1
-        # threshold_high is not used in this case
-        if trigger_mode == "single-level-trigger":
-            threshold_high = None
-
-        return {'threshold': threshold, 'threshold_high' : threshold_high, 'n_triggers' : n_triggers}
+        return {'threshold': threshold, 'threshold_high' : threshold_high, 'n_triggers' : n_triggers, 'trigger_mode' : trigger_mode}
 
 
     # does all time window settings at once
@@ -372,16 +366,23 @@ class PsyllidProvider(core.Provider):
         return float(threshold)
 
 
-    def set_trigger_mode(self, mode_id, channel='a'):
+    def _set_trigger_mode(self, mode_id, channel='a'):
         request = '.active-config.{}.fmt.trigger-mode'.format(str(self.channel_dict[channel]))
         self.provider.set(self.queue_dict[channel]+request, mode_id)
         logger.info('Setting psyllid trigger mode to {} threshold trigger'.format(mode_id))
 
 
-    def get_trigger_mode(self, channel='a'):
+    def _get_trigger_mode(self, channel='a'):
         request = '.active-config.{}.fmt.trigger-mode'.format(str(self.channel_dict[channel]))
         trigger_mode = self.provider.get(self.queue_dict[channel]+request)['trigger-mode']
         return trigger_mode
+
+
+    def set_trigger_mode(self, channel='a'):
+        if self.get_fmt_snr_high_threshold > self.get_fmt_snr_threshold:
+            self._set_trigger_mode('two-level-trigger', channel)
+        else:
+            self._set_trigger_mode('single-level-trigger', channel)
 
 
     def set_n_triggers(self, n_triggers, channel='a'):

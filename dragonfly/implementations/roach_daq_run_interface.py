@@ -293,6 +293,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
     @snr_threshold.setter
     def snr_threshold(self, threshold):
         self.provider.cmd(self.psyllid_interface, 'set_fmt_snr_threshold', payload = {'channel': self.channel_id, 'threshold': threshold})
+        self.provider.cmd(self.psyllid_interface, 'set_trigger_mode', payload = self.payload_channel)
 
 
     @property
@@ -303,6 +304,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
     @snr_high_threshold.setter
     def snr_high_threshold(self, threshold):
         self.provider.cmd(self.psyllid_interface, 'set_fmt_snr_high_threshold', payload = {'channel': self.channel_id, 'threshold': threshold})
+        self.provider.cmd(self.psyllid_interface, 'set_trigger_mode', payload = self.payload_channel)
 
 
     @property
