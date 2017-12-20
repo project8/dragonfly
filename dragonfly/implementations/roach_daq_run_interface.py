@@ -54,39 +54,24 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
 
 
 
-    def _finish_configure(self):
+
+    def prepare_daq_system(self):
         logger.info('Doing setup checks...')
         self._check_psyllid_instance()
-        
-        if self.status_value == 0:
-            self.provider.cmd(self.psyllid_interface, 'activate', payload = self.payload_channel)
-            self.status_value = self.provider.cmd(self.psyllid_interface, 'request_status', payload = self.payload_channel)['values'][0]
-                
+
+        # find out whether psyllid instante is in streaming or triggering mode
+        acquisition_mode = self.provider.cmd(self.psyllid_interface, 'get_acquisition_mode', payload = self.payload_channel)
+        if acquisition_mode['values'][0] == None:
+            raise core.exceptions.DriplineGenericDAQError('Psyllid instance for this channel is not responding')
+        logger.info('Psyllid instance for this channel is in acquisition mode: {}'.format(acquisition_mode['values'][0]))
+        self._finish_configure()
+
         if self._check_roach2_is_ready() == False:
-            logger.warning('ROACH2 check indicates ADC is not calibrated')
+            logger.warning('ROACH2 check indicates ADC is not calibrated. Starting a run now will result in error')
 
         logger.info('Setting Psyllid central frequency identical to ROACH2 central frequency')
         freqs = self._get_roach_central_freqs()
         self.central_frequency = freqs[self.channel_id]
-
-
-    def prepare_daq_system(self):
-        acquisition_mode = self.provider.cmd(self.psyllid_interface, 'get_acquisition_mode', payload = self.payload_channel)
-        if acquisition_mode['values'][0] == None:
-            raise core.exceptions.DriplineGenericDAQError('Could not find running psyllid instance for this channel')
-        logger.info('Psyllid instance for this channel is in acquisition mode: {}'.format(acquisition_mode['values'][0]))
-        self._finish_configure()
-
-
-    @property
-    def is_running(self):
-        result = self.provider.cmd(self.psyllid_interface, 'request_status', payload = self.payload_channel, timeout=10)
-        self.status_value = result['values'][0]
-        logger.info('psyllid status is {}'.format(self.status_value))
-        if self.status_value==5:
-            return True
-        else:
-            return False
 
 
     def _check_roach2_is_ready(self):
@@ -109,11 +94,16 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
     def _check_psyllid_instance(self):
         logger.info('Checking Psyllid service & instance')
 
-        #check psyllid is responding by requesting status
+        # check psyllid is responding by requesting status
         self.status_value = self.provider.cmd(self.psyllid_interface, 'request_status', payload = self.payload_channel)['values'][0]
         if self.status_value == None:
             logger.error('Psyllid is not responding')
-            raise core.exceptions.DriplineGenericDAQError('Psyllid is not responding')        
+            raise core.exceptions.DriplineGenericDAQError('Psyllid is not responding')
+
+        # activate psyllid if deactivated
+        if self.status_value == 0:
+            self.provider.cmd(self.psyllid_interface, 'activate', payload = self.payload_channel)
+            self.status_value = self.provider.cmd(self.psyllid_interface, 'request_status', payload = self.payload_channel)['values'][0]
 
         #check channel match
         active_channels = self.provider.get(self.psyllid_interface + '.active_channels')
@@ -123,12 +113,23 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
             raise core.exceptions.DriplineGenericDAQError('The Psyllid and ROACH channel interfaces do not match')
 
 
+    @property
+    def is_running(self):
+        result = self.provider.cmd(self.psyllid_interface, 'request_status', payload = self.payload_channel, timeout=10)
+        self.status_value = result['values'][0]
+        logger.info('psyllid status is {}'.format(self.status_value))
+        if self.status_value==5:
+            return True
+        else:
+            return False
+
+
     def _do_checks(self):
         if self._run_time ==0:
             raise core.exceptions.DriplineValueError('run time is zero')
 
-        #checking psyllid
-        if self.is_running==True:
+        #checking that no run is in progress
+        if self.is_running == True:
             raise core.exceptions.DriplineGenericDAQError('Psyllid is already running')
 
         self._check_psyllid_instance()
@@ -141,9 +142,11 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         if result != True:
             raise core.exceptions.DriplineGenericDAQError('Psyllid is not using monarch and therefore not ready to write a file')
 
-        #checking roach
-        if self._check_roach2_is_ready() == False:
+        #checking roach is ready
+        if self._check_roach2_is_ready() != True:
             raise core.exceptions.DriplineGenericDAQError('ROACH2 is not ready. ADC not calibrated.')
+
+        # check channel is unblocked
         blocked_channels = self.provider.get(self.daq_target+ '.blocked_channels')
         if self.channel_id in blocked_channels: 
             raise core.exceptions.DriplineGenericDAQError('Channel is blocked')
@@ -180,7 +183,6 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
     def _start_data_taking(self, directory, filename):
         logger.info('block roach channel')
         self.provider.cmd(self.daq_target, 'block_channel', payload = self.payload_channel)
-        logger.info('start data taking')
 
         # switching from seconds to milisecons
         duration = self._run_time*1000.0
@@ -195,21 +197,21 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         try:
             self.provider.cmd(self.psyllid_interface, 'start_run', payload = payload)
         except core.exceptions.DriplineError as e:
-            logger.critical('Error from psyllid provider or psyllid. Starting psyllid run failed')
+            logger.critical('Error from psyllid provider or psyllid. Starting psyllid run failed.')
             payload = {'channel': self.channel_id}
             try:
                 self.provider.cmd(self.daq_target, 'unblock_channel', payload = payload)
             finally:
                 raise e
         except Exception as e:
-            logger.error('Local error')
+            logger.error('Something else went wrong.')
             payload = {'channel': self.channel_id}
             try:
                 self.provider.cmd(self.daq_target, 'unblock_channel', payload = payload)
             finally:
                 raise e
         else:
-            logger.info('waiting for {}s for run to finish'.format(self._run_time))
+            logger.info('Waiting for {} s for run to finish'.format(self._run_time))
             self._stop_handle = self.service._connection.add_timeout(self._run_time, self.end_run)
 
 
@@ -219,17 +221,16 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
             if self.is_running:
                 logger.info('Psyllid still running. Telling it to stop the run')
                 self.provider.cmd(self.psyllid_interface, 'stop_run', payload = self.payload_channel)
-        except core.exceptions.DriplineError:
-            logger.critical('Getting Psyllid status at end of run failed')
+        except core.exceptions.DriplineError as e:
+            logger.critical('Getting Psyllid status or stopping run failed')
             logger.info('unblock channel')
             payload = {'channel': self.channel_id}
             try:
                 self.provider.cmd(self.daq_target, 'unblock_channel', payload = payload)
             finally:
-                raise core.exceptions.DriplineGenericDAQError('Error at end of run')
+                raise e
         except Exception as e:
-            logger.error('Local error at end of run')
-            logger.info('unblock channel')
+            logger.error('Something else went wrong')
             payload = {'channel': self.channel_id}
             try:
                 self.provider.cmd(self.daq_target, 'unblock_channel', payload = payload)
