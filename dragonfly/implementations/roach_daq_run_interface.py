@@ -49,6 +49,9 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
             raise core.exceptions.DriplineValueError('The roach daq run interface interface requires a "hf_lo_freq" in its config file')
         self._hf_lo_freq = hf_lo_freq
 
+        if mask_target_path is None:
+            logger.warning('No mask target path set. Triggered data taking not possible.')
+
 
 
     def _finish_configure(self):
@@ -59,7 +62,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
             self.provider.cmd(self.psyllid_interface, 'activate', payload = self.payload_channel)
             self.status_value = self.provider.cmd(self.psyllid_interface, 'request_status', payload = self.payload_channel)['values'][0]
                 
-        if self._check_roach2_is_ready()==False:
+        if self._check_roach2_is_ready() == False:
             logger.warning('ROACH2 check indicates ADC is not calibrated')
 
         logger.info('Setting Psyllid central frequency identical to ROACH2 central frequency')
@@ -238,7 +241,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         # in case things go really wrong...
         self.provider.cmd(self.psyllid_interface, 'quit_psyllid', payload = self.payload_channel)
         self.provider.cmd(self.daq_target, 'unblock_channel', payload = self.payload_channel)
-        return 'Psyllid stopped'
+
 
 
     # frequency sets and gets
@@ -293,55 +296,6 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
 
 
     @property
-    def single_threshold_trigger(self):
-        logger.info(self.trigger_type)
-        if self.trigger_type != 'single_threshold':
-            return False
-        threshold = self.provider.cmd(self.psyllid_interface, 'get_trigger_configuration', payload = self.payload_channel)['threshold']
-        return {'threshold' : threshold}
-
-
-    def set_single_threshold_trigger(self, threshold):
-        payload = {'threshold' : threshold, 'threshold_high' : 0.0, 'n_triggers' : 1, 'channel' : self.channel_id}
-        self.provider.cmd(self.psyllid_interface, 'set_trigger_configuration', payload = payload)
-        result = self.provider.cmd(self.psyllid_interface, 'get_trigger_configuration', payload = self.payload_channel)
-        return {'threshold' : result['threshold']}
-
-
-    @property
-    def two_threshold_trigger(self):
-        if self.trigger_type != 'two_thresholds':
-            return False
-        result = self.provider.cmd(self.psyllid_interface, 'get_trigger_configuration', payload = self.payload_channel)
-        return {'low_threshold' : result['threshold'], 'high_threshold' : result['threshold_high']}
-
-
-    def set_two_threshold_trigger(self, high_threshold, low_threshold):
-        payload = {'threshold' : low_threshold, 'threshold_high' : high_threshold, 'n_triggers' : 1, 'channel' : self.channel_id}
-        self.provider.cmd(self.psyllid_interface, 'set_trigger_configuration', payload = payload)
-        result = self.provider.cmd(self.psyllid_interface, 'get_trigger_configuration', payload = self.payload_channel)
-        return {'low_threshold' : result['threshold'], 'high_threshold' : result['threshold_high']}
-
-
-    @property
-    def multi_trigger(self):
-        if self.trigger_type != 'multi_trigger':
-            return False
-        result = self.provider.cmd(self.psyllid_interface, 'get_trigger_configuration', payload = self.payload_channel)
-        skip_tolerance = self.provider.cmd(self.psyllid_interface, 'get_time_window', payload = self.payload_channel)['skip_tolerance']
-
-        # In addition to threshold and n_triggers, returns skip_tolerance as it is n_triggers/skip_tolerance that defines this trigger
-        return {'threshold' : result['threshold'], 'n_triggers' : result['n_triggers'], 'skip_tolerance': skip_tolerance}
-
-
-    def set_multi_trigger(self, threshold, n_triggers):
-        payload = {'threshold' : threshold, 'threshold_high' : 0.0, 'n_triggers' : n_triggers, 'channel' : self.channel_id}
-        self.provider.cmd(self.psyllid_interface, 'set_trigger_configuration', payload = payload)
-        result = self.provider.cmd(self.psyllid_interface, 'get_trigger_configuration', payload = self.payload_channel)
-        return {'threshold' : result['threshold'], 'n_triggers' : result['n_triggers']}
-
-
-    @property
     def all_trigger_settings(self):
         if self.trigger_type == None:
             return False
@@ -349,24 +303,30 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         return result
 
 
-    def set_trigger_manually(self, low_threshold, high_threshold, n_triggers):
+    @all_trigger_settings.setter
+    def all_trigger_settings(self):
+        raise core.exceptions.DriplineGenericDAQError('Use configure_trigger command to set all trigger parameters at once')
+
+
+    def configure_trigger(self, low_threshold, high_threshold, n_triggers):
         payload = {'threshold' : low_threshold, 'threshold_high' : high_threshold, 'n_triggers' : n_triggers, 'channel' : self.channel_id}
         self.provider.cmd(self.psyllid_interface, 'set_trigger_configuration', payload = payload)
-        result = self.provider.cmd(self.psyllid_interface, 'get_trigger_configuration', payload = self.payload_channel)
-        return result
 
 
     @property
-    def time_window(self):
+    def time_window_settings(self):
         result = self.provider.cmd(self.psyllid_interface, 'get_time_window', payload = self.payload_channel)
         return result
 
 
-    def set_time_window(self, pretrigger_time, skip_tolerance):
+    @time_window_settings.setter
+    def time_window_settings(self):
+        raise core.exceptions.DriplineGenericDAQError('Use configure_time_window command to set skip_tolerance and pretrigger_time')
+
+
+    def configure_time_window(self, pretrigger_time, skip_tolerance):
         payload =  {'skip_tolerance': skip_tolerance, 'pretrigger_time': pretrigger_time, 'channel' : self.channel_id}
         self.provider.cmd(self.psyllid_interface, 'set_time_window', payload = payload)
-        result = self.provider.cmd(self.psyllid_interface, 'get_time_window', payload = self.payload_channel)
-        return result
 
 
     # Acquire and save new mask
@@ -381,4 +341,3 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         payload = {'channel':self.channel_id, 'filename':path}
         self.provider.cmd(self.psyllid_interface, 'make_trigger_mask', payload = payload)
 
-        return 'Awesome, the mask has been generated'
