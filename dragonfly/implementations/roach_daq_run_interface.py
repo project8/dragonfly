@@ -136,6 +136,11 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         if self.status_value!=4:
             raise core.exceptions.DriplineGenericDAQError('Psyllid DAQ is not activated')
 
+        # check psyllid is ready to write a file
+        result = self.provider.cmd(self.psyllid_interface, 'is_psyllid_using_monarch', payload = self.payload_channel)['values'][0]
+        if result != True:
+            raise core.exceptions.DriplineGenericDAQError('Psyllid is not using monarch and therefore not ready to write a file')
+
         #checking roach
         if self._check_roach2_is_ready() == False:
             raise core.exceptions.DriplineGenericDAQError('ROACH2 is not ready. ADC not calibrated.')
