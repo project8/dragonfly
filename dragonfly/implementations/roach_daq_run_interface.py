@@ -286,6 +286,58 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
 
     # trigger control
     @property
+    def snr_threshold(self):
+        result = self.provider.cmd(self.psyllid_interface, 'get_fmt_snr_threshold', payload = self.payload_channel)['values'][0]
+        return result
+
+    @snr_threshold.setter
+    def snr_threshold(self, threshold):
+        self.provider.cmd(self.psyllid_interface, 'set_fmt_snr_threshold', payload = {'channel': self.channel_id, 'threshold': threshold})
+
+
+    @property
+    def snr_high_threshold(self):
+        result = self.provider.cmd(self.psyllid_interface, 'get_fmt_snr_high_threshold', payload = self.payload_channel)['values'][0]
+        return result
+
+    @snr_high_threshold.setter
+    def snr_high_threshold(self, threshold):
+        self.provider.cmd(self.psyllid_interface, 'set_fmt_snr_high_threshold', payload = {'channel': self.channel_id, 'threshold': threshold})
+
+
+    @property
+    def n_triggers(self):
+        result = self.provider.cmd(self.psyllid_interface, 'get_n_triggers', payload = self.payload_channel)['values'][0]
+        return result
+
+    @n_trigger.setter
+    def n_triggers(self, n_triggers):
+        self.provider.cmd(self.psyllid_interface, 'set_n_triggers', payload = {'channel': self.channel_id, 'n_triggers': n_triggers})
+
+
+    @property
+    def pretrigger_time(self):
+        result = self.provider.cmd(self.psyllid_interface, 'get_pretrigger_time', payload = self.payload_channel)['values'][0]
+        return result
+
+    @pretrigger_time.setter
+    def pretrigger_time(self, pretrigger_time):
+        self.provider.cmd(self.psyllid_interface, 'set_pretrigger_time', payload = {'channel': self.channel_id, 'pretrigger_time': pretrigger_time})
+        self.provider.cmd(self.psyllid_interface, 'reactivate', payload = self.payload_channel)
+
+
+    @property
+    def skip_tolerance(self):
+        result = self.provider.cmd(self.psyllid_interface, 'get_skip_tolerance', payload = self.payload_channel)['values'][0]
+        return result
+
+    @skip_tolerance.setter
+    def skip_tolerance(self, skip_tolerance):
+        self.provider.cmd(self.psyllid_interface, 'set_skip_tolerance', payload = {'channel': self.channel_id, 'skip_tolerance': skip_tolerance})
+        self.provider.cmd(self.psyllid_interface, 'reactivate', payload = self.payload_channel)
+
+
+    @property
     def trigger_type(self):
         result = self.provider.cmd(self.psyllid_interface, 'get_trigger_configuration', payload = self.payload_channel)
 
