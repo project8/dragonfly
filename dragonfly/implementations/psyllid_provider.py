@@ -28,7 +28,7 @@ class PsyllidProvider(core.Provider):
                  queue_c = 'channel_c_psyllid',
                  set_condition_list = [],
                  channel_dict = {'a': 'ch0', 'b': 'ch1', 'c': 'ch2'},
-                 temp_file = '/temp/empty_egg_file.egg',
+                 temp_file = '/tmp/empty_egg_file.egg',
                  **kwargs):
 
         core.Provider.__init__(self, **kwargs)        
@@ -46,10 +46,10 @@ class PsyllidProvider(core.Provider):
     def check_all_psyllid_instances(self):
         for channel in self.channel_dict.keys():
             try:
-                request_status(channel)
+                self.request_status(channel)
                 self.get_acquisition_mode(channel)
-                if self.freq_dict[channel] = None:
-                    self.freq_dict[channel] = 800.0e6
+                if self.freq_dict[channel] == None:
+                    self.freq_dict[channel] = 50.0e6
                 self.set_central_frequency(channel, self.freq_dict[channel])
             except core.exceptions.DriplineError:
                 self.status_dict[channel] = None
@@ -80,14 +80,13 @@ class PsyllidProvider(core.Provider):
 
 
     # tests whether psyllid is in streaming or triggering mode
-    def check_acquisition_mode(self, channel):
+    def get_acquisition_mode(self, channel):
         try:
             self.mode_dict[channel] = 'triggering'
             self.get_central_frequency(channel)
         except core.exceptions.DriplineError:
             self.mode_dict[channel] = 'streaming'
             try:
-                if self.freq_dict[channl]
                 self.get_central_frequency(channel)
             except core.exceptions.DriplineError as e:
                 self.mode_dict[channel] = None
@@ -173,6 +172,21 @@ class PsyllidProvider(core.Provider):
             raise core.exceptions.DriplineGenericDAQError('Reactivating psyllid failed')
 
 
+    # reactivate results in the loss of all active-node configurations. this method reactivates and resets previous settings
+    def save_reactivate(self, channel):
+        if self.mode_dict[channel] == 'triggering':
+            # store trigger configuration
+            result = self.get_trigger_configuration(channel)
+        # reactivate psyllid (all trigger and frequency settings are lost)
+        self.reactivate(channel)
+        # re-set central frequency
+        self.set_central_frequency(channel, self.freq_dict[channel])
+        if self.mode_dict[channel] == 'triggering':
+            # re-set trigger configuration
+            self.set_trigger_configuration(channel=channel, threshold=result['threshold'], threshold_high=result['threshold_high'], n_triggers=result['n_triggers'])
+
+
+
     # tells psyllid to quit
     def quit_psyllid(self, channel):
         self.provider.cmd(self.queue_dict[channel], 'quit-psyllid')
@@ -187,6 +201,9 @@ class PsyllidProvider(core.Provider):
 
     # asks psyllid what the set central frequency is and returns it
     def get_central_frequency(self, channel):
+        if self.mode_dict[channel] == None:
+            logger.error('Acquisition mode is None. Cannot get central frequency from psyllid')
+            raise core.exceptions.DriplineGenericDAQError('Acquisition mode is None. Update mode by using get_acquisition_mode command')
         routing_key_map = {
                            'streaming':'strw',
                            'triggering':'trw'
@@ -200,7 +217,9 @@ class PsyllidProvider(core.Provider):
     
     # sets central frequency in psyllid
     def set_central_frequency(self, channel, cf):
-        #logger.info('Trying to set cf of channel {} to {}'.format(channel, cf))
+        if self.mode_dict[channel] == None:
+            logger.error('Acquisition mode is None. Cannot set central frequency from psyllid')
+            raise core.exceptions.DriplineGenericDAQError('Acquisition mode is None. Update mode by using get_acquisition_mode command')
         routing_key_map = {
                            'streaming':'strw',
                            'triggering':'trw'
@@ -213,7 +232,7 @@ class PsyllidProvider(core.Provider):
 
     # check psyllid is using monarch
     def is_psyllid_using_monarch(self, channel):
-        result =  self.provider.get(self.queue_dict[channel]+'.use-monarch')
+        result =  self.provider.get(self.queue_dict[channel]+'.use-monarch')['values'][0]
         logger.info('Psyllid channel {} is using monarch: {}'.format(channel, result))
         return result
 
@@ -268,11 +287,11 @@ class PsyllidProvider(core.Provider):
         if self.mode_dict[channel] != 'triggering':
             logger.error('Psyllid instance is not in triggering mode')
             raise core.exceptions.DriplineGenericDAQError("Psyllid instance is not in triggering mode")
-
+        # apply settings
         self.set_pretrigger_time( pretrigger_time, channel)
         self.set_skip_tolerance( skip_tolerance, channel)
-        self.reactivate(channel)
-        self.set_central_frequency(channel, self.freq_dict[channel])
+        # reactivate without loosing active-node settings
+        self.save_reactivate(channel)
 
 
     # returns all time window settings
@@ -385,7 +404,7 @@ class PsyllidProvider(core.Provider):
         time.sleep(1)
 
         logger.info('Telling psyllid to not use monarch when starting next run')
-        sel.provider.set(self.queue_dict[channel]+'.use-monarch', False)
+        self.provider.set(self.queue_dict[channel]+'.use-monarch', False)
 
         logger.info('Start short run to record mask')
         self.start_run(channel ,1000, self.temp_file)
@@ -397,7 +416,7 @@ class PsyllidProvider(core.Provider):
         self.provider.cmd(self.queue_dict[channel], request, payload=payload)
 
         logger.info('Telling psyllid to use monarch again for next run')
-        sel.provider.set(self.queue_dict[channel]+'.use-monarch', True)
+        self.provider.set(self.queue_dict[channel]+'.use-monarch', True)
 
         logger.info('Switch tf_roach_receiver back to time and freq')
         request = 'run-daq-cmd.{}.tfrr.time-and-freq'.format(str(self.channel_dict[channel]))

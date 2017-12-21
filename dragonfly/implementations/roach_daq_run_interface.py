@@ -319,7 +319,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         result = self.provider.cmd(self.psyllid_interface, 'get_n_triggers', payload = self.payload_channel)['values'][0]
         return result
 
-    @n_trigger.setter
+    @n_triggers.setter
     def n_triggers(self, n_triggers):
         self.provider.cmd(self.psyllid_interface, 'set_n_triggers', payload = {'channel': self.channel_id, 'n_triggers': n_triggers})
 
