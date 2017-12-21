@@ -365,7 +365,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         return trigger_type
 
     @trigger_type.setter
-    def trigger_type(self):
+    def trigger_type(self, x):
         raise core.exceptions.DriplineGenericDAQError('Trigger type is result of trigger settings and cannot be set directly')
 
 
