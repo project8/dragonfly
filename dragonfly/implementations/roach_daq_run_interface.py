@@ -54,7 +54,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
 
 
 
-    # checks psyllid and roach, checks acquisition mode, sets roach frequency to psyllid frequency
+    # checks psyllid and roach, checks acquisition mode, gets roach frequency and sets psyllid frequency
     def prepare_daq_system(self):
         logger.info('Doing setup checks...')
         self._check_psyllid_instance()
@@ -102,7 +102,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
             self.provider.cmd(self.psyllid_interface, 'activate', payload = self.payload_channel)
             self.status_value = self.provider.cmd(self.psyllid_interface, 'request_status', payload = self.payload_channel)['values'][0]
 
-        #check channel match
+        # check channel match
         active_channels = self.provider.get(self.psyllid_interface + '.active_channels')
         logger.info(active_channels)
         if self.channel_id in active_channels==False:
@@ -141,7 +141,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         if result != True:
             raise core.exceptions.DriplineGenericDAQError('Psyllid is not using monarch and therefore not ready to write a file')
 
-        #checking roach is ready
+        # checking roach is ready
         if self._check_roach2_is_ready() != True:
             raise core.exceptions.DriplineGenericDAQError('ROACH2 is not ready. ADC not calibrated.')
 
@@ -150,7 +150,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         if self.channel_id in blocked_channels: 
             raise core.exceptions.DriplineGenericDAQError('Channel is blocked')
 
-        #check frequency matches
+        # check frequency matches
         roach_freqs = self._get_roach_central_freqs()
         psyllid_freq = self._get_psyllid_central_freq()
         if abs(roach_freqs[self.channel_id]-psyllid_freq)>1:
@@ -278,7 +278,6 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
     # sets central frequency in roach channel
     # roach2_interface returns true frequency (can deviate from requested cf)
     # sets same freqeuncy in psyllid instance
-    # raises error if setting in psyllid failed (exceptions are caught in psyllid_provider)
     @central_frequency.setter
     def central_frequency(self, cf):
         payload = {'cf':float(cf), 'channel':self.channel_id}
@@ -326,7 +325,6 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
 
 
     # changing the pretrigger time or the skip tolerance requires reactivation of psyllid
-    # this results in the loss of all trigger settings
     @property
     def pretrigger_time(self):
         result = self.provider.cmd(self.psyllid_interface, 'get_pretrigger_time', payload = self.payload_channel)['values'][0]

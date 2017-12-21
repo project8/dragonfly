@@ -40,7 +40,7 @@ class PsyllidProvider(core.Provider):
         self.temp_file = temp_file
 
 
-    # check_all_psyllid_instances populates all dictionaries by checking te configuarions of all psyllid instances
+    # populates all dictionaries by checking the configuarions of all psyllid instances
     def check_all_psyllid_instances(self):
         for channel in self.channel_dict.keys():
             try:
@@ -122,7 +122,6 @@ class PsyllidProvider(core.Provider):
 
 
     # asks the psyllid instance what state it is in and returns that state
-    # if no psyllid is running exception is caught and status set to None
     def request_status(self, channel):
         logger.info('Checking Psyllid status of channel {}'.format(channel))
         result = self.provider.get(self.queue_dict[channel]+'.daq-status', timeout=5)
@@ -204,6 +203,10 @@ class PsyllidProvider(core.Provider):
     def all_central_frequencies(self):
         return self.freq_dict
 
+    @all_central_frequencies.setter
+    def all_central_frequencies(self, x):
+        raise core.exceptions.DriplineGenericDAQError('all_central_frequencies cannot be set')
+
 
     # asks psyllid what the set central frequency is and returns it
     def get_central_frequency(self, channel):
@@ -259,26 +262,16 @@ class PsyllidProvider(core.Provider):
 
     ### trigger control ###
     # set all trigger parameters at once
-    def set_trigger_configuration(self, channel='a', threshold=16, threshold_high=0, n_triggers=1,):
-        if self.mode_dict[channel] != 'triggering':
-            logger.error('Psyllid instance is not in triggering mode')
-            raise core.exceptions.DriplineGenericDAQError('Psyllid instance is not in triggering mode')
+    def set_trigger_configuration(self, channel='a', threshold=18, threshold_high=0, n_triggers=1,):
 
-        self.set_fmt_snr_threshold( threshold, channel)
-        self.set_fmt_snr_high_threshold( threshold_high, channel)
-        self.set_n_triggers( n_triggers, channel)
-
-        if threshold_high > threshold:
-            self._set_trigger_mode( 'two-level-trigger', channel)
-        else:
-            self._set_trigger_mode( 'single-level-trigger', channel)
+        self.set_fmt_snr_threshold( threshold, channel )
+        self.set_fmt_snr_high_threshold( threshold_high, channel )
+        self.set_n_triggers( n_triggers, channel )
+        self.set_trigger_mode( channel )
 
 
     # returns all trigger parameters
     def get_trigger_configuration(self, channel='a'):
-        if self.mode_dict[channel] != 'triggering':
-            logger.error('Psyllid instance is not in triggering mode')
-            raise core.exceptions.DriplineGenericDAQError('Psyllid instance is not in triggering mode')
 
         threshold = self.get_fmt_snr_threshold( channel )
         threshold_high = self.get_fmt_snr_high_threshold( channel )
@@ -294,10 +287,10 @@ class PsyllidProvider(core.Provider):
             logger.error('Psyllid instance is not in triggering mode')
             raise core.exceptions.DriplineGenericDAQError('Psyllid instance is not in triggering mode')
         # apply settings
-        self.set_pretrigger_time( pretrigger_time, channel)
-        self.set_skip_tolerance( skip_tolerance, channel)
+        self.set_pretrigger_time( pretrigger_time, channel )
+        self.set_skip_tolerance( skip_tolerance, channel )
         # reactivate without loosing active-node settings
-        self.save_reactivate(channel)
+        self.save_reactivate( channel )
 
 
     # returns all time window settings
@@ -306,8 +299,8 @@ class PsyllidProvider(core.Provider):
             logger.error('Psyllid instance is not in triggering mode')
             raise core.exceptions.DriplineGenericDAQError('Psyllid instance is not in triggering mode')
 
-        pretrigger_time = self.get_pretrigger_time( channel)
-        skip_tolerance = self.get_skip_tolerance( channel)
+        pretrigger_time = self.get_pretrigger_time( channel )
+        skip_tolerance = self.get_skip_tolerance( channel )
 
         return {'pretrigger_time': pretrigger_time, 'skip_tolerance': skip_tolerance}
 
