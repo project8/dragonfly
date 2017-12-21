@@ -61,10 +61,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
 
         # find out whether psyllid instante is in streaming or triggering mode
         acquisition_mode = self.provider.cmd(self.psyllid_interface, 'get_acquisition_mode', payload = self.payload_channel)
-        if acquisition_mode['values'][0] == None:
-            raise core.exceptions.DriplineGenericDAQError('Psyllid instance for this channel is not responding')
         logger.info('Psyllid instance for this channel is in acquisition mode: {}'.format(acquisition_mode['values'][0]))
-        self._finish_configure()
 
         if self._check_roach2_is_ready() == False:
             logger.warning('ROACH2 check indicates ADC is not calibrated. Starting a run now will result in error')
@@ -99,9 +96,6 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
 
         # check psyllid is responding by requesting status
         self.status_value = self.provider.cmd(self.psyllid_interface, 'request_status', payload = self.payload_channel)['values'][0]
-        if self.status_value == None:
-            logger.error('Psyllid is not responding')
-            raise core.exceptions.DriplineGenericDAQError('Psyllid is not responding')
 
         # activate psyllid if deactivated
         if self.status_value == 0:
@@ -215,7 +209,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
             finally:
                 raise e
         except Exception as e:
-            logger.error('Something else went wrong.')
+            logger.critical('Something else went wrong.')
             payload = {'channel': self.channel_id}
             try:
                 self.provider.cmd(self.daq_target, 'unblock_channel', payload = payload)
@@ -243,7 +237,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
             finally:
                 raise e
         except Exception as e:
-            logger.error('Something else went wrong')
+            logger.critical('Something else went wrong')
             payload = {'channel': self.channel_id}
             try:
                 self.provider.cmd(self.daq_target, 'unblock_channel', payload = payload)
@@ -293,11 +287,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         # The roach frequency can differ from the requested frequency. Psyllid should have the same frequency settings as the ROACH
         self.freq_dict[self.channel_id]=round(result['values'][0])
         payload = {'channel':self.channel_id, 'cf':self.freq_dict[self.channel_id], 'channel':self.channel_id}
-        result = self.provider.cmd(self.psyllid_interface, 'set_central_frequency', payload = payload)
-        if result['values'][0]!=True:
-            logger.warning('Could not set central frequency in Psyllid')
-            self.freq_dict[self.channel_id]=None
-            raise core.exceptions.DriplineGenericDAQError('Could not set central frequency of psyllid instance')
+        self.provider.cmd(self.psyllid_interface, 'set_central_frequency', payload = payload)
 
 
     ### trigger control ###
@@ -361,16 +351,13 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
     # returns the type of trigger that is currently set
     @property
     def trigger_type(self):
-        result = self.provider.cmd(self.psyllid_interface, 'get_trigger_configuration', payload = self.payload_channel)
+        n_triggers = self.provider.cmd(self.psyllid_interface, 'get_n_triggers', payload = self.payload_channel)['values'][0]
+        trigger_mode = self.provider.cmd(self.psyllid_interface, 'get_trigger_mode', payload = self.payload_channel)['values'][0]
 
         if result['n_triggers'] > 1:
-            trigger_type = 'multi_trigger'
-        elif type(result['threshold_high']) == float:
-            trigger_type = 'two_thresholds'
-        elif type(result['threshold']) == float:
-            trigger_type = 'single_threshold'
+            trigger_type = 'multi-trigger'
         else:
-            trigger_type = None
+            trigger_type = trigger_mode
 
         return trigger_type
 

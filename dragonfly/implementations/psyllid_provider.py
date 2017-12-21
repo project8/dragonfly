@@ -39,28 +39,25 @@ class PsyllidProvider(core.Provider):
         self.mode_dict = {x: None for x in channel_dict.keys()}
         self.status_dict = {x: None for x in channel_dict.keys()}
         self.status_value_dict = {x: None for x in channel_dict.keys()}
-        self.mode_testing = False
         self.temp_file = temp_file
 
 
     # check_all_psyllid_instances populates all dictionaries by checking te configuarions of all psyllid instances
     def check_all_psyllid_instances(self):
         for channel in self.channel_dict.keys():
-            if self.request_status(channel)!=None:
-                try:
-                    self.get_acquisition_mode(channel)
-                    if self.mode_dict[channel]==None:
-                        raise core.exceptions.DriplineGenericDAQError("Stream writer of Psyllid instance for channel {} is not configured correctly".format(channel))
+            try:
+                request_status(channel)
+                self.get_acquisition_mode(channel)
+                if self.freq_dict[channel] = None:
+                    self.freq_dict[channel] = 800.0e6
+                self.set_central_frequency(channel, self.freq_dict[channel])
+            except core.exceptions.DriplineError:
+                self.status_dict[channel] = None
+                self.status_value_dict[channel] = None
+                self.mode_dict[channel] = None
+                self.freq_dict[channel] = None
 
-                    if self.get_number_of_streams(channel)!=1:
-                        self.mode_dict[channel]=None
-                        raise core.exceptions.DriplineGenericDAQError("Streams of Psyllid instance for channel {} are not configured correctly".format(channel))
-
-                except core.exceptions.DriplineGenericDAQError:
-                    logger.warning('No matching Psyllid instance for channel {} present'.format(channel))
-
-
-        # Summary after startup
+        # Summary
         logger.info('Status of channels: {}'.format(self.status_value_dict))
         logger.info('Set central frequencies: {}'.format(self.freq_dict))
         logger.info('Streaming or triggering mode: {}'.format(self.mode_dict))
@@ -68,10 +65,10 @@ class PsyllidProvider(core.Provider):
 
     # returns mode_dict which contains the information which psyllid instance is in triggering or streaming mode
     # stopped psyllid instances are in acquisition mode None
-    # content of mode_dict is not verified by (re-) checking psyllid
+    # content of mode_dict is not verified at this point
     # content of mode_dict is updated by calling prepare_daq_system (in roach_daq_run_interface) or check_all_psyllid_instances
     @property
-    def acquisition_modes(self):
+    def all_acquisition_modes(self):
         return self.mode_dict
 
 
@@ -83,20 +80,18 @@ class PsyllidProvider(core.Provider):
 
 
     # tests whether psyllid is in streaming or triggering mode
-    def get_acquisition_mode(self, channel):
-        self.mode_testing = True
-        if self.freq_dict[channel]!=None:
-            cf = self.freq_dict[channel]
-        else:
-            cf = 800e6
-        self.mode_dict[channel]='streaming'
-        if self.set_central_frequency(channel=channel, cf=cf)==False:
-           logger.info('Psyllid is not in streaming mode')
-           self.mode_dict[channel]='triggering'
-           if self.set_central_frequency(channel=channel, cf=cf)==False:
-                self.mode_dict[channel]=None
-                logger.info('Psyllid is not in triggering mode')
-        self.mode_testing = False
+    def check_acquisition_mode(self, channel):
+        try:
+            self.mode_dict[channel] = 'triggering'
+            self.get_central_frequency(channel)
+        except core.exceptions.DriplineError:
+            self.mode_dict[channel] = 'streaming'
+            try:
+                if self.freq_dict[channl]
+                self.get_central_frequency(channel)
+            except core.exceptions.DriplineError as e:
+                self.mode_dict[channel] = None
+                raise e
         return self.mode_dict[channel]
 
 
@@ -125,22 +120,12 @@ class PsyllidProvider(core.Provider):
     # if no psyllid is running exception is caught and status set to None
     def request_status(self, channel):
         logger.info('Checking Psyllid status of channel {}'.format(channel))
-        try:
-            result = self.provider.get(self.queue_dict[channel]+'.daq-status', timeout=5)
-        except core.exceptions.DriplineError:
-            logger.info('Psyllid instance for channel {} is not running or returned error'.format(channel))
-            self.status_dict[channel]=None
-            self.status_value_dict[channel]=None
-            return self.status_value_dict[channel]
-        except Exception as e:
-            logger.error('Something else went wrong')
-            raise e
-        else:
-            self.status_dict[channel] = result['server']['status']
-            self.status_value_dict[channel] = result['server']['status-value']
-            logger.info('Psyllid is running. Status is {}'.format(self.status_dict[channel]))
-            logger.info('Status in numbers: {}'.format(self.status_value_dict[channel]))
-            return self.status_value_dict[channel]
+        result = self.provider.get(self.queue_dict[channel]+'.daq-status', timeout=5)
+        self.status_dict[channel] = result['server']['status']
+        self.status_value_dict[channel] = result['server']['status-value']
+        logger.info('Psyllid is running. Status is {}'.format(self.status_dict[channel]))
+        logger.info('Status in numbers: {}'.format(self.status_value_dict[channel]))
+        return self.status_value_dict[channel]
 
 
     # tells psyllid to activate and checks whether activation was successful
@@ -214,8 +199,6 @@ class PsyllidProvider(core.Provider):
 
     
     # sets central frequency in psyllid
-    # returns True in case of success and Fals in case of failure because this method is used by get_acquisition mode which checks the return
-    # if it is not used for testing the mode, failing to set the central frequency will result in error
     def set_central_frequency(self, channel, cf):
         #logger.info('Trying to set cf of channel {} to {}'.format(channel, cf))
         routing_key_map = {
@@ -223,20 +206,9 @@ class PsyllidProvider(core.Provider):
                            'triggering':'trw'
                           }
         request = '.active-config.{}.{}.center-freq'.format(self.channel_dict[channel], routing_key_map[self.mode_dict[channel]])
-        try:
-            self.provider.set(self.queue_dict[channel]+request, cf)
-            logger.info('Set central frequency of {} writer for channel {} to {} Hz'.format(self.mode_dict[channel], channel, cf))
-            self.freq_dict[channel]=cf
-            return True
-        except core.exceptions.DriplineError as e:
-            if self.mode_testing == True:
-                self.freq_dict[channel]=None
-                logger.info('Could not set central frequency of Psyllid instance for channel {}'.format(channel))
-                return False
-            else:
-                logger.critical('Could not set central frequency of Psyllid instance for channel {}'.format(channel))
-                self.freq_dict[channel]=None
-                raise e
+        self.provider.set(self.queue_dict[channel]+request, cf)
+        logger.info('Set central frequency of {} writer for channel {} to {} Hz'.format(self.mode_dict[channel], channel, cf))
+        self.freq_dict[channel]=cf
 
 
     # check psyllid is using monarch
@@ -286,7 +258,7 @@ class PsyllidProvider(core.Provider):
         threshold = self.get_fmt_snr_threshold( channel )
         threshold_high = self.get_fmt_snr_high_threshold( channel )
         n_triggers = self.get_n_triggers( channel )
-        trigger_mode = self._get_trigger_mode( channel )
+        trigger_mode = self.get_trigger_mode( channel )
 
         return {'threshold': threshold, 'threshold_high' : threshold_high, 'n_triggers' : n_triggers, 'trigger_mode' : trigger_mode}
 
@@ -372,17 +344,17 @@ class PsyllidProvider(core.Provider):
         logger.info('Setting psyllid trigger mode to {} threshold trigger'.format(mode_id))
 
 
-    def _get_trigger_mode(self, channel='a'):
-        request = '.active-config.{}.fmt.trigger-mode'.format(str(self.channel_dict[channel]))
-        trigger_mode = self.provider.get(self.queue_dict[channel]+request)['trigger-mode']
-        return trigger_mode
-
-
     def set_trigger_mode(self, channel='a'):
         if self.get_fmt_snr_high_threshold > self.get_fmt_snr_threshold:
             self._set_trigger_mode('two-level-trigger', channel)
         else:
             self._set_trigger_mode('single-level-trigger', channel)
+
+
+    def get_trigger_mode(self, channel='a'):
+        request = '.active-config.{}.fmt.trigger-mode'.format(str(self.channel_dict[channel]))
+        trigger_mode = self.provider.get(self.queue_dict[channel]+request)['trigger-mode']
+        return trigger_mode
 
 
     def set_n_triggers(self, n_triggers, channel='a'):
