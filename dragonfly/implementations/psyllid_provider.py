@@ -23,17 +23,15 @@ class PsyllidProvider(core.Provider):
     Provider for direct communication with up to 3 Psyllid instances with a single stream each 
     '''
     def __init__(self,
-                 queue_a='channel_a_psyllid',
-                 queue_b = 'channel_b_psyllid',
-                 queue_c = 'channel_c_psyllid',
                  set_condition_list = [],
                  channel_dict = {'a': 'ch0', 'b': 'ch1', 'c': 'ch2'},
+                 queue_dict = {'a': 'channel_a_psyllid', 'b': 'channel_b_psyllid', 'c': 'channel_c_psyllid'},
                  temp_file = '/tmp/empty_egg_file.egg',
                  **kwargs):
 
         core.Provider.__init__(self, **kwargs)        
-        self.queue_dict = {'a':queue_a, 'b':queue_b, 'c':queue_c}
         self._set_condition_list = set_condition_list
+        self.queue_dict = queue_dict
         self.channel_dict = channel_dict
         self.freq_dict = {x: None for x in channel_dict.keys()}
         self.mode_dict = {x: None for x in channel_dict.keys()}
@@ -360,11 +358,11 @@ class PsyllidProvider(core.Provider):
     def _set_trigger_mode(self, mode_id, channel='a'):
         request = '.active-config.{}.fmt.trigger-mode'.format(str(self.channel_dict[channel]))
         self.provider.set(self.queue_dict[channel]+request, mode_id)
-        logger.info('Setting psyllid trigger mode to {} threshold trigger'.format(mode_id))
+        logger.info('Setting psyllid trigger mode to {}'.format(mode_id))
 
 
     def set_trigger_mode(self, channel='a'):
-        if self.get_fmt_snr_high_threshold > self.get_fmt_snr_threshold:
+        if self.get_fmt_snr_high_threshold(channel) > self.get_fmt_snr_threshold(channel):
             self._set_trigger_mode('two-level-trigger', channel)
         else:
             self._set_trigger_mode('single-level-trigger', channel)
