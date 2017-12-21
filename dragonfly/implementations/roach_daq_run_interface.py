@@ -249,8 +249,6 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
             logger.info('Unblock channel')
             payload = {'channel': self.channel_id}
             self.provider.cmd(self.daq_target, 'unblock_channel', payload = payload)
-            if self.status_value==None:
-                raise core.exceptions.DriplineGenericDAQError('Psyllid must have crashed during run')
 
 
     # makes psyllid exit and unblocks roach channel
