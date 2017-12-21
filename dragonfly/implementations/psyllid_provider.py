@@ -69,12 +69,20 @@ class PsyllidProvider(core.Provider):
     def all_acquisition_modes(self):
         return self.mode_dict
 
+    @all_acquisition_modes.setter
+    def all_acquisition_modes(self, x):
+        raise core.exceptions.DriplineGenericDAQError('acquisition_modes cannot be set')
+
 
     # returns the number of psyllid instances that are in activated
     @property
     def active_channels(self):
         active_channels = [i for i in self.status_value_dict.keys() if self.status_value_dict[i]==4]
         return active_channels
+
+    @active_channels.setter
+    def active_channels(self, x):
+        raise core.exceptions.DriplineGenericDAQError('active_channels cannot be set')
 
 
     # tests whether psyllid is in streaming or triggering mode
@@ -254,23 +262,23 @@ class PsyllidProvider(core.Provider):
     def set_trigger_configuration(self, channel='a', threshold=16, threshold_high=0, n_triggers=1,):
         if self.mode_dict[channel] != 'triggering':
             logger.error('Psyllid instance is not in triggering mode')
-            raise core.exceptions.DriplineGenericDAQError("Psyllid instance is not in triggering mode")
+            raise core.exceptions.DriplineGenericDAQError('Psyllid instance is not in triggering mode')
 
         self.set_fmt_snr_threshold( threshold, channel)
         self.set_fmt_snr_high_threshold( threshold_high, channel)
         self.set_n_triggers( n_triggers, channel)
 
         if threshold_high > threshold:
-            self._set_trigger_mode( "two-level-trigger", channel)
+            self._set_trigger_mode( 'two-level-trigger', channel)
         else:
-            self._set_trigger_mode( "single-level-trigger", channel)
+            self._set_trigger_mode( 'single-level-trigger', channel)
 
 
     # returns all trigger parameters
     def get_trigger_configuration(self, channel='a'):
         if self.mode_dict[channel] != 'triggering':
             logger.error('Psyllid instance is not in triggering mode')
-            raise core.exceptions.DriplineGenericDAQError("Psyllid instance is not in triggering mode")
+            raise core.exceptions.DriplineGenericDAQError('Psyllid instance is not in triggering mode')
 
         threshold = self.get_fmt_snr_threshold( channel )
         threshold_high = self.get_fmt_snr_high_threshold( channel )
@@ -284,7 +292,7 @@ class PsyllidProvider(core.Provider):
     def set_time_window(self, channel='a', pretrigger_time=2e-3, skip_tolerance=5e-3):
         if self.mode_dict[channel] != 'triggering':
             logger.error('Psyllid instance is not in triggering mode')
-            raise core.exceptions.DriplineGenericDAQError("Psyllid instance is not in triggering mode")
+            raise core.exceptions.DriplineGenericDAQError('Psyllid instance is not in triggering mode')
         # apply settings
         self.set_pretrigger_time( pretrigger_time, channel)
         self.set_skip_tolerance( skip_tolerance, channel)
@@ -296,7 +304,7 @@ class PsyllidProvider(core.Provider):
     def get_time_window(self, channel='a'):
         if self.mode_dict[channel] != 'triggering':
             logger.error('Psyllid instance is not in triggering mode')
-            raise core.exceptions.DriplineGenericDAQError("Psyllid instance is not in triggering mode")
+            raise core.exceptions.DriplineGenericDAQError('Psyllid instance is not in triggering mode')
 
         pretrigger_time = self.get_pretrigger_time( channel)
         skip_tolerance = self.get_skip_tolerance( channel)
@@ -390,7 +398,7 @@ class PsyllidProvider(core.Provider):
     def make_trigger_mask(self, channel='a', filename='~/fmt_mask.json'):
         if self.mode_dict[channel] != 'triggering':
             logger.error('Psyllid instance is not in triggering mode')
-            raise core.exceptions.DriplineGenericDAQError("Psyllid instance is not in triggering mode")
+            raise core.exceptions.DriplineGenericDAQError('Psyllid instance is not in triggering mode')
 
         logger.info('Switch tf_roach_receiver to freq-only')
         request = 'run-daq-cmd.{}.tfrr.freq-only'.format(str(self.channel_dict[channel]))
