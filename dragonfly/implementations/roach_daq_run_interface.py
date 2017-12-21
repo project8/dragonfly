@@ -206,6 +206,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
             payload = {'channel': self.channel_id}
             try:
                 self.provider.cmd(self.daq_target, 'unblock_channel', payload = payload)
+                logger.info('Unblocked channel')
             finally:
                 raise e
         except Exception as e:
@@ -213,6 +214,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
             payload = {'channel': self.channel_id}
             try:
                 self.provider.cmd(self.daq_target, 'unblock_channel', payload = payload)
+                logger.info('Unblocked channel')
             finally:
                 raise e
         else:
@@ -230,7 +232,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
                 self.provider.cmd(self.psyllid_interface, 'stop_run', payload = self.payload_channel)
         except core.exceptions.DriplineError as e:
             logger.critical('Getting Psyllid status or stopping run failed')
-            logger.info('unblock channel')
+            logger.info('Unblock channel')
             payload = {'channel': self.channel_id}
             try:
                 self.provider.cmd(self.daq_target, 'unblock_channel', payload = payload)
@@ -244,6 +246,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
             finally:
                 raise e
         else:
+            logger.info('Unblock channel')
             payload = {'channel': self.channel_id}
             self.provider.cmd(self.daq_target, 'unblock_channel', payload = payload)
             if self.status_value==None:
@@ -334,7 +337,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
     @pretrigger_time.setter
     def pretrigger_time(self, pretrigger_time):
         self.provider.cmd(self.psyllid_interface, 'set_pretrigger_time', payload = {'channel': self.channel_id, 'pretrigger_time': pretrigger_time})
-        self.provider.cmd(self.psyllid_interface, 'reactivate', payload = self.payload_channel)
+        self.provider.cmd(self.psyllid_interface, 'save_reactivate', payload = self.payload_channel)
 
 
     @property
@@ -345,7 +348,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
     @skip_tolerance.setter
     def skip_tolerance(self, skip_tolerance):
         self.provider.cmd(self.psyllid_interface, 'set_skip_tolerance', payload = {'channel': self.channel_id, 'skip_tolerance': skip_tolerance})
-        self.provider.cmd(self.psyllid_interface, 'reactivate', payload = self.payload_channel)
+        self.provider.cmd(self.psyllid_interface, 'save_reactivate', payload = self.payload_channel)
 
 
     # returns the type of trigger that is currently set
@@ -354,7 +357,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         n_triggers = self.provider.cmd(self.psyllid_interface, 'get_n_triggers', payload = self.payload_channel)['values'][0]
         trigger_mode = self.provider.cmd(self.psyllid_interface, 'get_trigger_mode', payload = self.payload_channel)['values'][0]
 
-        if result['n_triggers'] > 1:
+        if n_triggers > 1:
             trigger_type = 'multi-trigger'
         else:
             trigger_type = trigger_mode
@@ -368,15 +371,15 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
 
     # returns all trigger settings
     @property
-    def all_trigger_settings(self):
+    def trigger_settings(self):
         if self.trigger_type == None:
             return False
         result = self.provider.cmd(self.psyllid_interface, 'get_trigger_configuration', payload = self.payload_channel)
         return result
 
 
-    @all_trigger_settings.setter
-    def all_trigger_settings(self):
+    @trigger_settings.setter
+    def trigger_settings(self, x):
         raise core.exceptions.DriplineGenericDAQError('Use configure_trigger command to set all trigger parameters at once')
 
 
@@ -393,7 +396,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         return result
 
     @time_window_settings.setter
-    def time_window_settings(self):
+    def time_window_settings(self, x):
         raise core.exceptions.DriplineGenericDAQError('Use configure_time_window command to set skip_tolerance and pretrigger_time')
 
 
