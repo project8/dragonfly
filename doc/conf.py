@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
-# dripline documentation build configuration file, created by
+# dragonfly documentation build configuration file, created by
 # sphinx-quickstart on Mon Aug 25 15:26:40 2014.
 #
 # This file is execfile()d with the current directory set to its
@@ -29,7 +29,7 @@ better_apidoc.main([
     '--force', # overwrite existing files
     '--separate', # split modules into their own files
     '-o', 'better_apidoc_out', #output location
-    '../dripline', #path to modules to doc
+    '../dragonfly', #path to modules to doc
     ])
 
 # -- General configuration ------------------------------------------------
