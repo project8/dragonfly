@@ -14,7 +14,12 @@ except Exception as err:
     print(err)
     verstr = 'v0.0.0-???'
 
+on_rtd = os.environ.get("READTHEDOCS", None) == 'True'
 
+requirements = [
+    'dripline',
+    'asteval',
+]
 extras_require={
     'colorlog' : ['colorlog'],
     'database': ['psycopg2', 'sqlalchemy'], #this may also require system packages
@@ -25,6 +30,17 @@ extras_require={
     'gpio': ['rpi.gpio'], #only for RPi
     'slack': ['slackclient']
 }
+
+dependency_links = [
+    'git+https://github.com/sma-wideband/adc_tests.git@65a2ef4e1cf68bee35176a1171d923a73952e13e#egg=adc5g-0.0.1',
+    'git+https://github.com/johnrbnsn/Adafruit_Python_MAX31856.git#egg=adafruit_max31856-0.0.1',
+    'git+https://github.com/project8/dripline.git=dripline',
+]
+
+# RTD (afaik) requires an nominal build
+if on_rtd:
+    requirements = extras_require['doc']
+
 everything = set()
 for deps in extras_require.values():
     everything.update(deps)
@@ -35,9 +51,8 @@ setup(
     version=verstr,
     packages=['dragonfly','dragonfly/implementations','dragonfly/status_log_handlers','dragonfly/subcommands'],
     scripts=['bin/dragonfly'],
-    install_requires=['dripline', 'asteval'],
-    dependency_links=['git+https://github.com/sma-wideband/adc_tests.git@65a2ef4e1cf68bee35176a1171d923a73952e13e#egg=adc5g-0.0.1',
-                      'git+https://github.com/johnrbnsn/Adafruit_Python_MAX31856.git#egg=adafruit_max31856-0.0.1'],
+    install_requires=requirements
+    dependency_links=dependency_links,
     extras_require=extras_require,
     url='http://www.github.com/project8/dragonfly',
 )
