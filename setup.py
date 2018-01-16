@@ -51,7 +51,7 @@ setup(
     version=verstr,
     packages=['dragonfly','dragonfly/implementations','dragonfly/status_log_handlers','dragonfly/subcommands'],
     scripts=['bin/dragonfly'],
-    install_requires=requirements
+    install_requires=requirements,
     dependency_links=dependency_links,
     extras_require=extras_require,
     url='http://www.github.com/project8/dragonfly',
