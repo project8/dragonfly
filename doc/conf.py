@@ -77,6 +77,7 @@ copyright = '2018, The Project 8 Collaboration'
 #version = #'0.0.1'
 #import pkg_resources
 try:
+    import subprocess
     version = subprocess.check_output(['git', 'describe', '--abbrev=0']).decode('utf-8').strip()
     release = subprocess.check_output(['git', 'describe', '--long']).decode('utf-8').strip()
 except Exception as e:
