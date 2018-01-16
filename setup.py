@@ -24,7 +24,7 @@ extras_require={
     'colorlog' : ['colorlog'],
     'database': ['psycopg2', 'sqlalchemy'], #this may also require system packages
     'debug': ['ipdb'],
-    'doc': ['sphinx', 'sphinx_rtd_theme', 'sphinxcontrib-programoutput'],
+    'doc': ['sphinx', 'sphinx_rtd_theme', 'sphinxcontrib-programoutput', 'better-apidoc'],
     'max31856': ['adafruit_max31856','rpi.gpio'], #only for RPi
     'roach': ['corr==0.7.3','katcp==0.5.5','construct==2.5.2','scipy==0.19.0','netifaces==0.10.5','adc5g==0.0.1'],
     'gpio': ['rpi.gpio'], #only for RPi
