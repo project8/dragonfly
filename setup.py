@@ -34,7 +34,7 @@ extras_require={
 dependency_links = [
     'git+https://github.com/sma-wideband/adc_tests.git@65a2ef4e1cf68bee35176a1171d923a73952e13e#egg=adc5g-0.0.1',
     'git+https://github.com/johnrbnsn/Adafruit_Python_MAX31856.git#egg=adafruit_max31856-0.0.1',
-    'git+https://github.com/project8/dripline-python.git@6debbfe3669e125dd57c3d02b6cc8#egg=dripline',
+    'git+https://github.com/project8/dripline-python.git@a18507d29a05ac1767d9503bcf5efa74d5083daf#egg=dripline',
 ]
 
 # RTD (afaik) requires an nominal build
