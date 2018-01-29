@@ -63,8 +63,8 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         logger.info('Doing setup checks...')
         self._check_psyllid_instance()
 
-        acquisition_mode = self.provider.cmd(self.psyllid_interface, 'get_acquisition_mode', payload = self.payload_channel)
-        logger.info('Psyllid instance for this channel is in acquisition mode: {}'.format(acquisition_mode['values'][0]))
+        acquisition_mode = self.acquisition_mode
+        logger.info('Psyllid instance for this channel is in acquisition mode: {}'.format(acquisition_mode))
 
         if self._check_roach2_is_ready() == False:
             logger.warning('ROACH2 check indicates ADC is not calibrated. Starting a run now will result in error')
@@ -119,7 +119,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         '''
         Requests status of psyllid
         Returns True if status is 5 (currently taking data)
-        ''''
+        '''
         result = self.provider.cmd(self.psyllid_interface, 'request_status', payload = self.payload_channel, timeout=10)
         self.status_value = result['values'][0]
         logger.info('psyllid status is {}'.format(self.status_value))
@@ -311,6 +311,16 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
 
 
     ''' trigger control '''
+
+    @property
+    def acquisition_mode(self):
+        result = self.provider.cmd(self.psyllid_interface, 'get_acquisition_mode', payload = self.payload_channel)['values'][0]
+        return result
+
+    @acquisition_mode.setter
+    def acquisition_mode(self, x):
+        raise core.exceptions.DriplineGenericDAQError('acquisition mode cannot be set via dragonfly')
+
 
     @property
     def snr_threshold(self):

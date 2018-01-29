@@ -171,8 +171,8 @@ class Roach2Interface(Roach2Provider):
 
     def set_central_frequency(self, channel, cf):
         if self.block_dict[channel]==False:
-            if cf > 1550e6:
-                logger.error('Maximum allowed central frequency is 1550e6 Hz')
+            if cf > 1550e6 or cf < 50e6:
+                logger.error('Frequency out of allowed range: 50e6 - 1550e6 Hz')
                 raise core.exceptions.DriplineGenericDAQError('Frequency out of allowed range')
             else:
                 logger.info('setting central frequency of channel {} to {}'.format(channel, cf))
