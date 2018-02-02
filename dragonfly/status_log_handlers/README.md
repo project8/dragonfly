@@ -1,6 +1,17 @@
 This directory is for implementing custom handlers for log messages based on python's internal logging module.
 
-By design, you will be able to simply drop in the source file for a valid handler and add it to the __init__.py file. The logger will then be available with an approprite command line switch to dragonfly.
+## How to add a handler module
+
+By design, you will be able to simply drop in the source file for a valid handler. Follow these instructions:
+
+1. Create a python module in this directory for your handler
+2. Add your module to the subcommands module by adding two lines to `__init__.py`:
+```python
+from .<your_handler_module_name_without_extension> import *
+__all__ += <your_handler_module_name_without_extension>.__all__
+```
+The logger will then be available with an approprite command line switch to dragonfly.
+
 
 ## Design notes
 
