@@ -1,12 +1,9 @@
 '''
-expanded monitoring of sensors
+Expanded monitoring of sensors
 '''
 
 from __future__ import absolute_import
 
-'''
-Notes:
-'''
 
 
 
@@ -18,7 +15,7 @@ import os
 from time import time
 
 # internal imports
-from dripline.core import Gogol, exceptions
+from dripline.core import Gogol, exceptions, fancy_doc
 #from .postgres_interface import PostgreSQLInterface
 
 __all__ = []
@@ -26,7 +23,10 @@ logger = logging.getLogger(__name__)
 
 
 __all__.append('expanded_monitor')
+
+@fancy_doc
 class expanded_monitor(Gogol):
+
     def __init__(self,sensor_definitions='', **kwargs):
         '''
         sensor_definition_file (str): name of a yaml file encoding sensor metadata
