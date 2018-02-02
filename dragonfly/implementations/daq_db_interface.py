@@ -70,13 +70,13 @@ class RunDBInterface(Provider):
             self.tables[table] = sqlalchemy.Table(table, meta, autoload=True, schema='runs')
 
     def _insert_with_return(self, table_name, insert_kv_dict, return_col_names_list):
-    '''
-    Performs SQL inserts and returns dictionary of table column names (keys) and reply values
+        '''
+        Performs SQL inserts and returns dictionary of table column names (keys) and reply values
 
-    table_name (str): name of the table to insert to
-    insert_kv_dict (dict): dictionary of {column_names: values} to serve as defaults when inserting, any values provided explicitly on the insert request will override these values 
-    return_col_names_list (list): list of names (str) of columns whose values should be returned on completion of the insert
-    '''
+        table_name (str): name of the table to insert to
+        insert_kv_dict (dict): dictionary of {column_names: values} to serve as defaults when inserting, any values provided explicitly on the insert request will override these values 
+        return_col_names_list (list): list of names (str) of columns whose values should be returned on completion of the insert
+        '''
         try:
             ins = self.tables[table_name].insert().values(**insert_kv_dict)
             if return_col_names_list:
