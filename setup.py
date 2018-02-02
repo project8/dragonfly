@@ -17,8 +17,9 @@ except Exception as err:
 on_rtd = os.environ.get("READTHEDOCS", None) == 'True'
 
 requirements = [
-    'dripline',
     'asteval',
+    'dripline',
+    'PyYAML',
 ]
 extras_require={
     'colorlog' : ['colorlog'],
