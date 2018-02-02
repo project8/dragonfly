@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 __all__.append('DAQProvider')
 
-@fancy_doc
+@core.fancy_doc
 class DAQProvider(core.Provider):
     '''
     Base class for providing a uniform interface to different DAQ systems
@@ -246,7 +246,7 @@ class DAQProvider(core.Provider):
 
 __all__.append('RSAAcquisitionInterface')
 
-@fancy_doc
+@core.fancy_doc
 class RSAAcquisitionInterface(DAQProvider):
     '''
     A DAQProvider for interacting with the RSA

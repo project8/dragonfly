@@ -11,7 +11,7 @@ import logging
 logger=logging.getLogger(__name__)
 
 import dripline
-from dripline.core import Endpoint
+from dripline.core import Endpoint, fancy_doc
 
 from time import sleep
 

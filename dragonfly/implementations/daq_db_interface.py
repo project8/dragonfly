@@ -20,7 +20,7 @@ except ImportError:
 from datetime import datetime
 
 # local imports
-from dripline.core import Provider, Endpoint, constants#, fancy_init_doc
+from dripline.core import Provider, Endpoint, constants, fancy_doc #, fancy_init_doc
 from dripline.core.exceptions import *
 
 import logging

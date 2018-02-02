@@ -11,7 +11,7 @@ import re
 from datetime import datetime, timedelta
 
 import dripline
-from dripline.core import Gogol
+from dripline.core import Gogol, fancy_doc
 
 import logging
 logger=logging.getLogger(__name__)
