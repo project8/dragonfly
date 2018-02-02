@@ -16,6 +16,7 @@ from dripline.core import Gogol
 import logging
 logger=logging.getLogger(__name__)
 
+@fancy_doc
 class DiskMonitor(Gogol):
     '''
     A generic service that will receive AMQP alerts and make sure the disk is not full.
@@ -27,7 +28,10 @@ class DiskMonitor(Gogol):
                  actions_conditions = None,
                  **kwargs):
         '''
-        disk_space_alert: used space threshold above which the Disk Monitor will start to send alerts
+        disk_space_alert (float): used space threshold above which the Disk Monitor will start to send alerts
+        disk_space_critical (float): used space threshold above which the Disk Monitor will start to send critical messages
+        time_between_warnings (int): time between warnings
+        action_condition (list): list of dicts; each dict has 'name' and 'condition_to_set' keys whose values define desired conditions to set
         '''
         # listen to status_message alerts channel
         kwargs.update({'keys':['disk_status.#.#']})
@@ -47,6 +51,12 @@ class DiskMonitor(Gogol):
 
 
     def this_consume(self, message, method):
+        '''
+        #TODO_DOC
+
+        message (Message): dripline.core.Message #TODO_DOC
+        method (): #TODO_DOC
+        '''
         # parse the routing key
         logger.debug('parsing routing key')
         key_parser = r'disk_status.(?P<computername>[\w]+)'
@@ -81,6 +91,12 @@ class DiskMonitor(Gogol):
             # Add here the set condition thing (broadcast?)
 
     def _update_history(self,computername,disk):
+        '''
+        Updates history of computer with latest alert
+
+        computername (str): #TODO_DOC
+        disk (str): #TODO_DOC
+        '''
         logger.debug('updating history')
         if computername not in self.history:
             self.history.update({computername:{}})
@@ -90,6 +106,12 @@ class DiskMonitor(Gogol):
             self.history[computername][disk].update({'last_alert': None })
 
     def _can_talk(self,computername,disk):
+        '''
+        Returns True if time between now and last alert is greater than set time between warnings
+
+        computername (str): #TODO_DOC
+        disk (str): #TODO_DOC
+        '''
         now = datetime.now()
         if self.history[computername][disk]['last_alert'] is None:
             return True
