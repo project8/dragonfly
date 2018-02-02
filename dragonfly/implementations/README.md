@@ -8,7 +8,7 @@ This directory is for implementing custom service modules for varying applicatio
       @fancy_doc
       class <your_class_name>():
       ```
-3. Add your module to the subcommands module by adding:
+3. Add your module to the package by adding:
   - To your python module script:
       ```python
       __all__ = []
