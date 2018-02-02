@@ -202,8 +202,8 @@ import types
 import re as re
 
 
-import asteval
 try:
+    import asteval
     import yaml
 except ImportError:
     pass
