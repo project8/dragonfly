@@ -18,12 +18,16 @@ from time import sleep
 __all__ = []
 __all__.append('AlertSpammer')
 
-
+@fancy_doc
 class AlertSpammer(Endpoint):
     '''
-    Spammer of Alerts
+    Spammer of alerts to alerts exchange 
     '''
     def __init__(self,broker=None,sleep_time = 10,*args, **kwargs):
+    '''
+    broker (str): the AMQP url to connect with
+    sleep_time (int): seconds to sleep between alerts
+    '''
 
         Endpoint.__init__(self,**kwargs)
 
@@ -36,6 +40,9 @@ class AlertSpammer(Endpoint):
         self.sleep_time = sleep_time
 
     def spam(self):
+    '''
+    sends alerts to alerts exchange at regular time intervals
+    '''
         while (True):
 
             severity = 'status_message.{}.{}'.format(self.level,self.username)
