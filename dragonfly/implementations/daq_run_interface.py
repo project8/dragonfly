@@ -1,4 +1,5 @@
 '''
+A service for uniform interfacing with the DAQ (in general) and the RSA (specifically)
 '''
 
 from __future__ import absolute_import
@@ -20,6 +21,8 @@ __all__ = []
 logger = logging.getLogger(__name__)
 
 __all__.append('DAQProvider')
+
+@fancy_doc
 class DAQProvider(core.Provider):
     '''
     Base class for providing a uniform interface to different DAQ systems
@@ -90,6 +93,10 @@ class DAQProvider(core.Provider):
         return self._run_name
     @run_name.setter
     def run_name(self, value):
+        ''' inserts run name to run table in database and retrieves run id and start timestamp
+        
+        value (str): name of acquisition run 
+        '''
         self._run_name = value
         try:
             result = self.provider.cmd(self.run_table_endpoint, 'do_insert', payload={'run_name':value})
@@ -106,6 +113,8 @@ class DAQProvider(core.Provider):
     def start_run(self, run_name):
         '''
         Do the prerun_gets and send the metadata to the recording associated computer
+    
+        run_name (str): name of acquisition run
         '''
         self.run_name = run_name
         self._run_meta = {'DAQ': self.daq_name,
@@ -133,12 +142,18 @@ class DAQProvider(core.Provider):
         logger.info('run <{}> ended'.format(run_was))
 
     def _do_prerun_gets(self):
+        '''
+        Calls pre-run methods to obtain run metadata 
+        '''
         logger.info('doing prerun meta-data get')
         meta_result = self.provider.get(self._metadata_state_target, timeout=30)
         self._run_meta.update(meta_result['value_raw'])
         self.determine_RF_ROI()
 
     def _do_snapshot(self):
+        '''
+        Calls take_snapshot method of snapshot target for database snapshot 
+        '''
         logger.info('requesting snapshot of database')
         filename = '{directory}/{runNyx:03d}yyyxxx/{runNx:06d}xxx/{runN:09d}/{prefix}{runN:09d}_snapshot.json'.format(
                                                                    directory=self.meta_data_directory_path,
@@ -156,6 +171,7 @@ class DAQProvider(core.Provider):
 
     def _send_metadata(self):
         '''
+        Sends metadata to metadata target (mdreceiver) to be written to file(s)
         '''
         logger.info('metadata should broadcast')
         filename = '{directory}/{runNyx:03d}yyyxxx/{runNx:06d}xxx/{runN:09d}/{prefix}{runN:09d}_meta.json'.format(
@@ -175,6 +191,10 @@ class DAQProvider(core.Provider):
 
     def start_timed_run(self, run_name, run_time):
         '''
+        Starts timed acquisition run 
+
+        run_name (str): name of acquisition run
+        run_time (int): length of run in seconds
         '''
         self._run_time = int(run_time)
         if self._daq_in_safe_mode:
@@ -206,6 +226,11 @@ class DAQProvider(core.Provider):
         return self.run_id
 
     def _set_condition(self,number):
+        '''
+        Puts/Removes DAQ in safe mode
+
+        number (int): 0 (leave safe mode) or e.g 10 for global DAQ stop or 11 for RSA DAQ stop
+        '''
         logger.debug('receiving a set_condition {} request'.format(number))
         if number in self._set_condition_list:
             logger.debug('putting myself in safe_mode')
@@ -220,6 +245,8 @@ class DAQProvider(core.Provider):
 
 
 __all__.append('RSAAcquisitionInterface')
+
+@fancy_doc
 class RSAAcquisitionInterface(DAQProvider):
     '''
     A DAQProvider for interacting with the RSA
@@ -233,6 +260,15 @@ class RSAAcquisitionInterface(DAQProvider):
                  trace_metadata_path=None,
                  metadata_endpoints=None,
                  **kwargs):
+        '''
+        daq_target (str): name of DAQ provider in service to interface with 
+        hf_lo_freq (int): hf local oscillator frequency in Hz
+        instrument_setup_filename_prefix (str): prefix for instrument setup file, not currently implemented
+        mask_filename_prefix (str): prefix for mask file name, not currently implemented
+        trace_path (str): path to where to save the trace dpt file (currently, a drive on claude mounted on the RSA via samba)
+        trace_metadata_path (str): path to where to save the metadata file (currently, a drive on claude)
+        metadata_endpoints (list): list of metadata endpoint names (str) whose properties we save  
+        '''
         DAQProvider.__init__(self, **kwargs)
 
         if daq_target is None:
@@ -263,11 +299,17 @@ class RSAAcquisitionInterface(DAQProvider):
 
     @property
     def is_running(self):
+        '''
+        Returns RSA trigger status as boolean
+        '''
         result = self.provider.get("rsa_trigger_status")
         logger.info('RSA trigger status is <{}>'.format(result['value_cal']))
         return bool(int(result['value_raw']))
 
     def _do_checks(self):
+        '''
+        Sets RSA exeternal reference to EXT and checks for errors in queue which, if present, aborts the run 
+        '''
         the_ref = self.provider.set('rsa_osc_source', 'EXT')['value_raw']
         if the_ref != 'EXT':
             raise core.exceptions.DriplineGenericDAQError('RSA external ref found to be <{}> (!="EXT")'.format(the_ref))
@@ -280,11 +322,17 @@ class RSAAcquisitionInterface(DAQProvider):
         return "checks successful"
 
     def _start_data_taking(self,directory,filename):
+        '''
+        Sends stat run command to DAQ target
+        '''
         self.provider.cmd(self._daq_target, 'start_run', [directory, filename])
         logger.info("Adding {} sec timeout for run <{}> duration".format(self._run_time, self.run_id))
         self._stop_handle = self.service._connection.add_timeout(self._run_time, self.end_run)
 
     def _stop_data_taking(self):
+        '''
+        Sends end run command to DAQ target
+        '''
         self.provider.cmd(self._daq_target, 'end_run')
         if self._stop_handle is not None:
             logger.info("Removing sec timeout for run <{}> duration".format(self.run_id))
@@ -292,6 +340,9 @@ class RSAAcquisitionInterface(DAQProvider):
             self._stop_handle = None
 
     def determine_RF_ROI(self):
+        '''
+        Gets RF roi information from provider and saves it as run metadata 
+        '''
         logger.info('trying to determine roi')
 
         self._run_meta['RF_HF_MIXING'] = float(self._hf_lo_freq)
@@ -306,6 +357,9 @@ class RSAAcquisitionInterface(DAQProvider):
         logger.debug('RF Max: {}'.format(self._run_meta['RF_ROI_MAX']))
 
     def save_trace(self, trace, comment):
+        '''
+        Saves trace of RSA 
+        '''
         if self.trace_path is None:
             raise DriplineValueError("No trace_path in RSA config file: save_trace feature disabled!")
 
