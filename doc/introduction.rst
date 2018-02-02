@@ -7,7 +7,7 @@ Dragonfly is a dripline-based slow-control implementation in python.
 Dripline Basics
 ===============
 
-More complete introductions to `dripline <https://dripline.readthedocs.io/en/master/>` or the `python-implementation <https://dripline-python.readthedocs.io/en/master/>` are available in their specific documentation.
+More complete introductions to `dripline <https://dripline.readthedocs.io/en/latest/>`_ or the `python-implementation <https://dripline-python.readthedocs.io/en/latest/>`_ are available in their specific documentation.
 
 Dripline defines the wire protocol standard, i.e. how the messages are packaged and what fields to expect.
 In practice, we run primarily Linux machines on Debian Stretch (9.x) with the system package version of RabbitMQ (3.6.6) to serve as our routing system.

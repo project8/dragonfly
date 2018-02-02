@@ -48,10 +48,10 @@ For the complete experience, you would run the following commands to install the
 
 A few potentially useful notes on installation that are more generic than just dragonfly:
 
-- full functionality of pip may require upgrading to a newer version (`pip install -U pip`)
-- the `extras_require` in setup.py defines optional dependencies, these can be activated by selecting (a list of) optional dependencies in braces after the package path (`pip install ./dragonfly[colorlog]`)
-- install in develop mode to catch local changes to the code with the `pip install -e` flag
-- install code directly from GitHub without cloning a local copy using `pip install git+https://github.com/project8/dragonfly#egg=dragonfly[colorlog]`
+- full functionality of pip may require upgrading to a newer version (``pip install -U pip``)
+- the ``extras_require`` in setup.py defines optional dependencies, these can be activated by selecting (a list of) optional dependencies in braces after the package path (``pip install ./dragonfly[colorlog]``)
+- install in develop mode to catch local changes to the code with the ``pip install -e`` flag
+- install code directly from GitHub without cloning a local copy using ``pip install git+https://github.com/project8/dragonfly#egg=dragonfly[colorlog]``
 
 
 Python Libraries
@@ -122,11 +122,11 @@ Using the ROACH DAQ requires a very specific set of packages with tagged version
 This is probably more custom than should really exist in dragonfly, but here are the packages:
 
 - `corr==0.7.3 <https://pypi.python.org/pypi/corr/0.7.3>`_
-- `katcp==0.5.5 <https://pypi.python.org/pypi/katcp/0.5.5>`
+- `katcp==0.5.5 <https://pypi.python.org/pypi/katcp/0.5.5>`_
 - `construct==2.5.2 <http://construct.readthedocs.io/en/latest/>`_
 - `scipy==0.19.0 <https://www.scipy.org>`_
 - `netifaces==0.10.5 <https://pypi.python.org/pypi/netifaces/0.10.5>`_
-- `adc5g <https://github.com/sma-wideband/adc_tests.git@65a2ef4e1cf68bee35176a1171d923a73952e13e>`_ Note specific commit!
+- `adc5g <https://github.com/sma-wideband/adc_tests.git@65a2ef4e1cf68bee35176a1171d923a73952e13e>`_ Note specific commit! Not available on PyPI!
 
 
 Helpful Python Packages
