@@ -1,0 +1,4 @@
+- **implementation**:
+  - Dripline service modules for varied applications such as device interfacing, monitoring, and database interaction  
+- **subcommands**:
+  - Custom subcommand modules such as documentation helper and run scripting  
