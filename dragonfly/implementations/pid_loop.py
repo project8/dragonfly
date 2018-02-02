@@ -1,4 +1,5 @@
 '''
+Implementation of a PID control loop
 '''
 
 from __future__ import print_function
