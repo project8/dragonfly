@@ -1,5 +1,5 @@
 '''
-A service fo interfacing with the DAQ DB (the run table in particular)
+A service for interfacing with the DAQ DB (the run table in particular)
 
 Note: services using this module will require sqlalchemy (and assuming we're still using postgresql, psycopg2 as the sqlalchemy backend)
 '''
