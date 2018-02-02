@@ -23,3 +23,6 @@ An alternative is to install directly from github.  See [pip documentation](http
 ```bash
 pip install git+https://github.com/project8/dragonfly#egg=dragonfly[extra1,extra2,...]
 ```
+# Subdirectories
+- **dragonfly**: implementations of dripline services, custom log message handlers, extra subcommands for executables 
+- **examples**: sample configuration files for different services 

@@ -1,5 +1,7 @@
 Dragonfly supports adding aribtrary subcommands to the executable.
 
+Note: if a module is not yet added to the subcommands module, place it in the "not_yet_ported" subdirectory
+
 ## How to add a subcommand
 
 1. create a python module in this subdirectory for your implementation, it should contain a class which implements the behavior your want
