@@ -5,7 +5,7 @@ This directory is for implementing custom handlers for log messages based on pyt
 By design, you will be able to simply drop in the source file for a valid handler. Follow these instructions:
 
 1. Create a python module in this directory for your handler
-2. Add your module to the subcommands module by adding two lines to `__init__.py`:
+2. Add your module to the package by adding two lines to `__init__.py`:
 ```python
 from .<your_handler_module_name_without_extension> import *
 __all__ += <your_handler_module_name_without_extension>.__all__
