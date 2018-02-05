@@ -11,7 +11,7 @@ from dripline.core import Endpoint, exceptions, fancy_doc
 import logging
 logger = logging.getLogger(__name__)
 
-__all__.append('MdReceiver')
+__all__.append('MDReceiver')
 
 @fancy_doc
 class MDReceiver(Endpoint):
