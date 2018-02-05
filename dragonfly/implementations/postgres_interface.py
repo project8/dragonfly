@@ -100,7 +100,7 @@ class PostgreSQLInterface(Provider):
         logger.debug('should request snapshot file: {}'.format(filename))
         this_payload = {'contents': run_snapshot,
                         'filename': filename}
-        req_result = self.provider.cmd(self._metadata_target, None, payload=this_payload)
+        req_result = self.provider.cmd(self._metadata_target, 'write_json', payload=this_payload)
         logger.debug('snapshot sent')
         return
 
