@@ -35,7 +35,7 @@ class MDReceiver(Endpoint):
         logging.debug('filename to write: <{}>'.format(filename))
         dir_path,_ = os.path.split(filename)
 
-        if not os.path.isdir(dir_path): # check if dir exists
+        if not os.path.isdir(dir_path): # check if dir exists, if not then create it 
             try: # make directory 
                 os.makedirs(dir_path) 
                 time.sleep(0.001) # add a small delay after creating the new directory so that anything (e.g. Hornet) 
@@ -43,8 +43,6 @@ class MDReceiver(Endpoint):
             except OSError as e:
                 logger.error('unable to create metadata directory')
                 raise exceptions.DriplineHardwareError('directory for metadata <{}> unable to be created: {}'.format(dir_path,e))
-        else:
-            raise exceptions.DriplineHardwareError('metadata directory <{}> already exists'.format(dir_path))
 
         if not bool(contents): # check if contents are present in the message
             logger.error('no file contents present in the message for {}'.format(filename))
