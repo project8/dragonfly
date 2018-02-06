@@ -48,7 +48,7 @@ class MDReceiver(Endpoint):
         try: # convert file contents to JSON
             contents_json = json.dumps(contents,indent=4,sort_keys=True,separators=(',',':'))
         except Exception as e:
-            logger.error('unable to dump metadata contents to JSON format'.)
+            logger.error('unable to dump metadata contents to JSON format')
             raise exceptions.DriplinePayloadError('metadata file failed conversion to JSON: {}'.format(e))
 
         if not os.path.isfile(filename): # if file doesn't exist
