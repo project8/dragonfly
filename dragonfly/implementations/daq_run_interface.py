@@ -20,6 +20,7 @@ __all__ = []
 logger = logging.getLogger(__name__)
 
 __all__.append('DAQProvider')
+@core.fancy_doc
 class DAQProvider(core.Provider):
     '''
     Base class for providing a uniform interface to different DAQ systems
@@ -231,6 +232,7 @@ class DAQProvider(core.Provider):
 
 
 __all__.append('TestingDAQProvider')
+@core.fancy_doc
 class TestingDAQProvider(DAQProvider):
     '''
     A class for testing a minimal DAQProvider, e.g in insectarium
@@ -240,13 +242,18 @@ class TestingDAQProvider(DAQProvider):
         DAQProvider.__init__(self,**kwargs)
 
     def _do_prerun_gets(self):
+        '''
+        Calls pre-run methods to obtain run metadata
+        '''
         logger.info('doing prerun meta-data get')
         meta_result = self.provider.get(self._metadata_state_target, timeout=30)
         self._run_meta.update(meta_result['value_raw'])
 
     def start_run(self,run_name):
         '''
-        A minimal start run
+        Do the prerun_gets and send the metadata to the recording associated computer
+        
+        run_name (str): name of acquisition run
         '''
         self.run_name = run_name
         self._run_meta = {'DAQ': self.daq_name,
@@ -259,10 +266,10 @@ class TestingDAQProvider(DAQProvider):
     
     def start_timed_run(self, run_name, run_time):
         '''
-        A minimal start_timed_run
+        Starts timed acquisition run 
 
         run_name (str): name of acquisition run
-        run_time (int): length of acquisition in seconds
+        run_time (int): length of run in seconds
         '''
         self._run_time = int(run_time)
 
@@ -284,7 +291,7 @@ class TestingDAQProvider(DAQProvider):
 
     def end_run(self):
         '''
-        A minimal end_run
+        Send command to stop data taking, do the post-run snapshot, and announce the end of the run
         '''
         if self._stop_handle is not None:
             logger.info("Removing sec timeout for run <{}> duration".format(self.run_id))
@@ -299,6 +306,7 @@ class TestingDAQProvider(DAQProvider):
 
 
 __all__.append('RSAAcquisitionInterface')
+@core.fancy_doc
 class RSAAcquisitionInterface(DAQProvider):
     '''
     A DAQProvider for interacting with the RSA
