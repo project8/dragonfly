@@ -203,7 +203,8 @@ class DAQProvider(core.Provider):
                                                                    )
 
         filename = "{}{:09d}".format(self.filename_prefix, self.run_id)
-        self._start_data_taking(directory,filename)
+        if not isinstance(self,DAQProvider): # don't check for generic DAQProviders, useful in insectarium testing
+            self._start_data_taking(directory,filename)
         return self.run_id
 
     def _set_condition(self,number):
