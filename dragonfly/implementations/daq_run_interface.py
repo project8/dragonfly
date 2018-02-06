@@ -256,8 +256,6 @@ class TestingDAQProvider(DAQProvider):
         self._send_metadata()
         logger.debug('these meta will be {}'.format(self._run_meta))
         logger.info('start_run finished')
-        
-               
     
     def start_timed_run(self, run_name, run_time):
         '''
