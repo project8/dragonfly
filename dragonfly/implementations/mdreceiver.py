@@ -19,7 +19,7 @@ class MDReceiver(Endpoint):
     Base class for mdreceiver
     '''
     def __init__(self,**kwargs):
-    Endpoint.__init__(self, **kwargs)
+        Endpoint.__init__(self, **kwargs)
 
 
     def write_json(self, contents, filename):
