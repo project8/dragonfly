@@ -59,6 +59,6 @@ class MDReceiver(Endpoint):
             logger.error('<{}> already exists'.format(filename))
             raise exceptions.DriplineHardwareError('unable to create <{}> since it already exists'.format(filename))
 
-        logger.info('File written: {}', filename)
+        logger.info('File written: <{}>'.format(filename))
            
         return 
