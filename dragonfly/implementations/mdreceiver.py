@@ -29,7 +29,7 @@ class MDReceiver(Endpoint):
         filename (str): metadata file name to save including full path
         '''
     
-        logger.debug('received "write_json" instruction')
+        logger.info('received "write_json" instruction')
         logging.debug('filename to write: <{}>'.format(filename))
         dir_path,_ = os.path.split(filename)
 
@@ -60,6 +60,6 @@ class MDReceiver(Endpoint):
             logger.error('<{}> already exists'.format(filename))
             raise exceptions.DriplineHardwareError('unable to create <{}> since it already exists'.format(filename))
 
-        logger.info('File written: <{}>'.format(filename))
+        logger.info('file written: <{}>'.format(filename))
            
         return 
