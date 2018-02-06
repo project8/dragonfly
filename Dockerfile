@@ -1,4 +1,4 @@
 FROM project8/dripline-python
 
-ADD . /dragonfly
+COPY . /dragonfly
 RUN pip install /dragonfly[colorlog,database,slack]
