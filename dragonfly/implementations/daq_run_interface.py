@@ -183,9 +183,10 @@ class DAQProvider(core.Provider):
 
         # self.start_run(run_name)
         logger.debug('testing if the DAQ is running')
-        result = self.is_running
-        if result == True:
-            raise core.exceptions.DriplineDAQRunning('DAQ is already running: aborting run')
+        if self.__class__.__name__ != 'DAQProvider': # don't check for generic DAQProviders, useful in insectarium testing
+            result = self.is_running
+            if result == True:
+                raise core.exceptions.DriplineDAQRunning('DAQ is already running: aborting run')
 
         # do the last minutes checks: DAQ specific
         self._do_checks()
