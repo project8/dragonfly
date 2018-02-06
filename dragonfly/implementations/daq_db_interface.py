@@ -1,5 +1,5 @@
 '''
-A service fo interfacing with the DAQ DB (the run table in particular)
+A service for interfacing with the DAQ DB (the run table in particular)
 
 Note: services using this module will require sqlalchemy (and assuming we're still using postgresql, psycopg2 as the sqlalchemy backend)
 '''
@@ -20,7 +20,7 @@ except ImportError:
 from datetime import datetime
 
 # local imports
-from dripline.core import Provider, Endpoint, constants#, fancy_init_doc
+from dripline.core import Provider, Endpoint, constants, fancy_doc #, fancy_init_doc
 from dripline.core.exceptions import *
 
 import logging
@@ -29,7 +29,7 @@ logger.setLevel(logging.DEBUG)
 
 __all__.append('RunDBInterface')
 
-
+@fancy_doc
 class RunDBInterface(Provider):
     '''
     A not-so-flexible provider for getting run_id values.
@@ -37,11 +37,9 @@ class RunDBInterface(Provider):
 
     def __init__(self, database_name, database_server, tables, *args, **kwargs):
         '''
-        ~Params
-            database_name (str): name of the database to connect to
-            database_server (str): network resolvable hostname of database server
-            tables (list): list of names (str) of tables in the database
-        ~Params
+        database_name (str): name of the database to connect to
+        database_server (str): network resolvable hostname of database server
+        tables (list): list of names (str) of tables in the database
         '''
         if not 'sqlalchemy' in globals():
             raise ImportError('SQLAlchemy not found, required for RunDBInterface class')
@@ -54,6 +52,11 @@ class RunDBInterface(Provider):
 
     def connect_to_db(self, database_server, database_name, table_names):
         '''
+        Connects to table(s) in database server
+
+        database_server (str): name of database server, e.g localhost
+        database_name (str): name of database, e.g p8_sc_db
+        table_names(list of str): names of tables in database to connect to
         '''
         credentials = json.loads(open(os.path.expanduser('~')+'/.project8_authentications.json').read())['postgresql']
         engine_str = 'postgresql://{}:{}@{}/{}'.format(credentials['username'],
@@ -67,6 +70,13 @@ class RunDBInterface(Provider):
             self.tables[table] = sqlalchemy.Table(table, meta, autoload=True, schema='runs')
 
     def _insert_with_return(self, table_name, insert_kv_dict, return_col_names_list):
+        '''
+        Performs SQL inserts and returns dictionary of table column names (keys) and reply values
+
+        table_name (str): name of the table to insert to
+        insert_kv_dict (dict): dictionary of {column_names: values} to serve as defaults when inserting, any values provided explicitly on the insert request will override these values 
+        return_col_names_list (list): list of names (str) of columns whose values should be returned on completion of the insert
+        '''
         try:
             ins = self.tables[table_name].insert().values(**insert_kv_dict)
             if return_col_names_list:
@@ -91,6 +101,8 @@ class RunDBInterface(Provider):
 
 
 __all__.append("InsertDBEndpoint")
+
+@fancy_doc
 class InsertDBEndpoint(Endpoint):
     '''
     A class for making calls to _insert_with_return
@@ -102,13 +114,11 @@ class InsertDBEndpoint(Endpoint):
                  *args,
                 **kwargs):
         '''
-        ~Params
-            table_name (str): name of the table to insert to
-            required_insert_names (list): list of names (str) of the table columns which must be included on every requested insert
-            return_col_names (list): list of names (str) of columns whose values should be returned on completion of the insert
-            optional_insert_names (list): list of names (str) of columns which the user may specify on an insert request, but which may be omitted
-            default_insert_values (dict): dictionary of {column_names: values} to serve as defaults when inserting, any values provided explicitly on the insert request will override these values
-        ~Params
+        table_name (str): name of the table to insert to
+        required_insert_names (list): list of names (str) of the table columns which must be included on every requested insert
+        return_col_names (list): list of names (str) of columns whose values should be returned on completion of the insert
+        optional_insert_names (list): list of names (str) of columns which the user may specify on an insert request, but which may be omitted
+        default_insert_values (dict): dictionary of {column_names: values} to serve as defaults when inserting, any values provided explicitly on the insert request will override these values
         '''
         Endpoint.__init__(self, *args, **kwargs)
 
@@ -120,6 +130,7 @@ class InsertDBEndpoint(Endpoint):
 
     def do_insert(self, *args, **kwargs):
         '''
+        Calls _insert_with_return to return table column names with reply values
         '''
         if not isinstance(self.provider, RunDBInterface):
             raise DriplineInternalError('InsertDBEndpoint must have a RunDBInterface as provider')

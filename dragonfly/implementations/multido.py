@@ -1,3 +1,7 @@
+'''
+Convenience object allowing a single target to interact with multiple endpoints
+'''
+
 from __future__ import absolute_import
 __all__ = []
 
@@ -80,6 +84,9 @@ class MultiDo(Endpoint):
             self._targets.append([a_target['target'], these_details])
 
     def on_get(self):
+        '''
+        attemps to get a single endpoint and return value and string representation for every target
+        '''
         result_vals = {}
         result_reps = []
         for a_target,details in self._targets:
@@ -102,6 +109,9 @@ class MultiDo(Endpoint):
         return ret_val,ret_rep
 
     def on_set(self, value):
+        '''
+        Performs sets and checks ... #TODO_DOC
+        '''
 
         to_be_sent = []
         for a_target,details in self._targets:

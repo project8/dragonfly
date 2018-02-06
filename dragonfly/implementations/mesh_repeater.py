@@ -5,7 +5,7 @@ allowing a *one directional* link between otherwise independent meshes.
 from __future__ import absolute_import
 
 import dripline
-from dripline.core import Provider, Interface, Endpoint
+from dripline.core import Provider, Interface, Endpoint, fancy_doc
 
 import logging
 logger=logging.getLogger(__name__)
@@ -14,6 +14,7 @@ __all__ = ['MeshRepeater',
            'ProxyEndpoint',
           ]
 
+@fancy_doc
 class MeshRepeater(Provider):
     '''
     Provider which acts as a pure client on another dripline mesh.
@@ -40,7 +41,7 @@ class MeshRepeater(Provider):
         reply = self._interface.send_request(target, request)
         return reply
 
-
+@fancy_doc
 class ProxyEndpoint(Endpoint):
     '''
     Endpoint which responds to *all* RequestMessages received by passing them to the configured target via self.proivder (expected to be a MeshRepeater).
@@ -54,6 +55,13 @@ class ProxyEndpoint(Endpoint):
         self._target = target
 
     def handle_request(self, channel, method, properties, request):
+        '''send reply message with to a target in the remote mesh
+
+        channel (Channel): pika.Channel for interacting with RabbitMQ
+        method: #TODO_DOC
+        properties: #TODO_DOC
+        request (RequestMessage): dripline.core.RequestMessage to send to target  
+        '''
         # This blindly sends *all* requests received to the target,
         # we could easily apply arbitrarly complex logic here if we wish to do so,
         # but it is not currently clear what that could/should be.

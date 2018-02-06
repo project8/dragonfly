@@ -1,3 +1,7 @@
+'''
+A service for interfacing with the ESR
+'''
+
 from __future__ import absolute_import
 __all__ = []
 
@@ -33,6 +37,10 @@ class ESR_Measurement(core.Endpoint):
         '''
         Wraps all ESR functionality into single method call with tunable arguments.
         This function should interface with run_scripting through the action_esr_run method.
+
+        config_instruments (bool): flag to configure instruments
+        coils (list): list of coil numbers (int) for ESR scan
+        n_fits (int): number of fits to perform
         '''
         logger.info(kwargs)
         self.output_dict = {}
@@ -133,14 +141,30 @@ class ESR_Measurement(core.Endpoint):
 
 
     def pull_lockin_data(self, key):
+        '''
+        Call grab_data method of lockin_interface give key
+
+        key (): #TODO_DOC
+        '''
         result = self.provider.cmd(target="lockin_interface", method_name="grab_data", value=[key], timeout=20)
         return result['values'][0].replace('\x00','')
 
     def raw_get_endpoint(self, endptname, **kwargs):
+        '''
+        Get raw value of endpoint
+
+        endptname (str): name of endpoint
+        '''
         result = self.provider.get(target=endptname, **kwargs)
         return result['value_raw']
 
     def check_endpoint(self, endptname, val):
+        '''
+        Sets endpoint to value         
+    
+        endptname (str): name of endpoint
+        val (int,float,str,unicode): value of endpoint to set  
+        '''
         if not isinstance(val, (int,float,str,unicode)):
             logger.warning("set value is of type {} with value {}, cannot process".format(type(val), val))
             raise TypeError

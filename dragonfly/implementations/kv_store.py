@@ -39,6 +39,8 @@ def times3(value):
     return 3.*value
 
 logger = logging.getLogger(__name__)
+
+@fancy_doc
 class kv_store(Provider):
     """
     The KV store.  This is just a wrapper around a dict.

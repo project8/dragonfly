@@ -202,8 +202,11 @@ import types
 import re as re
 
 
-import asteval
-import yaml
+try:
+    import asteval
+    import yaml
+except ImportError:
+    pass
 
 import dripline
 
@@ -219,6 +222,10 @@ class RunScript(object):
     name = 'execute'
 
     def __init__(self, *args, **kwargs):
+        if not 'asteval' in globals():
+            raise ImportError("asteval not found but is a required dependency for RunScript")
+        if not 'yaml' in globals():
+            raise ImportError("yaml not found but is a required dependency for RunScript")
         self.cache_attributes = [
                                  '_lockout_key',
                                  '_last_action',

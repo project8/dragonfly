@@ -115,6 +115,9 @@ class EthernetProvider(Provider):
         '''
         Standard provider method to communicate with instrument.
         NEVER RENAME THIS METHOD!
+
+        commands (list||None): list of command(s) to send to the instrument following (re)connection to the instrument, still must return a reply!
+                             : if impossible, set as None to skip
         '''
         if isinstance(commands, (unicode,str)):
             commands = [commands]
@@ -148,8 +151,10 @@ class EthernetProvider(Provider):
 
     def _send_commands(self, commands):
         '''
-        Take a list of commands, send to instrument and receive responses, do
-            any necessary formatting.
+        Take a list of commands, send to instrument and receive responses, do any necessary formatting.
+
+        commands (list||None): list of command(s) to send to the instrument following (re)connection to the instrument, still must return a reply!
+                             : if impossible, set as None to skip
         '''
         all_data=[]
 
@@ -177,6 +182,8 @@ class EthernetProvider(Provider):
     def _listen(self, blank_command=False):
         '''
         Query socket for response.
+
+        blank_comands (bool): flag which is True when command is exactly the command terminator
         '''
         data = ''
         try:

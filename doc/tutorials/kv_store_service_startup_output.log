@@ -1,0 +1,80 @@
+warning: slack is only ever warning, setting that
+2018-02-02T15:36:25[DEBUG   ] dragonfly(268) -> calling <dragonfly.subcommands.open_spimescape_portal.Serve object at 0x7f15250b88d0> with args:
+{'name': 'my_store', 'keys': '#', 'broker': 'gus.p8', 'module': 'Spimescape', 'tmux': None, 'func': <dragonfly.subcommands.open_spimescape_portal.Serve object at 0x7f15250b88d0>, 'endpoints': [{'endpoints': [{'name': 'peaches', 'module': 'kv_store_key', 'initial_value': 0.75}, {'name': 'chips', 'module': 'kv_store_key', 'initial_value': 1.75}, {'name': 'waffles', 'module': 'kv_store_key', 'initial_value': 4.0}], 'name': 'my_price_list', 'module': 'kv_store'}], 'config': 'dragonfly/examples/kv_store_tutorial.yaml', 'verbose': 3}
+2018-02-02T15:36:25[DEBUG   ] dripline.core.spimescape(47) -> cannot set keys, use self.endpoints
+2018-02-02T15:36:25[INFO    ] dragonfly.subcommands.open_spimescape_portal(56) -> starting my_store
+2018-02-02T15:36:25[INFO    ] dragonfly.subcommands.open_spimescape_portal(90) -> creating a <kv_store> with args:
+{'name': 'my_price_list'}
+2018-02-02T15:36:25[INFO    ] dragonfly.subcommands.open_spimescape_portal(90) -> creating a <kv_store_key> with args:
+{'name': 'peaches', 'initial_value': 0.75}
+2018-02-02T15:36:25[INFO    ] dragonfly.subcommands.open_spimescape_portal(90) -> creating a <kv_store_key> with args:
+{'name': 'chips', 'initial_value': 1.75}
+2018-02-02T15:36:25[INFO    ] dragonfly.subcommands.open_spimescape_portal(90) -> creating a <kv_store_key> with args:
+{'name': 'waffles', 'initial_value': 4.0}
+2018-02-02T15:36:25[INFO    ] dragonfly.subcommands.open_spimescape_portal(60) -> spimescapes created and populated
+2018-02-02T15:36:25[INFO    ] dragonfly.subcommands.open_spimescape_portal(61) -> Configuration of my_store complete, starting consumption
+2018-02-02T15:36:25[INFO    ] dripline.core.service(397) -> starting event loop for node my_store
+-----------------------------
+2018-02-02T15:36:25[DEBUG   ] dripline.core.service(98) -> Connecting to localhost
+2018-02-02T15:36:25[INFO    ] dripline.core.service(408) -> calling setup methods
+2018-02-02T15:36:25[INFO    ] dripline.core.service(422) -> startup calls complete
+-----------------------------
+2018-02-02T15:36:25[DEBUG   ] dripline.core.service(111) -> Connection opened
+2018-02-02T15:36:25[DEBUG   ] dripline.core.service(120) -> Adding connection close callback
+2018-02-02T15:36:25[DEBUG   ] dripline.core.service(163) -> Creating a new channel
+2018-02-02T15:36:25[DEBUG   ] dripline.core.service(175) -> Channel opened
+2018-02-02T15:36:25[DEBUG   ] dripline.core.service(187) -> Adding channel close callback
+2018-02-02T15:36:25[DEBUG   ] dripline.core.service(214) -> Declaring exchange requests
+2018-02-02T15:36:25[DEBUG   ] dripline.core.service(214) -> Declaring exchange alerts
+2018-02-02T15:36:25[DEBUG   ] dripline.core.service(226) -> Exchange declared
+2018-02-02T15:36:25[DEBUG   ] dripline.core.service(237) -> Declaring queue my_store
+2018-02-02T15:36:25[DEBUG   ] dripline.core.service(226) -> Exchange declared
+2018-02-02T15:36:25[DEBUG   ] dripline.core.service(237) -> Declaring queue my_store
+2018-02-02T15:36:25[DEBUG   ] dripline.core.service(255) -> Binding requests to my_store with broadcast.#
+2018-02-02T15:36:25[DEBUG   ] dripline.core.service(255) -> Binding requests to my_store with my_store.#
+2018-02-02T15:36:25[DEBUG   ] dripline.core.service(255) -> Binding requests to my_store with peaches.#
+2018-02-02T15:36:25[DEBUG   ] dripline.core.service(255) -> Binding requests to my_store with chips.#
+2018-02-02T15:36:25[DEBUG   ] dripline.core.service(255) -> Binding requests to my_store with waffles.#
+2018-02-02T15:36:25[DEBUG   ] dripline.core.service(255) -> Binding requests to my_store with my_price_list.#
+2018-02-02T15:36:25[DEBUG   ] dripline.core.service(255) -> Binding requests to my_store with broadcast.#
+2018-02-02T15:36:25[DEBUG   ] dripline.core.service(255) -> Binding requests to my_store with my_store.#
+2018-02-02T15:36:25[DEBUG   ] dripline.core.service(255) -> Binding requests to my_store with peaches.#
+2018-02-02T15:36:25[DEBUG   ] dripline.core.service(255) -> Binding requests to my_store with chips.#
+2018-02-02T15:36:25[DEBUG   ] dripline.core.service(255) -> Binding requests to my_store with waffles.#
+2018-02-02T15:36:25[DEBUG   ] dripline.core.service(255) -> Binding requests to my_store with my_price_list.#
+2018-02-02T15:36:25[DEBUG   ] dripline.core.service(267) -> Queue bound
+2018-02-02T15:36:25[DEBUG   ] dripline.core.service(280) -> Issuing consumer related RPC commands
+2018-02-02T15:36:25[DEBUG   ] dripline.core.service(291) -> Adding consumer cancellation callback
+2018-02-02T15:36:25[DEBUG   ] dripline.core.service(267) -> Queue bound
+2018-02-02T15:36:25[DEBUG   ] dripline.core.service(280) -> Issuing consumer related RPC commands
+2018-02-02T15:36:25[DEBUG   ] dripline.core.service(291) -> Adding consumer cancellation callback
+2018-02-02T15:36:25[DEBUG   ] dripline.core.service(267) -> Queue bound
+2018-02-02T15:36:25[DEBUG   ] dripline.core.service(280) -> Issuing consumer related RPC commands
+2018-02-02T15:36:25[DEBUG   ] dripline.core.service(291) -> Adding consumer cancellation callback
+2018-02-02T15:36:25[DEBUG   ] dripline.core.service(267) -> Queue bound
+2018-02-02T15:36:25[DEBUG   ] dripline.core.service(280) -> Issuing consumer related RPC commands
+2018-02-02T15:36:25[DEBUG   ] dripline.core.service(291) -> Adding consumer cancellation callback
+2018-02-02T15:36:25[DEBUG   ] dripline.core.service(267) -> Queue bound
+2018-02-02T15:36:25[DEBUG   ] dripline.core.service(280) -> Issuing consumer related RPC commands
+2018-02-02T15:36:25[DEBUG   ] dripline.core.service(291) -> Adding consumer cancellation callback
+2018-02-02T15:36:25[DEBUG   ] dripline.core.service(267) -> Queue bound
+2018-02-02T15:36:25[DEBUG   ] dripline.core.service(280) -> Issuing consumer related RPC commands
+2018-02-02T15:36:25[DEBUG   ] dripline.core.service(291) -> Adding consumer cancellation callback
+2018-02-02T15:36:25[DEBUG   ] dripline.core.service(267) -> Queue bound
+2018-02-02T15:36:25[DEBUG   ] dripline.core.service(280) -> Issuing consumer related RPC commands
+2018-02-02T15:36:25[DEBUG   ] dripline.core.service(291) -> Adding consumer cancellation callback
+2018-02-02T15:36:25[DEBUG   ] dripline.core.service(267) -> Queue bound
+2018-02-02T15:36:25[DEBUG   ] dripline.core.service(280) -> Issuing consumer related RPC commands
+2018-02-02T15:36:25[DEBUG   ] dripline.core.service(291) -> Adding consumer cancellation callback
+2018-02-02T15:36:25[DEBUG   ] dripline.core.service(267) -> Queue bound
+2018-02-02T15:36:25[DEBUG   ] dripline.core.service(280) -> Issuing consumer related RPC commands
+2018-02-02T15:36:25[DEBUG   ] dripline.core.service(291) -> Adding consumer cancellation callback
+2018-02-02T15:36:25[DEBUG   ] dripline.core.service(267) -> Queue bound
+2018-02-02T15:36:25[DEBUG   ] dripline.core.service(280) -> Issuing consumer related RPC commands
+2018-02-02T15:36:25[DEBUG   ] dripline.core.service(291) -> Adding consumer cancellation callback
+2018-02-02T15:36:25[DEBUG   ] dripline.core.service(267) -> Queue bound
+2018-02-02T15:36:25[DEBUG   ] dripline.core.service(280) -> Issuing consumer related RPC commands
+2018-02-02T15:36:25[DEBUG   ] dripline.core.service(291) -> Adding consumer cancellation callback
+2018-02-02T15:36:25[DEBUG   ] dripline.core.service(267) -> Queue bound
+2018-02-02T15:36:25[DEBUG   ] dripline.core.service(280) -> Issuing consumer related RPC commands
+2018-02-02T15:36:25[DEBUG   ] dripline.core.service(291) -> Adding consumer cancellation callback

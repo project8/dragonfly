@@ -1,3 +1,7 @@
+'''
+A class to interface with the multiplexer aka muxer instrument
+'''
+
 from __future__ import absolute_import
 
 from dripline.core import Endpoint, fancy_doc, exceptions
@@ -11,6 +15,9 @@ __all__.append('MuxerProvider')
 
 @fancy_doc
 class MuxerProvider(EthernetProvider):
+    '''
+    Provider to interface with muxer
+    '''
 
     def __init__(self, scan_interval=0,**kwargs):
         '''

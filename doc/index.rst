@@ -16,6 +16,7 @@ Contents:
     :maxdepth: 2
 
     contribute
+    tutorials/tutorials
 
 .. todolist::
 
@@ -24,4 +25,3 @@ Contents:
 
     glossary
     better_apidoc_out/modules
-
