@@ -229,9 +229,6 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
                 logger.info('Unblocked channel')
             finally:
                 raise e
-        else:
-            logger.info('Waiting for {} s for run to finish'.format(self._run_time))
-            self._stop_handle = self.service._connection.add_timeout(self._run_time, self.end_run)
 
 
     def _stop_data_taking(self):

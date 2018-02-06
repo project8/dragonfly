@@ -205,6 +205,8 @@ class DAQProvider(core.Provider):
         filename = "{}{:09d}".format(self.filename_prefix, self.run_id)
         if not isinstance(self,DAQProvider): # don't check for generic DAQProviders, useful in insectarium testing
             self._start_data_taking(directory,filename)
+        logger.info("Adding {} sec timeout for run <{}> duration".format(self._run_time, self.run_id))
+        self._stop_handle = self.service._connection.add_timeout(self._run_time, self.end_run)
         return self.run_id
 
     def _set_condition(self,number):
@@ -283,8 +285,6 @@ class RSAAcquisitionInterface(DAQProvider):
 
     def _start_data_taking(self,directory,filename):
         self.provider.cmd(self._daq_target, 'start_run', [directory, filename])
-        logger.info("Adding {} sec timeout for run <{}> duration".format(self._run_time, self.run_id))
-        self._stop_handle = self.service._connection.add_timeout(self._run_time, self.end_run)
 
     def _stop_data_taking(self):
         self.provider.cmd(self._daq_target, 'end_run')
