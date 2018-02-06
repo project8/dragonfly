@@ -181,15 +181,15 @@ class DAQProvider(core.Provider):
             logger.info("DAQ in safe mode")
             raise core.exceptions.DriplineDAQNotEnabled("{} is not enabled: enable it using <dragonfly cmd broadcast.set_condition 0 -b myrna.p8>".format(self.daq_name))
 
-        # self.start_run(run_name)
-        logger.debug('testing if the DAQ is running')
+
+        logger.debug('my class name is: {}'.format(self.__class__.__name__))
         if self.__class__.__name__ != 'DAQProvider': # don't check for generic DAQProviders, useful in insectarium testing
+            logger.debug('testing if the DAQ is running')
             result = self.is_running
             if result == True:
                 raise core.exceptions.DriplineDAQRunning('DAQ is already running: aborting run')
-
-        # do the last minutes checks: DAQ specific
-        self._do_checks()
+            # do the last minutes checks: DAQ specific
+            self._do_checks()
 
         # get run_id and do pre_run gets
         self.start_run(run_name)
