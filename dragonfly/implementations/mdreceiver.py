@@ -4,6 +4,7 @@ __all__ = []
 # std libraries
 import os
 import time
+import json
 
 # local imports
 from dripline.core import Endpoint, exceptions, fancy_doc
