@@ -5,7 +5,7 @@ allowing a *one directional* link between otherwise independent meshes.
 from __future__ import absolute_import
 
 import dripline
-from dripline.core import Provider, Interface, Endpoint
+from dripline.core import Provider, Interface, Endpoint, fancy_doc
 
 import logging
 logger=logging.getLogger(__name__)
