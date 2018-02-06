@@ -136,7 +136,8 @@ class DAQProvider(core.Provider):
         logger.info('doing prerun meta-data get')
         meta_result = self.provider.get(self._metadata_state_target, timeout=30)
         self._run_meta.update(meta_result['value_raw'])
-        self.determine_RF_ROI()
+        if not isinstance(self,dragonfly.implementations.daq_run_interface.DAQProvider): # don't check for generic DAQProviders, useful in insectarium testing
+            self.determine_RF_ROI()
 
     def _do_snapshot(self):
         logger.info('requesting snapshot of database')
@@ -182,8 +183,7 @@ class DAQProvider(core.Provider):
             raise core.exceptions.DriplineDAQNotEnabled("{} is not enabled: enable it using <dragonfly cmd broadcast.set_condition 0 -b myrna.p8>".format(self.daq_name))
 
 
-        logger.debug('my class name is: {}'.format(self.__class__.__name__))
-        if self.__class__.__name__ != 'DAQProvider': # don't check for generic DAQProviders, useful in insectarium testing
+        if not isinstance(self,dragonfly.implementations.daq_run_interface.DAQProvider): # don't check for generic DAQProviders, useful in insectarium testing
             logger.debug('testing if the DAQ is running')
             result = self.is_running
             if result == True:
