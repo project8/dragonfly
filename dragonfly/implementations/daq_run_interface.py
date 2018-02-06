@@ -136,8 +136,7 @@ class DAQProvider(core.Provider):
         logger.info('doing prerun meta-data get')
         meta_result = self.provider.get(self._metadata_state_target, timeout=30)
         self._run_meta.update(meta_result['value_raw'])
-        if not isinstance(self,DAQProvider): # don't check for generic DAQProviders, useful in insectarium testing
-            self.determine_RF_ROI()
+        self.determine_RF_ROI()
 
     def _do_snapshot(self):
         logger.info('requesting snapshot of database')
@@ -183,13 +182,12 @@ class DAQProvider(core.Provider):
             raise core.exceptions.DriplineDAQNotEnabled("{} is not enabled: enable it using <dragonfly cmd broadcast.set_condition 0 -b myrna.p8>".format(self.daq_name))
 
 
-        if not isinstance(self,DAQProvider): # don't check for generic DAQProviders, useful in insectarium testing
-            logger.debug('testing if the DAQ is running')
-            result = self.is_running
-            if result == True:
-                raise core.exceptions.DriplineDAQRunning('DAQ is already running: aborting run')
-            # do the last minutes checks: DAQ specific
-            self._do_checks()
+        logger.debug('testing if the DAQ is running')
+        result = self.is_running
+        if result == True:
+            raise core.exceptions.DriplineDAQRunning('DAQ is already running: aborting run')
+        # do the last minutes checks: DAQ specific
+        self._do_checks()
 
         # get run_id and do pre_run gets
         self.start_run(run_name)
@@ -203,11 +201,20 @@ class DAQProvider(core.Provider):
                                                                    )
 
         filename = "{}{:09d}".format(self.filename_prefix, self.run_id)
-        if not isinstance(self,DAQProvider): # don't check for generic DAQProviders, useful in insectarium testing
-            self._start_data_taking(directory,filename)
+        self._start_data_taking(directory,filename)
         logger.info("Adding {} sec timeout for run <{}> duration".format(self._run_time, self.run_id))
         self._stop_handle = self.service._connection.add_timeout(self._run_time, self.end_run)
         return self.run_id
+    
+    @property
+    def is_running(self):
+        raise core.exceptions.DriplineMethodNotSupportedError('subclass must implement is running method')
+
+    def _do_checks(self):
+        raise core.exceptions.DriplineMethodNotSupportedError('subclass must implement checks methods')
+
+    def _start_data_taking(self,directory,filename):
+        raise core.exceptions.DriplineMethodNotSupportedError('subclass must implement start data taking method')
 
     def _set_condition(self,number):
         logger.debug('receiving a set_condition {} request'.format(number))
