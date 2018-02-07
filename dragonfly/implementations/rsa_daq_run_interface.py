@@ -12,6 +12,7 @@ from datetime import datetime
 
 # internal imports
 from dripline import core
+from dragonfly.implementations import DAQProvider
 
 __all__ = []
 
