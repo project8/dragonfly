@@ -186,7 +186,7 @@ class DAQProvider(core.Provider):
                        }
         this_payload['contents']['run_id'] = self.run_id
         # note, the following line has an empty method/RKS, this shouldn't be the case but is what golang expects
-        req_result = self.provider.cmd(self._metadata_target, None, payload=this_payload)
+        req_result = self.provider.cmd(self._metadata_target, 'write_json', payload=this_payload)
         logger.debug('meta sent')
 
     def start_timed_run(self, run_name, run_time):
@@ -222,7 +222,19 @@ class DAQProvider(core.Provider):
 
         filename = "{}{:09d}".format(self.filename_prefix, self.run_id)
         self._start_data_taking(directory,filename)
+        logger.info("Adding {} sec timeout for run <{}> duration".format(self._run_time, self.run_id))
+        self._stop_handle = self.service._connection.add_timeout(self._run_time, self.end_run)
         return self.run_id
+
+    @property
+    def is_running(self):
+        raise core.exceptions.DriplineMethodNotSupportedError('subclass must implement is running method')
+
+    def _do_checks(self):
+        raise core.exceptions.DriplineMethodNotSupportedError('subclass must implement checks methods')
+
+    def _start_data_taking(self,directory,filename):
+        raise core.exceptions.DriplineMethodNotSupportedError('subclass must implement start data taking method')
 
     def _set_condition(self,number):
         '''
@@ -398,8 +410,6 @@ class RSAAcquisitionInterface(DAQProvider):
         Sends stat run command to DAQ target
         '''
         self.provider.cmd(self._daq_target, 'start_run', [directory, filename])
-        logger.info("Adding {} sec timeout for run <{}> duration".format(self._run_time, self.run_id))
-        self._stop_handle = self.service._connection.add_timeout(self._run_time, self.end_run)
 
     def _stop_data_taking(self):
         '''
