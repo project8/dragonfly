@@ -35,13 +35,13 @@ class RSAAcquisitionInterface(DAQProvider):
                  metadata_endpoints=None,
                  **kwargs):
         '''
-        daq_target (str): name of DAQ provider in service to interface with 
+        daq_target (str): name of DAQ provider in service to interface with
         hf_lo_freq (int): hf local oscillator frequency in Hz
         instrument_setup_filename_prefix (str): prefix for instrument setup file, not currently implemented
         mask_filename_prefix (str): prefix for mask file name, not currently implemented
         trace_path (str): path to where to save the trace dpt file (currently, a drive on claude mounted on the RSA via samba)
         trace_metadata_path (str): path to where to save the metadata file (currently, a drive on claude)
-        metadata_endpoints (list): list of metadata endpoint names (str) whose properties we save  
+        metadata_endpoints (list): list of metadata endpoint names (str) whose properties we save
         '''
         DAQProvider.__init__(self, **kwargs)
 
@@ -82,7 +82,7 @@ class RSAAcquisitionInterface(DAQProvider):
 
     def _do_checks(self):
         '''
-        Sets RSA exeternal reference to EXT and checks for errors in queue which, if present, aborts the run 
+        Sets RSA exeternal reference to EXT and checks for errors in queue which, if present, aborts the run
         '''
         the_ref = self.provider.set('rsa_osc_source', 'EXT')['value_raw']
         if the_ref != 'EXT':
@@ -106,14 +106,10 @@ class RSAAcquisitionInterface(DAQProvider):
         Sends end run command to DAQ target
         '''
         self.provider.cmd(self._daq_target, 'end_run')
-        if self._stop_handle is not None:
-            logger.info("Removing sec timeout for run <{}> duration".format(self.run_id))
-            self.service._connection.remove_timeout(self._stop_handle)
-            self._stop_handle = None
 
     def determine_RF_ROI(self):
         '''
-        Gets RF roi information from provider and saves it as run metadata 
+        Gets RF roi information from provider and saves it as run metadata
         '''
         logger.info('trying to determine roi')
 
@@ -130,7 +126,7 @@ class RSAAcquisitionInterface(DAQProvider):
 
     def save_trace(self, trace, comment):
         '''
-        Saves trace of RSA 
+        Saves trace of RSA
         '''
         if self.trace_path is None:
             raise DriplineValueError("No trace_path in RSA config file: save_trace feature disabled!")
@@ -165,4 +161,3 @@ class RSAAcquisitionInterface(DAQProvider):
             json.dump(result_meta, outfile, indent=4)
             logger.debug("things have been dumped in file")
             logger.info("saving {}: successful".format(path))
-

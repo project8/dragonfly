@@ -94,8 +94,8 @@ class DAQProvider(core.Provider):
     @run_name.setter
     def run_name(self, value):
         ''' inserts run name to run table in database and retrieves run id and start timestamp
-        
-        value (str): name of acquisition run 
+
+        value (str): name of acquisition run
         '''
         self._run_name = value
         try:
@@ -113,7 +113,7 @@ class DAQProvider(core.Provider):
     def start_run(self, run_name):
         '''
         Do the prerun_gets and send the metadata to the recording associated computer
-    
+
         run_name (str): name of acquisition run
         '''
         self.run_name = run_name
@@ -133,17 +133,20 @@ class DAQProvider(core.Provider):
         # call _stop_data_taking DAQ-specific method
         self._stop_data_taking()
 
+        if self._stop_handle is not None:
+            logger.info("Removing sec timeout for run <{}> duration".format(self.run_id))
+            self.service._connection.remove_timeout(self._stop_handle)
+            self._stop_handle = None
         if self.run_id is None:
             raise core.exceptions.DriplineValueError("No run to end: run_id is None.")
         self._do_snapshot()
-        run_was = self.run_id
+        logger.info('run <{}> ended'.format(self.run_id))
         self._run_name = None
         self.run_id = None
-        logger.info('run <{}> ended'.format(run_was))
 
     def _do_prerun_gets(self):
         '''
-        Calls pre-run methods to obtain run metadata 
+        Calls pre-run methods to obtain run metadata
         '''
         logger.info('doing prerun meta-data get')
         meta_result = self.provider.get(self._metadata_state_target, timeout=30)
@@ -152,7 +155,7 @@ class DAQProvider(core.Provider):
 
     def _do_snapshot(self):
         '''
-        Calls take_snapshot method of snapshot target for database snapshot 
+        Calls take_snapshot method of snapshot target for database snapshot
         '''
         logger.info('requesting snapshot of database')
         filename = '{directory}/{runNyx:03d}yyyxxx/{runNx:06d}xxx/{runN:09d}/{prefix}{runN:09d}_snapshot.json'.format(
@@ -191,7 +194,7 @@ class DAQProvider(core.Provider):
 
     def start_timed_run(self, run_name, run_time):
         '''
-        Starts timed acquisition run 
+        Starts timed acquisition run
         run_name (str): name of acquisition run
         run_time (int): length of run in seconds
         '''
@@ -200,7 +203,6 @@ class DAQProvider(core.Provider):
             logger.info("DAQ in safe mode")
             raise core.exceptions.DriplineDAQNotEnabled("{} is not enabled: enable it using <dragonfly cmd broadcast.set_condition 0 -b myrna.p8>".format(self.daq_name))
 
-        # self.start_run(run_name)
         logger.debug('testing if the DAQ is running')
         result = self.is_running
         if result == True:
@@ -236,6 +238,9 @@ class DAQProvider(core.Provider):
     def _start_data_taking(self,directory,filename):
         raise core.exceptions.DriplineMethodNotSupportedError('subclass must implement start data taking method')
 
+    def _stop_data_taking(self):
+        raise core.exceptions.DriplineMethodNotSupportedError('subclass must implement stop data taking method')
+
     def _set_condition(self,number):
         '''
         Puts/Removes DAQ in safe mode
@@ -251,4 +256,4 @@ class DAQProvider(core.Provider):
             self._daq_in_safe_mode = False
             logger.critical('Condition {} reached!  Not in safe mode.'.format(number))
         else:
-            logger.debug('condition {} is unknown: ignoring!'.format(number))    
+            logger.debug('condition {} is unknown: ignoring!'.format(number))

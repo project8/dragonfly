@@ -155,7 +155,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
 
         # check channel is unblocked
         blocked_channels = self.provider.get(self.daq_target+ '.blocked_channels')
-        if self.channel_id in blocked_channels: 
+        if self.channel_id in blocked_channels:
             raise core.exceptions.DriplineGenericDAQError('Channel is blocked')
 
         # check frequency matches
@@ -196,7 +196,6 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         Creates directory for data files
         Tells psyllid_provider to tell psyllid to start the run
         Unblocks roach channels if that fails
-        Sets run time in _stop_handle for end of run
         '''
         logger.info('block roach channel')
         self.provider.cmd(self.daq_target, 'block_channel', payload = self.payload_channel)
@@ -458,4 +457,3 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         path = os.path.join(self.mask_target_path, filename)
         payload = {'channel':self.channel_id, 'filename':path}
         self.provider.cmd(self.psyllid_interface, 'make_trigger_mask', payload = payload)
-
