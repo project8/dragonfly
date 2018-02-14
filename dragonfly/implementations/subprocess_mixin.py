@@ -1,5 +1,10 @@
-#!/usr/bin/python
 '''
+A mixin class for endpoints to execute long or indefinite tasks without blocking via subprocess.
+
+Note that a subprocess requires an independent block of memory and is expected to execute independent of the main execution loop.
+That is, whatever you put into the subprocess should *not* expect to communicate further with the endpoint itself.
+
+Note for future me/us: It is probably desirable/reasonable for the subprocess to be able to send dripline messages, should see if we can pass an provider instance (I think this would clone that object into the subprocess). Should also look into supporting collecting the return object(s) from the workers and having a mechanism for retrieving those if available.
 '''
 
 import datetime
@@ -7,10 +12,11 @@ import logging
 import multiprocessing
 import time
 
+__all__ = []
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
 
+# dumb slow function for testing purposes
 def slow_action(this_time):
     '''
     A dumb function that does some prints and sleeps to simulate something slow but useful.
@@ -20,8 +26,8 @@ def slow_action(this_time):
     logger.info('.... slept for {}'.format(this_time))
     return this_time
 
-# we want to allow subprocesses to exit gracefully, therefore we will subprocess in a subprocess so we can compute while we compute...
-class slow_subprocess_mixin(object):
+__all__.append('SlowSubprocessMixin')
+class SlowSubprocessMixin(object):
     '''
     Mix-in class for managing execution of workers in a subprocess.
     The default control function simply kills the workers, but a smarter version may be implemented/used instead.
@@ -102,7 +108,9 @@ class slow_subprocess_mixin(object):
         else:
             logger.debug("controller stopped on its own")
 
+# testing... should probably move this into real unit tests
 if __name__ == '__main__':
+    logger.setLevel(logging.DEBUG)
     sh = logging.StreamHandler()
     sh.setLevel(logging.DEBUG)
     fmt = '%(asctime)s{}[%(levelname)-8s] %(name)s(%(lineno)d) -> {}%(message)s'
@@ -114,7 +122,7 @@ if __name__ == '__main__':
     sh.setFormatter(fmt)
     logger.addHandler(sh)
 
-    sm = slow_subprocess_mixin(worker_function=slow_action, worker_args=(10,))
+    sm = SlowSubprocessMixin(worker_function=slow_action, worker_args=(10,))
     logger.info("starting slow process: {}".format(datetime.datetime.now()))
     sm.start_control_process()
     logger.info('slow process is running -> {}'.format(sm.control_process_is_running()))
