@@ -31,6 +31,7 @@ from .simple_shell import *
 from .slack_interface import *
 from .spime_endpoints import *
 from .step_attenuator import *
+from .subprocess_mixin import *
 from .test_daq_run_interface import *
 # keep these out of sequence, they inherit from elsewhere in dragonfly
 from .lockin_provider import *
