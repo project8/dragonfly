@@ -4,7 +4,10 @@ A mixin class for endpoints to execute long or indefinite tasks without blocking
 Note that a subprocess requires an independent block of memory and is expected to execute independent of the main execution loop.
 That is, whatever you put into the subprocess should *not* expect to communicate further with the endpoint itself.
 
-Note for future me/us: It is probably desirable/reasonable for the subprocess to be able to send dripline messages, should see if we can pass an provider instance (I think this would clone that object into the subprocess). Should also look into supporting collecting the return object(s) from the workers and having a mechanism for retrieving those if available.
+Notes for future me/us:
+- It is probably desirable/reasonable for the subprocess to be able to send dripline messages, should see if we can pass an provider instance (I think this would clone that object into the subprocess).
+- One use case is not parallel worker loops but slow-but-finit processes which run once and get a result, should also look into supporting collecting the return object(s) from the workers and having a mechanism for retrieving those if available.
+- The control_process object is created at __init__ and can thus only be run one time. Should add support for restarting it after it has been killed. This should include possibly updating args/kwargs passed in or similar so that we can support a use case of "i want to change parameter X. i set a new value, then kill the subprocess, then start it back again (or restart if you want to have that defined too)"
 '''
 
 import datetime
