@@ -252,11 +252,11 @@ class Roach2Interface(Roach2Provider):
         for i in range(int(NPackets*2)):
             if pkts[i].freq_not_time==False:
                 x=pkts[i].interpret_data()
-                p.append(np.abs(np.fft.fftshift(np.fft.fft(x)))/4096)
-        NPackets = len(p)
+                p.extend(x)
+        NPackets = len(p/4096)
         p = np.mean(np.array(p), axis = 0)
 
-        filename = '{}/mean_of_{}_T_packets_channel{}_cf_{}Hz.json'.format(path, NPackets, channel, str(cf))
+        filename = '{}/{}_T_packets_channel{}_cf_{}Hz.json'.format(path, NPackets, channel, str(cf))
         with open(filename, 'w') as outfile:
             json.dump(p.tolist(), outfile)
 
@@ -303,10 +303,9 @@ class Roach2Interface(Roach2Provider):
             x = ArtooDaq._snap_per_core(self, zdok=0)
             x_all = x.flatten('C')
             for i in range(16):
-                p.append(np.abs(np.fft.fftshift(np.fft.fft(x_all[i*16384:(i+1)*16384])))/16384)
-        p = np.mean(np.array(p), axis = 0)
+                p.extend(x_all)
 
-        filename = '{}/mean_of_{}_raw_adc_spectra.json'.format(path, str(16*N))
+        filename = path
         with open(filename, 'w') as outfile:
             json.dump(p.tolist(), outfile)
 
