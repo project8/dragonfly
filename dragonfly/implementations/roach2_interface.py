@@ -297,7 +297,7 @@ class Roach2Interface(Roach2Provider):
 
     def get_raw_adc_data(self, path = None):
         if path == None:
-            path = self.monitor_target
+            raise core.exceptions.DriplineGenericDAQError('No path specified')
        
         x = ArtooDaq._snap_per_core(self, zdok=0)
         x_all = x.flatten('C')
