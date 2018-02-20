@@ -230,7 +230,7 @@ class Roach2Interface(Roach2Provider):
         return board_clock
 
 
-    def get_T_packets(self, channel='a', NPackets=10, path=None):
+    def get_T_packets(self, channel='a', NPackets=1, path=None):
         if channel=='a':
             dsoc_desc = (self.channel_a_config['dest_ip'],self.channel_a_config['dest_port'])
         elif channel=='b':
@@ -295,19 +295,16 @@ class Roach2Interface(Roach2Provider):
             json.dump(p.tolist(), outfile)
 
 
-    def get_raw_adc_data(self, N=1, path = None):
+    def get_raw_adc_data(self, path = None):
         if path == None:
             path = self.monitor_target
-        p = []
-        for i in range(N):
-            x = ArtooDaq._snap_per_core(self, zdok=0)
-            x_all = x.flatten('C')
-            for i in range(16):
-                p.extend(x_all)
+       
+        x = ArtooDaq._snap_per_core(self, zdok=0)
+        x_all = x.flatten('C')
 
         filename = path
         with open(filename, 'w') as outfile:
-            json.dump(p.tolist(), outfile)
+            json.dump(x_all.tolist(), outfile)
 
 
     def calibrate_manually(self, gain1=0.0, gain2=0.42, gain3=0.42, gain4=1.55, off1=3.14, off2=-0.39, off3=2.75, off4=-1.18):
