@@ -1,7 +1,6 @@
 from setuptools import setup
-from glob import glob
 
-import sys, os
+import os
 from setuptools.command.test import test as TestCommand
 
 verstr = "none"

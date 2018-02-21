@@ -69,11 +69,10 @@ class Serve(object):
                     logger.info('canceling a thread named: {}'.format(thread.name))
                     thread.cancel()
         except Exception as this_exception:
-            this_service_name = ''
             try:
                 this_service_name = str(service.name)
             except:
-                pass
+                this_service_name = ''
             logger.critical('service <{}> crashing due to unexpected error:\n{}'.format(this_service_name, this_exception))
             logger.error('traceback is:\n{}'.format(traceback.format_exc()))
 

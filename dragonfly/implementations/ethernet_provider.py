@@ -86,7 +86,7 @@ class EthernetProvider(Provider):
         self.socket = socket.socket()
         try:
             self.socket = socket.create_connection(self.socket_info, self.socket_timeout)
-        except socket.error or socket.timeout as err:
+        except (socket.error, socket.timeout) as err:
             logger.warning("connection {} refused: {}".format(self.socket_info, err))
             raise exceptions.DriplineHardwareConnectionError("Unable to establish ethernet socket {}".format(self.socket_info))
         self.socket.settimeout(self.socket_timeout)

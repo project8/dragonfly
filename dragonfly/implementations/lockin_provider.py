@@ -4,7 +4,7 @@ A Provider class for interfacing with the Lockin amplifier
 
 from __future__ import absolute_import
 
-from dripline.core import exceptions, calibrate, fancy_doc
+from dripline.core import fancy_doc
 from dragonfly.implementations import PrologixProvider
 
 import logging

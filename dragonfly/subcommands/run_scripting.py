@@ -580,7 +580,7 @@ class RunScript(object):
         logger.info('doing do block')
         for i_do,this_do in enumerate(operations):
             logger.info('doing operation #{}'.format(i_do))
-            for i_key,key in enumerate(this_do):
+            for key in this_do:
                 if key == 'sets':
                     self.action_set(this_do[key])
                 elif key == 'cmds':
@@ -735,8 +735,7 @@ class RunScript(object):
             # for cmds, we simply add them to the dictionary
             # then the evaluated_operations dictionary is procceded using the action_do()
             evaluated_operations = []
-            for i_do,a_do in enumerate(operations):
-                these_operations = []
+            for a_do in operations:
                 key = a_do.keys()[0]
                 # logger.info('doing operation #{}: {}'.format(i_do,key))
                 if key == 'sets':
@@ -754,15 +753,14 @@ class RunScript(object):
                             elif isinstance(self.evaluator(a_set['value'].format(run_count)), list):
                                 old_list = self.evaluator(a_set['value'].format(run_count))
                                 new_list = []
-                                for i in range(len(old_list)):
-                                    if isinstance(old_list[i],list):
-                                        sub_list = old_list[i]
-                                        for j in range(sub_list):
-                                            new_list.append(sub_list[j])
-                                    elif isinstance(old_list[i], (int,float,str,bool)):
-                                        new_list.append(old_list[i])
+                                for entry in old_list:
+                                    if isinstance(entry,list):
+                                        for subentry in entry:
+                                            new_list.append(subentry)
+                                    elif isinstance(entry, (int,float,str,bool)):
+                                        new_list.append(entry)
                                     else:
-                                        raise dripline.core.DriplineValueError('run_scripting does not support list of lists of lists')
+                                        raise dripline.core.DriplineValueError('run_scripting does not support {}'.format(type(entry)))
                                 this_value = new_list[run_count]
                             elif isinstance(self.evaluator(a_set['value'].format(run_count)), dict):
                                 if isinstance(self.evaluator(a_set['value'].format(run_count))[run_count], (int,float,str,bool)):

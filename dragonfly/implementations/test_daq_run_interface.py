@@ -17,6 +17,7 @@ __all__ = []
 logger = logging.getLogger(__name__)
 
 __all__.append('TestingDAQProvider')
+@fancy_doc
 class TestingDAQProvider(DAQProvider):
     '''
     A class for testing a minimal DAQProvider, e.g in insectarium
@@ -36,7 +37,7 @@ class TestingDAQProvider(DAQProvider):
     def _do_checks(self):
         logger.debug("Thinking about pre-run checks")
 
-    def _start_data_taking(self,*args,**kwargs):
+    def _start_data_taking(self,directory,filename):
         self._is_running = True
         logger.debug("Visualizing data")
 

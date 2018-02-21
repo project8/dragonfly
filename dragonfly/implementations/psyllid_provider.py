@@ -6,7 +6,6 @@ from __future__ import absolute_import
 # standard imports
 import logging
 import time
-from datetime import datetime
 
 # internal imports
 from dripline import core
