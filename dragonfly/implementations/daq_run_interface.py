@@ -10,7 +10,6 @@ import logging
 import uuid
 import time
 import os
-import json
 from datetime import datetime
 
 # internal imports
@@ -93,7 +92,8 @@ class DAQProvider(core.Provider):
         return self._run_name
     @run_name.setter
     def run_name(self, value):
-        ''' inserts run name to run table in database and retrieves run id and start timestamp
+        '''
+        inserts run name to run table in database and retrieves run id and start timestamp
 
         value (str): name of acquisition run
         '''
@@ -189,7 +189,7 @@ class DAQProvider(core.Provider):
                        }
         this_payload['contents']['run_id'] = self.run_id
         # note, the following line has an empty method/RKS, this shouldn't be the case but is what golang expects
-        req_result = self.provider.cmd(self._metadata_target, 'write_json', payload=this_payload)
+        self.provider.cmd(self._metadata_target, 'write_json', payload=this_payload)
         logger.debug('meta sent')
 
     def start_timed_run(self, run_name, run_time):

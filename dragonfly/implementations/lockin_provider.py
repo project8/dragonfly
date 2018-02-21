@@ -4,7 +4,7 @@ A Provider class for interfacing with the Lockin amplifier
 
 from __future__ import absolute_import
 
-from dripline.core import Endpoint, exceptions, calibrate, fancy_doc
+from dripline.core import exceptions, calibrate, fancy_doc
 from dragonfly.implementations import PrologixProvider
 
 import logging
@@ -20,7 +20,7 @@ class LockinProvider(PrologixProvider):
 
     def grab_data(self, key):
         '''
-        Returns available data curves 
+        Returns available data curves
 
         key (int): key of curve to grab
         '''

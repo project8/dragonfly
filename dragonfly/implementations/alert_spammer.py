@@ -21,7 +21,7 @@ __all__.append('AlertSpammer')
 @fancy_doc
 class AlertSpammer(Endpoint):
     '''
-    Spammer of alerts to alerts exchange 
+    Spammer of alerts to alerts exchange
     '''
     def __init__(self,broker=None,sleep_time = 10,*args, **kwargs):
         '''

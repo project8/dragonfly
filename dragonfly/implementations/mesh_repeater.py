@@ -60,7 +60,7 @@ class ProxyEndpoint(Endpoint):
         channel (Channel): pika.Channel for interacting with RabbitMQ
         method: #TODO_DOC
         properties: #TODO_DOC
-        request (RequestMessage): dripline.core.RequestMessage to send to target  
+        request (RequestMessage): dripline.core.RequestMessage to send to target
         '''
         # This blindly sends *all* requests received to the target,
         # we could easily apply arbitrarly complex logic here if we wish to do so,

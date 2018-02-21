@@ -28,15 +28,15 @@ class MDReceiver(Endpoint):
         contents (dict): dict of metadata to write, keys are e.g 'DAQ','run_time', etc
         filename (str): metadata file name to save including full path
         '''
-    
+
         logger.info('received "write_json" instruction')
         logging.debug('filename to write: <{}>'.format(filename))
         dir_path,_ = os.path.split(filename)
 
-        if not os.path.isdir(dir_path): # check if dir exists, if not then create it 
-            try: # make directory 
-                os.makedirs(dir_path) 
-                time.sleep(0.001) # add a small delay after creating the new directory so that anything (e.g. Hornet) 
+        if not os.path.isdir(dir_path): # check if dir exists, if not then create it
+            try: # make directory
+                os.makedirs(dir_path)
+                time.sleep(0.001) # add a small delay after creating the new directory so that anything (e.g. Hornet)
                                   # waiting for that directory can react to it before the JSON file is created
             except OSError as e:
                 logger.error('unable to create metadata directory')
@@ -53,7 +53,7 @@ class MDReceiver(Endpoint):
             raise exceptions.DriplinePayloadError('metadata file failed conversion to JSON: {}'.format(e))
 
         if not os.path.isfile(filename): # if file doesn't exist
-            f = open(filename,'w') # create it 
+            f = open(filename,'w') # create it
             f.write(contents_json) # write it
             f.close()
         else:
@@ -61,5 +61,5 @@ class MDReceiver(Endpoint):
             raise exceptions.DriplineHardwareError('unable to create <{}> since it already exists'.format(filename))
 
         logger.info('file written: <{}>'.format(filename))
-           
-        return 
+
+        return
