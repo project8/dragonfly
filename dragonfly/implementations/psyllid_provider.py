@@ -297,8 +297,9 @@ class PsyllidProvider(core.Provider):
         self.provider.cmd(self.queue_dict[channel], 'stop-run')
 
 
-
-    ''' trigger control '''
+    ###################
+    # trigger control #
+    ###################
 
     def set_trigger_configuration(self, channel='a', threshold=18, threshold_high=0, n_triggers=1,):
         '''
@@ -350,8 +351,9 @@ class PsyllidProvider(core.Provider):
         return {'pretrigger_time': pretrigger_time, 'skip_tolerance': skip_tolerance}
 
 
-
-    ''' individual time window and trigger parameter sets and gets'''
+    ##############################################################
+    # individual time window and trigger parameter sets and gets #
+    ##############################################################
 
     def set_pretrigger_time(self, pretrigger_time, channel='a'):
         n_pretrigger_packets = int(round(pretrigger_time/4.096e-5))

@@ -16,9 +16,6 @@ __all__ = []
 
 logger = logging.getLogger(__name__)
 
-
-
-
 __all__.append('ROACH1ChAcquisitionInterface')
 class ROACH1ChAcquisitionInterface(DAQProvider):
     '''
@@ -51,8 +48,6 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
 
         if mask_target_path is None:
             logger.warning('No mask target path set. Triggered data taking not possible.')
-
-
 
     def prepare_daq_system(self):
         '''
@@ -269,8 +264,9 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         self.provider.cmd(self.daq_target, 'unblock_channel', payload = self.payload_channel)
 
 
-
-    '''frequency sets and gets'''
+    ###########################
+    # frequency sets and gets #
+    ###########################
 
     def _get_roach_central_freqs(self):
         result = self.provider.get(self.daq_target + '.all_central_frequencies')
@@ -305,9 +301,10 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         self.provider.cmd(self.psyllid_interface, 'set_central_frequency', payload = payload)
 
 
-
-    ''' trigger control '''
-
+    ###################
+    # trigger control #
+    ###################
+    
     @property
     def acquisition_mode(self):
         result = self.provider.cmd(self.psyllid_interface, 'get_acquisition_mode', payload = self.payload_channel)['values'][0]

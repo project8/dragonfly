@@ -22,8 +22,8 @@ class MDReceiver(Endpoint):
     def __init__(self,**kwargs):
         Endpoint.__init__(self, **kwargs)
 
-
-    def write_json(self, contents, filename):
+    @staticmethod
+    def write_json(contents, filename):
         '''
         contents (dict): dict of metadata to write, keys are e.g 'DAQ','run_time', etc
         filename (str): metadata file name to save including full path

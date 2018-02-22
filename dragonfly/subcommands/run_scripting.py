@@ -315,7 +315,7 @@ class RunScript(object):
             self._dry_run_mode = True
         try:
             # do each of the actions listed in the execution file
-            actions = yaml.load(open(kwargs.execution_file))
+            actions = yaml.safe_load(open(kwargs.execution_file))
             if self._last_action == len(actions)-1:
                 logger.debug('cache file indicates this execution is already complete')
                 return
@@ -493,7 +493,7 @@ class RunScript(object):
                         target_value = float(target_value)
                     except ValueError:
                         logger.debug('target_value is not the same type as the value get: going to use the set value ({}) as target_value'.format(this_set['value']))
-                        target_value==this_set['value']
+                        target_value = this_set['value']
                 if isinstance(target_value, (int,float)):
                     if 'tolerance' in this_set:
                         tolerance = this_set['tolerance']
@@ -541,14 +541,14 @@ class RunScript(object):
                     value_get_backup = value_get
                     # changing target_value in the dictionary
                     if target_value=='on' or target_value=='enable' or target_value=='enabled' or target_value=='positive':
-                        target_value=='1'
+                        target_value = '1'
                     if target_value=='off' or target_value=='disable' or target_value=='disabled' or target_value=='negative':
-                        target_value=='0'
+                        target_value = '0'
                     # changing value_get in the dictionary
                     if value_get=='on' or value_get=='enable' or value_get=='enabled' or value_get=='positive':
-                        value_get=='1'
+                        value_get = '1'
                     if value_get=='off' or value_get=='disable' or value_get=='disabled' or value_get=='negative':
-                        value_get=='0'
+                        value_get = '0'
                     # checking is target_value and value_get are the same
                     if target_value==value_get:
                         logger.debug('value get ({}) corresponds to the target_value ({}): going on'.format(value_get_backup,target_value_backup))

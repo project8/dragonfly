@@ -244,7 +244,7 @@ class Roach2Interface(Roach2Provider):
             path = self.monitor_target
 
         cf = self.freq_dict[channel]
-        gain = self.gain_dict[channel]
+        # gain = self.gain_dict[channel]
 
         logger.info('grabbing {} packets from {}'.format(NPackets*2,dsoc_desc))
         pkts=ArtooDaq.grab_packets(self, NPackets*2, dsoc_desc, True)
