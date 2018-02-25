@@ -32,6 +32,7 @@ class EthernetProvider(Provider):
                  socket_timeout=1.0,
                  socket_info=('localhost',1234),
                  cmd_at_reconnect=['*OPC?'],
+                 reconnect_test='1',
                  command_terminator='',
                  response_terminator=None,
                  bare_response_terminator=None,
@@ -44,6 +45,7 @@ class EthernetProvider(Provider):
         socket_info (tuple): (<network_address_as_str>, <port_as_int>)
         cmd_at_reconnect (list||None): list of command(s) to send to the instrument following (re)connection to the instrument, still must return a reply!
                                      : if impossible, set as None to skip
+        reconnect_test (str): expected return value from final reconnect command
         > Query-related options:
         command_terminator (str): string to append to commands
         response_terminator (str||None): string to strip from responses, this MUST exist for get method to function properly!
@@ -70,6 +72,7 @@ class EthernetProvider(Provider):
         self.socket_timeout = float(socket_timeout)
         self.socket_info = socket_info
         self.cmd_at_reconnect = cmd_at_reconnect
+        self.reconnect_test = reconnect_test
         self.command_terminator = command_terminator
         self.response_terminator = response_terminator
         self.bare_response_terminator = bare_response_terminator
@@ -105,7 +108,7 @@ class EthernetProvider(Provider):
             self._listen(blank_command=True)
         response = self._send_commands(commands)
         # Final cmd_at_reconnect should return '1' to test connection.
-        if response[-1] != '1':
+        if response[-1] != self.reconnect_test:
             self.socket.close()
             logger.warning("Failed connection test.  Response was {}".format(response))
             raise exceptions.DriplineHardwareConnectionError("Failed connection test.")
