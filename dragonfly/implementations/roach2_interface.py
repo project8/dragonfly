@@ -307,13 +307,42 @@ class Roach2Interface(Roach2Provider):
             json.dump(x_all.tolist(), outfile)
 
 
-    def calibrate_manually(self, gain1=0.0, gain2=0.42, gain3=0.42, gain4=1.55, off1=3.14, off2=-0.39, off3=2.75, off4=-1.18):
-        adc5g.set_spi_gain(self.roach2,0, 1, gain1)
-        adc5g.set_spi_gain(self.roach2,0, 2, gain2)
-        adc5g.set_spi_gain(self.roach2,0, 3, gain3)
-        adc5g.set_spi_gain(self.roach2,0, 4, gain4)
-        adc5g.set_spi_offset(self.roach2,0, 1, off1)
-        adc5g.set_spi_offset(self.roach2,0, 2, off2)
-        adc5g.set_spi_offset(self.roach2,0, 3, off3)
-        adc5g.set_spi_offset(self.roach2,0, 4, off4)
-        return True
+
+    def calibrate_with_2016_values(self):
+        """
+        Calibrates the ADC cores with values from a working calibration in 2016
+        """
+        self.calibrate_manually(gain1=0.0, gain2=0.42, gain3=0.42, gain4=1.55, offset1=3.14, offset2=-0.39, offset3=2.75, offset4=-1.18, phase1=None, phase2=None, phase3=None, phase4=None)
+
+
+    def calibrate_manually(self, gain1=None, gain2=None, gain3=None, gain4=None, offset1=None, offset2=None, offset3=None, offset4=None, phase1=None, phase2=None, phase3=None, phase4=None):
+        """
+        Calibrate the ADC cores manually
+        """
+        if gain1 is not None:
+            adc5g.set_spi_gain(self.roach2,0, 1, gain1)
+        if gain2 is not None:
+            adc5g.set_spi_gain(self.roach2,0, 2, gain2)
+        if gain3 is not None:
+            adc5g.set_spi_gain(self.roach2,0, 3, gain3)
+        if gain4 is not None:
+            adc5g.set_spi_gain(self.roach2,0, 4, gain4)
+
+        if offset1 is not None:
+            adc5g.set_spi_offset(self.roach2,0, 1, offset1)
+        if offset2 is not None:
+            adc5g.set_spi_offset(self.roach2,0, 2, offset2)
+        if offset3 is not None:
+            adc5g.set_spi_offset(self.roach2,0, 3, offset3)
+        if offset4 is not None:
+            adc5g.set_spi_offset(self.roach2,0, 4, offset4)
+
+        if phase1 is not None:
+            adc5g.set_spi_phase(self.roach2, 0, 1, phase1)
+        if phase2 is not None:
+            adc5g.set_spi_phase(self.roach2, 0, 2, phase2)
+        if phase3 is not None:
+            adc5g.set_spi_phase(self.roach2, 0, 3, phase3)
+        if phase4 is not None:
+            adc5g.set_spi_phase(self.roach2, 0, 4, phase4)
+
