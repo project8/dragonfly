@@ -12,6 +12,7 @@ Spime catalog (in order of ease-of-use):
 - FormatSpime: utility spime with expanded functionality
 - ErrorQueueSpime: spime for iterating through error queue to clear it and return all erros
 - GPIOSpime: spime to handle GPIO pin control on RPi
+- GPIOPUDSpime: spime to handle pull_up_down on RPi GPIO pins
 - IonGaugeSpime: spime to handle communication with Lesker/B-RAX pressure gauges
 - LeakValveSpime: spime to handle VAT leak valve get responses
 - LockinSpime: spime to handle antiquated lockin IEEE 488 formatting
@@ -22,14 +23,8 @@ Spime catalog (in order of ease-of-use):
 '''
 from __future__ import absolute_import
 
-# re used for FormatSpime
-import re
-
-# RPi.GPIO used for GPIOSpime (directly) and Max31856Spime (indirectly)
-try:
-    import RPi.GPIO as GPIO
-except ImportError:
-    pass
+import re # used for FormatSpime
+import datetime # used for GPIOPUDSpime
 
 from dripline.core import Spime, fancy_doc, calibrate
 from dripline.core.exceptions import *
@@ -212,8 +207,6 @@ class GPIOSpime(Spime):
         outpin (int||list): pin(s) to program for set
         set_value_map (dict): dictionary of mappings for values to on_set; note that the result of set_value_map[value] will be used as the input to set_str.format(value) if this dict is present
         '''
-        if not 'GPIO' in globals():
-            raise ImportError('RPi.GPIO not found, required for GPIOSpime class')
         if 'get_on_set' not in kwargs:
             kwargs['get_on_set'] = True
         Spime.__init__(self, **kwargs)
@@ -240,7 +233,7 @@ class GPIOSpime(Spime):
             raise DriplineMethodNotSupportedError("<{}> has no get pin available".format(self.name))
         result = 0
         for i, pin in enumerate(self._inpin):
-            result += GPIO.input(pin)<<i
+            result += self.provider.GPIO.input(pin)<<i
         return result
 
     def on_set(self, value):
@@ -252,9 +245,44 @@ class GPIOSpime(Spime):
                 value = value.lower()
             value = self._set_value_map[value]
             logger.debug('raw set value is {}; mapped value is: {}'.format(raw_value, value))
-        GPIO.output(self._outpin, value)
-        if not all(GPIO.input(pin)==value for pin in self._outpin):
+        self.provider.GPIO.output(self._outpin, value)
+        if not all(self.provider.GPIO.input(pin)==value for pin in self._outpin):
             raise DriplineHardwareError("Error setting GPIO output pins")
+
+
+__all__.append('GPIOPUDSpime')
+@fancy_doc
+class GPIOPUDSpime(Spime):
+    '''
+    Spime for reading pull_up_down sensor on GPIO pins on Raspberry Pi
+    '''
+    def __init__(self,
+                 pin,
+                 **kwargs
+                 ):
+        '''
+        pin (int): pin on which to count crossings
+        '''
+        Spime.__init__(self, **kwargs)
+        self._pin = pin
+        self._reset()
+
+    @calibrate()
+    def on_get(self):
+        logger.debug("Counter reading is {}".format(self.counter))
+        result = (self.counter-self.last_count)/(datetime.datetime.utcnow()-self.last_time).total_seconds()
+        self.last_count = self.counter
+        self.last_time = datetime.datetime.utcnow()
+        return result
+
+    def _countPulse(self, channel):
+        self.counter += 1
+
+    def _reset(self):
+        logger.debug("resetting counter and timer")
+        self.last_time = datetime.datetime.utcnow()
+        self.counter = 0
+        self.last_count = 0
 
 
 __all__.append('IonGaugeSpime')
@@ -395,8 +423,6 @@ class Max31856Spime(Spime):
         '''
         SPI GPIO pins on RPi must be configured via setup_calls with configure_max31856 method
         '''
-        if not 'GPIO' in globals():
-            raise ImportError('RPi.GPIO not found, required for Max31856Spime class')
         self.min_value = min_value
         self.max_value = max_value
         Spime.__init__(self, **kwargs)
