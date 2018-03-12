@@ -10,6 +10,7 @@ Spime catalog (in order of ease-of-use):
 - SimpleSCPISpime: quick and simple minimal spime
 -* SimpleSCPIGetSpime/SimpleSCPISetSpime: limited instance of above with disabled Get/Set
 - FormatSpime: utility spime with expanded functionality
+- ADS1115Spime: spime to read ADS1115 16-bit ADC
 - ErrorQueueSpime: spime for iterating through error queue to clear it and return all erros
 - GPIOSpime: spime to handle GPIO pin control on RPi
 - GPIOPUDSpime: spime to handle pull_up_down on RPi GPIO pins
@@ -25,6 +26,10 @@ from __future__ import absolute_import
 
 import re # used for FormatSpime
 import datetime # used for GPIOPUDSpime
+try:
+    from Adafruit_ADS1x15 import ADS1115
+except ImportError:
+    pass
 
 from dripline.core import Spime, fancy_doc, calibrate
 from dripline.core.exceptions import *
@@ -158,6 +163,65 @@ class FormatSpime(Spime):
             mapped_value = self._set_value_map[value]
         logger.debug('value is {}; mapped value is: {}'.format(value, mapped_value))
         return self.provider.send([self._set_str.format(mapped_value)])
+
+
+__all__.append('ADS1115Spime')
+class ADS1115Spime(Spime):
+    '''
+    Spime for measuring the voltage difference across two channels of the ADS1115 Adafruit ADC on Raspberry Pi
+    '''
+    def __init__(self,
+                 gain,
+                 read_option,
+                 gain_conversion,
+                 measurement="differential",
+                 **kwargs
+                 ):
+        '''
+        gain (int): Use the table in the on_get to choose the gain applied to the measurements.
+        pair (int): Use the table immediately below to choose which channels you wish to measure the difference between.
+        gain_conversion (float): Gives a bit to mV conversion for the chosen gain.
+        '''
+        '''
+        Read the difference between channel 0 and 1 (i.e. channel 0 minus channel 1).
+        Note you can change the differential value to the following:
+         - 0 = Channel 0 minus channel 1
+         - 1 = Channel 0 minus channel 3
+         - 2 = Channel 1 minus channel 3
+         - 3 = Channel 2 minus channel 3
+        '''
+        if not 'ADS1115' in globals():
+           raise ImportError('Adafruit_ADS1x15.ADS1115 not found, required for ADS1115Spime class')
+        Spime.__init__(self, **kwargs)
+        self.gain = gain
+        self.read_option = read_option
+        self.gain_conversion = gain_conversion
+        self.adc = ADS1115()
+        if measurement == "differential":
+            self.measurement = self.adc.read_adc_differential
+        elif measurement == "single":
+            self.measurement = self.adc.read_adc
+        else:
+            raise exceptions.DriplineValueError("Invalid measurement option {}; must be differential or single".format(measurement))
+
+    # Read
+    @calibrate()
+    def on_get(self):
+        '''
+        Choose a gain of 1 for reading voltages from 0 to 4.09V.
+        Or pick a different gain to change the range of voltages that are read:
+         - 2/3 = +/-6.144V
+         -   1 = +/-4.096V
+         -   2 = +/-2.048V
+         -   4 = +/-1.024V
+         -   8 = +/-0.512V
+         -  16 = +/-0.256V
+        See table 3 in the ADS1015/ADS1115 datasheet for more info on gain.
+        To get a number for the gain_conversion you simply need to divide the total
+        voltage range covered at that gain (twice the max/min shown) by the number
+        of bits (in this case 2^16).
+        '''
+        return self.gain_conversion*self.measurement(self.read_option, self.gain)
 
 
 __all__.append('ErrorQueueSpime')
