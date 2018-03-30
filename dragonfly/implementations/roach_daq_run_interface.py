@@ -91,8 +91,8 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
                 logger.info('ROACH2 is running but ADC has not been calibrated')
                 return False
         else:
-            logger.error('ROACH2 is not running')
-            raise core.exceptions.DriplineGenericDAQError('ROACH2 is not running')
+            logger.error('ROACH2 is not ready')
+            raise core.exceptions.DriplineGenericDAQError('ROACH2 is not ready')
 
 
     def _check_psyllid_instance(self):
@@ -452,22 +452,25 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         '''
         Returns dictionary containing default trigger settings
         '''
-        if default_trigger_dict == None:
+        if self.default_trigger_dict == None:
             raise core.exceptions.DriplineGenericDAQError('No default trigger settings present')
         else:
             return self.default_trigger_dict
 
-
     @default_trigger_settings.setter
-    def default_trigger_settings(self):
+    def default_trigger_settings(self, x):
+        raise core.exceptions.DriplineGenericDAQError('Default settings must be specified in config file. Use cmd set_default_trigger to apply default settings')
+
+
+    def set_default_trigger(self):
         '''
         Sets trigger parameters to values specified in config
         '''
-        if default_trigger_dict == None:
+        if self.default_trigger_dict == None:
             raise core.exceptions.DriplineGenericDAQError('No default trigger settings present')
         else:
-            self.configure_trigger(low_threshold=self.default_trigger_dict['snr_threshold'], high_threshold=self.default_trigger_dict['snr_high_threshold'], n_trigger=self.default_trigger_dict['n_triggers'])
-            self.configure_time_window(pretrigger_time=self.default_trigger_dict['pretrigger_time'], skip_tolerance=self.default_trigger_dict['skip_tolerance'])
+            self.configure_trigger(low_threshold=self.default_trigger_dict['snr_threshold'], high_threshold=self.default_trigger_dict['snr_high_threshold'], n_triggers=self.default_trigger_dict['n_triggers'])
+            self.configure_time_window(pretrigger_time=float(self.default_trigger_dict['pretrigger_time']), skip_tolerance=float(self.default_trigger_dict['skip_tolerance']))
 
 
     def make_trigger_mask(self):

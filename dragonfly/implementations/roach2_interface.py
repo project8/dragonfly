@@ -230,7 +230,7 @@ class Roach2Interface(Roach2Provider):
         return board_clock
 
 
-    def get_packets(self, channel='a', int(NPackets), filename=None):
+    def get_packets(self, channel='a', NPackets=1, filename=None):
         if channel=='a':
             dsoc_desc = (self.channel_a_config['dest_ip'],self.channel_a_config['dest_port'])
         elif channel=='b':
@@ -253,7 +253,6 @@ class Roach2Interface(Roach2Provider):
                 packet_type='frequency'
             x=pkts[i].interpret_data()
             p[i] = {'real': list(x.real), 'imaginary': list(x.imag), 'type': packet_type, 'id': pkts[i].pkt_in_batch}
-            ipacket++
 
         if filename is not None:
             with open(filename, 'w') as outfile:
@@ -276,11 +275,11 @@ class Roach2Interface(Roach2Provider):
         pkts=ArtooDaq.grab_packets(self, NPackets*2, dsoc_desc, True)
         p = {}
         ipacket = 0
-        for i in range(int(NPackets*2)):
+        for i in range(NPackets*2):
             if pkts[i].freq_not_time==False:
                 x=pkts[i].interpret_data()
                 p[ipacket] = {'real': list(x.real), 'imaginary': list(x.imag)}
-                ipacket++
+                ipacket+=1
 
         if filename is not None:
             with open(filename, 'w') as outfile:
@@ -306,11 +305,11 @@ class Roach2Interface(Roach2Provider):
 
         p = {}
         ipacket = 0
-        for i in range(int(NPackets*2)):
+        for i in range(NPackets*2):
             if pkts[i].freq_not_time==True:
                 f=pkts[i].interpret_data()
                 p[ipacket] = {'real': list(f.real), 'imaginary': list(f.imag)}
-                ipacket++
+                ipacket+=1
 
         if filename is not None:
             with open(filename, 'w') as outfile:
