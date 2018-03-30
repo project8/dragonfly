@@ -30,6 +30,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
                  daq_target = 'roach2_interface',
                  hf_lo_freq = None,
                  mask_target_path = None,
+                 default_trigger_dict = None,
                  **kwargs
                 ):
 
@@ -44,6 +45,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         self._run_name = "test"
         self.mask_target_path = mask_target_path
         self.payload_channel = {'channel':self.channel_id}
+        self.default_trigger_dict = default_trigger_dict
 
         if hf_lo_freq is None:
             raise core.exceptions.DriplineValueError('The roach daq run interface interface requires a "hf_lo_freq" in its config file')
@@ -431,6 +433,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         result = self.provider.cmd(self.psyllid_interface, 'get_time_window', payload = self.payload_channel)
         return result
 
+
     @time_window_settings.setter
     def time_window_settings(self, x):
         raise core.exceptions.DriplineGenericDAQError('Use configure_time_window command to set skip_tolerance and pretrigger_time')
@@ -442,6 +445,29 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         '''
         payload =  {'skip_tolerance': skip_tolerance, 'pretrigger_time': pretrigger_time, 'channel' : self.channel_id}
         self.provider.cmd(self.psyllid_interface, 'set_time_window', payload = payload)
+
+
+    @property
+    def default_trigger_settings(self):
+        '''
+        Returns dictionary containing default trigger settings
+        '''
+        if default_trigger_dict == None:
+            raise core.exceptions.DriplineGenericDAQError('No default trigger settings present')
+        else:
+            return self.default_trigger_dict
+
+
+    @default_trigger_settings.setter
+    def default_trigger_settings(self):
+        '''
+        Sets trigger parameters to values specified in config
+        '''
+        if default_trigger_dict == None:
+            raise core.exceptions.DriplineGenericDAQError('No default trigger settings present')
+        else:
+            self.configure_trigger(low_threshold=self.default_trigger_dict['snr_threshold'], high_threshold=self.default_trigger_dict['snr_high_threshold'], n_trigger=self.default_trigger_dict['n_triggers'])
+            self.configure_time_window(pretrigger_time=self.default_trigger_dict['pretrigger_time'], skip_tolerance=self.default_trigger_dict['skip_tolerance'])
 
 
     def make_trigger_mask(self):
