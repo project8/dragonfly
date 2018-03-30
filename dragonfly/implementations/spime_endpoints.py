@@ -198,7 +198,7 @@ class ADS1115Spime(Spime):
         self.gain_conversion = gain_conversion
         self.adc = ADS1115()
         if measurement == "differential":
-            self.measurement = self.adc.read_adc_differential
+            self.measurement = self.adc.read_adc_difference
         elif measurement == "single":
             self.measurement = self.adc.read_adc
         else:
