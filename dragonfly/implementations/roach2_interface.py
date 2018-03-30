@@ -230,7 +230,7 @@ class Roach2Interface(Roach2Provider):
         return board_clock
 
 
-    def get_T_packets(self, channel='a', NPackets=1, path=None):
+    def get_packets(self, channel='a', int(NPackets), filename=None):
         if channel=='a':
             dsoc_desc = (self.channel_a_config['dest_ip'],self.channel_a_config['dest_port'])
         elif channel=='b':
@@ -240,29 +240,57 @@ class Roach2Interface(Roach2Provider):
         else:
             raise ValueError('{} is not a valid channel tag'.format(channel))
 
-        if path == None:
-            path = self.monitor_target
+        logger.info('grabbing {} packets from {}'.format(NPackets,dsoc_desc))
+        pkts=ArtooDaq.grab_packets(self, NPackets, dsoc_desc, True)
+        logger.info('pkt in batch: {}, digital id: {}, if id: {}'.format(pkts[0].pkt_in_batch, pkts[0].digital_id, pkts[0].if_id))
+        logger.info('pkt in batch: {}, digital id: {}, if id: {}'.format(pkts[1].pkt_in_batch, pkts[1].digital_id, pkts[1].if_id))
+        p = {}
 
-        cf = self.freq_dict[channel]
-        gain = self.gain_dict[channel]
+        for i in range(NPackets):
+            if pkts[i].freq_not_time==False:
+                packet_type = 'time'
+            else:
+                packet_type='frequency'
+            x=pkts[i].interpret_data()
+            p[i] = {'real': list(x.real), 'imaginary': list(x.imag), 'type': packet_type, 'id': pkts[i].pkt_in_batch}
+            ipacket++
+
+        if filename is not None:
+            with open(filename, 'w') as outfile:
+                json.dump(p.tolist(), outfile)
+        else:
+            return p
+
+    def get_T_packets(self, channel='a', NPackets=1, filename=None):
+        if channel=='a':
+            dsoc_desc = (self.channel_a_config['dest_ip'],self.channel_a_config['dest_port'])
+        elif channel=='b':
+            dsoc_desc = (self.channel_b_config['dest_ip'],self.channel_b_config['dest_port'])
+        elif channel=='c':
+            dsoc_desc = (self.channel_c_config['dest_ip'],self.channel_c_config['dest_port'])
+        else:
+            raise ValueError('{} is not a valid channel tag'.format(channel))
+
 
         logger.info('grabbing {} packets from {}'.format(NPackets*2,dsoc_desc))
         pkts=ArtooDaq.grab_packets(self, NPackets*2, dsoc_desc, True)
-        p = []
+        p = {}
+        ipacket = 0
         for i in range(int(NPackets*2)):
             if pkts[i].freq_not_time==False:
                 x=pkts[i].interpret_data()
-                p.extend(x)
-        NPackets = len(p/4096)
-        p = np.mean(np.array(p), axis = 0)
+                p[ipacket] = {'real': list(x.real), 'imaginary': list(x.imag)}
+                ipacket++
 
-        filename = '{}/{}_T_packets_channel{}_cf_{}Hz.json'.format(path, NPackets, channel, str(cf))
-        with open(filename, 'w') as outfile:
-            json.dump(p.tolist(), outfile)
+        if filename is not None:
+            with open(filename, 'w') as outfile:
+                json.dump(p.tolist(), outfile)
+        else:
+            return p
 
 
 
-    def get_F_packets(self,dsoc_desc=None, channel='a', NPackets=10, path = None):
+    def get_F_packets(self,dsoc_desc=None, channel='a', NPackets=10, filename = None):
         if channel=='a':
             dsoc_desc = (self.channel_a_config['dest_ip'],self.channel_a_config['dest_port'])
         elif channel=='b':
@@ -272,39 +300,34 @@ class Roach2Interface(Roach2Provider):
         else:
             raise ValueError('{} is not a valid channel tag'.format(channel))
 
-        if path == None:
-            path = self.monitor_target
-
-        cf = self.freq_dict[channel]
-        gain = self.gain_dict[channel]
 
         logger.info('grabbing packets from {}'.format(dsoc_desc))
         pkts=ArtooDaq.grab_packets(self, NPackets*2, dsoc_desc, True)
-        logger.info('cf={}'.format(cf))
 
-        p = []
+        p = {}
+        ipacket = 0
         for i in range(int(NPackets*2)):
             if pkts[i].freq_not_time==True:
                 f=pkts[i].interpret_data()
-                p.append(np.abs(f))
-        NPackets = len(p)
-        p = np.mean(np.array(p), axis = 0)
+                p[ipacket] = {'real': list(f.real), 'imaginary': list(f.imag)}
+                ipacket++
 
-        filename = '{}/mean_of_{}_F_packets_channel{}_cf_{}Hz.json'.format(path, NPackets, channel, str(cf))
-        with open(filename, 'w') as outfile:
-            json.dump(p.tolist(), outfile)
+        if filename is not None:
+            with open(filename, 'w') as outfile:
+                json.dump(p.tolist(), outfile)
+        else:
+            return p
 
 
-    def get_raw_adc_data(self, path = None):
-        if path == None:
-            raise core.exceptions.DriplineGenericDAQError('No path specified')
-       
+    def get_raw_adc_data(self, filename = None):
         x = ArtooDaq._snap_per_core(self, zdok=0)
         x_all = x.flatten('C')
 
-        filename = path
-        with open(filename, 'w') as outfile:
-            json.dump(x_all.tolist(), outfile)
+        if filename is not None:
+            with open(filename, 'w') as outfile:
+                json.dump(x_all.tolist(), outfile)
+        else:
+            return x_all
 
 
 
