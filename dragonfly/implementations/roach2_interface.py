@@ -243,7 +243,6 @@ class Roach2Interface(Roach2Provider):
         logger.info('grabbing {} packets from {}'.format(NPackets,dsoc_desc))
         pkts=ArtooDaq.grab_packets(self, NPackets, dsoc_desc, True)
         logger.info('pkt in batch: {}, digital id: {}, if id: {}'.format(pkts[0].pkt_in_batch, pkts[0].digital_id, pkts[0].if_id))
-        logger.info('pkt in batch: {}, digital id: {}, if id: {}'.format(pkts[1].pkt_in_batch, pkts[1].digital_id, pkts[1].if_id))
         p = {}
 
         for i in range(NPackets):
@@ -251,12 +250,12 @@ class Roach2Interface(Roach2Provider):
                 packet_type = 'time'
             else:
                 packet_type='frequency'
-            x=pkts[i].interpret_data()
-            p[i] = {'real': list(x.real), 'imaginary': list(x.imag), 'type': packet_type, 'id': pkts[i].pkt_in_batch}
+            x=np.complex128(pkts[i].interpret_data())
+            p[i] = {'real': list(x.real), 'imaginary': list(x.imag), 'type': packet_type, 'pkt_in_batch': int(pkts[i].pkt_in_batch)}
 
         if filename is not None:
             with open(filename, 'w') as outfile:
-                json.dump(p.tolist(), outfile)
+                json.dump(p, outfile)
         else:
             return p
 
@@ -277,13 +276,13 @@ class Roach2Interface(Roach2Provider):
         ipacket = 0
         for i in range(NPackets*2):
             if pkts[i].freq_not_time==False:
-                x=pkts[i].interpret_data()
+                x=np.complex128(pkts[i].interpret_data())
                 p[ipacket] = {'real': list(x.real), 'imaginary': list(x.imag)}
                 ipacket+=1
 
         if filename is not None:
             with open(filename, 'w') as outfile:
-                json.dump(p.tolist(), outfile)
+                json.dump(p, outfile)
         else:
             return p
 
@@ -307,13 +306,13 @@ class Roach2Interface(Roach2Provider):
         ipacket = 0
         for i in range(NPackets*2):
             if pkts[i].freq_not_time==True:
-                f=pkts[i].interpret_data()
+                f=np.complex128(pkts[i].interpret_data())
                 p[ipacket] = {'real': list(f.real), 'imaginary': list(f.imag)}
                 ipacket+=1
 
         if filename is not None:
             with open(filename, 'w') as outfile:
-                json.dump(p.tolist(), outfile)
+                json.dump(p, outfile)
         else:
             return p
 
@@ -321,12 +320,14 @@ class Roach2Interface(Roach2Provider):
     def get_raw_adc_data(self, filename = None):
         x = ArtooDaq._snap_per_core(self, zdok=0)
         x_all = x.flatten('C')
-
+        logger.info(x_all)
+        logger.info(x_all.dtype)
         if filename is not None:
+            logger.info('Saving raw adc data to {}'.format(filename))
             with open(filename, 'w') as outfile:
-                json.dump(x_all.tolist(), outfile)
+                json.dump(list(x_all), outfile)
         else:
-            return x_all
+            return list(x_all)
 
 
 
