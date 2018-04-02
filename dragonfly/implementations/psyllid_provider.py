@@ -6,7 +6,6 @@ from __future__ import absolute_import
 # standard imports
 import logging
 import time
-from datetime import datetime
 
 # internal imports
 from dripline import core
@@ -20,7 +19,7 @@ logger = logging.getLogger(__name__)
 __all__.append('PsyllidProvider')
 class PsyllidProvider(core.Provider):
     '''
-    Provider for direct communication with up to 3 Psyllid instances with a single stream each 
+    Provider for direct communication with up to 3 Psyllid instances with a single stream each
     '''
     def __init__(self,
                  set_condition_list = [],
@@ -29,7 +28,7 @@ class PsyllidProvider(core.Provider):
                  temp_file = '/tmp/empty_egg_file.egg',
                  **kwargs):
 
-        core.Provider.__init__(self, **kwargs)        
+        core.Provider.__init__(self, **kwargs)
         self._set_condition_list = set_condition_list
         self.queue_dict = queue_dict
         self.channel_dict = channel_dict
@@ -128,7 +127,7 @@ class PsyllidProvider(core.Provider):
                     stream_count += 1
                     self.mode_dict[channel]='triggering'
                 except core.exceptions.DriplineError:
-                    pass  
+                    pass
         logger.info('Number of streams for channel {}: {}'.format(channel, stream_count))
         return stream_count
 
@@ -252,7 +251,7 @@ class PsyllidProvider(core.Provider):
         self.freq_dict[channel]=result['center-freq']
         return self.freq_dict[channel]
 
-    
+
     def set_central_frequency(self, channel, cf):
         '''
         Sets central frequency in psyllid
@@ -293,13 +292,14 @@ class PsyllidProvider(core.Provider):
         '''
         Tells psyllid to stop a run
         This method is for interrupting runs
-        Runs stop automatically after the set duration and normally don't need to be stopped manually        
+        Runs stop automatically after the set duration and normally don't need to be stopped manually
         '''
         self.provider.cmd(self.queue_dict[channel], 'stop-run')
 
 
-
-    ''' trigger control '''
+    ###################
+    # trigger control #
+    ###################
 
     def set_trigger_configuration(self, channel='a', threshold=18, threshold_high=0, n_triggers=1,):
         '''
@@ -351,8 +351,9 @@ class PsyllidProvider(core.Provider):
         return {'pretrigger_time': pretrigger_time, 'skip_tolerance': skip_tolerance}
 
 
-
-    ''' individual time window and trigger parameter sets and gets'''
+    ##############################################################
+    # individual time window and trigger parameter sets and gets #
+    ##############################################################
 
     def set_pretrigger_time(self, pretrigger_time, channel='a'):
         n_pretrigger_packets = int(round(pretrigger_time/4.096e-5))

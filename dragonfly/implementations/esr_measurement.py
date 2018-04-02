@@ -19,10 +19,10 @@ logger = logging.getLogger(__name__)
 __all__.append('ESR_Measurement')
 @core.fancy_doc
 class ESR_Measurement(core.Endpoint):
-    """
+    '''
     Operate the ESR system to measure the B-field off-axis.
     Methods are sorted by order of call within run_scan.
-    """
+    '''
     def __init__(self,
                  **kwargs):
         core.Endpoint.__init__(self,**kwargs)
@@ -160,10 +160,10 @@ class ESR_Measurement(core.Endpoint):
 
     def check_endpoint(self, endptname, val):
         '''
-        Sets endpoint to value         
-    
+        Sets endpoint to value
+
         endptname (str): name of endpoint
-        val (int,float,str,unicode): value of endpoint to set  
+        val (int,float,str,unicode): value of endpoint to set
         '''
         if not isinstance(val, (int,float,str,unicode)):
             logger.warning("set value is of type {} with value {}, cannot process".format(type(val), val))

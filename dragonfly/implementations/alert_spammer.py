@@ -4,14 +4,10 @@ Spammer of Alerts
 
 from __future__ import absolute_import
 
-import json
-import os
-
 import logging
 logger=logging.getLogger(__name__)
 
-import dripline
-from dripline.core import Endpoint, fancy_doc
+from dripline.core import Endpoint, Service, fancy_doc
 
 from time import sleep
 
@@ -21,7 +17,7 @@ __all__.append('AlertSpammer')
 @fancy_doc
 class AlertSpammer(Endpoint):
     '''
-    Spammer of alerts to alerts exchange 
+    Spammer of alerts to alerts exchange
     '''
     def __init__(self,broker=None,sleep_time = 10,*args, **kwargs):
         '''
@@ -32,7 +28,7 @@ class AlertSpammer(Endpoint):
         Endpoint.__init__(self,**kwargs)
 
         # setting the interface
-        self.connection_to_alert = dripline.core.Service(broker=broker, exchange='alerts',keys='status_message.p8_alerts.dripline')
+        self.connection_to_alert = Service(broker=broker, exchange='alerts',keys='status_message.p8_alerts.dripline')
 
         #sending a welcome message
         self.level = 'warning'

@@ -16,9 +16,6 @@ __all__ = []
 
 logger = logging.getLogger(__name__)
 
-
-
-
 __all__.append('ROACH1ChAcquisitionInterface')
 class ROACH1ChAcquisitionInterface(DAQProvider):
     '''
@@ -53,8 +50,6 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
 
         if mask_target_path is None:
             logger.warning('No mask target path set. Triggered data taking not possible.')
-
-
 
     def prepare_daq_system(self):
         '''
@@ -157,7 +152,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
 
         # check channel is unblocked
         blocked_channels = self.provider.get(self.daq_target+ '.blocked_channels')
-        if self.channel_id in blocked_channels: 
+        if self.channel_id in blocked_channels:
             raise core.exceptions.DriplineGenericDAQError('Channel is blocked')
 
         # check frequency matches
@@ -198,7 +193,6 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         Creates directory for data files
         Tells psyllid_provider to tell psyllid to start the run
         Unblocks roach channels if that fails
-        Sets run time in _stop_handle for end of run
         '''
         logger.info('block roach channel')
         self.provider.cmd(self.daq_target, 'block_channel', payload = self.payload_channel)
@@ -272,8 +266,9 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         self.provider.cmd(self.daq_target, 'unblock_channel', payload = self.payload_channel)
 
 
-
-    '''frequency sets and gets'''
+    ###########################
+    # frequency sets and gets #
+    ###########################
 
     def _get_roach_central_freqs(self):
         result = self.provider.get(self.daq_target + '.all_central_frequencies')
@@ -308,9 +303,10 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         self.provider.cmd(self.psyllid_interface, 'set_central_frequency', payload = payload)
 
 
-
-    ''' trigger control '''
-
+    ###################
+    # trigger control #
+    ###################
+    
     @property
     def acquisition_mode(self):
         result = self.provider.cmd(self.psyllid_interface, 'get_acquisition_mode', payload = self.payload_channel)['values'][0]
@@ -487,4 +483,3 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         path = os.path.join(self.mask_target_path, filename)
         payload = {'channel':self.channel_id, 'filename':path}
         self.provider.cmd(self.psyllid_interface, 'make_trigger_mask', payload = payload)
-

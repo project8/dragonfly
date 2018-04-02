@@ -25,7 +25,6 @@ try:
         zeros,
         )
     from scipy.signal import firwin2, freqz
-    import netifaces as ni
     from corr.katcp_wrapper import FpgaClient
 except ImportError:
     pass

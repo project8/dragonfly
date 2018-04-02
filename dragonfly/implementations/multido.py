@@ -113,29 +113,28 @@ class MultiDo(Endpoint):
         Performs sets and checks ... #TODO_DOC
         '''
 
-        to_be_sent = []
         for a_target,details in self._targets:
             if 'default_set' in details:
                 value_to_set = details['default_set']
             else:
                 value_to_set = value
             logger.info('setting <{}>'.format(a_target))
-            result = self.provider.set(a_target, value_to_set)
+            self.provider.set(a_target, value_to_set)
             # checking the value of the endpoint
             if details['no_check']==True:
                 logger.info('no check after set required: skipping!')
                 continue
             else:
                 logger.info('checking <{}>'.format(a_target))
-                value_get,a_rep = self._single_get(details['get_name'], details)
+                value_get = self._single_get(details['get_name'], details)[0]
 
-            if type(value_get) is unicode:
+            if isinstance(value_get,unicode):
                 logger.debug('result in unicode')
                 value_get = value_get.encode('utf-8')
             value_get_temp = value_get
             try:
                 value_get = float(value_get_temp)
-            except:
+            except (ValueError, TypeError):
                 logger.debug('value get ({}) is not floatable'.format(value_get))
                 value_get = value_get_temp
 

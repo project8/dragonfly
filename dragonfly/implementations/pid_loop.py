@@ -8,14 +8,13 @@ __all__ = []
 import time
 import datetime
 
-import dripline
-from dripline.core import Gogol, constants
+from dripline.core import Gogol, constants, exceptions, fancy_doc
 
 import logging
 logger = logging.getLogger(__name__)
 
 __all__.append('PidController')
-@dripline.core.utilities.fancy_doc
+@fancy_doc
 class PidController(Gogol):
     '''
     Implementation of a PID control loop with constant offset. That is, the PID equation
@@ -98,8 +97,8 @@ class PidController(Gogol):
 
         try:
             value = float(value)
-        except:
-            raise DriplineValueError('value get ({}) is not floatable'.format(value))
+        except (TypeError, ValueError):
+            raise exceptions.DriplineValueError('value get ({}) is not floatable'.format(value))
         return value
 
     def __validate_status(self):
@@ -108,7 +107,7 @@ class PidController(Gogol):
             logger.debug("{} returns {}".format(self._status_channel,value))
         else:
             logger.critical("Invalid status of {} for PID control by {}".format(self._status_channel,self.name))
-            raise dripline.core.DriplineHardwareError("{} returns {}".format(self._status_channel,value))
+            raise exceptions.DriplineHardwareError("{} returns {}".format(self._status_channel,value))
 
     def this_consume(self, message, method):
         logger.info('consuming message')
@@ -182,7 +181,7 @@ class PidController(Gogol):
             logger.info("current set is equal to current get")
         else:
             self.__validate_status()
-            raise dripline.core.DriplineValueError("set value ({}) is not equal to checked value ({})".format(new_current,current_get))
+            raise exceptions.DriplineValueError("set value ({}) is not equal to checked value ({})".format(new_current,current_get))
 
         logger.info("current set is: {}".format(new_current))
         self._old_current = new_current

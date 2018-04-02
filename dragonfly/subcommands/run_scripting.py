@@ -315,7 +315,7 @@ class RunScript(object):
             self._dry_run_mode = True
         try:
             # do each of the actions listed in the execution file
-            actions = yaml.load(open(kwargs.execution_file))
+            actions = yaml.safe_load(open(kwargs.execution_file))
             if self._last_action == len(actions)-1:
                 logger.debug('cache file indicates this execution is already complete')
                 return
@@ -493,7 +493,7 @@ class RunScript(object):
                         target_value = float(target_value)
                     except ValueError:
                         logger.debug('target_value is not the same type as the value get: going to use the set value ({}) as target_value'.format(this_set['value']))
-                        target_value==this_set['value']
+                        target_value = this_set['value']
                 if isinstance(target_value, (int,float)):
                     if 'tolerance' in this_set:
                         tolerance = this_set['tolerance']
@@ -541,14 +541,14 @@ class RunScript(object):
                     value_get_backup = value_get
                     # changing target_value in the dictionary
                     if target_value=='on' or target_value=='enable' or target_value=='enabled' or target_value=='positive':
-                        target_value=='1'
+                        target_value = '1'
                     if target_value=='off' or target_value=='disable' or target_value=='disabled' or target_value=='negative':
-                        target_value=='0'
+                        target_value = '0'
                     # changing value_get in the dictionary
                     if value_get=='on' or value_get=='enable' or value_get=='enabled' or value_get=='positive':
-                        value_get=='1'
+                        value_get = '1'
                     if value_get=='off' or value_get=='disable' or value_get=='disabled' or value_get=='negative':
-                        value_get=='0'
+                        value_get = '0'
                     # checking is target_value and value_get are the same
                     if target_value==value_get:
                         logger.debug('value get ({}) corresponds to the target_value ({}): going on'.format(value_get_backup,target_value_backup))
@@ -580,7 +580,7 @@ class RunScript(object):
         logger.info('doing do block')
         for i_do,this_do in enumerate(operations):
             logger.info('doing operation #{}'.format(i_do))
-            for i_key,key in enumerate(this_do):
+            for key in this_do:
                 if key == 'sets':
                     self.action_set(this_do[key])
                 elif key == 'cmds':
@@ -735,8 +735,7 @@ class RunScript(object):
             # for cmds, we simply add them to the dictionary
             # then the evaluated_operations dictionary is procceded using the action_do()
             evaluated_operations = []
-            for i_do,a_do in enumerate(operations):
-                these_operations = []
+            for a_do in operations:
                 key = a_do.keys()[0]
                 # logger.info('doing operation #{}: {}'.format(i_do,key))
                 if key == 'sets':
@@ -754,15 +753,14 @@ class RunScript(object):
                             elif isinstance(self.evaluator(a_set['value'].format(run_count)), list):
                                 old_list = self.evaluator(a_set['value'].format(run_count))
                                 new_list = []
-                                for i in range(len(old_list)):
-                                    if isinstance(old_list[i],list):
-                                        sub_list = old_list[i]
-                                        for j in range(sub_list):
-                                            new_list.append(sub_list[j])
-                                    elif isinstance(old_list[i], (int,float,str,bool)):
-                                        new_list.append(old_list[i])
+                                for entry in old_list:
+                                    if isinstance(entry,list):
+                                        for subentry in entry:
+                                            new_list.append(subentry)
+                                    elif isinstance(entry, (int,float,str,bool)):
+                                        new_list.append(entry)
                                     else:
-                                        raise dripline.core.DriplineValueError('run_scripting does not support list of lists of lists')
+                                        raise dripline.core.DriplineValueError('run_scripting does not support {}'.format(type(entry)))
                                 this_value = new_list[run_count]
                             elif isinstance(self.evaluator(a_set['value'].format(run_count)), dict):
                                 if isinstance(self.evaluator(a_set['value'].format(run_count))[run_count], (int,float,str,bool)):

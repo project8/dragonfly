@@ -74,7 +74,7 @@ class RunDBInterface(Provider):
         Performs SQL inserts and returns dictionary of table column names (keys) and reply values
 
         table_name (str): name of the table to insert to
-        insert_kv_dict (dict): dictionary of {column_names: values} to serve as defaults when inserting, any values provided explicitly on the insert request will override these values 
+        insert_kv_dict (dict): dictionary of {column_names: values} to serve as defaults when inserting, any values provided explicitly on the insert request will override these values
         return_col_names_list (list): list of names (str) of columns whose values should be returned on completion of the insert
         '''
         try:

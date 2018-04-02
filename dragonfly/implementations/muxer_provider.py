@@ -4,7 +4,7 @@ A class to interface with the multiplexer aka muxer instrument
 
 from __future__ import absolute_import
 
-from dripline.core import Endpoint, fancy_doc, exceptions
+from dripline.core import fancy_doc, exceptions
 from dragonfly.implementations import EthernetProvider, MuxerGetSpime
 
 import logging

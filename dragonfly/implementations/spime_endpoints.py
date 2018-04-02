@@ -10,8 +10,10 @@ Spime catalog (in order of ease-of-use):
 - SimpleSCPISpime: quick and simple minimal spime
 -* SimpleSCPIGetSpime/SimpleSCPISetSpime: limited instance of above with disabled Get/Set
 - FormatSpime: utility spime with expanded functionality
+- ADS1115Spime: spime to read ADS1115 16-bit ADC
 - ErrorQueueSpime: spime for iterating through error queue to clear it and return all erros
 - GPIOSpime: spime to handle GPIO pin control on RPi
+- GPIOPUDSpime: spime to handle pull_up_down on RPi GPIO pins
 - IonGaugeSpime: spime to handle communication with Lesker/B-RAX pressure gauges
 - LeakValveSpime: spime to handle VAT leak valve get responses
 - LockinSpime: spime to handle antiquated lockin IEEE 488 formatting
@@ -22,12 +24,10 @@ Spime catalog (in order of ease-of-use):
 '''
 from __future__ import absolute_import
 
-# re used for FormatSpime
-import re
-
-# RPi.GPIO used for GPIOSpime (directly) and Max31856Spime (indirectly)
+import re # used for FormatSpime
+import datetime # used for GPIOPUDSpime
 try:
-    import RPi.GPIO as GPIO
+    from Adafruit_ADS1x15 import ADS1115
 except ImportError:
     pass
 
@@ -165,6 +165,65 @@ class FormatSpime(Spime):
         return self.provider.send([self._set_str.format(mapped_value)])
 
 
+__all__.append('ADS1115Spime')
+class ADS1115Spime(Spime):
+    '''
+    Spime for measuring the voltage difference across two channels of the ADS1115 Adafruit ADC on Raspberry Pi
+    '''
+    def __init__(self,
+                 gain,
+                 read_option,
+                 gain_conversion,
+                 measurement="differential",
+                 **kwargs
+                 ):
+        '''
+        gain (int): Use the table in the on_get to choose the gain applied to the measurements.
+        pair (int): Use the table immediately below to choose which channels you wish to measure the difference between.
+        gain_conversion (float): Gives a bit to mV conversion for the chosen gain.
+        '''
+        '''
+        Read the difference between channel 0 and 1 (i.e. channel 0 minus channel 1).
+        Note you can change the differential value to the following:
+         - 0 = Channel 0 minus channel 1
+         - 1 = Channel 0 minus channel 3
+         - 2 = Channel 1 minus channel 3
+         - 3 = Channel 2 minus channel 3
+        '''
+        if not 'ADS1115' in globals():
+           raise ImportError('Adafruit_ADS1x15.ADS1115 not found, required for ADS1115Spime class')
+        Spime.__init__(self, **kwargs)
+        self.gain = gain
+        self.read_option = read_option
+        self.gain_conversion = gain_conversion
+        self.adc = ADS1115()
+        if measurement == "differential":
+            self.measurement = self.adc.read_adc_difference
+        elif measurement == "single":
+            self.measurement = self.adc.read_adc
+        else:
+            raise exceptions.DriplineValueError("Invalid measurement option {}; must be differential or single".format(measurement))
+
+    # Read
+    @calibrate()
+    def on_get(self):
+        '''
+        Choose a gain of 1 for reading voltages from 0 to 4.09V.
+        Or pick a different gain to change the range of voltages that are read:
+         - 2/3 = +/-6.144V
+         -   1 = +/-4.096V
+         -   2 = +/-2.048V
+         -   4 = +/-1.024V
+         -   8 = +/-0.512V
+         -  16 = +/-0.256V
+        See table 3 in the ADS1015/ADS1115 datasheet for more info on gain.
+        To get a number for the gain_conversion you simply need to divide the total
+        voltage range covered at that gain (twice the max/min shown) by the number
+        of bits (in this case 2^16).
+        '''
+        return self.gain_conversion*self.measurement(self.read_option, self.gain)
+
+
 __all__.append('ErrorQueueSpime')
 class ErrorQueueSpime(Spime):
     '''
@@ -212,8 +271,6 @@ class GPIOSpime(Spime):
         outpin (int||list): pin(s) to program for set
         set_value_map (dict): dictionary of mappings for values to on_set; note that the result of set_value_map[value] will be used as the input to set_str.format(value) if this dict is present
         '''
-        if not 'GPIO' in globals():
-            raise ImportError('RPi.GPIO not found, required for GPIOSpime class')
         if 'get_on_set' not in kwargs:
             kwargs['get_on_set'] = True
         Spime.__init__(self, **kwargs)
@@ -240,7 +297,7 @@ class GPIOSpime(Spime):
             raise DriplineMethodNotSupportedError("<{}> has no get pin available".format(self.name))
         result = 0
         for i, pin in enumerate(self._inpin):
-            result += GPIO.input(pin)<<i
+            result += self.provider.GPIO.input(pin)<<i
         return result
 
     def on_set(self, value):
@@ -252,9 +309,44 @@ class GPIOSpime(Spime):
                 value = value.lower()
             value = self._set_value_map[value]
             logger.debug('raw set value is {}; mapped value is: {}'.format(raw_value, value))
-        GPIO.output(self._outpin, value)
-        if not all(GPIO.input(pin)==value for pin in self._outpin):
+        self.provider.GPIO.output(self._outpin, value)
+        if not all(self.provider.GPIO.input(pin)==value for pin in self._outpin):
             raise DriplineHardwareError("Error setting GPIO output pins")
+
+
+__all__.append('GPIOPUDSpime')
+@fancy_doc
+class GPIOPUDSpime(Spime):
+    '''
+    Spime for reading pull_up_down sensor on GPIO pins on Raspberry Pi
+    '''
+    def __init__(self,
+                 pin,
+                 **kwargs
+                 ):
+        '''
+        pin (int): pin on which to count crossings
+        '''
+        Spime.__init__(self, **kwargs)
+        self._pin = pin
+        self._reset()
+
+    @calibrate()
+    def on_get(self):
+        logger.debug("Counter reading is {}".format(self.counter))
+        result = (self.counter-self.last_count)/(datetime.datetime.utcnow()-self.last_time).total_seconds()
+        self.last_count = self.counter
+        self.last_time = datetime.datetime.utcnow()
+        return result
+
+    def _countPulse(self, channel):
+        self.counter += 1
+
+    def _reset(self):
+        logger.debug("resetting counter and timer")
+        self.last_time = datetime.datetime.utcnow()
+        self.counter = 0
+        self.last_count = 0
 
 
 __all__.append('IonGaugeSpime')
@@ -395,8 +487,6 @@ class Max31856Spime(Spime):
         '''
         SPI GPIO pins on RPi must be configured via setup_calls with configure_max31856 method
         '''
-        if not 'GPIO' in globals():
-            raise ImportError('RPi.GPIO not found, required for Max31856Spime class')
         self.min_value = min_value
         self.max_value = max_value
         Spime.__init__(self, **kwargs)
