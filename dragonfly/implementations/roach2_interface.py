@@ -230,7 +230,7 @@ class Roach2Interface(Roach2Provider):
         return board_clock
 
 
-    def get_T_packets(self, channel='a', NPackets=10, path=None):
+    def get_packets(self, channel='a', NPackets=1, filename=None):
         if channel=='a':
             dsoc_desc = (self.channel_a_config['dest_ip'],self.channel_a_config['dest_port'])
         elif channel=='b':
@@ -240,29 +240,55 @@ class Roach2Interface(Roach2Provider):
         else:
             raise ValueError('{} is not a valid channel tag'.format(channel))
 
-        if path == None:
-            path = self.monitor_target
+        logger.info('grabbing {} packets from {}'.format(NPackets,dsoc_desc))
+        pkts=ArtooDaq.grab_packets(self, NPackets, dsoc_desc, True)
+        logger.info('pkt in batch: {}, digital id: {}, if id: {}'.format(pkts[0].pkt_in_batch, pkts[0].digital_id, pkts[0].if_id))
+        p = {}
 
-        cf = self.freq_dict[channel]
-        # gain = self.gain_dict[channel]
+        for i in range(NPackets):
+            if pkts[i].freq_not_time==False:
+                packet_type = 'time'
+            else:
+                packet_type='frequency'
+            x=np.complex128(pkts[i].interpret_data())
+            p[i] = {'real': list(x.real), 'imaginary': list(x.imag), 'type': packet_type, 'pkt_in_batch': int(pkts[i].pkt_in_batch)}
+
+        if filename is not None:
+            with open(filename, 'w') as outfile:
+                json.dump(p, outfile)
+        else:
+            return p
+
+    def get_T_packets(self, channel='a', NPackets=1, filename=None):
+        if channel=='a':
+            dsoc_desc = (self.channel_a_config['dest_ip'],self.channel_a_config['dest_port'])
+        elif channel=='b':
+            dsoc_desc = (self.channel_b_config['dest_ip'],self.channel_b_config['dest_port'])
+        elif channel=='c':
+            dsoc_desc = (self.channel_c_config['dest_ip'],self.channel_c_config['dest_port'])
+        else:
+            raise ValueError('{} is not a valid channel tag'.format(channel))
+
 
         logger.info('grabbing {} packets from {}'.format(NPackets*2,dsoc_desc))
         pkts=ArtooDaq.grab_packets(self, NPackets*2, dsoc_desc, True)
-        p = []
-        for i in range(int(NPackets*2)):
+        p = {}
+        ipacket = 0
+        for i in range(NPackets*2):
             if pkts[i].freq_not_time==False:
-                x=pkts[i].interpret_data()
-                p.append(np.abs(np.fft.fftshift(np.fft.fft(x)))/4096)
-        NPackets = len(p)
-        p = np.mean(np.array(p), axis = 0)
+                x=np.complex128(pkts[i].interpret_data())
+                p[ipacket] = {'real': list(x.real), 'imaginary': list(x.imag)}
+                ipacket+=1
 
-        filename = '{}/mean_of_{}_T_packets_channel{}_cf_{}Hz.json'.format(path, NPackets, channel, str(cf))
-        with open(filename, 'w') as outfile:
-            json.dump(p.tolist(), outfile)
+        if filename is not None:
+            with open(filename, 'w') as outfile:
+                json.dump(p, outfile)
+        else:
+            return p
 
 
 
-    def get_F_packets(self,dsoc_desc=None, channel='a', NPackets=10, path = None):
+    def get_F_packets(self,dsoc_desc=None, channel='a', NPackets=10, filename = None):
         if channel=='a':
             dsoc_desc = (self.channel_a_config['dest_ip'],self.channel_a_config['dest_port'])
         elif channel=='b':
@@ -272,52 +298,74 @@ class Roach2Interface(Roach2Provider):
         else:
             raise ValueError('{} is not a valid channel tag'.format(channel))
 
-        if path == None:
-            path = self.monitor_target
-
-        cf = self.freq_dict[channel]
-        gain = self.gain_dict[channel]
 
         logger.info('grabbing packets from {}'.format(dsoc_desc))
         pkts=ArtooDaq.grab_packets(self, NPackets*2, dsoc_desc, True)
-        logger.info('cf={}'.format(cf))
 
-        p = []
-        for i in range(int(NPackets*2)):
+        p = {}
+        ipacket = 0
+        for i in range(NPackets*2):
             if pkts[i].freq_not_time==True:
-                f=pkts[i].interpret_data()
-                p.append(np.abs(f))
-        NPackets = len(p)
-        p = np.mean(np.array(p), axis = 0)
+                f=np.complex128(pkts[i].interpret_data())
+                p[ipacket] = {'real': list(f.real), 'imaginary': list(f.imag)}
+                ipacket+=1
 
-        filename = '{}/mean_of_{}_F_packets_channel{}_cf_{}Hz.json'.format(path, NPackets, channel, str(cf))
-        with open(filename, 'w') as outfile:
-            json.dump(p.tolist(), outfile)
-
-
-    def get_raw_adc_data(self, N=1, path = None):
-        if path == None:
-            path = self.monitor_target
-        p = []
-        for i in range(N):
-            x = ArtooDaq._snap_per_core(self, zdok=0)
-            x_all = x.flatten('C')
-            for i in range(16):
-                p.append(np.abs(np.fft.fftshift(np.fft.fft(x_all[i*16384:(i+1)*16384])))/16384)
-        p = np.mean(np.array(p), axis = 0)
-
-        filename = '{}/mean_of_{}_raw_adc_spectra.json'.format(path, str(16*N))
-        with open(filename, 'w') as outfile:
-            json.dump(p.tolist(), outfile)
+        if filename is not None:
+            with open(filename, 'w') as outfile:
+                json.dump(p, outfile)
+        else:
+            return p
 
 
-    def calibrate_manually(self, gain1=0.0, gain2=0.42, gain3=0.42, gain4=1.55, off1=3.14, off2=-0.39, off3=2.75, off4=-1.18):
-        adc5g.set_spi_gain(self.roach2,0, 1, gain1)
-        adc5g.set_spi_gain(self.roach2,0, 2, gain2)
-        adc5g.set_spi_gain(self.roach2,0, 3, gain3)
-        adc5g.set_spi_gain(self.roach2,0, 4, gain4)
-        adc5g.set_spi_offset(self.roach2,0, 1, off1)
-        adc5g.set_spi_offset(self.roach2,0, 2, off2)
-        adc5g.set_spi_offset(self.roach2,0, 3, off3)
-        adc5g.set_spi_offset(self.roach2,0, 4, off4)
-        return True
+    def get_raw_adc_data(self, filename = None):
+        x = ArtooDaq._snap_per_core(self, zdok=0)
+        x_all = x.flatten('C')
+        logger.info(x_all)
+        logger.info(x_all.dtype)
+        if filename is not None:
+            logger.info('Saving raw adc data to {}'.format(filename))
+            with open(filename, 'w') as outfile:
+                json.dump(list(x_all), outfile)
+        else:
+            return list(x_all)
+
+
+
+    def calibrate_with_2016_values(self):
+        """
+        Calibrates the ADC cores with values from a working calibration in 2016
+        """
+        self.calibrate_manually(gain1=0.0, gain2=0.42, gain3=0.42, gain4=1.55, offset1=3.14, offset2=-0.39, offset3=2.75, offset4=-1.18, phase1=None, phase2=None, phase3=None, phase4=None)
+
+
+    def calibrate_manually(self, gain1=None, gain2=None, gain3=None, gain4=None, offset1=None, offset2=None, offset3=None, offset4=None, phase1=None, phase2=None, phase3=None, phase4=None):
+        """
+        Calibrate the ADC cores manually
+        """
+        if gain1 is not None:
+            adc5g.set_spi_gain(self.roach2,0, 1, gain1)
+        if gain2 is not None:
+            adc5g.set_spi_gain(self.roach2,0, 2, gain2)
+        if gain3 is not None:
+            adc5g.set_spi_gain(self.roach2,0, 3, gain3)
+        if gain4 is not None:
+            adc5g.set_spi_gain(self.roach2,0, 4, gain4)
+
+        if offset1 is not None:
+            adc5g.set_spi_offset(self.roach2,0, 1, offset1)
+        if offset2 is not None:
+            adc5g.set_spi_offset(self.roach2,0, 2, offset2)
+        if offset3 is not None:
+            adc5g.set_spi_offset(self.roach2,0, 3, offset3)
+        if offset4 is not None:
+            adc5g.set_spi_offset(self.roach2,0, 4, offset4)
+
+        if phase1 is not None:
+            adc5g.set_spi_phase(self.roach2, 0, 1, phase1)
+        if phase2 is not None:
+            adc5g.set_spi_phase(self.roach2, 0, 2, phase2)
+        if phase3 is not None:
+            adc5g.set_spi_phase(self.roach2, 0, 3, phase3)
+        if phase4 is not None:
+            adc5g.set_spi_phase(self.roach2, 0, 4, phase4)
+
