@@ -12,7 +12,7 @@ except ImportError:
 ##here import outside libraries that you will use later
 
 # local imports
-from dripline.core import Endpoint
+from dripline.core import Endpoint, exceptions
 ##if you needed to import anything from dripline (Spime, Provider, ect) import specific things here
 
 logger = logging.getLogger(__name__)
@@ -21,8 +21,17 @@ __all__= ['StepAttenuator']
 ##this is what classes are exported when you try to use this file so that they go to the global namespace. Since StepAttenuator is the only class you've made this should be the only name in the list.
 
 class StepAttenuator(Endpoint):
-    def __init__(self, file_name="/tmp/step_atten.txt", **kwargs):
-        self.file_name=file_name
+    def __init__(self,
+                 file_name="/tmp/step_atten.txt",
+                 min_value=0,
+                 max_value=63,
+                 **kwargs
+                 ):
+        if not 'spidev' in globals():
+            raise ImportError('spidev not found, required for StepAttenuator class')
+        self.file_name = file_name
+        self.min = min_value
+        self.max = max_value
         Endpoint.__init__(self, **kwargs)
 
     #**kwargs is a library that has arguments. If your class is given a name that it doesn't have a value/function for it will pass it to kwargs, which will pass it along to the parent class, which will do the same thing.
@@ -40,6 +49,8 @@ class StepAttenuator(Endpoint):
 ##This opens up the temp file, which can be called/put where the user wants, and recalls the last line of the file
 
     def on_set(self, value):
+        if value not in range(self.min,self.max+1):
+            raise exceptions.DriplineValueError("Invalid setting for StepAttenuator {}, must be in ({},{})".format(value,self.min,self.max))
         spi= spidev.SpiDev()
         spi.open(0, 0)
         spi.max_speed_hz = 5000000
@@ -49,7 +60,7 @@ class StepAttenuator(Endpoint):
         f= open(self.file_name, "a")
         f.write('{}\n'.format(value))
         f.close()
-        return string
+        return value
 
 ##First creates spi object and then opens a spi port 0, device 0. Xfer performs a SPI transaction. So return the value that you want to set the attenuation as. Without the SPI lines the actual attenuation will not change but your new values will be written in a file--that doens't actually do anything useful.
 ##This sets the new value for the SA but rewrites the file and deletes the old content. This is fine for now but it something to fix in the future.

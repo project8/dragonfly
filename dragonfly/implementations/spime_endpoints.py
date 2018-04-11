@@ -287,6 +287,8 @@ class GPIOSpime(Spime):
             if not all(isinstance(pin,int) for pin in outpin):
                 raise exceptions.DriplineValueError("Invalid outpin <{}> for {}, requires int or list of int".format(repr(outpin), self.name))
         self._outpin = outpin
+        if self._inpin is None and self._outpin is not None:
+            self._inpin = self._outpin
         if set_value_map is not None and not isinstance(set_value_map, dict):
             raise DriplineValueError("Invalid set_value_map config for {}; type is {} not dict".format(self.name, type(set_value_map)))
         self._set_value_map = set_value_map
@@ -309,9 +311,8 @@ class GPIOSpime(Spime):
                 value = value.lower()
             value = self._set_value_map[value]
             logger.debug('raw set value is {}; mapped value is: {}'.format(raw_value, value))
-        self.provider.GPIO.output(self._outpin, value)
-        if not all(self.provider.GPIO.input(pin)==value for pin in self._outpin):
-            raise DriplineHardwareError("Error setting GPIO output pins")
+        for i, pin in enumerate(self._outpin):
+            self.provider.GPIO.output(pin, value&(1<<i))
 
 
 __all__.append('GPIOPUDSpime')
