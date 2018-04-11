@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 __all__= ['StepAttenuator']
 ##this is what classes are exported when you try to use this file so that they go to the global namespace. Since StepAttenuator is the only class you've made this should be the only name in the list.
 
-class StepAttenuator(Endpoint):
+class StepAttenuator(Spime):
     def __init__(self,
                  file_name="/tmp/step_atten.txt",
                  min_value=0,
@@ -32,7 +32,7 @@ class StepAttenuator(Endpoint):
         self.file_name = file_name
         self.min = min_value
         self.max = max_value
-        Endpoint.__init__(self, **kwargs)
+        Spime.__init__(self, **kwargs)
 
     #**kwargs is a library that has arguments. If your class is given a name that it doesn't have a value/function for it will pass it to kwargs, which will pass it along to the parent class, which will do the same thing.
     #If you haven't came up with something for your function to do, pass it so that it doesn't do anything but you can still run file.
