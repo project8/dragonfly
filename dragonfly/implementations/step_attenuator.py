@@ -12,7 +12,7 @@ except ImportError:
 ##here import outside libraries that you will use later
 
 # local imports
-from dripline.core import Endpoint, exceptions
+from dripline.core import Endpoint, Spime, exceptions
 ##if you needed to import anything from dripline (Spime, Provider, ect) import specific things here
 
 logger = logging.getLogger(__name__)
