@@ -45,7 +45,7 @@ class StepAttenuator(Spime):
         last_line= lines[-1]
         logger.debug("last value was: {}".format(last_line))
         f.close()
-        return int(last_line)
+        return last_line.strip()
 
 ##This opens up the temp file, which can be called/put where the user wants, and recalls the last line of the file
 
