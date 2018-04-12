@@ -12,14 +12,14 @@ except ImportError:
 ##here import outside libraries that you will use later
 
 # local imports
-from dripline.core import Endpoint, Spime, exceptions
+from dripline.core import Endpoint, Spime, calibrate, exceptions, fancy_doc
 ##if you needed to import anything from dripline (Spime, Provider, ect) import specific things here
 
 logger = logging.getLogger(__name__)
 
 __all__= ['StepAttenuator']
 ##this is what classes are exported when you try to use this file so that they go to the global namespace. Since StepAttenuator is the only class you've made this should be the only name in the list.
-
+@fancy_doc
 class StepAttenuator(Spime):
     def __init__(self,
                  file_name="/tmp/step_atten.txt",
@@ -38,13 +38,14 @@ class StepAttenuator(Spime):
     #If you haven't came up with something for your function to do, pass it so that it doesn't do anything but you can still run file.
    #Before you had to be in the instruments directory in order for python to see that the file you wanted to open existed. By creating an argument named that gives a default location for the file you can work around that so other people don't need to be in instruments to run the code.
 
+    @calibrate()
     def on_get(self):
         f= open(self.file_name, "r+")
         lines= f.readlines()
         last_line= lines[-1]
         logger.debug("last value was: {}".format(last_line))
         f.close()
-        return last_line
+        return int(last_line)
 
 ##This opens up the temp file, which can be called/put where the user wants, and recalls the last line of the file
 
