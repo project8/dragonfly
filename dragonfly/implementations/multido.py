@@ -33,8 +33,12 @@ class MultiDo(Endpoint):
     requiring a separate endpoint to be checked, the "get_name" and
     "target_value" arguments are provided.
     '''
-    def __init__(self, targets=[], **kwargs):
+    def __init__(self,
+                 targets,
+                 set_condition_dict=None,
+                 **kwargs):
         '''
+        set_condition_dict (dict): dict of set_condition # : set_value pairs
         targets (list): list of dictionaries which must provide a value for 'target', other optional fields:
           default_set: always set endpoint to this value
           payload_field (str): return payload field to get (value_cal, value_raw, or values)
@@ -44,8 +48,10 @@ class MultiDo(Endpoint):
           no_check (bool): disable set_and_check; necessary for set-only endpoints!
           get_target (str): endpoint to get for check (default is 'target')
           target_value: alternate value to check against
+          get_only (bool): skip endpoint for set routine
         '''
         Endpoint.__init__(self, **kwargs)
+        self._set_condition_dict = set_condition_dict
         self._targets = []
         for a_target in targets:
             these_details = {}
@@ -80,6 +86,8 @@ class MultiDo(Endpoint):
                 these_details.update({'get_name':a_target['target']})
             if 'target_value' in a_target:
                 these_details.update({'target_value':a_target['target_value']})
+            if 'get_only' in a_target:
+                these_details.update({'get_only':a_target['get_only']})
 
             self._targets.append([a_target['target'], these_details])
 
@@ -114,6 +122,8 @@ class MultiDo(Endpoint):
         '''
 
         for a_target,details in self._targets:
+            if 'get_only' in details and details['get_only'] is True:
+                continue
             if 'default_set' in details:
                 value_to_set = details['default_set']
             else:
@@ -243,6 +253,21 @@ class MultiDo(Endpoint):
             logger.info('{} set to {}'.format(a_target,value_get))
 
         return 'set and check successful'
+
+    def _set_condition(self, number):
+        '''
+        Enacts prespecified set_condition, applying a set to endpoint
+        number (int): value to check against set_condition_dict
+        '''
+        if self._set_condition_dict is None:
+            return
+        logger.debug('receiving a set_condition {} request'.format(number))
+        if number in self._set_condition_dict:
+            value = self._set_condition_dict[number]
+            logger.warning('Condition {} reached!  Applying set of {} to {}'.format(number,value,self.name))
+            self.on_set(value)
+        else:
+            logger.debug('condition {} is unknown: ignoring!'.format(number))
 
 
 __all__.append('MultiGet')

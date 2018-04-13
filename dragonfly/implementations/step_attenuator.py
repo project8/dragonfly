@@ -25,6 +25,7 @@ class StepAttenuator(Spime):
                  file_name="/tmp/step_atten.txt",
                  min_value=0,
                  max_value=63,
+                 spi_clock=5000000,
                  **kwargs
                  ):
         if not 'spidev' in globals():
@@ -32,6 +33,7 @@ class StepAttenuator(Spime):
         self.file_name = file_name
         self.min = min_value
         self.max = max_value
+        self.spi_clock = spi_clock
         Spime.__init__(self, **kwargs)
 
     #**kwargs is a library that has arguments. If your class is given a name that it doesn't have a value/function for it will pass it to kwargs, which will pass it along to the parent class, which will do the same thing.
@@ -54,7 +56,7 @@ class StepAttenuator(Spime):
             raise exceptions.DriplineValueError("Invalid setting for StepAttenuator {}, must be in ({},{})".format(value,self.min,self.max))
         spi= spidev.SpiDev()
         spi.open(0, 0)
-        spi.max_speed_hz = 5000000
+        spi.max_speed_hz = self.spi_clock
         logger.debug('value[type] is: {}[{}]'.format(value,type(value)))
         spi.xfer([int(value)])
         spi.close()
