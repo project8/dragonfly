@@ -49,6 +49,7 @@ class MultiDo(Endpoint):
           get_target (str): endpoint to get for check (default is 'target')
           target_value: alternate value to check against
           get_only (bool): skip endpoint for set routine
+          check_field (str): return payload field to check against (value_cal, value_raw, or values), if different from displayed get field
         '''
         Endpoint.__init__(self, **kwargs)
         self._set_condition_dict = set_condition_dict
@@ -86,8 +87,13 @@ class MultiDo(Endpoint):
                 these_details.update({'get_name':a_target['target']})
             if 'target_value' in a_target:
                 these_details.update({'target_value':a_target['target_value']})
+            # Differentiate set/get behavior in MultiDo
             if 'get_only' in a_target:
                 these_details.update({'get_only':a_target['get_only']})
+            if 'check_field' in a_target:
+                these_details.update({'check_field':a_target['check_field']})
+            else:
+                these_details.update({'check_field':a_target['payload_field']})
 
             self._targets.append([a_target['target'], these_details])
 
@@ -98,26 +104,20 @@ class MultiDo(Endpoint):
         result_vals = {}
         result_reps = []
         for a_target,details in self._targets:
-            a_val,a_rep = self._single_get(a_target, details)
-            result_vals[a_target] = a_val
-            result_reps.append(a_rep)
+            try:
+                result = self.provider.get(target=a_target)
+                ret_val = result[details['payload_field']]
+                ret_rep = details['formatter'].format(ret_val)
+            except exceptions.DriplineException as err:
+                ret_val = None
+                ret_rep = '{} -> returned error <{}>:{}'.format(a_target, err.retcode, err)
+            except KeyError:
+                ret_val = None
+                ret_rep = '{} -> returned error <KeyError>:{} not in {}'.format(a_target, details['payload_field'], result.keys())
+            result_vals[a_target] = ret_val
+            result_reps.append(ret_rep)
         return {'value_raw': result_vals, 'value_cal': '\n'.join(result_reps)}
 
-    def _single_get(self, endpoint_name, details):
-        '''
-        attempt to get a single endpoint and return a tuple of (desired_value, string_rep)
-        '''
-        try:
-            a_result = self.provider.get(target=endpoint_name)
-            ret_val = a_result[details['payload_field']]
-            ret_rep = details['formatter'].format(ret_val)
-        except exceptions.DriplineException as err:
-            ret_val = None
-            ret_rep = '{} -> returned error <{}>:{}'.format(endpoint_name, err.retcode, err)
-        except KeyError:
-            ret_val = None
-            ret_rep = '{} -> returned error <KeyError>:{} not in {}'.format(endpoint_name, details['payload_field'], a_result.keys())
-        return ret_val,ret_rep
 
     def on_set(self, value):
         '''
@@ -139,7 +139,8 @@ class MultiDo(Endpoint):
                 continue
             else:
                 logger.info('checking <{}>'.format(a_target))
-                value_get = self._single_get(details['get_name'], details)[0]
+                result = self.provider.get(details['get_name'])
+                value_get = result[details['check_field']]
 
             if isinstance(value_get,unicode):
                 logger.debug('result in unicode')
