@@ -114,6 +114,9 @@ class MultiDo(Endpoint):
         except exceptions.DriplineException as err:
             ret_val = None
             ret_rep = '{} -> returned error <{}>:{}'.format(endpoint_name, err.retcode, err)
+        except KeyError:
+            ret_val = None
+            ret_rep = '{} -> returned error <KeyError>:{} not in {}'.format(endpoint_name, details['payload_field'], a_result.keys())
         return ret_val,ret_rep
 
     def on_set(self, value):
