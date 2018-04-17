@@ -93,7 +93,7 @@ class MultiDo(Endpoint):
             if 'check_field' in a_target:
                 these_details.update({'check_field':a_target['check_field']})
             else:
-                these_details.update({'check_field':a_target['payload_field']})
+                these_details.update({'check_field':these_details['payload_field']})
 
             self._targets.append([a_target['target'], these_details])
 
