@@ -43,6 +43,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         self.mask_target_path = mask_target_path
         self.payload_channel = {'channel':self.channel_id}
         self.default_trigger_dict = default_trigger_dict
+        self.stored_threshold = 0
 
         if hf_lo_freq is None:
             raise core.exceptions.DriplineValueError('The roach daq run interface interface requires a "hf_lo_freq" in its config file')
@@ -161,6 +162,18 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         if abs(roach_freqs[self.channel_id]-psyllid_freq)>1:
             logger.error('Frequency mismatch: roach cf is {}Hz, psyllid cf is {}Hz'.format(roach_freqs[self.channel_id], psyllid_freq))
             raise core.exceptions.DriplineGenericDAQError('Frequency mismatch')
+
+        # check trigger threshold
+        mode = self.acquisition_mode
+        logger.info('mode: {}'.format(mode))
+        threshold = self.snr_threshold
+        logger.info('threshold from psyllid is: {}'.format(threshold)
+        if mode == 'triggering':
+            threshold = self.snr_threshold
+            logger.info('threshold from psyllid is: {}'.format(threshold)
+            if self.stored_threshold != threshold:
+                logger.error('Threshold mismatch: psyllid power-snr-threshold is {}, but should be {}'.format(threshold, self.stored_threshold))
+                raise core.exceptions.DriplineGenericDAQError('Threshold mismatch')
 
         return "checks successful"
 
@@ -324,6 +337,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
 
     @snr_threshold.setter
     def snr_threshold(self, threshold):
+        self.stored_threshold = threshold
         self.provider.cmd(self.psyllid_interface, 'set_fmt_snr_threshold', payload = {'channel': self.channel_id, 'threshold': threshold})
         self.provider.cmd(self.psyllid_interface, 'set_trigger_mode', payload = self.payload_channel)
 
@@ -417,6 +431,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         '''
         Set all trigger parameters with one command
         '''
+        self.stored_threshold = low_threshold
         payload = {'threshold' : low_threshold, 'threshold_high' : high_threshold, 'n_triggers' : n_triggers, 'channel' : self.channel_id}
         self.provider.cmd(self.psyllid_interface, 'set_trigger_configuration', payload = payload)
 
@@ -467,6 +482,18 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         else:
             self.configure_trigger(low_threshold=self.default_trigger_dict['snr_threshold'], high_threshold=self.default_trigger_dict['snr_high_threshold'], n_triggers=self.default_trigger_dict['n_triggers'])
             self.configure_time_window(pretrigger_time=float(self.default_trigger_dict['pretrigger_time']), skip_tolerance=float(self.default_trigger_dict['skip_tolerance']))
+
+
+    @property
+    def stored_threshold(self):
+        '''
+        Threshold that is stored and compared with psyllids threshold in _do_checks
+        '''
+        return self._stored_threshold
+
+    @stored_threshold.setter
+    def stored_threshold(self, x):
+        self._stored_threshold = x
 
 
     def make_trigger_mask(self):
