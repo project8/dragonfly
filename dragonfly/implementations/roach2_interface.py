@@ -130,7 +130,6 @@ class Roach2Interface(Roach2Provider):
         adc_dictionary = ArtooDaq.calibrate_adc_ogp(self, **kwargs)
         logger.info('ADC calibration returned: {}'.format(adc_dictionary))
         self.calibrated = True
-        return self.calibrated
 
 
     @property
@@ -365,6 +364,7 @@ class Roach2Interface(Roach2Provider):
             adc5g.set_spi_phase(self.roach2, 0, 3, phase3)
         if phase4 is not None:
             adc5g.set_spi_phase(self.roach2, 0, 4, phase4)
+        self.calibrated = True
 
 
     @property

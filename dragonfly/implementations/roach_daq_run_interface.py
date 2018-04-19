@@ -65,7 +65,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         logger.info('Psyllid instance for this channel is in acquisition mode: {}'.format(acquisition_mode))
 
         if self._check_roach2_is_ready() == False:
-            logger.warning('ROACH2 check indicates ADC is not calibrated. Starting a run now will result in error')
+            logger.warning('ROACH2 check indicates ADC is not calibrated.')
 
         logger.info('Setting Psyllid central frequency identical to ROACH2 central frequency')
         freqs = self._get_roach_central_freqs()
@@ -85,7 +85,9 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
                 return True
             else:
                 logger.info('ROACH2 is running but ADC has not been calibrated')
-                return False
+                # For now this does not prevent data taking, because the roach2_interface cannot now whether the calibration was successful or not
+                # the calibration status is therefore only semi meaningful
+                return True
         else:
             logger.error('ROACH2 is not ready')
             raise core.exceptions.DriplineGenericDAQError('ROACH2 is not ready')
