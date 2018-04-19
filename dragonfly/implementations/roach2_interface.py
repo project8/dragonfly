@@ -317,11 +317,12 @@ class Roach2Interface(Roach2Provider):
             return p
 
 
-    def get_raw_adc_data(self, filename = None):
-        x = ArtooDaq._snap_per_core(self, zdok=0)
-        x_all = x.flatten('C')
-        logger.info(x_all)
-        logger.info(x_all.dtype)
+    def get_raw_adc_data(self, NSnaps = 1, filename = None):
+        x_all = []
+        for i in range(NSnaps):
+            x = ArtooDaq._snap_per_core(self, zdok=0)
+            x_all.extend(x.flatten('C'))
+        logger.info('raw adc samples: {}'.format(len(x_all)))
         if filename is not None:
             logger.info('Saving raw adc data to {}'.format(filename))
             with open(filename, 'w') as outfile:
