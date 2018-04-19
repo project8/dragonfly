@@ -167,10 +167,10 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         mode = self.acquisition_mode
         logger.info('mode: {}'.format(mode))
         threshold = self.snr_threshold
-        logger.info('threshold from psyllid is: {}'.format(threshold)
+        logger.info('threshold from psyllid is: {}'.format(threshold))
         if mode == 'triggering':
             threshold = self.snr_threshold
-            logger.info('threshold from psyllid is: {}'.format(threshold)
+            logger.info('threshold from psyllid is: {}'.format(threshold))
             if self.stored_threshold != threshold:
                 logger.error('Threshold mismatch: psyllid power-snr-threshold is {}, but should be {}'.format(threshold, self.stored_threshold))
                 raise core.exceptions.DriplineGenericDAQError('Threshold mismatch')

@@ -60,14 +60,12 @@ class Roach2Interface(Roach2Provider):
                  default_frequency = 800e6,
                  gain = 7.0,
                  fft_shift = '1101010101010',
-                 monitor_target = None,
                  **kwargs):
 
 
         Roach2Provider.__init__(self, **kwargs)
 
         self.roach2_hostname = roach2_hostname
-        self.monitor_target = monitor_target
 
         self.channel_a_config = channel_a_config
         self.channel_b_config = channel_b_config
@@ -110,10 +108,8 @@ class Roach2Interface(Roach2Provider):
 
 
         ArtooDaq.__init__(self, self.roach2_hostname, boffile=boffile, do_ogp_cal=do_ogp_cal, do_adcif_cal=do_adcif_cal, ifcfg=self.cfg_list)
-        self.configured=True
+        self.configured = True
 
-        if boffile!=None:
-            self.do_adc_ogp_calibration()
 
         for channel in self.channel_list:
             self.set_central_frequency(channel, self.default_frequency)
@@ -128,12 +124,12 @@ class Roach2Interface(Roach2Provider):
         return self.calibrated
 
 
-    def do_adc_ogp_calibration(self, **kwargs):
+    def do_adc_calibration(self, **kwargs):
         logger.info('Calibrating ROACH2, this will take a while.')
         logger.info('Doing adc ogp calibration')
         adc_dictionary = ArtooDaq.calibrate_adc_ogp(self, **kwargs)
         logger.info('ADC calibration returned: {}'.format(adc_dictionary))
-        self.calibrated=True
+        self.calibrated = True
         return self.calibrated
 
 
@@ -369,4 +365,22 @@ class Roach2Interface(Roach2Provider):
             adc5g.set_spi_phase(self.roach2, 0, 3, phase3)
         if phase4 is not None:
             adc5g.set_spi_phase(self.roach2, 0, 4, phase4)
+
+
+    @property
+    def adc_calibration_values(self):
+        calibration_values = {}
+        calibration_values['gain1'] = adc5g.get_spi_gain(self.roach2, 0, 1)
+        calibration_values['gain2'] = adc5g.get_spi_gain(self.roach2, 0, 2)
+        calibration_values['gain3'] = adc5g.get_spi_gain(self.roach2, 0, 3)
+        calibration_values['gain4'] = adc5g.get_spi_gain(self.roach2, 0, 4)
+        calibration_values['offset1'] = adc5g.get_spi_offset(self.roach2, 0, 1)
+        calibration_values['offset2'] = adc5g.get_spi_offset(self.roach2, 0, 2)
+        calibration_values['offset3'] = adc5g.get_spi_offset(self.roach2, 0, 3)
+        calibration_values['offset4'] = adc5g.get_spi_offset(self.roach2, 0, 4)
+        calibration_values['phase1'] = adc5g.get_spi_phase(self.roach2, 0, 1)
+        calibration_values['phase2'] = adc5g.get_spi_phase(self.roach2, 0, 2)
+        calibration_values['phase3'] = adc5g.get_spi_phase(self.roach2, 0, 3)
+        calibration_values['phase4'] = adc5g.get_spi_phase(self.roach2, 0, 4)
+        return calibration_values
 
