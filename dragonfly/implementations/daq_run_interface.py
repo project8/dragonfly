@@ -163,7 +163,10 @@ class DAQProvider(core.Provider):
                                                                    runN=self.run_id
                                                                   )
         time_now = datetime.utcnow().strftime(core.constants.TIME_FORMAT)
-        self.provider.cmd(self._snapshot_state_target,'take_snapshot',[self._start_time,time_now,filename],timeout=30)
+        self.provider.cmd(self._snapshot_state_target,
+                          'take_snapshot',
+                          [self._start_time,time_now,self._metadata_target,filename],
+                          timeout=30)
         logger.info('snapshot returned ok')
 
     def determine_RF_ROI(self):

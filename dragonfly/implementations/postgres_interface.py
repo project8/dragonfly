@@ -40,17 +40,15 @@ class PostgreSQLInterface(Provider):
     A not-so-flexible provider for getting run_id values.
     '''
 
-    def __init__(self, database_name, database_server, metadata_target='', **kwargs):
+    def __init__(self, database_name, database_server, **kwargs):
         '''
         database_name (str): name of the database to connect to
         database_server (str): network resolvable hostname of database server
-        metadata_target (str): target to send metadata to
         '''
         if not 'sqlalchemy' in globals():
             raise ImportError('SQLAlchemy not found, required for PostgreSQLInterface class')
         Provider.__init__(self, **kwargs)
         self._connect_to_db(database_server, database_name)
-        self._metadata_target = metadata_target
         self._endpoint_name_set = set()
 
     def _connect_to_db(self, database_server, database_name):
@@ -76,7 +74,7 @@ class PostgreSQLInterface(Provider):
         if isinstance(endpoint, SQLSnapshot):
             self._endpoint_name_set.update(endpoint.target_items)
 
-    def take_snapshot(self, start_time, end_time, filename):
+    def take_snapshot(self, start_time, end_time, metadata_target, filename):
         run_snapshot = {}
         logger.info('doing logs-snapshot gets')
         for child in self.endpoints:
@@ -100,7 +98,7 @@ class PostgreSQLInterface(Provider):
         logger.debug('should request snapshot file: {}'.format(filename))
         this_payload = {'contents': run_snapshot,
                         'filename': filename}
-        self.provider.cmd(self._metadata_target, 'write_json', payload=this_payload)
+        self.provider.cmd(metadata_target, 'write_json', payload=this_payload)
         logger.debug('snapshot sent')
         return
 
