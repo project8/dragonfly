@@ -124,10 +124,10 @@ class Roach2Interface(Roach2Provider):
         return self.calibrated
 
 
-    def do_adc_calibration(self, **kwargs):
+    def do_adc_calibration(self):
         logger.info('Calibrating ROACH2, this will take a while.')
         logger.info('Doing adc ogp calibration')
-        adc_cal_values = ArtooDaq.calibrate_adc_ogp(self, oiter=1, giter=1)
+        adc_cal_values = ArtooDaq.calibrate_adc_ogp(self, oiter=10, giter=10)
         logger.info('ADC calibration returned: {}'.format(adc_cal_values))
         for k in adc_cal_values.keys():
             if adc_cal_values[k] is None:
