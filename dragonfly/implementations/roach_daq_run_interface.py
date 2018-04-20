@@ -61,7 +61,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         logger.info('Doing setup checks...')
         self._check_psyllid_instance()
 
-        acquisition_mode = self.acquisition_mode
+        acquisition_mode = self.acquisition_mode['mode']
         logger.info('Psyllid instance for this channel is in acquisition mode: {}'.format(acquisition_mode))
 
         if self._check_roach2_is_ready() == False:
@@ -166,7 +166,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
             raise core.exceptions.DriplineGenericDAQError('Frequency mismatch')
 
         # check trigger threshold
-        mode = self.acquisition_mode
+        mode = self.acquisition_mode['mode']
         logger.info('mode: {}'.format(mode))
         threshold = self.snr_threshold
         logger.info('threshold from psyllid is: {}'.format(threshold))
@@ -324,7 +324,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
     
     @property
     def acquisition_mode(self):
-        result = self.provider.cmd(self.psyllid_interface, 'get_acquisition_mode', payload = self.payload_channel)['values'][0]
+        result = self.provider.cmd(self.psyllid_interface, 'get_acquisition_mode', payload = self.payload_channel)
         return result
 
     @acquisition_mode.setter

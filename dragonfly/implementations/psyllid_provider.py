@@ -106,7 +106,7 @@ class PsyllidProvider(core.Provider):
             except core.exceptions.DriplineError as e:
                 self.mode_dict[channel] = None
                 raise e
-        return self.mode_dict[channel]
+        return {'mode': self.mode_dict[channel]}
 
 
     def get_number_of_streams(self, channel):
