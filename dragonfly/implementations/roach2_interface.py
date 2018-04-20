@@ -127,8 +127,11 @@ class Roach2Interface(Roach2Provider):
     def do_adc_calibration(self, **kwargs):
         logger.info('Calibrating ROACH2, this will take a while.')
         logger.info('Doing adc ogp calibration')
-        adc_dictionary = ArtooDaq.calibrate_adc_ogp(self, **kwargs)
-        logger.info('ADC calibration returned: {}'.format(adc_dictionary))
+        adc_cal_values = ArtooDaq.calibrate_adc_ogp(self, oiter=1, giter=1)
+        logger.info('ADC calibration returned: {}'.format(adc_cal_values))
+        for k in adc_cal_values.keys():
+            if adc_cal_values[k] is None:
+                raise core.exceptions.DriplineGenericDAQError('ADC calibration failed')
         self.calibrated = True
 
 
@@ -364,7 +367,6 @@ class Roach2Interface(Roach2Provider):
             adc5g.set_spi_phase(self.roach2, 0, 3, phase3)
         if phase4 is not None:
             adc5g.set_spi_phase(self.roach2, 0, 4, phase4)
-        self.calibrated = True
 
 
     @property
