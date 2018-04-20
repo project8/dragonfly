@@ -82,7 +82,7 @@ class Roach2Interface(Roach2Provider):
 
 
 
-    def _finish_configure(self, do_ogp_cal=False, do_adcif_cal=True, boffile=None):
+    def _finish_configure(self, boffile=None, **kwargs):
         self.channel_list = []
         self.cfg_list = []
         # make list with interface dictionaries
@@ -106,10 +106,7 @@ class Roach2Interface(Roach2Provider):
 
         logger.info('Number of channels: {}'.format(len(self.channel_list)))
 
-
-        ArtooDaq.__init__(self, self.roach2_hostname, boffile=boffile, do_ogp_cal=do_ogp_cal, do_adcif_cal=do_adcif_cal, ifcfg=self.cfg_list)
-        self.configured = True
-
+        self.program_roach(boffile)
 
         for channel in self.channel_list:
             self.set_central_frequency(channel, self.default_frequency)
@@ -124,6 +121,11 @@ class Roach2Interface(Roach2Provider):
         return self.calibrated
 
 
+    def program_roach(self, boffile='latest-build'):
+        ArtooDaq.__init__(self, self.roach2_hostname, boffile=boffile, do_ogp_cal=False, do_adcif_cal=True, ifcfg=self.cfg_list)
+        self.configured = True
+
+
     def do_adc_calibration(self):
         logger.info('Calibrating ROACH2, this will take a while.')
         logger.info('Doing adc ogp calibration')
@@ -131,6 +133,7 @@ class Roach2Interface(Roach2Provider):
         logger.info('ADC calibration returned: {}'.format(adc_cal_values))
         for k in adc_cal_values.keys():
             if adc_cal_values[k] is None:
+                logger.critical('ADC calibration failed')
                 raise core.exceptions.DriplineGenericDAQError('ADC calibration failed')
         self.calibrated = True
 
