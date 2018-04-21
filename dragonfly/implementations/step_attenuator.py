@@ -25,7 +25,7 @@ class StepAttenuator(Spime):
                  file_name="/tmp/step_atten.txt",
                  min_value=0,
                  max_value=63,
-                 spi_clock=5000000,
+                 spi_clock=1000000,
                  **kwargs
                  ):
         if not 'spidev' in globals():

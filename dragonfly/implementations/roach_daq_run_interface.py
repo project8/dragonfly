@@ -186,18 +186,21 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         '''
         logger.info('trying to determine roi')
 
-        self._run_meta['RF_HF_MIXING'] = float(self._hf_lo_freq)
-        logger.debug('RF High stage mixing: {}'.format(self._run_meta['RF_HF_MIXING']))
+        rf_input = self.provider.get(self._hf_lo_freq['endpoint_name'])
+        logger.debug('{} returned {}'.format(self._hf_lo_freq['endpoint_name'],rf_input))
+        hf_lo_freq = float(self._hf_low_freq['calibration'][self._hf_low_freq['payload_field']])
+        self._run_meta['RF_HF_MIXING'] = hf_lo_freq
+        logger.debug('RF High stage mixing: {}'.format(hf_lo_freq))
 
         logger.info('Getting central frequency from ROACH2')
         cfs = self._get_roach_central_freqs()
         cf = cfs[self.channel_id]
         logger.info('Central frequency is: {}'.format(cf))
 
-        self._run_meta['RF_ROI_MIN'] = float(cf-50e6) + float(self._hf_lo_freq)
+        self._run_meta['RF_ROI_MIN'] = float(cf-50e6) + hf_lo_freq
         logger.debug('RF Min: {}'.format(self._run_meta['RF_ROI_MIN']))
 
-        self._run_meta['RF_ROI_MAX'] = float(cf+50e6) + float(self._hf_lo_freq)
+        self._run_meta['RF_ROI_MAX'] = float(cf+50e6) + hf_lo_freq
         logger.debug('RF Max: {}'.format(self._run_meta['RF_ROI_MAX']))
 
 
@@ -321,7 +324,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
     ###################
     # trigger control #
     ###################
-    
+
     @property
     def acquisition_mode(self):
         result = self.provider.cmd(self.psyllid_interface, 'get_acquisition_mode', payload = self.payload_channel)

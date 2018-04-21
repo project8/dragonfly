@@ -328,7 +328,7 @@ class Roach2Interface(Roach2Provider):
         if filename is not None:
             logger.info('Saving raw adc data to {}'.format(filename))
             with open(filename, 'w') as outfile:
-                json.dump(list(x_all), outfile)
+                json.dump(map(int,x_all), outfile)
         else:
             return list(x_all)
 
@@ -389,4 +389,3 @@ class Roach2Interface(Roach2Provider):
         calibration_values['phase3'] = adc5g.get_spi_phase(self.roach2, 0, 3)
         calibration_values['phase4'] = adc5g.get_spi_phase(self.roach2, 0, 4)
         return calibration_values
-
