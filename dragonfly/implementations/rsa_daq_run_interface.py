@@ -80,6 +80,10 @@ class RSAAcquisitionInterface(DAQProvider):
         logger.info('RSA trigger status is <{}>'.format(result['value_cal']))
         return bool(int(result['value_raw']))
 
+    @property
+    def acquisition_mode(self):
+        return 'triggering'
+
     def _do_checks(self):
         '''
         Sets RSA exeternal reference to EXT and checks for errors in queue which, if present, aborts the run

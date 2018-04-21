@@ -866,7 +866,8 @@ class ArtooDaq(object):
                     logger.debug("    ...offset: solution good enough")
                     break
                 if ii==oiter-1:
-                    logger.warning("    ...offset: maximum number of iterations reached, aborting")
+                    logger.critical("    ...offset: maximum number of iterations reached, aborting")
+                    core_offsets = None
         else:
             logger.debug("    ...offset: solution good enough")
         return core_offsets
@@ -942,7 +943,8 @@ class ArtooDaq(object):
                     logger.debug("    ...gain: solution good enough")
                     break
                 if ii==giter-1:
-                    logger.warning("    ...gain: maximum number of iterations reached, aborting")
+                    logger.critical("    ...gain: maximum number of iterations reached, aborting")
+                    core_gains = None
         else:
             logger.debug("    ...gain: solution good enough")
         return core_gains

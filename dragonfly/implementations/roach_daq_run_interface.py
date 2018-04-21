@@ -43,6 +43,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         self.mask_target_path = mask_target_path
         self.payload_channel = {'channel':self.channel_id}
         self.default_trigger_dict = default_trigger_dict
+        self.stored_threshold = 0
 
         if hf_lo_freq is None:
             raise core.exceptions.DriplineValueError('The roach daq run interface interface requires a "hf_lo_freq" in its config file')
@@ -60,11 +61,11 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         logger.info('Doing setup checks...')
         self._check_psyllid_instance()
 
-        acquisition_mode = self.acquisition_mode
+        acquisition_mode = self.acquisition_mode['mode']
         logger.info('Psyllid instance for this channel is in acquisition mode: {}'.format(acquisition_mode))
 
         if self._check_roach2_is_ready() == False:
-            logger.warning('ROACH2 check indicates ADC is not calibrated. Starting a run now will result in error')
+            logger.warning('ROACH2 check indicates ADC is not calibrated.')
 
         logger.info('Setting Psyllid central frequency identical to ROACH2 central frequency')
         freqs = self._get_roach_central_freqs()
@@ -84,7 +85,9 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
                 return True
             else:
                 logger.info('ROACH2 is running but ADC has not been calibrated')
-                return False
+                # For now this does not prevent data taking, because the roach2_interface cannot now whether the calibration was successful or not
+                # the calibration status is therefore only semi meaningful
+                return True
         else:
             logger.error('ROACH2 is not ready')
             raise core.exceptions.DriplineGenericDAQError('ROACH2 is not ready')
@@ -162,6 +165,18 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
             logger.error('Frequency mismatch: roach cf is {}Hz, psyllid cf is {}Hz'.format(roach_freqs[self.channel_id], psyllid_freq))
             raise core.exceptions.DriplineGenericDAQError('Frequency mismatch')
 
+        # check trigger threshold
+        mode = self.acquisition_mode['mode']
+        logger.info('mode: {}'.format(mode))
+        threshold = self.snr_threshold
+        logger.info('threshold from psyllid is: {}'.format(threshold))
+        if mode == 'triggering':
+            threshold = self.snr_threshold
+            logger.info('threshold from psyllid is: {}'.format(threshold))
+            if self.stored_threshold != threshold:
+                logger.error('Threshold mismatch: psyllid power-snr-threshold is {}, but should be {}'.format(threshold, self.stored_threshold))
+                raise core.exceptions.DriplineGenericDAQError('Threshold mismatch')
+
         return "checks successful"
 
 
@@ -171,18 +186,21 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         '''
         logger.info('trying to determine roi')
 
-        self._run_meta['RF_HF_MIXING'] = float(self._hf_lo_freq)
-        logger.debug('RF High stage mixing: {}'.format(self._run_meta['RF_HF_MIXING']))
+        rf_input = self.provider.get(self._hf_lo_freq['endpoint_name'])
+        logger.debug('{} returned {}'.format(self._hf_lo_freq['endpoint_name'],rf_input))
+        hf_lo_freq = float(self._hf_low_freq['calibration'][self._hf_low_freq['payload_field']])
+        self._run_meta['RF_HF_MIXING'] = hf_lo_freq
+        logger.debug('RF High stage mixing: {}'.format(hf_lo_freq))
 
         logger.info('Getting central frequency from ROACH2')
         cfs = self._get_roach_central_freqs()
         cf = cfs[self.channel_id]
         logger.info('Central frequency is: {}'.format(cf))
 
-        self._run_meta['RF_ROI_MIN'] = float(cf-50e6) + float(self._hf_lo_freq)
+        self._run_meta['RF_ROI_MIN'] = float(cf-50e6) + hf_lo_freq
         logger.debug('RF Min: {}'.format(self._run_meta['RF_ROI_MIN']))
 
-        self._run_meta['RF_ROI_MAX'] = float(cf+50e6) + float(self._hf_lo_freq)
+        self._run_meta['RF_ROI_MAX'] = float(cf+50e6) + hf_lo_freq
         logger.debug('RF Max: {}'.format(self._run_meta['RF_ROI_MAX']))
 
 
@@ -306,10 +324,10 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
     ###################
     # trigger control #
     ###################
-    
+
     @property
     def acquisition_mode(self):
-        result = self.provider.cmd(self.psyllid_interface, 'get_acquisition_mode', payload = self.payload_channel)['values'][0]
+        result = self.provider.cmd(self.psyllid_interface, 'get_acquisition_mode', payload = self.payload_channel)
         return result
 
     @acquisition_mode.setter
@@ -324,6 +342,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
 
     @snr_threshold.setter
     def snr_threshold(self, threshold):
+        self.stored_threshold = threshold
         self.provider.cmd(self.psyllid_interface, 'set_fmt_snr_threshold', payload = {'channel': self.channel_id, 'threshold': threshold})
         self.provider.cmd(self.psyllid_interface, 'set_trigger_mode', payload = self.payload_channel)
 
@@ -417,6 +436,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         '''
         Set all trigger parameters with one command
         '''
+        self.stored_threshold = low_threshold
         payload = {'threshold' : low_threshold, 'threshold_high' : high_threshold, 'n_triggers' : n_triggers, 'channel' : self.channel_id}
         self.provider.cmd(self.psyllid_interface, 'set_trigger_configuration', payload = payload)
 
@@ -467,6 +487,18 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         else:
             self.configure_trigger(low_threshold=self.default_trigger_dict['snr_threshold'], high_threshold=self.default_trigger_dict['snr_high_threshold'], n_triggers=self.default_trigger_dict['n_triggers'])
             self.configure_time_window(pretrigger_time=float(self.default_trigger_dict['pretrigger_time']), skip_tolerance=float(self.default_trigger_dict['skip_tolerance']))
+
+
+    @property
+    def stored_threshold(self):
+        '''
+        Threshold that is stored and compared with psyllids threshold in _do_checks
+        '''
+        return self._stored_threshold
+
+    @stored_threshold.setter
+    def stored_threshold(self, x):
+        self._stored_threshold = x
 
 
     def make_trigger_mask(self):
