@@ -119,7 +119,7 @@ single_trace -> collect the trace using one or more DAQ systems (if implemented)
     The name given should be the absolute path for the daq to save the file.
 
         - action: single_trace
-          name: 'C:/RSA/myfile'
+          comment: 'trace_comment'
           daq:
             - NAME
           timeout: X
@@ -176,7 +176,7 @@ multi_run -> probably the most useful/sophisticated action, effectively provides
             n_fits (int): 2 (optional)
         save_trace:
             trace: X
-            name: 'C:/RSAFolder/myfile'
+            comment: 'comment_{run_count}'
             daq:
                 - NAME
             timeout: 10
@@ -808,7 +808,7 @@ class RunScript(object):
                     this_timeout=None
                 logger.debug('timeout set to {} s'.format(this_timeout))
                 for this_daq in  save_trace['daq']:
-                    logger.info('{} trace save will be on trace {} with name "{}"'.format(this_daq,this_trace_number, this_trace_save_name))
+                    logger.info('{} trace save will be on trace {} with name "{}"'.format(this_daq,this_trace_number, this_trace_save_comment))
                     self.action_single_trace(daq=this_daq, comment=this_trace_save_comment, trace = this_trace_number, timeout = this_timeout)
 
             # compute args for, and call, action_single_run, based on run_count
