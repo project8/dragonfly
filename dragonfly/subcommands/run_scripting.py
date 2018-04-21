@@ -604,17 +604,17 @@ class RunScript(object):
 
     # if available, this allows to record the trace/noise background on a daq.
     # this method depends on a method named "save_trace" defined in the associated daq class
-    def action_single_trace(self, daq, trace, name, timeout=None,**kwargs):
+    def action_single_trace(self, daq, trace, comment, timeout=None,**kwargs):
         logger.info('taking single trace')
         if self._dry_run_mode:
             logger.info('--dry-run flag: not starting an trace acquisition')
             return
         trace_kwargs = {'endpoint':daq,
-                      'method_name':'save_trace',
-                      'path':name,
-                      'trace':trace,
-                      'timeout': timeout
-                     }
+                        'method_name':'save_trace',
+                        'comment':comment,
+                        'trace':trace,
+                        'timeout': timeout
+                       }
         if self._lockout_key:
             trace_kwargs.update({'lockout_key':self._lockout_key})
         logger.debug('trace_kwargs are: {}'.format(trace_kwargs))
@@ -800,7 +800,7 @@ class RunScript(object):
             # compute args for, and call, action_single_run, based on run_count
             if 'save_trace' in kwargs:
                 save_trace = kwargs['save_trace']
-                this_trace_save_name = save_trace['name'].format(run_count=run_count)
+                this_trace_save_comment = save_trace['comment'].format(run_count=run_count)
                 this_trace_number = save_trace['trace']
                 if 'timeout' in save_trace:
                     this_timeout = save_trace['timeout']
@@ -809,7 +809,7 @@ class RunScript(object):
                 logger.debug('timeout set to {} s'.format(this_timeout))
                 for this_daq in  save_trace['daq']:
                     logger.info('{} trace save will be on trace {} with name "{}"'.format(this_daq,this_trace_number, this_trace_save_name))
-                    self.action_single_trace(daq=this_daq, name=this_trace_save_name, trace = this_trace_number, timeout = this_timeout)
+                    self.action_single_trace(daq=this_daq, comment=this_trace_save_comment, trace = this_trace_number, timeout = this_timeout)
 
             # compute args for, and call, action_single_run, based on run_count
             if runs is not None:
