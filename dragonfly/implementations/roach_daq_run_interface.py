@@ -168,8 +168,6 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         # check trigger threshold
         mode = self.acquisition_mode['mode']
         logger.info('mode: {}'.format(mode))
-        threshold = self.snr_threshold
-        logger.info('threshold from psyllid is: {}'.format(threshold))
         if mode == 'triggering':
             threshold = self.snr_threshold
             logger.info('threshold from psyllid is: {}'.format(threshold))
