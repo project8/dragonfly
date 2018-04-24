@@ -148,7 +148,7 @@ class DAQProvider(core.Provider):
         logger.info('doing prerun meta-data get')
         meta_result = self.provider.get(self._metadata_state_target, timeout=30)
         self._run_meta.update(meta_result['value_raw'])
-        self._run_meta.update({'DAQ_MODE':getattr(self,self.acquisition_mode)})
+        self._run_meta.update({'DAQ_MODE':getattr(self,'acquisition_mode')})
         self.determine_RF_ROI()
 
     def _do_snapshot(self):
