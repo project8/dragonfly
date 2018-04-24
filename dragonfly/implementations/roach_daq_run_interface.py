@@ -61,7 +61,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         logger.info('Doing setup checks...')
         self._check_psyllid_instance()
 
-        acquisition_mode = self.acquisition_mode['mode']
+        acquisition_mode = self.acquisition_mode
         logger.info('Psyllid instance for this channel is in acquisition mode: {}'.format(acquisition_mode))
 
         if self._check_roach2_is_ready() == False:
@@ -166,7 +166,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
             raise core.exceptions.DriplineGenericDAQError('Frequency mismatch')
 
         # check trigger threshold
-        mode = self.acquisition_mode['mode']
+        mode = self.acquisition_mode
         logger.info('mode: {}'.format(mode))
         if mode == 'triggering':
             threshold = self.snr_threshold
@@ -325,7 +325,10 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
 
     @property
     def acquisition_mode(self):
-        result = self.provider.cmd(self.psyllid_interface, 'get_acquisition_mode', payload = self.payload_channel)
+        '''
+        The Cmd returns a dictionary like {"mode": "someMode"}; we want just the mode value.
+        '''
+        result = self.provider.cmd(self.psyllid_interface, 'get_acquisition_mode', payload = self.payload_channel)['mode']
         return result
 
     @acquisition_mode.setter
