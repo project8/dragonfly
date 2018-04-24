@@ -635,8 +635,8 @@ class RunScript(object):
                      }
         max_duration = -1
         for item in daq_configs:
-            if item['run_duration']>max_duration:
-                max_duration = item['run_duration']
+            if int(item['run_duration'])>max_duration:
+                max_duration = int(item['run_duration'])
         # daq_targets = daq_config['daq_targets']
         # run_durations = daq_config['run_durations']
         # if not len(daq_targets)=len(run_durations):
@@ -647,7 +647,7 @@ class RunScript(object):
         for item in daq_configs:
             run_kwargs.update({'endpoint':item['daq_target'],
                                'run_name':run_name.format(item['daq_target']),
-                               'run_time':item['run_duration']})
+                               'run_time':int(item['run_duration'])})
             run_kwargs.update({'timeout': timeout})
             logger.debug('run_kwargs are: {}'.format(run_kwargs))
             self.interface.cmd(**run_kwargs)
