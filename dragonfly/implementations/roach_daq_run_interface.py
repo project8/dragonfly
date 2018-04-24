@@ -184,9 +184,9 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         '''
         logger.info('trying to determine roi')
 
-        rf_input = self.provider.get(self._hf_lo_freq['endpoint_name'])
+        rf_input = self.provider.get(self._hf_lo_freq['endpoint_name'])[self._hf_lo_freq['payload_field']]
         logger.debug('{} returned {}'.format(self._hf_lo_freq['endpoint_name'],rf_input))
-        hf_lo_freq = float(self._hf_low_freq['calibration'][self._hf_low_freq['payload_field']])
+        hf_lo_freq = float(self._hf_lo_freq['calibration'][rf_input])
         self._run_meta['RF_HF_MIXING'] = hf_lo_freq
         logger.debug('RF High stage mixing: {}'.format(hf_lo_freq))
 
