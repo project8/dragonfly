@@ -650,24 +650,22 @@ class RunScript(object):
                                'run_time':int(item['run_duration'])})
             run_kwargs.update({'timeout': timeout})
             logger.debug('run_kwargs are: {}'.format(run_kwargs))
-            self.interface.cmd(**run_kwargs)
+            result = self.interface.cmd(**run_kwargs)
+            logger.info('{} started run {}'.format(item['daq_target'],result))
         logger.info('daq all started, now wait for requested livetime')
         logger.info('time remaining >= {:.0f} seconds'.format(max_duration-(datetime.datetime.now()-start_of_runs).total_seconds()))
+
         # Checking the status of the daq
+        all_done = False
         a_daq_in_safe_mode = False
-        while (datetime.datetime.now() - start_of_runs).total_seconds() < max_duration:
-            logger.debug('checking the daq for a set_condition')
+        while all_done is False:
             list_is_running = []
             for item in daq_configs:
-                if self.interface.get(item['daq_target']+'.is_running')['payload']['values'][0] == 2:
+                if self.interface.get(item['daq_target']+'._daq_in_safe_mode')['payload']['values'][0] is True:
                     logger.critical('{} is in safe_mode (maybe due to a set_condition)'.format(item['daq_target']))
                     a_daq_in_safe_mode = True
-                elif self.interface.get(item['daq_target']+'.is_running')['payload']['values'][0] == 1:
-                    all_done = False
-                    logger.info('still waiting on <{}> (maybe others)'.format(item['daq_target']))
+                if self.interface.get(item['daq_target']+'.is_running')['payload']['values'][0] is True:
                     list_is_running.append(item['daq_target'])
-                elif self.interface.get(item['daq_target']+'.is_running')['payload']['values'][0] == 0:
-                    logger.info('{} is already done!'.format(item['daq_target']))
             if a_daq_in_safe_mode == True:
                 if len(list_is_running)>0:
                     response = 'daq still running: '
@@ -676,36 +674,24 @@ class RunScript(object):
                     logger.critical(response)
                 logger.critical('Run scripting is stopping')
                 sys.exit()
-            logger.info('time remaining >= {:.0f} seconds'.format(max_duration-(datetime.datetime.now()-start_of_runs).total_seconds()))
-            time.sleep(min(7*60,max(10,max_duration/14.)))
-
-        # run duration is over, checking the status of the daq more often
-        all_done = False
-        a_daq_in_safe_mode = False
-        logger.info('ideal livetime over, waiting for daq systems to finish')
-        while all_done == False:
-            all_done = True
-            list_is_running = []
-            for item in daq_configs:
-                if self.interface.get(item['daq_target']+'.is_running')['payload']['values'][0] == 2:
-                    logger.critical('{} is in safe_mode (maybe due to a set_condition)'.format(item['daq_target']))
-                    a_daq_in_safe_mode = True
-                elif self.interface.get(item['daq_target']+'.is_running')['payload']['values'][0] == 1:
-                    all_done = False
-                    logger.info('still waiting on <{}> (maybe others)'.format(item['daq_target']))
-                    list_is_running.append(item['daq_target'])
-                elif self.interface.get(item['daq_target']+'.is_running')['payload']['values'][0] == 0:
-                    logger.info('{} is done!'.format(item['daq_target']))
-            if a_daq_in_safe_mode == True:
-                if len(list_is_running)>0:
-                    response = 'daq still running: '
-                    for name in list_is_running:
-                        response = response + '\n ' + name
-                    logger.critical(response)
+            duration = (datetime.datetime.now() - start_of_runs).total_seconds()
+            if duration < max_duration:
+                if len(list_is_running) == 0:
+                    logger.critical('Run finished early! Expected remaining duration {}'\
+                        .format(max_duration-(datetime.datetime.now()-start_of_runs).total_seconds()))
+                    all_done = True
                 else:
-                    logger.critical('Run scripting is stopping')
-                    sys.exit()
-            time.sleep(5)
+                    logger.info('time remaining >= {:.0f} seconds\n  still waiting on {}'\
+                        .format(max_duration-(datetime.datetime.now()-start_of_runs).total_seconds(),list_is_running))
+                    time.sleep(min(7*60,max(10,max_duration/14.)))
+            else:
+                if len(list_is_running) == 0:
+                    all_done = True
+                else:
+                    logger.info('sleeping for 5 seconds\n  still waiting on {}'\
+                        .format(list_is_running))
+                    time.sleep(5)
+
         logger.info('acquistions complete')
 
 
