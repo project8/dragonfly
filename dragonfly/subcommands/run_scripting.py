@@ -633,22 +633,18 @@ class RunScript(object):
                       'run_name':None,
                       'run_time':None
                      }
-        max_duration = -1
-        for item in daq_configs:
-            if int(item['run_duration'])>max_duration:
-                max_duration = int(item['run_duration'])
-        # daq_targets = daq_config['daq_targets']
-        # run_durations = daq_config['run_durations']
-        # if not len(daq_targets)=len(run_durations):
-            # raise dripline.core.DriplineGenericDAQError("lengths of daq_targets and run_durations are not identical")
+
         if self._lockout_key:
             run_kwargs.update({'lockout_key':self._lockout_key})
         start_of_runs = datetime.datetime.now()
+        max_duration = -1
         for item in daq_configs:
             run_kwargs.update({'endpoint':item['daq_target'],
                                'run_name':run_name.format(item['daq_target']),
-                               'run_time':int(item['run_duration'])})
-            run_kwargs.update({'timeout': timeout})
+                               'run_time':int(item['run_duration']),
+                               'timeout': timeout})
+            if run_kwargs['run_time'] > max_duration:
+                max_duration = int(item['run_duration'])
             logger.debug('run_kwargs are: {}'.format(run_kwargs))
             result = self.interface.cmd(**run_kwargs)
             logger.info('{} started run {}'.format(item['daq_target'],result))
