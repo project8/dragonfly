@@ -106,7 +106,8 @@ class Roach2Interface(Roach2Provider):
 
         logger.info('Number of channels: {}'.format(len(self.channel_list)))
 
-        self.program_roach(boffile)
+        ArtooDaq.__init__(self, self.roach2_hostname, boffile=boffile, do_ogp_cal=False, do_adcif_cal=True, ifcfg=self.cfg_list)
+        self.configured = True
 
         for channel in self.channel_list:
             self.set_central_frequency(channel, self.default_frequency)
@@ -119,11 +120,6 @@ class Roach2Interface(Roach2Provider):
     @property
     def calibration_status(self):
         return self.calibrated
-
-
-    def program_roach(self, boffile='latest-build'):
-        ArtooDaq.__init__(self, self.roach2_hostname, boffile=boffile, do_ogp_cal=False, do_adcif_cal=True, ifcfg=self.cfg_list)
-        self.configured = True
 
 
     def do_adc_calibration(self):
