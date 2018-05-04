@@ -205,14 +205,16 @@ class SQLTable(Endpoint):
 @fancy_doc
 class SQLSnapshot(SQLTable):
 
-    def __init__(self, table_name, schema, target_items=None, *args, **kwargs):
+    def __init__(self, target_items, payload_field='value_cal', *args, **kwargs):
         '''
         target_items (list): items (str) to take snapshot of
+        payload_field (str): field to take from database instead of value_cal
         '''
         if not 'sqlalchemy' in globals():
             raise ImportError('SQLAlchemy not found, required for SQLSnapshot class')
-        SQLTable.__init__(self, table_name, schema, *args, **kwargs)
+        SQLTable.__init__(self, *args, **kwargs)
         self.target_items = target_items
+        self.payload_field = payload_field
 
     def get_logs(self, start_timestamp, end_timestamp):
         '''
@@ -259,7 +261,7 @@ class SQLSnapshot(SQLTable):
         endpoint_dict = collections.OrderedDict(sorted(endpoint_dict.items(),key=lambda pair:pair[0].lower()))
 
         # Parsing result
-        val_dict = {'timestamp':None,'value_cal':None}
+        val_dict = {'timestamp':None,self.payload_field:None}
         val_raw_dict = {}
         val_cal_list = []
         index = 0
@@ -271,8 +273,8 @@ class SQLSnapshot(SQLTable):
                 val_raw_dict[endpoint].append(val_dict.copy())
                 query_row = query_return[index]
                 val_raw_dict[endpoint][i]['timestamp'] = query_row['timestamp'].strftime(constants.TIME_FORMAT)
-                val_raw_dict[endpoint][i]['value_cal'] = query_row['value_cal']
-                ept_timestamp_list.append('{} {{{}}}'.format(val_raw_dict[endpoint][i]['value_cal'],val_raw_dict[endpoint][i]['timestamp']))
+                val_raw_dict[endpoint][i][self.payload_field] = query_row[self.payload_field]
+                ept_timestamp_list.append('{} {{{}}}'.format(val_raw_dict[endpoint][i][self.payload_field],val_raw_dict[endpoint][i]['timestamp']))
                 index += 1
             ept_timestamp_results = ', '.join(ept_timestamp_list)
             val_cal_list.append('{} -> {}'.format(endpoint,ept_timestamp_results))
@@ -362,8 +364,8 @@ class SQLSnapshot(SQLTable):
                 continue
             else:
                 val_raw_dict[name] = [{'timestamp' : query_return[0]['timestamp'].strftime(constants.TIME_FORMAT),
-                                      'value_cal' : query_return[0]['value_cal']}]
-                val_cal_list.append('{} -> {} {{{}}}'.format(name,val_raw_dict[name][0]['value_cal'],val_raw_dict[name][0]['timestamp']))
+                                       self.payload_field : query_return[0][self.payload_field]}]
+                val_cal_list.append('{} -> {} {{{}}}'.format(name,val_raw_dict[name][0][self.payload_field],val_raw_dict[name][0]['timestamp']))
 
         return {'value_raw': val_raw_dict, 'value_cal': '\n'.join(val_cal_list)}
 
