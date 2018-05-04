@@ -26,11 +26,16 @@ class RPiGPIOProvider(Provider):
     This class is intended to be used with a set of GPIO-related Spime endpoints.
     '''
     def __init__(self,
+                 pinmap=10,
                  **kwargs
                  ):
+        '''
+        pinmap (int): select GPIO.BOARD (10) or GPIO.BCM (11) mapping of pins
+        '''
         if not 'GPIO' in globals():
             raise ImportError('RPi.GPIO not found, required for RPiGPIOProvider class')
         Provider.__init__(self, **kwargs)
+        GPIO.setmode(pinmap)
         self.GPIO = GPIO
 
 
@@ -38,9 +43,6 @@ class RPiGPIOProvider(Provider):
         '''
         Configure basic input/output GPIO pins.
         '''
-
-        # configure pin numbering (alternative is GPIO.BCM)
-        GPIO.setmode(GPIO.BOARD)
         # ignore any previous pin configurations
         GPIO.setwarnings(False)
 
@@ -61,7 +63,6 @@ class RPiGPIOProvider(Provider):
         '''
         Configure GPIO pins with PUD event
         '''
-        GPIO.setmode(GPIO.BCM)
         for child in self.endpoints:
             if not isinstance(self.endpoints[child], GPIOPUDSpime):
                 logger.debug('cannot configure {}'.format(child))

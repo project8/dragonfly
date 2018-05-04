@@ -210,7 +210,7 @@ class ADS1115Spime(Spime):
         '''
         Choose a gain of 1 for reading voltages from 0 to 4.09V.
         Or pick a different gain to change the range of voltages that are read:
-         - 2/3 = +/-6.144V
+         -   0 = +/-6.144V  (documented as 2/3)
          -   1 = +/-4.096V
          -   2 = +/-2.048V
          -   4 = +/-1.024V
