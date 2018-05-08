@@ -210,6 +210,25 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         Tells psyllid_provider to tell psyllid to start the run
         Unblocks roach channels if that fails
         '''
+
+        setup = { 'roach' : self.provider.get('{}.registers'.format(self.daq_target)) }
+        psyllid_config_kwargs = { 'target' : self.psyllid_interface,
+                                  'method_name' : 'get_active_config',
+                                  'channel' : self.channel_id,
+                                  'key' : 'prf' }
+        setup.update( { 'psyllid' :
+                            'prf' : self.provider.cmd(**psyllid_config_kwargs) } )
+
+        if self.acquisition_mode == 'triggering':
+            payload = {'channel':self.channel_id, 'filename':'{}/{}_mask.json'.format(directory,filename)}
+            self.provider.cmd(self.psyllid_interface, '_write_trigger_mask', payload=payload)
+            for key in ('fmt', 'tfrr', 'eb'):
+                psyllid_config_kwargs.update( { 'key' : key } )
+                setup['psyllid'].update( { key : self.provider.cmd(**psyllid_config_kwargs) } )
+        payload = { 'contents': setup,
+                    'filename': '{}/{}_setup.json'.format(directory,filename) }
+        self.provider.cmd(self._metadata_target, 'write_json', payload=payload)
+
         logger.info('block roach channel')
         self.provider.cmd(self.daq_target, 'block_channel', payload = self.payload_channel)
 
@@ -315,7 +334,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         logger.info('The roach central frequency is now {}Hz'.format(result['values'][0]))
 
         self.freq_dict[self.channel_id]=round(result['values'][0])
-        payload = {'channel':self.channel_id, 'cf':self.freq_dict[self.channel_id], 'channel':self.channel_id}
+        payload = {'cf':self.freq_dict[self.channel_id], 'channel':self.channel_id}
         self.provider.cmd(self.psyllid_interface, 'set_central_frequency', payload = payload)
 
 
@@ -508,7 +527,6 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         Raises exception if no mask_target_path was not set in config file
         '''
         if self.mask_target_path == None:
-            logger.error('No target path set for trigger mask')
             raise core.exceptions.DriplineGenericDAQError('No target path set for trigger mask')
 
         timestr = time.strftime("%Y%m%d_%H%M%S")
