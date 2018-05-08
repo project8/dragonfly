@@ -212,18 +212,20 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         '''
 
         setup = { 'roach' : self.provider.get('{}.registers'.format(self.daq_target)) }
-        psyllid_config_kwargs = { 'target' : self.psyllid_interface,
+        psyllid_config_kwargs = {
+                                  'target' : self.psyllid_interface,
                                   'method_name' : 'get_active_config',
-                                  'channel' : self.channel_id,
-                                  'key' : 'prf' }
+                                  'payload' : { 'channel' : self.channel_id,
+                                                'key' : 'prf' }
+                                }
         setup.update( { 'psyllid' :
-                            'prf' : self.provider.cmd(**psyllid_config_kwargs) } )
+                            { 'prf' : self.provider.cmd(**psyllid_config_kwargs) } } )
 
         if self.acquisition_mode == 'triggering':
             payload = {'channel':self.channel_id, 'filename':'{}/{}_mask.json'.format(directory,filename)}
             self.provider.cmd(self.psyllid_interface, '_write_trigger_mask', payload=payload)
             for key in ('fmt', 'tfrr', 'eb'):
-                psyllid_config_kwargs.update( { 'key' : key } )
+                psyllid_config_kwargs['payload'].update( { 'key' : key } )
                 setup['psyllid'].update( { key : self.provider.cmd(**psyllid_config_kwargs) } )
         payload = { 'contents': setup,
                     'filename': '{}/{}_setup.json'.format(directory,filename) }

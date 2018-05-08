@@ -96,7 +96,7 @@ class PsyllidProvider(core.Provider):
         target = '{}.active-config.{}.{}'.format(self.queue_dict[channel],
                                                  str(self.channel_dict[channel]),
                                                  key)
-        self.provider.get(target)
+        return self.provider.get(target)
 
 
     def get_acquisition_mode(self, channel):
