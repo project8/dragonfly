@@ -391,7 +391,8 @@ class RunScript(object):
     def action_cmd(self, cmds, **kwargs):
         # mandatory fields are <endpoint> and <method_name> for each cmd
         logger.info('doing cmd block')
-        for cmd_kwargs in cmds:
+        for this_cmd in cmds:
+            cmd_kwargs = this_cmd.copy()
             if 'timeout' in cmd_kwargs:
                 logger.debug('timeout set to {}'.format(cmd_kwargs['timeout']))
             reformat = cmd_kwargs.pop('asteval_format',{})

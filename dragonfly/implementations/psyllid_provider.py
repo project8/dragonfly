@@ -92,6 +92,13 @@ class PsyllidProvider(core.Provider):
         raise core.exceptions.DriplineGenericDAQError('active_channels cannot be set')
 
 
+    def get_active_config(self, channel, key):
+        target = '{}.active-config.{}.{}'.format(self.queue_dict[channel],
+                                                 str(self.channel_dict[channel]),
+                                                 key)
+        return self.provider.get(target)
+
+
     def get_acquisition_mode(self, channel):
         '''
         Tests whether psyllid is in streaming or triggering mode
@@ -460,10 +467,7 @@ class PsyllidProvider(core.Provider):
         self.start_run(channel ,1000, self.temp_file)
         time.sleep(1)
 
-        logger.info('Write mask to file')
-        request = 'run-daq-cmd.{}.fmt.write-mask'.format(str(self.channel_dict[channel]))
-        payload = {'filename': filename}
-        self.provider.cmd(self.queue_dict[channel], request, payload=payload)
+        self._write_trigger_mask(channel, filename)
 
         logger.info('Telling psyllid to use monarch again for next run')
         self.provider.set(self.queue_dict[channel]+'.use-monarch', True)
@@ -475,3 +479,13 @@ class PsyllidProvider(core.Provider):
         logger.info('Switch frequency mask trigger to apply-trigger')
         request = 'run-daq-cmd.{}.fmt.apply-trigger'.format(str(self.channel_dict[channel]))
         self.provider.cmd(self.queue_dict[channel],request)
+
+
+    def _write_trigger_mask(self, channel, filename):
+        '''
+        Tells psyllid to write a frequency mask to a json file
+        '''
+        logger.info('Write mask to file')
+        request = 'run-daq-cmd.{}.fmt.write-mask'.format(str(self.channel_dict[channel]))
+        payload = {'filename': filename}
+        self.provider.cmd(self.queue_dict[channel], request, payload=payload)
