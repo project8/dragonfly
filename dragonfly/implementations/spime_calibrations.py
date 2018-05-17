@@ -79,8 +79,8 @@ def pt100_calibration(resistance):
         (90.845 <= r and r < 110.354) *((110.354-r)*(18.84224+r/0.393)/19.5090 + (r-90.845)*(14.84755+r/.387)/19.5090) +
         (110.354 <= r and r < 185) * (14.84755+r/.387) +
         (185. <= r) * (0))
-    if value == 0:
-        value = None
+    # if value == 0:
+    #     value = None
     return value
 
 
