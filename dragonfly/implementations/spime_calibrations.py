@@ -68,7 +68,7 @@ def leak_valve_status_calibration(value):
 def pt100_calibration(resistance):
     '''Calibration for the (many) muxer pt100 temperature sensor endpoints'''
     r = resistance
-    value = ((r < 2.2913) * (0) +
+    value = ((r < 2.2913) * *((3.65960-r)*(-6.95647+r/0.085)/1.36831 + (r-2.2913)*(10.83979+r/.191)/1.36831 ) + # extrapolation to too small temperature
         (2.2913 <= r and r < 3.65960) *((3.65960-r)*(-6.95647+r/0.085)/1.36831 + (r-2.2913)*(10.83979+r/.191)/1.36831 ) +
         (3.6596 <= r and r < 9.38650) *((9.38650-r)*(10.83979+r/0.191)/5.72690 + (r-3.6596)*(23.92640+r/.360)/5.72690) +
         (9.3865 <= r and r < 20.3800) *((20.3800-r)*(23.92640+r/0.360)/10.9935 + (r-9.3865)*(29.17033+r/.423)/10.9935) +
