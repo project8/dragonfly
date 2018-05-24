@@ -4,7 +4,7 @@ Measures remaining disk space of drives.
 
 from __future__ import absolute_import
 
-import shutil
+import os
 import logging
 logger=logging.getLogger(__name__)
 
@@ -37,9 +37,9 @@ class Diopsid(Endpoint,Scheduler):
         logger.info("hello")
         return_dict = {}
         for i in self.drives_to_check:
-            disk = shutil.disk_usage(i)
+            disk = os.statvfs(i)
             payload = {}
-            payload['val_raw'] = disk[2]/1024/1024/1024
-            payload['val_cal'] = disk[2]/disk[0]
+            payload['val_raw'] = disk.f_bfree*disk.f_bsize
+            payload['val_cal'] = disk.f_bfree/disk.f_blocks
             return_dict.update({i: payload})
         return return_dict
