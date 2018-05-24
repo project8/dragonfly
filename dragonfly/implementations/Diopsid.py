@@ -18,16 +18,16 @@ class Diopsid(Endpoint,Scheduler):
 
     '''
     def __init__(self,
-                 services_to_ping = [],
+                 drives_to_check = [],
                  ping_timeout = 10,
                  **kwargs):
 
         Endpoint.__init__(self,**kwargs)
         Scheduler.__init__(self, **kwargs)
         
-        if len(services_to_ping) == 0:
+        if len(drives_to_check) == 0:
             raise exceptions.DriplineValueError("No entered services to ping")
-        self.services_to_ping = services_to_ping
+        self.drives_to_check = drives_to_check
  
 
     def scheduled_action(self):
@@ -36,7 +36,7 @@ class Diopsid(Endpoint,Scheduler):
         '''
         logger.info("hello")
         return_dict = {}
-        for i in self.services_to_ping:
+        for i in self.drives_to_check:
             disk = shutil.disk_usage(i)
             payload = {}
             payload['val_raw'] = disk[2]/1024/1024/1024
