@@ -7,6 +7,7 @@ from __future__ import absolute_import
 from .alert_spammer import *
 from .daq_db_interface import *
 from .daq_run_interface import *
+from .diopsid import *
 from .esr_measurement import *
 from .ethernet_provider import *
 from .kv_store import *
