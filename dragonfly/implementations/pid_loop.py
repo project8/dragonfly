@@ -72,6 +72,7 @@ class PidController(Gogol):
         self.payload_field = payload_field
         self.tolerance = tolerance
 
+        self._last_data = {'delta':None, 'time':datetime.datetime.utcnow()}
         self.target_value = target_value
 
         self.Kproportional = proportional
@@ -115,7 +116,17 @@ class PidController(Gogol):
         if this_value is None:
             logger.info('value is None')
             return
-        self.process_new_value(timestamp=message['timestamp'], value=this_value)
+
+        this_time = datetime.datetime.strptime(message['timestamp'], constants.TIME_FORMAT)
+        if (this_time - self._last_data['time']).total_seconds() < self.minimum_elapsed_time:
+            # handle self._force_reprocess from @target_value.setter
+            if not self._force_reprocess:
+                logger.info("not enough time has elasped: {}[{}]".format((this_time - self._last_data['time']).total_seconds(),self.minimum_elapsed_time))
+                return
+            logger.info("Forcing process due to changed target_value")
+            self._force_reprocess = False
+
+        self.process_new_value(timestamp=this_time, value=this_value)
 
     @property
     def target_value(self):
@@ -124,7 +135,7 @@ class PidController(Gogol):
     def target_value(self, value):
         self._target_value = value
         self._integral = 0
-        self._last_data = {'delta':None,'time':datetime.datetime(1970,1,1)}
+        self._force_reprocess = True
 
     def set_current(self, value):
         logger.info('going to set new current to: {}'.format(value))
@@ -132,22 +143,20 @@ class PidController(Gogol):
         logger.info('set response was: {}'.format(reply))
 
     def process_new_value(self, value, timestamp):
-        this_time = datetime.datetime.strptime(timestamp, constants.TIME_FORMAT)
 
-        if (this_time - self._last_data['time']).total_seconds() < self.minimum_elapsed_time:
-            logger.info("not enough time has elasped: {}[{}]".format((this_time - self._last_data['time']).total_seconds(),self.minimum_elapsed_time))
-            return
         delta = self.target_value - float(value)
         logger.info('value is <{}>; delta is <{}>'.format(value, delta))
-        #logger.info(this_time,abs((this_time - self._last_data['time']).seconds))
 
-        self._integral += delta * (this_time - self._last_data['time']).total_seconds()
-        if (this_time - self._last_data['time']).total_seconds() < 2*self.minimum_elapsed_time:
-            derivative = (delta - self._last_data['delta']) / (this_time - self._last_data['time']).total_seconds()
+        self._integral += delta * (timestamp - self._last_data['time']).total_seconds()
+        if (timestamp - self._last_data['time']).total_seconds() < 2*self.minimum_elapsed_time:
+            try:
+                derivative = (delta - self._last_data['delta']) / (timestamp - self._last_data['time']).total_seconds()
+            except TypeError:
+                derivative = 0
         else:
             logger.warning("invalid time for calculating derivative")
             derivative = 0.
-        self._last_data = {'delta': delta, 'time': this_time}
+        self._last_data = {'delta': delta, 'time': timestamp}
 
         logger.info("proportional <{}>; integral <{}>; differential <{}>".format\
             (self.Kproportional*delta, self.Kintegral*self._integral, self.Kdifferential*derivative))

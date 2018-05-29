@@ -532,7 +532,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
             raise core.exceptions.DriplineGenericDAQError('No target path set for trigger mask')
 
         timestr = time.strftime("%Y%m%d_%H%M%S")
-        filename = '{}_frequency_mask_channel_{}_cf_{}.json'.format(timestr, self.channel_id, self.freq_dict[self.channel_id])
+        filename = '{}_frequency_mask_channel_{}_cf_{}.yaml'.format(timestr, self.channel_id, self.freq_dict[self.channel_id])
         path = os.path.join(self.mask_target_path, filename)
         payload = {'channel':self.channel_id, 'filename':path}
         self.provider.cmd(self.psyllid_interface, 'make_trigger_mask', payload = payload)
