@@ -29,17 +29,19 @@ class Diopsid(Endpoint,Scheduler):
             raise exceptions.DriplineValueError("No entered services to ping")
         self.drives_to_check = drives_to_check
  
+        self.connection_to_alert = dirpline.core.Service(broker=broker, exchange='alerts', keys='status_message.#.#')
 
     def scheduled_action(self):
         '''
         Override Scheduler method with Pinger-specific action
         '''
         logger.info("hello")
-        return_dict = {}
         for i in self.drives_to_check:
             disk = os.statvfs(i)
             payload = {}
             payload['val_raw'] = disk.f_bfree*disk.f_bsize
             payload['val_cal'] = disk.f_bfree/disk.f_blocks
-            return_dict.update({i: payload})
-        return return_dict
+            pathway_list = i.split(/)
+            machine_name = os.environ['COMPUTERNAME']
+            severity = 'sensor_value.disks_' + machine_name + pathway_list[-1]
+            self.connection_to_alert.send_alert(severity=severity,alert=payload)        
