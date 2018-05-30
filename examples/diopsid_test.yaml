@@ -4,6 +4,7 @@ module: Spimescape
 endpoints: 
    - name: diopsid
      module: Diopsid
+     broker: localhost
      schedule_interval: 15
      drives_to_check: 
       - /home
