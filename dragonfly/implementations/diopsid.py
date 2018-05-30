@@ -8,7 +8,7 @@ import os
 import logging
 logger=logging.getLogger(__name__)
 
-from dripline.core import Endpoint, exceptions, Scheduler, fancy_doc
+from dripline.core import Endpoint, exceptions, Scheduler, fancy_doc, Service
 
 __all__ = []
 __all__.append('Diopsid')
@@ -18,9 +18,10 @@ class Diopsid(Endpoint,Scheduler):
 
     '''
     def __init__(self,
-                 drives_to_check = [],
-                 ping_timeout = 10,
-                 **kwargs):
+                broker,
+                drives_to_check = [],
+                ping_timeout = 10,
+                **kwargs):
 
         Endpoint.__init__(self,**kwargs)
         Scheduler.__init__(self, **kwargs)
@@ -29,7 +30,7 @@ class Diopsid(Endpoint,Scheduler):
             raise exceptions.DriplineValueError("No entered services to ping")
         self.drives_to_check = drives_to_check
  
-        self.connection_to_alert = dirpline.core.Service(broker=broker, exchange='alerts', keys='status_message.#.#')
+        self.connection_to_alert = Service(broker=broker, exchange='alerts', keys='status_message.#.#')
 
     def scheduled_action(self):
         '''
@@ -41,7 +42,7 @@ class Diopsid(Endpoint,Scheduler):
             payload = {}
             payload['val_raw'] = disk.f_bfree*disk.f_bsize
             payload['val_cal'] = disk.f_bfree/disk.f_blocks
-            pathway_list = i.split(/)
+            pathway_list = i.split('/')
             machine_name = os.environ['COMPUTERNAME']
             severity = 'sensor_value.disks_' + machine_name + pathway_list[-1]
             self.connection_to_alert.send_alert(severity=severity,alert=payload)        
