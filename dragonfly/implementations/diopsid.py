@@ -37,7 +37,6 @@ class Diopsid(Endpoint,Scheduler):
         '''
         Override Scheduler method with Pinger-specific action
         '''
-        logger.info("hello")
         machine_name = socket.gethostname()
         for i in self.drives_to_check:
             logger.debug('I am looking into {} on {}'.format(i, machine_name))
@@ -46,5 +45,6 @@ class Diopsid(Endpoint,Scheduler):
             payload['val_raw'] = disk.f_bfree*disk.f_bsize
             payload['val_cal'] = disk.f_bfree/disk.f_blocks
             pathway_list = i.split('/')
+            logger.debug("Percentage space left on {}: {}".format(i,payload["val_cal"]))
             severity = 'sensor_value.disks_' + machine_name + "_" + pathway_list[-1]
             self.connection_to_alert.send_alert(severity=severity,alert=payload)        
