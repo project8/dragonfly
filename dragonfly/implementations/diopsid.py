@@ -4,6 +4,7 @@ Measures remaining disk space of drives.
 
 from __future__ import absolute_import
 
+import socket
 import os
 import logging
 logger=logging.getLogger(__name__)
@@ -37,8 +38,7 @@ class Diopsid(Endpoint,Scheduler):
         Override Scheduler method with Pinger-specific action
         '''
         logger.info("hello")
-        #machine_name = os.environ['COMPUTERNAME']
-        machine_name="my_machine"
+        machine_name = socket.gethostname()
         for i in self.drives_to_check:
             logger.debug('I am looking into {} on {}'.format(i, machine_name))
             disk = os.statvfs(i)
@@ -46,5 +46,5 @@ class Diopsid(Endpoint,Scheduler):
             payload['val_raw'] = disk.f_bfree*disk.f_bsize
             payload['val_cal'] = disk.f_bfree/disk.f_blocks
             pathway_list = i.split('/')
-            severity = 'sensor_value.disks_' + machine_name + pathway_list[-1]
+            severity = 'sensor_value.disks_' + machine_name + "_" + pathway_list[-1]
             self.connection_to_alert.send_alert(severity=severity,alert=payload)        
