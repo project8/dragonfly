@@ -358,25 +358,56 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
 
 
     @property
-    def snr_threshold(self):
-        result = self.provider.cmd(self.psyllid_interface, 'get_fmt_snr_threshold', payload = self.payload_channel)['values'][0]
+    def _threshold_type(self):
+        result = self.provider.cmd(self.psyllid_interface, 'get_threshold_type', payload = self.payload_channel)['values'][0]
         return result
 
-    @snr_threshold.setter
-    def snr_threshold(self, threshold):
+    @_threshold_type.setter
+    def _threshold_type(self, snr_or_sigma):
+        self.provider.cmd(self.psyllid_interface, 'set_threshold_type', payload = {'channel': self.channel_id, 'snr_or_sigma': snr_or_sigma})
+
+
+    @property
+    def threshold_type(self):
+        return self._threshold_type
+
+    @threshold_type.setter
+    def threshold_type(self, snr_or_sigma):
+        self._threshold_type = snr_or_sigma
+
+
+    @property
+    def threshold(self):
+        if self._threshold_type == 'snr':
+            result = self.provider.cmd(self.psyllid_interface, 'get_fmt_snr_threshold', payload = self.payload_channel)['values'][0]
+        else:
+            result = self.provider.cmd(self.psyllid_interface, 'get_fmt_sigma_threshold', payload = self.payload_channel)['values'][0]
+        return result
+
+    @threshold.setter
+    def threshold(self, threshold):
         self.stored_threshold = threshold
-        self.provider.cmd(self.psyllid_interface, 'set_fmt_snr_threshold', payload = {'channel': self.channel_id, 'threshold': threshold})
+        if self._threshold_type == 'snr':
+            self.provider.cmd(self.psyllid_interface, 'set_fmt_snr_threshold', payload = {'channel': self.channel_id, 'threshold': threshold})
+        else:
+            self.provider.cmd(self.psyllid_interface, 'set_fmt_sigma_threshold', payload = {'channel': self.channel_id, 'threshold': threshold})
         self.provider.cmd(self.psyllid_interface, 'set_trigger_mode', payload = self.payload_channel)
 
 
     @property
-    def snr_high_threshold(self):
-        result = self.provider.cmd(self.psyllid_interface, 'get_fmt_snr_high_threshold', payload = self.payload_channel)['values'][0]
+    def high_threshold(self):
+        if self._threshold_type == 'snr':
+            result = self.provider.cmd(self.psyllid_interface, 'get_fmt_snr_high_threshold', payload = self.payload_channel)['values'][0]
+        else:
+            result = self.provider.cmd(self.psyllid_interface, 'get_fmt_sigma_high_threshold', payload = self.payload_channel)['values'][0]
         return result
 
-    @snr_high_threshold.setter
-    def snr_high_threshold(self, threshold):
-        self.provider.cmd(self.psyllid_interface, 'set_fmt_snr_high_threshold', payload = {'channel': self.channel_id, 'threshold': threshold})
+    @high_threshold.setter
+    def high_threshold(self, threshold):
+        if self._threshold_type == 'snr':
+            self.provider.cmd(self.psyllid_interface, 'set_fmt_snr_high_threshold', payload = {'channel': self.channel_id, 'threshold': threshold})
+        else:
+            self.provider.cmd(self.psyllid_interface, 'set_fmt_sigma_high_threshold', payload = {'channel': self.channel_id, 'threshold': threshold})
         self.provider.cmd(self.psyllid_interface, 'set_trigger_mode', payload = self.payload_channel)
 
 
@@ -454,12 +485,12 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         raise core.exceptions.DriplineGenericDAQError('Use configure_trigger command to set all trigger parameters at once')
 
 
-    def configure_trigger(self, low_threshold, high_threshold, n_triggers):
+    def configure_trigger(self, threshold, high_threshold, n_triggers):
         '''
         Set all trigger parameters with one command
         '''
-        self.stored_threshold = low_threshold
-        payload = {'threshold' : low_threshold, 'threshold_high' : high_threshold, 'n_triggers' : n_triggers, 'channel' : self.channel_id}
+        self.stored_threshold = threshold
+        payload = {'threshold' : threshold, 'threshold_high' : high_threshold, 'n_triggers' : n_triggers, 'channel' : self.channel_id}
         self.provider.cmd(self.psyllid_interface, 'set_trigger_configuration', payload = payload)
 
 
@@ -507,7 +538,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         if self.default_trigger_dict == None:
             raise core.exceptions.DriplineGenericDAQError('No default trigger settings present')
         else:
-            self.configure_trigger(low_threshold=self.default_trigger_dict['snr_threshold'], high_threshold=self.default_trigger_dict['snr_high_threshold'], n_triggers=self.default_trigger_dict['n_triggers'])
+            self.configure_trigger(threshold=self.default_trigger_dict['threshold'], high_threshold=self.default_trigger_dict['high_threshold'], n_triggers=self.default_trigger_dict['n_triggers'])
             self.configure_time_window(pretrigger_time=float(self.default_trigger_dict['pretrigger_time']), skip_tolerance=float(self.default_trigger_dict['skip_tolerance']))
 
 

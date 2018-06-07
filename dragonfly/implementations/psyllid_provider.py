@@ -313,8 +313,13 @@ class PsyllidProvider(core.Provider):
         '''
         Set all trigger parameters at once
         '''
-        self.set_fmt_snr_threshold( threshold, channel )
-        self.set_fmt_snr_high_threshold( threshold_high, channel )
+        logger.info('threshold type {}'.format(self.get_threshold_type(channel)))
+        if self.get_threshold_type( channel ) == 'snr':
+            self.set_fmt_snr_threshold( threshold, channel )
+            self.set_fmt_snr_high_threshold( threshold_high, channel )
+        else:
+            self.set_fmt_sigma_threshold( threshold, channel )
+            self.set_fmt_sigma_high_threshold( threshold_high, channel )
         self.set_n_triggers( n_triggers, channel )
         self.set_trigger_mode( channel )
 
@@ -323,8 +328,12 @@ class PsyllidProvider(core.Provider):
         '''
         Gets and returns all trigger parameters
         '''
-        threshold = self.get_fmt_snr_threshold( channel )
-        threshold_high = self.get_fmt_snr_high_threshold( channel )
+        if self.get_threshold_type( channel ) == 'snr':
+            threshold = self.get_fmt_snr_threshold( channel )
+            threshold_high = self.get_fmt_snr_high_threshold( channel )
+        else:
+            threshold = self.get_fmt_sigma_threshold( channel )
+            threshold_high = self.get_fmt_sigma_high_threshold ( channel )
         n_triggers = self.get_n_triggers( channel )
         trigger_mode = self.get_trigger_mode( channel )
 
@@ -374,7 +383,7 @@ class PsyllidProvider(core.Provider):
         Returns string: 'snr' or 'sigma'
         '''
         request = '.active-config.{}.fmt.threshold-type'.format(str(self.channel_dict[channel]))
-        threshold_type = self.provider.get(self.queue_dict[channel]+request)
+        threshold_type = self.provider.get(self.queue_dict[channel]+request)['threshold-type']
         return threshold_type
 
 
@@ -457,10 +466,17 @@ class PsyllidProvider(core.Provider):
 
 
     def set_trigger_mode(self, channel='a'):
-        if self.get_fmt_snr_high_threshold(channel) > self.get_fmt_snr_threshold(channel):
-            self._set_trigger_mode('two-level-trigger', channel)
+        if self.get_threshold_type( channel ) == 'snr':
+            if self.get_fmt_snr_high_threshold(channel) > self.get_fmt_snr_threshold(channel):
+                self._set_trigger_mode('two-level', channel)
+            else:
+                self._set_trigger_mode('single-level', channel)
         else:
-            self._set_trigger_mode('single-level-trigger', channel)
+            if self.get_fmt_sigma_high_threshold(channel) > self.get_fmt_sigma_threshold(channel):
+                self._set_trigger_mode('two-level', channel)
+            else:
+                self._set_trigger_mode('single-level', channel)
+
 
 
     def get_trigger_mode(self, channel='a'):
