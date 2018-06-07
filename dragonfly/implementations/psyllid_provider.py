@@ -363,18 +363,19 @@ class PsyllidProvider(core.Provider):
     # individual time window and trigger parameter sets and gets #
     ##############################################################
 
-    def get_trigger_type(self, channel, snr_or_sigma):
-        request = '.active-config.{}.fmt.trigger-type'.format(str(self.channel_dict[channel]))
-        trigger_type = self.provider.set(self.queue_dict[channel]+request, snr_or_sigma)
-        return trigger_type
-                
-    def get_trigger_type(self, channel):
+    def set_threshold_type(self, snr_or_sigma, channel='a'):
+        request = '.active-config.{}.fmt.threshold-type'.format(str(self.channel_dict[channel]))
+        threshold_type = self.provider.set(self.queue_dict[channel]+request, snr_or_sigma)
+        return threshold_type
+
+
+    def get_threshold_type(self, channel='a'):
         '''
         Returns string: 'snr' or 'sigma'
         '''
-        request = '.active-config.{}.fmt.trigger-type'.format(str(self.channel_dict[channel]))
-        trigger_type = self.provider.get(self.queue_dict[channel]+request)
-        return trigger_type
+        request = '.active-config.{}.fmt.threshold-type'.format(str(self.channel_dict[channel]))
+        threshold_type = self.provider.get(self.queue_dict[channel]+request)
+        return threshold_type
 
 
     def set_pretrigger_time(self, pretrigger_time, channel='a'):
