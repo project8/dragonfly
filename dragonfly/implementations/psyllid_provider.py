@@ -439,7 +439,7 @@ class PsyllidProvider(core.Provider):
     def set_fmt_sigma_threshold(self, threshold, channel='a'):
         request = '.active-config.{}.fmt.threshold-power-sigma'.format(str(self.channel_dict[channel]))
         self.provider.set(self.queue_dict[channel]+request, threshold)
-        logger.info('Setting psyllid power snr threshold to {}'.format(threshold))
+        logger.info('Setting psyllid power sigma threshold to {}'.format(threshold))
 
 
     def get_fmt_sigma_threshold(self, channel='a'):
@@ -451,7 +451,7 @@ class PsyllidProvider(core.Provider):
     def set_fmt_sigma_high_threshold(self, threshold, channel='a'):
         request = '.active-config.{}.fmt.threshold-power-sigma-high'.format(str(self.channel_dict[channel]))
         self.provider.set(self.queue_dict[channel]+request, threshold)
-        logger.info('Setting psyllid power snr threshold to {}'.format(threshold))
+        logger.info('Setting psyllid power sigma threshold to {}'.format(threshold))
 
 
     def get_fmt_sigma_high_threshold(self, channel='a'):
