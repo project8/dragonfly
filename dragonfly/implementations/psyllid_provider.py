@@ -383,8 +383,7 @@ class PsyllidProvider(core.Provider):
         Returns string: 'snr' or 'sigma'
         '''
         request = '.active-config.{}.fmt.threshold-type'.format(str(self.channel_dict[channel]))
-        threshold_type = self.provider.get(self.queue_dict[channel]+request)['threshold-type']
-        return threshold_type
+        return self.provider.get(self.queue_dict[channel]+request)['threshold-type']
 
 
     def set_pretrigger_time(self, pretrigger_time, channel='a'):
