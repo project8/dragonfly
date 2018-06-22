@@ -328,7 +328,8 @@ class PsyllidProvider(core.Provider):
         '''
         Gets and returns all trigger parameters
         '''
-        if self.get_threshold_type( channel ) == 'snr':
+        threshold_type = self.get_threshold_type( channel )
+        if threshold_type == 'snr':
             threshold = self.get_fmt_snr_threshold( channel )
             threshold_high = self.get_fmt_snr_high_threshold( channel )
         else:
@@ -337,7 +338,9 @@ class PsyllidProvider(core.Provider):
         n_triggers = self.get_n_triggers( channel )
         trigger_mode = self.get_trigger_mode( channel )
 
-        return {'threshold': threshold, 'threshold_high' : threshold_high, 'n_triggers' : n_triggers, 'trigger_mode' : trigger_mode}
+        return {'threshold_type': threshold_type,
+                'threshold': threshold, 'threshold_high' : threshold_high,
+                'n_triggers' : n_triggers, 'trigger_mode' : trigger_mode}
 
 
     def set_time_window(self, channel='a', pretrigger_time=2e-3, skip_tolerance=5e-3):

@@ -358,27 +358,18 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
 
 
     @property
-    def _threshold_type(self):
+    def threshold_type(self):
         result = self.provider.cmd(self.psyllid_interface, 'get_threshold_type', payload = self.payload_channel)['values'][0]
         return result
 
-    @_threshold_type.setter
-    def _threshold_type(self, snr_or_sigma):
+    @threshold_type.setter
+    def threshold_type(self, snr_or_sigma):
         self.provider.cmd(self.psyllid_interface, 'set_threshold_type', payload = {'channel': self.channel_id, 'snr_or_sigma': snr_or_sigma})
 
 
     @property
-    def threshold_type(self):
-        return self._threshold_type
-
-    @threshold_type.setter
-    def threshold_type(self, snr_or_sigma):
-        self._threshold_type = snr_or_sigma
-
-
-    @property
     def threshold(self):
-        if self._threshold_type == 'snr':
+        if self.threshold_type == 'snr':
             return self.provider.cmd(self.psyllid_interface, 'get_fmt_snr_threshold', payload = self.payload_channel)['values'][0]
         else:
             return self.provider.cmd(self.psyllid_interface, 'get_fmt_sigma_threshold', payload = self.payload_channel)['values'][0]
@@ -386,7 +377,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
     @threshold.setter
     def threshold(self, threshold):
         self.stored_threshold = threshold
-        if self._threshold_type == 'snr':
+        if self.threshold_type == 'snr':
             self.provider.cmd(self.psyllid_interface, 'set_fmt_snr_threshold', payload = {'channel': self.channel_id, 'threshold': threshold})
         else:
             self.provider.cmd(self.psyllid_interface, 'set_fmt_sigma_threshold', payload = {'channel': self.channel_id, 'threshold': threshold})
@@ -395,14 +386,14 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
 
     @property
     def high_threshold(self):
-        if self._threshold_type == 'snr':
+        if self.threshold_type == 'snr':
             return self.provider.cmd(self.psyllid_interface, 'get_fmt_snr_high_threshold', payload = self.payload_channel)['values'][0]
         else:
             return self.provider.cmd(self.psyllid_interface, 'get_fmt_sigma_high_threshold', payload = self.payload_channel)['values'][0]
 
     @high_threshold.setter
     def high_threshold(self, threshold):
-        if self._threshold_type == 'snr':
+        if self.threshold_type == 'snr':
             self.provider.cmd(self.psyllid_interface, 'set_fmt_snr_high_threshold', payload = {'channel': self.channel_id, 'threshold': threshold})
         else:
             self.provider.cmd(self.psyllid_interface, 'set_fmt_sigma_high_threshold', payload = {'channel': self.channel_id, 'threshold': threshold})
