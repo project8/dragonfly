@@ -245,9 +245,12 @@ class DiopsidSpime(Spime):
     def on_get(self):
         logger.debug('I am looking into {} on {}'.format(self.drive_to_check, self.machine_name))
         disk = os.statvfs(self.drive_to_check)
-        payload = { 'val_raw' : disk.f_bfree*disk.f_bsize,
-                    'val_cal' : disk.f_bfree/disk.f_blocks }
-        logger.debug("Percentage space left on {}: {}".format(self.drive_to_check,payload["val_cal"]))
+        # match df statistics by using blocks only indirectly:
+        #   used = blocks-free
+        #   use% = used/(used+avail)
+        payload = { 'value_raw' : (disk.f_blocks-disk.f_bfree)*disk.f_bsize/1024./1024/1024,
+                    'value_cal' : 1.*(disk.f_blocks-disk.f_bfree)/(disk.f_blocks-disk.f_bfree+disk.f_bavail) }
+        logger.debug("Percentage space left on {}: {}".format(self.drive_to_check,payload["value_cal"]))
         return payload
 
 
