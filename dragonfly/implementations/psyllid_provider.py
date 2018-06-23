@@ -116,6 +116,7 @@ class PsyllidProvider(core.Provider):
         return {'mode': self.mode_dict[channel]}
 
 
+
     def get_number_of_streams(self, channel):
         '''
         Counts how many streams (streaming or triggering) are set up in psyllid and retuns number
@@ -312,8 +313,13 @@ class PsyllidProvider(core.Provider):
         '''
         Set all trigger parameters at once
         '''
-        self.set_fmt_snr_threshold( threshold, channel )
-        self.set_fmt_snr_high_threshold( threshold_high, channel )
+        logger.info('threshold type {}'.format(self.get_threshold_type(channel)))
+        if self.get_threshold_type( channel ) == 'snr':
+            self.set_fmt_snr_threshold( threshold, channel )
+            self.set_fmt_snr_high_threshold( threshold_high, channel )
+        else:
+            self.set_fmt_sigma_threshold( threshold, channel )
+            self.set_fmt_sigma_high_threshold( threshold_high, channel )
         self.set_n_triggers( n_triggers, channel )
         self.set_trigger_mode( channel )
 
@@ -322,12 +328,19 @@ class PsyllidProvider(core.Provider):
         '''
         Gets and returns all trigger parameters
         '''
-        threshold = self.get_fmt_snr_threshold( channel )
-        threshold_high = self.get_fmt_snr_high_threshold( channel )
+        threshold_type = self.get_threshold_type( channel )
+        if threshold_type == 'snr':
+            threshold = self.get_fmt_snr_threshold( channel )
+            threshold_high = self.get_fmt_snr_high_threshold( channel )
+        else:
+            threshold = self.get_fmt_sigma_threshold( channel )
+            threshold_high = self.get_fmt_sigma_high_threshold ( channel )
         n_triggers = self.get_n_triggers( channel )
         trigger_mode = self.get_trigger_mode( channel )
 
-        return {'threshold': threshold, 'threshold_high' : threshold_high, 'n_triggers' : n_triggers, 'trigger_mode' : trigger_mode}
+        return {'threshold_type': threshold_type,
+                'threshold': threshold, 'threshold_high' : threshold_high,
+                'n_triggers' : n_triggers, 'trigger_mode' : trigger_mode}
 
 
     def set_time_window(self, channel='a', pretrigger_time=2e-3, skip_tolerance=5e-3):
@@ -361,6 +374,20 @@ class PsyllidProvider(core.Provider):
     ##############################################################
     # individual time window and trigger parameter sets and gets #
     ##############################################################
+
+    def set_threshold_type(self, snr_or_sigma, channel='a'):
+        request = '.active-config.{}.fmt.threshold-type'.format(str(self.channel_dict[channel]))
+        threshold_type = self.provider.set(self.queue_dict[channel]+request, snr_or_sigma)
+        return threshold_type
+
+
+    def get_threshold_type(self, channel='a'):
+        '''
+        Returns string: 'snr' or 'sigma'
+        '''
+        request = '.active-config.{}.fmt.threshold-type'.format(str(self.channel_dict[channel]))
+        return self.provider.get(self.queue_dict[channel]+request)['threshold-type']
+
 
     def set_pretrigger_time(self, pretrigger_time, channel='a'):
         n_pretrigger_packets = int(round(pretrigger_time/4.096e-5))
@@ -411,6 +438,28 @@ class PsyllidProvider(core.Provider):
         threshold = self.provider.get(self.queue_dict[channel]+request)['threshold-power-snr-high']
         return float(threshold)
 
+    def set_fmt_sigma_threshold(self, threshold, channel='a'):
+        request = '.active-config.{}.fmt.threshold-power-sigma'.format(str(self.channel_dict[channel]))
+        self.provider.set(self.queue_dict[channel]+request, threshold)
+        logger.info('Setting psyllid power sigma threshold to {}'.format(threshold))
+
+
+    def get_fmt_sigma_threshold(self, channel='a'):
+        request = '.active-config.{}.fmt.threshold-power-sigma'.format(str(self.channel_dict[channel]))
+        threshold = self.provider.get(self.queue_dict[channel]+request)['threshold-power-sigma']
+        return float(threshold)
+
+
+    def set_fmt_sigma_high_threshold(self, threshold, channel='a'):
+        request = '.active-config.{}.fmt.threshold-power-sigma-high'.format(str(self.channel_dict[channel]))
+        self.provider.set(self.queue_dict[channel]+request, threshold)
+        logger.info('Setting psyllid power sigma threshold to {}'.format(threshold))
+
+
+    def get_fmt_sigma_high_threshold(self, channel='a'):
+        request = '.active-config.{}.fmt.threshold-power-sigma-high'.format(str(self.channel_dict[channel]))
+        threshold = self.provider.get(self.queue_dict[channel]+request)['threshold-power-sigma-high']
+        return float(threshold)
 
     def _set_trigger_mode(self, mode_id, channel='a'):
         request = '.active-config.{}.fmt.trigger-mode'.format(str(self.channel_dict[channel]))
@@ -419,10 +468,17 @@ class PsyllidProvider(core.Provider):
 
 
     def set_trigger_mode(self, channel='a'):
-        if self.get_fmt_snr_high_threshold(channel) > self.get_fmt_snr_threshold(channel):
-            self._set_trigger_mode('two-level-trigger', channel)
+        if self.get_threshold_type( channel ) == 'snr':
+            if self.get_fmt_snr_high_threshold(channel) > self.get_fmt_snr_threshold(channel):
+                self._set_trigger_mode('two-level', channel)
+            else:
+                self._set_trigger_mode('single-level', channel)
         else:
-            self._set_trigger_mode('single-level-trigger', channel)
+            if self.get_fmt_sigma_high_threshold(channel) > self.get_fmt_sigma_threshold(channel):
+                self._set_trigger_mode('two-level', channel)
+            else:
+                self._set_trigger_mode('single-level', channel)
+
 
 
     def get_trigger_mode(self, channel='a'):
