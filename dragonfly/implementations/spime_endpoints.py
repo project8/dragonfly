@@ -11,6 +11,7 @@ Spime catalog (in order of ease-of-use):
 -* SimpleSCPIGetSpime/SimpleSCPISetSpime: limited instance of above with disabled Get/Set
 - FormatSpime: utility spime with expanded functionality
 - ADS1115Spime: spime to read ADS1115 16-bit ADC
+- DiopsidSpime: spime for reading available space of a drive
 - ErrorQueueSpime: spime for iterating through error queue to clear it and return all erros
 - GPIOSpime: spime to handle GPIO pin control on RPi
 - GPIOPUDSpime: spime to handle pull_up_down on RPi GPIO pins
@@ -24,6 +25,7 @@ Spime catalog (in order of ease-of-use):
 '''
 from __future__ import absolute_import
 
+import os #used for DiopsidSpime
 import re # used for FormatSpime
 import datetime # used for GPIOPUDSpime
 try:
@@ -222,6 +224,34 @@ class ADS1115Spime(Spime):
         of bits (in this case 2^16).
         '''
         return self.gain_conversion*self.measurement(self.read_option, self.gain)
+
+
+__all__.append("DiopsidSpime")
+@fancy_doc
+class DiopsidSpime(Spime):
+    '''
+    Spime for measuring the available space on a drive
+    '''
+    def __init__(self,
+                 drive_to_check,
+                 **kwargs):
+        '''
+        drive_to_check (str): drive of which we wish to measure available space
+        '''
+        Spime.__init__(self, **kwargs)
+        self.drive_to_check = drive_to_check
+        self.machine_name = self.name.split('_')[1]
+
+    def on_get(self):
+        logger.debug('I am looking into {} on {}'.format(self.drive_to_check, self.machine_name))
+        disk = os.statvfs(self.drive_to_check)
+        # match df statistics by using blocks only indirectly:
+        #   used = blocks-free
+        #   use% = used/(used+avail)
+        payload = { 'value_raw' : (disk.f_blocks-disk.f_bfree)*disk.f_bsize/1024./1024/1024,
+                    'value_cal' : 1.*(disk.f_blocks-disk.f_bfree)/(disk.f_blocks-disk.f_bfree+disk.f_bavail) }
+        logger.debug("Percentage space left on {}: {}".format(self.drive_to_check,payload["value_cal"]))
+        return payload
 
 
 __all__.append('ErrorQueueSpime')
