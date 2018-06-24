@@ -191,7 +191,7 @@ class EthernetProvider(Provider):
         data = ''
         try:
             while True:
-                data += self.socket.recv(1024).decode()
+                data += self.socket.recv(1024).decode(errors='replace')
                 if data.endswith(self.response_terminator):
                     terminator = self.response_terminator
                     break
