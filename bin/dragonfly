@@ -240,12 +240,13 @@ class DriplineParser(argparse.ArgumentParser):
         # setup loggers and handlers
         log_level = max(0, 25-these_args.verbose*10)
         for handler in self._handlers:
+            this_log_level = log_level
             # stderr handler only useful for services, fixed log_level at >= WARN
             if handler == 'stderr':
                 if not isinstance(these_args.func, dragonfly.subcommands.open_spimescape_portal.Serve):
                     continue
-                log_level = 21
-            self._handlers[handler].setLevel(log_level)
+                this_log_level = 21
+            self._handlers[handler].setLevel(this_log_level)
             logger.addHandler(self._handlers[handler])
             dripline_logger.addHandler(self._handlers[handler])
             if self.extra_logger:
