@@ -91,7 +91,7 @@ def cernox_calibration_chebychev(resistance,serial_number):
                ((2.17544340838,2.99571912372),(187.259060,-119.735282,19.990658,-2.662007,0.418343,-0.068467,0.009811,-0.003678))]
     }
     Z=math.log10(resistance)
-    print Z
+    logger.debug(Z)
     tmp=data[serial_number]
     this_data = None
     for this_data_range in tmp:

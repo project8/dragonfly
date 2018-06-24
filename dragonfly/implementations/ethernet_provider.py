@@ -164,7 +164,7 @@ class EthernetProvider(Provider):
         for command in commands:
             command += self.command_terminator
             logger.debug("sending: {}".format(repr(command)))
-            self.socket.send(command)
+            self.socket.send(command.encode())
             if command == self.command_terminator:
                 blank_command = True
             else:
@@ -191,7 +191,7 @@ class EthernetProvider(Provider):
         data = ''
         try:
             while True:
-                data += self.socket.recv(1024)
+                data += self.socket.recv(1024).decode()
                 if data.endswith(self.response_terminator):
                     terminator = self.response_terminator
                     break
