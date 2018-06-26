@@ -218,6 +218,7 @@ class PsyllidProvider(core.Provider):
         self.set_central_frequency(channel, self.freq_dict[channel])
         if self.mode_dict[channel] == 'triggering':
             # re-set trigger configuration
+            self.set_threshold_type(channel=channel, snr_or_sigma=result['threshold_type'])
             self.set_trigger_configuration(channel=channel, threshold=result['threshold'], threshold_high=result['threshold_high'], n_triggers=result['n_triggers'])
 
 
