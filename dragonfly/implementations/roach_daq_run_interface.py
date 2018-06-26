@@ -222,7 +222,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
                             { 'prf' : self.provider.cmd(**psyllid_config_kwargs) } } )
 
         if self.acquisition_mode == 'triggering':
-            payload = {'channel':self.channel_id, 'filename':'{}/{}_mask.json'.format(directory,filename)}
+            payload = {'channel':self.channel_id, 'filename':'{}/{}_mask.yaml'.format(directory,filename)}
             self.provider.cmd(self.psyllid_interface, '_write_trigger_mask', payload=payload)
             for key in ('fmt', 'tfrr', 'eb'):
                 psyllid_config_kwargs['payload'].update( { 'key' : key } )
