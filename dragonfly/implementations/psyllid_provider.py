@@ -348,9 +348,6 @@ class PsyllidProvider(core.Provider):
         '''
         Does all time window settings at once
         '''
-        if self.mode_dict[channel] != 'triggering':
-            logger.error('Psyllid instance is not in triggering mode')
-            raise core.exceptions.DriplineGenericDAQError('Psyllid instance is not in triggering mode')
         # apply settings
         self.set_pretrigger_time( pretrigger_time, channel )
         self.set_skip_tolerance( skip_tolerance, channel )
@@ -362,10 +359,6 @@ class PsyllidProvider(core.Provider):
         '''
         Gets and returns all time window settings
         '''
-        if self.mode_dict[channel] != 'triggering':
-            logger.error('Psyllid instance is not in triggering mode')
-            raise core.exceptions.DriplineGenericDAQError('Psyllid instance is not in triggering mode')
-
         pretrigger_time = self.get_pretrigger_time( channel )
         skip_tolerance = self.get_skip_tolerance( channel )
 
