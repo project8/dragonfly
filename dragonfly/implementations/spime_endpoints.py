@@ -11,6 +11,7 @@ Spime catalog (in order of ease-of-use):
 -* SimpleSCPIGetSpime/SimpleSCPISetSpime: limited instance of above with disabled Get/Set
 - FormatSpime: utility spime with expanded functionality
 - ADS1115Spime: spime to read ADS1115 16-bit ADC
+- ADS1115CalcSpime: spime to perform complex logic on multiple ADS1115 readings
 - DiopsidSpime: spime for reading available space of a drive
 - ErrorQueueSpime: spime for iterating through error queue to clear it and return all erros
 - GPIOSpime: spime to handle GPIO pin control on RPi
@@ -25,11 +26,12 @@ Spime catalog (in order of ease-of-use):
 '''
 from __future__ import absolute_import
 
+import asteval # used for ADS1115CalcSpime
 import os #used for DiopsidSpime
 import re # used for FormatSpime
 import datetime # used for GPIOPUDSpime
 try:
-    from Adafruit_ADS1x15 import ADS1115
+    from Adafruit_ADS1x15 import ADS1115 # used for ADS1115Spime, ADS1115CalcSpime
 except ImportError:
     pass
 
@@ -192,17 +194,14 @@ class ADS1115Spime(Spime):
          - 2 = Channel 1 minus channel 3
          - 3 = Channel 2 minus channel 3
         '''
-        if not 'ADS1115' in globals():
-           raise ImportError('Adafruit_ADS1x15.ADS1115 not found, required for ADS1115Spime class')
         Spime.__init__(self, **kwargs)
         self.gain = gain
         self.read_option = read_option
         self.gain_conversion = gain_conversion
-        self.adc = ADS1115()
         if measurement == "differential":
-            self.measurement = self.adc.read_adc_difference
+            self.measurement = ADS1115().read_adc_difference
         elif measurement == "single":
-            self.measurement = self.adc.read_adc
+            self.measurement = ADS1115().read_adc
         else:
             raise exceptions.DriplineValueError("Invalid measurement option {}; must be differential or single".format(measurement))
 
@@ -224,6 +223,41 @@ class ADS1115Spime(Spime):
         of bits (in this case 2^16).
         '''
         return self.gain_conversion*self.measurement(self.read_option, self.gain)
+
+
+__all__.append('ADS1115CalcSpime')
+class ADS1115CalcSpime(Spime):
+    '''
+    Spime for performing calculation from multiple ADS1115 readings on Raspberry Pi
+    Consult ADS1115Spime docstring for information on ADS1115 settings
+    '''
+    def __init__(self,
+                 measurements,
+                 logic,
+                 **kwargs
+                 ):
+        '''
+        measurements (list): list of measurements, each a dict with read_option, gain, and measurement type defined
+        logic (str): calculation applied to results of measurements
+        '''
+        Spime.__init__(self, **kwargs)
+        for entry in measurements:
+            if entry['measurement'] == 'differential':
+                entry['measurement'] = ADS1115().read_adc_difference
+            elif entry['measurement'] == 'single':
+                entry['measurement'] = ADS1115().read_adc
+            else:
+                raise exceptions.DriplineValueError("Invalid measurement option {}; must be differential or single".format(entry['measurement']))
+        self.measurements = measurements
+        self.logic = logic
+        self.evaluator = asteval.Interpreter()
+
+    @calibrate()
+    def on_get(self):
+        raw_values = [ entry['measurement'](entry['read_option'], entry['gain']) for entry in self.measurements ]
+        logger.debug(raw_values)
+        logger.debug("to evaluate: {}".format(repr(self.logic.format(*raw_values))))
+        return self.evaluator(self.logic.format(*raw_values))
 
 
 __all__.append("DiopsidSpime")
