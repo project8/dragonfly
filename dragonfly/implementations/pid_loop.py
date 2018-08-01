@@ -72,7 +72,7 @@ class PidController(Gogol):
         self.payload_field = payload_field
         self.tolerance = tolerance
 
-        self._last_data = {'delta':None, 'time':datetime.datetime.utcnow()}
+        self._last_data = {'value':None, 'time':datetime.datetime.utcnow()}
         self.target_value = target_value
 
         self.Kproportional = proportional
@@ -126,7 +126,7 @@ class PidController(Gogol):
             logger.info("Forcing process due to changed target_value")
             self._force_reprocess = False
 
-        self.process_new_value(timestamp=this_time, value=this_value)
+        self.process_new_value(timestamp=this_time, value=float(this_value))
 
     @property
     def target_value(self):
@@ -144,19 +144,19 @@ class PidController(Gogol):
 
     def process_new_value(self, value, timestamp):
 
-        delta = self.target_value - float(value)
+        delta = self.target_value - value
         logger.info('value is <{}>; delta is <{}>'.format(value, delta))
 
         self._integral += delta * (timestamp - self._last_data['time']).total_seconds()
         if (timestamp - self._last_data['time']).total_seconds() < 2*self.minimum_elapsed_time:
             try:
-                derivative = (delta - self._last_data['delta']) / (timestamp - self._last_data['time']).total_seconds()
+                derivative = (value - self._last_data['value']) / (timestamp - self._last_data['time']).total_seconds()
             except TypeError:
                 derivative = 0
         else:
             logger.warning("invalid time for calculating derivative")
             derivative = 0.
-        self._last_data = {'delta': delta, 'time': timestamp}
+        self._last_data = {'value': value, 'time': timestamp}
 
         logger.info("proportional <{}>; integral <{}>; differential <{}>".format\
             (self.Kproportional*delta, self.Kintegral*self._integral, self.Kdifferential*derivative))
