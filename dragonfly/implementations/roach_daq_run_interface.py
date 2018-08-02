@@ -488,6 +488,8 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         '''
         Returns pretrigger time and skip tolerance
         '''
+        if self.acquisition_mode is not 'triggering':
+            return False
         result = self.provider.cmd(self.psyllid_interface, 'get_time_window', payload = self.payload_channel)
         return result
 
