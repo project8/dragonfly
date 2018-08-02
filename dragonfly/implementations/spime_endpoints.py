@@ -26,7 +26,7 @@ Spime catalog (in order of ease-of-use):
 '''
 from __future__ import absolute_import
 
-import asteval # used for ADS1115CalcSpime
+import asteval # used for FormatSpime, ADS1115CalcSpime
 import os #used for DiopsidSpime
 import re # used for FormatSpime
 import datetime # used for GPIOPUDSpime
@@ -128,18 +128,19 @@ class FormatSpime(Spime):
         get_reply_float (bool): apply special formatting to get return
         set_str (str): sent as set_str.format(value) in the event of on_set; if None, setting of endpoint is disabled
         set_value_lowercase (bool): default option to map all string set value to .lower()
-            **WARNING: never set to False is using a set_value_map
-        set_value_map (dict): dictionary of mappings for values to on_set; note that the result of set_value_map[value] will be used as the input to set_str.format(value) if this dict is present
+            **WARNING: never set to False if using a set_value_map dict
+        set_value_map (str||dict): inverse of calibration to map raw set value to value sent; either a dictionary or an asteval-interpretable string
         '''
         Spime.__init__(self, **kwargs)
         self._get_reply_float = get_reply_float
         self._get_str = get_str
         self._set_str = set_str
         self._set_value_map = set_value_map
-        if set_value_map is not None and not isinstance(set_value_map, dict):
+        self.evaluator = asteval.Interpreter()
+        if set_value_map is not None and not isinstance(set_value_map, (dict,str)):
             raise DriplineValueError("Invalid set_value_map config for {}; type is {} not dict".format(self.name, type(set_value_map)))
         self._set_value_lowercase = set_value_lowercase
-        if set_value_map is not None and not set_value_lowercase:
+        if isinstance(set_value_map, dict) and not set_value_lowercase:
             raise DriplineValueError("Invalid config option for {} with set_value_map and set_value_lowercase=False".format(self.name))
 
     @calibrate()
@@ -165,6 +166,8 @@ class FormatSpime(Spime):
             mapped_value = value
         elif isinstance(self._set_value_map, dict):
             mapped_value = self._set_value_map[value]
+        elif isinstance(self._set_value_map, str):
+            mapped_value = self.evaluator(self._set_value_map.format(value))
         logger.debug('value is {}; mapped value is: {}'.format(value, mapped_value))
         return self.provider.send([self._set_str.format(mapped_value)])
 
