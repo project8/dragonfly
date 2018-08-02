@@ -115,30 +115,6 @@ class PsyllidProvider(core.Provider):
         return {'mode': self.mode_dict[channel]}
 
 
-
-    def get_number_of_streams(self, channel):
-        '''
-        Counts how many streams (streaming or triggering) are set up in psyllid and retuns number
-        '''
-        stream_count = 0
-        for i in range(3):
-            try:
-                request = '.node-config.ch'+str(i)+'.strw'
-                self.provider.get(self.queue_dict[channel]+request)
-                stream_count += 1
-                self.mode_dict[channel]='streaming'
-            except core.exceptions.DriplineError:
-                try:
-                    request = '.node-config.ch'+str(i)+'.trw'
-                    self.provider.get(self.queue_dict[channel]+request)
-                    stream_count += 1
-                    self.mode_dict[channel]='triggering'
-                except core.exceptions.DriplineError:
-                    pass
-        logger.info('Number of streams for channel {}: {}'.format(channel, stream_count))
-        return stream_count
-
-
     def request_status(self, channel):
         '''
         Asks the psyllid instance what state it is in and returns that state
