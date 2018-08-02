@@ -103,16 +103,15 @@ class PsyllidProvider(core.Provider):
         '''
         Tests whether psyllid is in streaming or triggering mode
         '''
-        try:
+        request = '{}.node-list.{}'.format(self.queue_dict[channel], self.channel_dict[channel])
+        node_list = self.provider.get(request)['nodes']
+
+        if 'trw' in node_list:
             self.mode_dict[channel] = 'triggering'
-            self.get_central_frequency(channel)
-        except core.exceptions.DriplineError:
+        elif 'strw' in node_list:
             self.mode_dict[channel] = 'streaming'
-            try:
-                self.get_central_frequency(channel)
-            except core.exceptions.DriplineError as e:
-                self.mode_dict[channel] = None
-                raise e
+        else:
+            self.mode_dict[channel] = None
         return {'mode': self.mode_dict[channel]}
 
 
