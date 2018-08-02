@@ -463,7 +463,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         '''
         Returns all trigger settings
         '''
-        if self.acquisition_mode == None:
+        if self.acquisition_mode is not 'triggering':
             return False
         result = self.provider.cmd(self.psyllid_interface, 'get_trigger_configuration', payload = self.payload_channel)
         return result
@@ -527,7 +527,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         if self.default_trigger_dict == None:
             raise core.exceptions.DriplineGenericDAQError('No default trigger settings present')
         else:
-            self.threshold_type = self.default_trigger['threshold-type']
+            self.threshold_type = self.default_trigger_dict['threshold-type']
             self.configure_trigger(threshold=self.default_trigger_dict['threshold'], high_threshold=self.default_trigger_dict['high_threshold'], n_triggers=self.default_trigger_dict['n_triggers'])
             self.configure_time_window(pretrigger_time=float(self.default_trigger_dict['pretrigger_time']), skip_tolerance=float(self.default_trigger_dict['skip_tolerance']))
 
