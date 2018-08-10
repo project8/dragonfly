@@ -94,7 +94,7 @@ class PidController(Gogol):
 
     def __get_current(self):
         value = self.provider.get(self._check_channel)[self.payload_field]
-        logger.info('old current = {}'.format(value))
+        logger.info('current get is {}'.format(value))
 
         try:
             value = float(value)
@@ -187,7 +187,7 @@ class PidController(Gogol):
         time.sleep(1)
         current_get = self.__get_current()
         if abs(current_get-new_current) < self.tolerance:
-            logger.info("current set is equal to current get")
+            logger.debug("current set is equal to current get")
         else:
             self.__validate_status()
             raise exceptions.DriplineValueError("set value ({}) is not equal to checked value ({})".format(new_current,current_get))
