@@ -6,10 +6,12 @@ When implementing a spime, please remember:
 - All communication must be configured to return a response.  If no useful get is possible, consider a *OPC?
 - set_and_check is a generally desirable functionality
 
-Spime catalog (in order of ease-of-use):
+Generic spime catalog (in order of ease-of-use):
 - SimpleSCPISpime: quick and simple minimal spime
 -* SimpleSCPIGetSpime/SimpleSCPISetSpime: limited instance of above with disabled Get/Set
 - FormatSpime: utility spime with expanded functionality
+
+Custom spime catalog (alphabetical):
 - ADS1115Spime: spime to read ADS1115 16-bit ADC
 - DiopsidSpime: spime for reading available space of a drive
 - ErrorQueueSpime: spime for iterating through error queue to clear it and return all erros
@@ -21,7 +23,9 @@ Spime catalog (in order of ease-of-use):
 -* LockinGetSpime: limited instance of above with disabled Set
 - Max31856Spime: spime to handle thermocouple reading through GPIO on RPi
 - MuxerGetSpime: spime to handle glenlivet muxer formatting
+- OmegaSpime: spime to handle custom echo on Omega PID controllers
 - ProviderAttributeSpime: spime for provider @property
+- RelaySpime: spime to preload dictionaries for glenlivet relays
 '''
 from __future__ import absolute_import
 
@@ -566,6 +570,56 @@ class MuxerGetSpime(Spime):
         raise DriplineMethodNotSupportedError('setting not available for {}'.format(self.name))
 
 
+__all__.append('OmegaSpime')
+class OmegaSpime(FormatSpime):
+    '''
+    Spime allowing communication with Omega PID controllers.
+    Serial communication protocol is not IEEE488 compliant, so sets don't return
+      a response as required by EthernetProvider unless echo is used.  Custom
+      echo is not properly stripped by provider.
+    '''
+
+    def __init__(self,
+                 start_character='*',
+                 **kwargs):
+       FormatSpime.__init__(self, **kwargs)
+       self._start_character = start_character
+       if self._set_str is not None:
+           self._set_str = self._start_character+self._set_str
+
+    @calibrate()
+    def on_get(self):
+        result = self.provider.send([self._start_character+self._get_str])
+        if not result.startswith(self._get_str):
+            raise DriplineHardwareError("Invalid response for {}: {}".format(self.name,repr(result)))
+        else:
+            return result[len(self._get_str):]
+
+
+__all__.append('ProviderAttributeSpime')
+class ProviderAttributeSpime(Spime):
+    '''
+    Spime allowing communication with provider property.
+    '''
+
+    def __init__(self,
+                 attribute_name,
+                 disable_set=False,
+                 **kwargs):
+       Spime.__init__(self, **kwargs)
+       self._attribute_name = attribute_name
+       self._disable_set = disable_set
+
+    @calibrate()
+    def on_get(self):
+        return getattr(self.provider, self._attribute_name)
+
+    def on_set(self, value):
+        if self._disable_set:
+            raise DriplineMethodNotSupportedError('setting not available for {}'.format(self.name))
+        setattr(self.provider, self._attribute_name, value)
+
+
 __all__.append('RelaySpime')
 class RelaySpime(FormatSpime):
     '''
@@ -628,27 +682,3 @@ class RelaySpime(FormatSpime):
         elif relay_type is not None:
             raise DriplineValueError("Invalid relay_type for {}; expect 'relay' or 'polarity'".format(self.name))
         FormatSpime.__init__(self, **kwargs)
-
-
-__all__.append('ProviderAttributeSpime')
-class ProviderAttributeSpime(Spime):
-    '''
-    Spime allowing communication with provider property.
-    '''
-
-    def __init__(self,
-                 attribute_name,
-                 disable_set=False,
-                 **kwargs):
-       Spime.__init__(self, **kwargs)
-       self._attribute_name = attribute_name
-       self._disable_set = disable_set
-
-    @calibrate()
-    def on_get(self):
-        return getattr(self.provider, self._attribute_name)
-
-    def on_set(self, value):
-        if self._disable_set:
-            raise DriplineMethodNotSupportedError('setting not available for {}'.format(self.name))
-        setattr(self.provider, self._attribute_name, value)
