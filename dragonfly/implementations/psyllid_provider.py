@@ -103,41 +103,16 @@ class PsyllidProvider(core.Provider):
         '''
         Tests whether psyllid is in streaming or triggering mode
         '''
-        try:
+        request = '{}.node-list.{}'.format(self.queue_dict[channel], self.channel_dict[channel])
+        node_list = self.provider.get(request)['nodes']
+
+        if 'trw' in node_list:
             self.mode_dict[channel] = 'triggering'
-            self.get_central_frequency(channel)
-        except core.exceptions.DriplineError:
+        elif 'strw' in node_list:
             self.mode_dict[channel] = 'streaming'
-            try:
-                self.get_central_frequency(channel)
-            except core.exceptions.DriplineError as e:
-                self.mode_dict[channel] = None
-                raise e
+        else:
+            self.mode_dict[channel] = None
         return {'mode': self.mode_dict[channel]}
-
-
-
-    def get_number_of_streams(self, channel):
-        '''
-        Counts how many streams (streaming or triggering) are set up in psyllid and retuns number
-        '''
-        stream_count = 0
-        for i in range(3):
-            try:
-                request = '.node-config.ch'+str(i)+'.strw'
-                self.provider.get(self.queue_dict[channel]+request)
-                stream_count += 1
-                self.mode_dict[channel]='streaming'
-            except core.exceptions.DriplineError:
-                try:
-                    request = '.node-config.ch'+str(i)+'.trw'
-                    self.provider.get(self.queue_dict[channel]+request)
-                    stream_count += 1
-                    self.mode_dict[channel]='triggering'
-                except core.exceptions.DriplineError:
-                    pass
-        logger.info('Number of streams for channel {}: {}'.format(channel, stream_count))
-        return stream_count
 
 
     def request_status(self, channel):
@@ -348,9 +323,6 @@ class PsyllidProvider(core.Provider):
         '''
         Does all time window settings at once
         '''
-        if self.mode_dict[channel] != 'triggering':
-            logger.error('Psyllid instance is not in triggering mode')
-            raise core.exceptions.DriplineGenericDAQError('Psyllid instance is not in triggering mode')
         # apply settings
         self.set_pretrigger_time( pretrigger_time, channel )
         self.set_skip_tolerance( skip_tolerance, channel )
@@ -362,10 +334,6 @@ class PsyllidProvider(core.Provider):
         '''
         Gets and returns all time window settings
         '''
-        if self.mode_dict[channel] != 'triggering':
-            logger.error('Psyllid instance is not in triggering mode')
-            raise core.exceptions.DriplineGenericDAQError('Psyllid instance is not in triggering mode')
-
         pretrigger_time = self.get_pretrigger_time( channel )
         skip_tolerance = self.get_skip_tolerance( channel )
 

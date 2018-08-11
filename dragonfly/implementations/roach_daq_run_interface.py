@@ -172,7 +172,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
             threshold = self.threshold
             logger.info('threshold from psyllid is: {}'.format(threshold))
             if self.stored_threshold != threshold:
-                logger.error('Threshold mismatch: psyllid power-snr-threshold is {}, but should be {}'.format(threshold, self.stored_threshold))
+                logger.error('Threshold mismatch: psyllid threshold is {}, but should be {}'.format(threshold, self.stored_threshold))
                 raise core.exceptions.DriplineGenericDAQError('Threshold mismatch')
 
         return "checks successful"
@@ -463,8 +463,6 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         '''
         Returns all trigger settings
         '''
-        if self.trigger_type == None:
-            return False
         result = self.provider.cmd(self.psyllid_interface, 'get_trigger_configuration', payload = self.payload_channel)
         return result
 
@@ -527,6 +525,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         if self.default_trigger_dict == None:
             raise core.exceptions.DriplineGenericDAQError('No default trigger settings present')
         else:
+            self.threshold_type = self.default_trigger_dict['threshold-type']
             self.configure_trigger(threshold=self.default_trigger_dict['threshold'], high_threshold=self.default_trigger_dict['high_threshold'], n_triggers=self.default_trigger_dict['n_triggers'])
             self.configure_time_window(pretrigger_time=float(self.default_trigger_dict['pretrigger_time']), skip_tolerance=float(self.default_trigger_dict['skip_tolerance']))
 

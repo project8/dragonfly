@@ -13,6 +13,7 @@ Generic spime catalog (in order of ease-of-use):
 
 Custom spime catalog (alphabetical):
 - ADS1115Spime: spime to read ADS1115 16-bit ADC
+- ADS1115CalcSpime: spime to perform complex logic on multiple ADS1115 readings
 - DiopsidSpime: spime for reading available space of a drive
 - ErrorQueueSpime: spime for iterating through error queue to clear it and return all erros
 - GPIOSpime: spime to handle GPIO pin control on RPi
@@ -29,11 +30,12 @@ Custom spime catalog (alphabetical):
 '''
 from __future__ import absolute_import
 
+import asteval # used for FormatSpime, ADS1115CalcSpime
 import os #used for DiopsidSpime
 import re # used for FormatSpime
 import datetime # used for GPIOPUDSpime
 try:
-    from Adafruit_ADS1x15 import ADS1115
+    from Adafruit_ADS1x15 import ADS1115 # used for ADS1115Spime, ADS1115CalcSpime
 except ImportError:
     pass
 
@@ -130,18 +132,19 @@ class FormatSpime(Spime):
         get_reply_float (bool): apply special formatting to get return
         set_str (str): sent as set_str.format(value) in the event of on_set; if None, setting of endpoint is disabled
         set_value_lowercase (bool): default option to map all string set value to .lower()
-            **WARNING: never set to False is using a set_value_map
-        set_value_map (dict): dictionary of mappings for values to on_set; note that the result of set_value_map[value] will be used as the input to set_str.format(value) if this dict is present
+            **WARNING: never set to False if using a set_value_map dict
+        set_value_map (str||dict): inverse of calibration to map raw set value to value sent; either a dictionary or an asteval-interpretable string
         '''
         Spime.__init__(self, **kwargs)
         self._get_reply_float = get_reply_float
         self._get_str = get_str
         self._set_str = set_str
         self._set_value_map = set_value_map
-        if set_value_map is not None and not isinstance(set_value_map, dict):
+        self.evaluator = asteval.Interpreter()
+        if set_value_map is not None and not isinstance(set_value_map, (dict,str)):
             raise DriplineValueError("Invalid set_value_map config for {}; type is {} not dict".format(self.name, type(set_value_map)))
         self._set_value_lowercase = set_value_lowercase
-        if set_value_map is not None and not set_value_lowercase:
+        if isinstance(set_value_map, dict) and not set_value_lowercase:
             raise DriplineValueError("Invalid config option for {} with set_value_map and set_value_lowercase=False".format(self.name))
 
     @calibrate()
@@ -167,6 +170,8 @@ class FormatSpime(Spime):
             mapped_value = value
         elif isinstance(self._set_value_map, dict):
             mapped_value = self._set_value_map[value]
+        elif isinstance(self._set_value_map, str):
+            mapped_value = self.evaluator(self._set_value_map.format(value))
         logger.debug('value is {}; mapped value is: {}'.format(value, mapped_value))
         return self.provider.send([self._set_str.format(mapped_value)])
 
@@ -196,17 +201,14 @@ class ADS1115Spime(Spime):
          - 2 = Channel 1 minus channel 3
          - 3 = Channel 2 minus channel 3
         '''
-        if not 'ADS1115' in globals():
-           raise ImportError('Adafruit_ADS1x15.ADS1115 not found, required for ADS1115Spime class')
         Spime.__init__(self, **kwargs)
         self.gain = gain
         self.read_option = read_option
         self.gain_conversion = gain_conversion
-        self.adc = ADS1115()
         if measurement == "differential":
-            self.measurement = self.adc.read_adc_difference
+            self.measurement = ADS1115().read_adc_difference
         elif measurement == "single":
-            self.measurement = self.adc.read_adc
+            self.measurement = ADS1115().read_adc
         else:
             raise exceptions.DriplineValueError("Invalid measurement option {}; must be differential or single".format(measurement))
 
@@ -228,6 +230,41 @@ class ADS1115Spime(Spime):
         of bits (in this case 2^16).
         '''
         return self.gain_conversion*self.measurement(self.read_option, self.gain)
+
+
+__all__.append('ADS1115CalcSpime')
+class ADS1115CalcSpime(Spime):
+    '''
+    Spime for performing calculation from multiple ADS1115 readings on Raspberry Pi
+    Consult ADS1115Spime docstring for information on ADS1115 settings
+    '''
+    def __init__(self,
+                 measurements,
+                 logic,
+                 **kwargs
+                 ):
+        '''
+        measurements (list): list of measurements, each a dict with read_option, gain, and measurement type defined
+        logic (str): calculation applied to results of measurements
+        '''
+        Spime.__init__(self, **kwargs)
+        for entry in measurements:
+            if entry['measurement'] == 'differential':
+                entry['measurement'] = ADS1115().read_adc_difference
+            elif entry['measurement'] == 'single':
+                entry['measurement'] = ADS1115().read_adc
+            else:
+                raise exceptions.DriplineValueError("Invalid measurement option {}; must be differential or single".format(entry['measurement']))
+        self.measurements = measurements
+        self.logic = logic
+        self.evaluator = asteval.Interpreter()
+
+    @calibrate()
+    def on_get(self):
+        raw_values = [ entry['measurement'](entry['read_option'], entry['gain']) for entry in self.measurements ]
+        logger.debug(raw_values)
+        logger.debug("to evaluate: {}".format(repr(self.logic.format(*raw_values))))
+        return self.evaluator(self.logic.format(*raw_values))
 
 
 __all__.append("DiopsidSpime")
