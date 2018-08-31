@@ -363,7 +363,9 @@ class RunScript(object):
     def action_pause_for_user(self, message, **kwargs):
         # note, this is python2 specific... (in python3 it is input not raw_input
         # but python2 has something different named input
-        raw_input('{}\n(Press return to continue)\n'.format(message))
+        userinput = 0
+        while userinput != 'y'
+            userinput = string.lower(raw_input('{}\n(Type \'y\' to continue)\n'.format(message)))
 
     def action_sleep(self, duration, **kwargs):
         if isinstance(duration,int) or isinstance(duration,float):
