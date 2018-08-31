@@ -364,8 +364,8 @@ class RunScript(object):
         # note, this is python2 specific... (in python3 it is input not raw_input
         # but python2 has something different named input
         userinput = 0
-        while userinput != 'y'
-            userinput = string.lower(raw_input('{}\n(Type \'y\' to continue)\n'.format(message)))
+        while userinput != 'y':
+            userinput = str.lower(raw_input('{}\n(Type \'y\' to continue)\n'.format(message)))
 
     def action_sleep(self, duration, **kwargs):
         if isinstance(duration,int) or isinstance(duration,float):
