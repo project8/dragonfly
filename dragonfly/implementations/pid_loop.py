@@ -150,7 +150,7 @@ class PidController(Gogol):
         self._integral += delta * (timestamp - self._last_data['time']).total_seconds()
         if (timestamp - self._last_data['time']).total_seconds() < 2*self.minimum_elapsed_time:
             try:
-                derivative = (value - self._last_data['value']) / (timestamp - self._last_data['time']).total_seconds()
+                derivative = (self._last_data['value'] - value) / (timestamp - self._last_data['time']).total_seconds()
             except TypeError:
                 derivative = 0
         else:
