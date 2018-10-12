@@ -29,13 +29,14 @@ values. The required and optional configurations for each are described further 
 
 That is, at the highest level, the file should look like:
 
-    ```
+.. code-block::
+
     - action: VALUE_FROM_ABOVE
       ...
     - action: VALUE_FROM_ABOVE
       ...
     ...
-    ```
+
 
 Throughout the documentation for valid actions, we adopt some conventions to indicate
 how you should fill in information (we used some of them above). I'll try to describe in
@@ -59,7 +60,8 @@ the following bullet list:
 Let's take an example. The following is a contrived example configuration description,
 followed by a valid block based on it.
 
-  ```
+.. code-block:: 
+
   - action: profit
     currency: (dollar/bitcoin/euro) VALUE (default: dollar)
     rounding: VALUE (default: 0.05)
@@ -69,7 +71,7 @@ followed by a valid block based on it.
     product_map: (default: {})
       PRODUCT_NAME: (number) PRODUCT_PRICE
       ...
-  ```
+
 
 A sample valid example would then be:
 
@@ -279,10 +281,10 @@ class RunScript(object):
         should still be done automatically (using loggers, sets/cmds to endpoints, etc.)
 
         Configfile entry:
-        ```
+        .. code-block::
+
             - action: pause_for_user
               message: STRING_TO_PRINT_PRIOR_TO_PAUSE
-        ```
         '''
 
 
