@@ -1,24 +1,93 @@
-
 '''
-A parser which defines a syntax for writing run scripts. This should in principle
+Overview
+~~~~~~~~
+
+A YAML parser which defines a syntax for writing run "scripts." This should in principle
 make it possible to define any data acquisition task (which might take hours or
 even multiple days) in advance and have it proceed fully automatically. Furthermore,
 "standard" run sets (such as calibrations) could be fully standardized and the same
 run file used every time.
 
 As with everything else, YAML will be the tested and preferred format for these files
-(since json doesn't support comments), but json is expected to also work since
-PyYAML can also parse that by default.
+(since json doesn't support comments). But of course json is a subset of YAML.
 
-The file should parse to a list of dictionaries. Each dictionary will define a type of
-action to take, in order, with various configurable parameters. Each will specify the
-action with a line:
+In addition to the configuration file itself, there are several runtime options. These
+are listed here and maintained as part of the argparse help fields.
+    - "--force-restart" (-f)
+    - "--dry-run" (-d)
+
+
+Input File
+~~~~~~~~~~
+
+The file should parse to a list of dictionaries. Each of these dictionaries will define
+a type of action to take, in order from the file, with various configurable parameters.
+Each *must* specify the action by including the key "action" with one of the following
+values. The required and optional configurations for each are described further below.
 
     action: {pause_for_user, sleep, lockout, set, cmd, do, esr_run, single_run, multi_run}
 
-Several flags exists:
-    - "--force-restart" (-f): remove the cache and force the execution script to start from the very begining.
-    - "--dry-run" (-d): globally disable the possibility to start a run (in single_run and multi_run).
+That is, at the highest level, the file should look like:
+
+    - action: VALUE_FROM_ABOVE
+      ...
+    - action: VALUE_FROM_ABOVE
+      ...
+    ...
+
+Throughout the documentation for valid actions, we adopt some conventions to indicate
+how you should fill in information (we used some of them above). I'll try to describe in
+the following bullet list:
+
+- items in ALL_CAPITALS indicate that you need to provide the value.
+- an elipsis (...) indicates that the list of entries may be extended, following preceding pattern
+- sometimes it may not be obvious what the "type" of a value may be named within parenthesis ();
+  multiple valid types will be separated with || (a syntax for "or" in some programming languages);
+  this will come before the ALL_CAPS_INDICATION_TO_ADD_A_VALUE
+- sometimes the valid value for a parameter must come from a limited set. This will follow the
+  pattern as above for types, but will use a forward slash (/) to separate valid values.
+- sometimes named configuration fields are optional. This will be indicated by a default value
+  listed in parenthesis after the ALL_CAPS_INDICATION_TO_ADD_A_VALUE if it is single-valued, or on
+  the line with the key if it takes multiple values (which will be described on subsequent lines).
+  Note that sometimes the default behavior is not to include the entry at all (this is not the
+  same as 0, or None); such a case is indicated by "(default: )"
+- sometimes both the key and value must be provided, in this case the entire entry will be
+  enclosed in parenthesis (the description paragraph should also explain this).
+
+Let's take an example. The following is a contrived example configuration description,
+followed by a valid block based on it.
+
+  - action: profit
+    currency: (dollar/bitcoin/euro) VALUE (default: dollar)
+    rounding: VALUE (default: 0.05)
+    suppliers:
+      - SUPPLIER_NAME
+      ...
+    product_map: (default: {})
+      PRODUCT_NAME: (number) PRODUCT_PRICE
+      ...
+
+A sample valid example would then be:
+
+  - action: profit
+    currency: dollar
+    suppliers:
+      - amazon
+      - walmart
+      - mcmaster
+    product_map:
+      bolts: 1.53
+      washers: 0.62
+      nuts: 0.77
+      paper_towels: 2.50
+
+or another (with minimum fields):
+  - action: profit
+    suppliers:
+      - ebay
+
+---
+
 
 pause_for_user -> print a message to the user and wait for a response. The content
     of the user's reply will not be stored or used. This allows indefinate pauses
@@ -32,87 +101,90 @@ pause_for_user -> print a message to the user and wait for a response. The conte
 sleep -> wait for specified period of time
 
         - action: sleep
-          duration: (int||float)
+          duration: (int||float) THE_DURATION
 
 lockout -> send a lockout command to the specified list of endpoints. If a lockout
     action is called, all subsequent requests will use the automatically generated
-    key. An unlock will automatically be called at the end of execution. For now,
-    the only available configuration is the list of endpoints to lock:
+    key. An unlock will automatically be called at the end of execution. If a
+    lockout_key is not given (or is None), one will be generated and cached.
 
         - action: lockout
-          endpoints:
-            - NAME
+          lockout_key: KEY (default: None)
+          endpoints: (default: [])
             - NAME
             ...
 
-set -> an improved method which sends a list of set requests to change/ensure a
-    desired system state and make sure that this state has been reached.
-    The check can be done using an other endpoint (for example, the actual
-    current output of trap_coil_X can be check using trap_coil_X_current_output
-    after setting trap_coil_X_current_limit).
-    If no endpoint name is given in "get_name", the check will use the endpoint used to set the value.
-    On can define target_value to be compared with the get_value; if None, the set_value is used.
-    The target_value can be a bool, string, float/int.
+set -> a list of sets to assign new endpoint values. There is also support for
+    ensuring the desired state has been reached. This check can be done using a different
+    endpoint (for example, the actual current output of trap_coil_X can be checked using
+    trap_coil_X_current_output after setting trap_coil_X_current_limit). If no endpoint name
+    is given in "get_name", the check will use the endpoint used to set the value.
+    One can define target_value to be compared with the get_value; if None, the set_value is used.
+    The target_value can be a bool, string, float/int. Warning, some strings have been determined to
+    be "special" (on/of, enable/disable, enabled/disabled, positive/negative) and will be translated
+    to either '1' or '0'. This is a recurring source of confusion and should be refactored, such
+    a project is non-trivial because of the amount of existing logic and the fact that it would
+    break previously working run scripts.
     The check can use the raw or calibrated value of the get_value.
     The tolerance between a "target_value" and the "value_get" can be set in an
     absolute scale (ex/default: 1) or a relative one (ex/default: 5%).
     The automatic check after the set of a specific endpoint can be disabled by
     adding a "no_check: True" to the endpoint set.
-    Sooner or later, this method should be replaced by a set_and_check within dripline...
 
         - action: set
           sets:
-            - name: NAME
-              value: VALUE
-              get_name: NAME
-              no_check: True/False
-              payload_field: value_raw/value_cal
-              target_value: TARGET_OF_SET
+            - name: ENDPOINT_NAME
+              value: NEW_VALUE
+              timeout: DURATION (default: )
+              no_check: (True/False) SELECTION (default: False)
+              sleep_time_before_check: DURATION (default: )
+              get_name: NAME (default: )
+              payload_field: (value_raw/value_cal) FIELD_NAME (default: )
+              target_value: TARGET_OF_SET (default: )
               tolerance: TOLERANCE (default: 1.)
 
-cmd -> send a cmd requests to an existing endpoint. The paramter "param" is the name
-    of the variable that needs to be given to the method and "vparam" the desired value.
+cmd -> send a cmd request to an existing endpoint. The key ARGUMENT names an
+    argument that will be given to the method and ARG_VALUE is the value it will be assigned
     For example, one can use "action_cmd" to start_timed_run (even if this is unoptimzed) by assigning:
     "endpoint: daq_target", "method_name: start_timed_run", "run_name: name_of_the_run",
-    "run_time: duration_of_the_run"
+    "run_time: duration_of_the_run". The asteval_format behavior is a feature which is known to be very
+    subtle. It is itself a dictionary, which allows the value of other keys within the command dictionary
+    itself to be modified/computed at run time. This is used, for example, to determine a datetime
+    which is a certain amount of time in the future, relative to the execution datetime of the cmd.
 
         - action: cmd
           cmds:
             - endpoint: ENDPOINT_NAME
-              method_name: method_name
-              (param: vparam)
-          ...
+              timeout: DURATION (default: )
+              asteval_format: (default: {})
+              method_name: METHOD
+              (ARGUMENT: ARG_VALUE)
+              ...
+            ...
 
-do -> combine the set and cmd actions within one list of "operations". Same deal as above...
+do -> combine a set of set, cmd, and/or sleep actions as described above.
+    This is included because it is helpful within multi_runs and adds no 
+    new functionality at the top-level of a file, relative to the specifiction
+    action types.
 
         - action: do
           operations:
-            - sleep:
-                duration: VALUE
-            - sets:
-              - name: NAME
-                value: VALUE
-                ...
-            - cmds:
-              - endpoint: oz
-                method_name: do_a_magic_trick
-                param: 1.3
-            - sets:
-              - name: chips
-                value: 2.4
-                payload_field: value_raw
+            - (sleep/sets/cmds):
+              A_VALID_OPERATIONS_LIST_OF_THIS_TYPE
+            ...
 
-esr_run -> send a cmd <method_name> to the esr service endpoint. First three fields
-    are required by dripline.core.Interface, other three fields correspond to esr run
-    settings and are optional (defaults are predefined in esr service script).
-    The general structure of the action block is:
+esr_run -> send a cmd run_scan to the esr service endpoint(esr_interface). The available
+    arguments to send in the cmd are determined by the ESR service itself, but the most
+    common/useful ones are
+          config_instruments: (bool) configure lockin, sweeper, and relays (default: True)
+          coils: (list) esr coils to use (default: [1,2,3,4,5])
+          n_fits: (int) number of fits to attempt on ESR traces (default: 2)
+    so it may be useful to include these in particular in run script file.
 
         - action: esr_run
-          timeout (int||float): (recommended setting: 600)
-         OPTIONAL ARGUMENTS:
-          config_instruments (bool): configure lockin, sweeper, and relays (default: True)
-          coils (list): esr coils to use (default: [1,2,3,4,5])
-          n_fits (int): number of fits to attempt on ESR traces (default: 2)
+          timeout: (int||float) DURATION (default: )
+          CMD_ARG: CMD_ARG_VALUE
+          ...
 
 single_trace -> collect the trace using one or more DAQ systems (if implemented).
     The trace corresponds to the instanteneous or cumulated fourier transform of the signal.
@@ -289,12 +361,12 @@ class RunScript(object):
         parser.add_argument('-f','--force-restart',
                             action='store_true',
                             default = False,
-                            help='forcing to restarting the whole execution script, regardless of its completion status',
+                            help='force execution to restart the  execution script from the beginning, regardless of its previous completion status',
                            )
         parser.add_argument('-d','--dry-run',
                             action='store_true',
                             default = False,
-                            help='flag which disactivates the daq start_timed_run globally (aka for the whole execution script)',
+                            help='flag which prevents the daq from taking data by overriding start_timed_run',
                            )
 
     def __call__(self, kwargs):
@@ -480,9 +552,6 @@ class RunScript(object):
             # checking a target has been given (else use the endpoint used to set)
             if 'target_value' in this_set:
                 target_value = this_set['target_value']
-            elif 'default_set' in this_set:
-                logger.debug('default_set ({}) given for <{}>: using this as target_value'.format(this_set['default_set'],a_target))
-                target_value = this_set['default_set']
             else:
                 logger.debug('no target_value given: using value ({}) as a target_value to check'.format(this_set['value']))
                 target_value = this_set['value']
