@@ -13,8 +13,8 @@ As with everything else, YAML will be the tested and preferred format for these 
 
 In addition to the configuration file itself, there are several runtime options. These
 are listed here and maintained as part of the argparse help fields.
-    - "--force-restart" (-f)
-    - "--dry-run" (-d)
+    - `--force-restart` (`-f`)
+    - `--dry-run` (`-d`)
 
 
 Input File
@@ -29,11 +29,13 @@ values. The required and optional configurations for each are described further 
 
 That is, at the highest level, the file should look like:
 
+    ```
     - action: VALUE_FROM_ABOVE
       ...
     - action: VALUE_FROM_ABOVE
       ...
     ...
+    ```
 
 Throughout the documentation for valid actions, we adopt some conventions to indicate
 how you should fill in information (we used some of them above). I'll try to describe in
@@ -57,6 +59,7 @@ the following bullet list:
 Let's take an example. The following is a contrived example configuration description,
 followed by a valid block based on it.
 
+  ```
   - action: profit
     currency: (dollar/bitcoin/euro) VALUE (default: dollar)
     rounding: VALUE (default: 0.05)
@@ -66,9 +69,11 @@ followed by a valid block based on it.
     product_map: (default: {})
       PRODUCT_NAME: (number) PRODUCT_PRICE
       ...
+  ```
 
 A sample valid example would then be:
 
+  ```
   - action: profit
     currency: dollar
     suppliers:
@@ -80,12 +85,14 @@ A sample valid example would then be:
       washers: 0.62
       nuts: 0.77
       paper_towels: 2.50
+  ```
 
 or another (with minimum fields):
+  ```
   - action: profit
     suppliers:
       - ebay
-
+  ```
 
 The documentation for each action is kept with its implementing method as a doc string.
 In each case, the method is named with the prefix `action_`
@@ -272,8 +279,10 @@ class RunScript(object):
         should still be done automatically (using loggers, sets/cmds to endpoints, etc.)
 
         Configfile entry:
+        ```
             - action: pause_for_user
               message: STRING_TO_PRINT_PRIOR_TO_PAUSE
+        ```
         '''
 
 
@@ -288,8 +297,10 @@ class RunScript(object):
         wait for specified period of time
 
         Configfile entry:
+        ```
             - action: sleep
               duration: (int||float) THE_DURATION
+        ```
         '''
         if isinstance(duration,int) or isinstance(duration,float):
             logger.info("Sleeping for {} sec, ignoring args: {}".format(duration, kwargs))
@@ -305,11 +316,13 @@ class RunScript(object):
         lockout_key is not given (or is None), one will be generated and cached.
 
         Configfile entry:
+        ```
             - action: lockout
               lockout_key: KEY (default: None)
               endpoints: (default: [])
                 - NAME
                   ...
+        ```
         '''
         if lockout_key is not None:
             self._lockout_key = lockout_key
@@ -337,6 +350,7 @@ class RunScript(object):
         itself to be modified/computed at run time. This is used, for example, to determine a datetime
         which is a certain amount of time in the future, relative to the execution datetime of the cmd.
 
+        ```
         Configfile entry:
             - action: cmd
               cmds:
@@ -347,6 +361,7 @@ class RunScript(object):
                   (ARGUMENT: ARG_VALUE)
                   ...
                 ...
+        ```
         '''
         # mandatory fields are <endpoint> and <method_name> for each cmd
         logger.info('doing cmd block')
@@ -385,6 +400,7 @@ class RunScript(object):
         adding a "no_check: True" to the endpoint set.
 
         Configfile entry:
+        ```
             - action: set
               sets:
                 - name: ENDPOINT_NAME
@@ -396,6 +412,7 @@ class RunScript(object):
                   payload_field: (value_raw/value_cal) FIELD_NAME (default: )
                   target_value: TARGET_OF_SET (default: )
                   tolerance: TOLERANCE (default: 1.)
+        ```
         '''
         logger.info('doing set block')
         set_kwargs = {'endpoint':None, 'value':None}
@@ -572,11 +589,13 @@ class RunScript(object):
         action types.
 
         Configfile entry:
+        ```
             - action: do
               operations:
                 - (sleep/sets/cmds):
                   A_VALID_OPERATIONS_LIST_OF_THIS_TYPE
                   ...
+        ```
         '''
         logger.info('doing do block')
         for i_do,this_do in enumerate(operations):
@@ -602,10 +621,12 @@ class RunScript(object):
         so it may be useful to include these in particular in run script file.
 
         Configfile entry:
+        ```
             - action: esr_run
               timeout: (int||float) DURATION (default: )
               CMD_ARG: CMD_ARG_VALUE
               ...
+        ```
         '''
         logger.info('Taking esr scan <esr_interface.run_scan> with args:\n{}'.format(kwargs))
         if self._dry_run_mode:
@@ -627,11 +648,13 @@ class RunScript(object):
         The name given should be the absolute path for the daq to save the file.
 
         Configfile entry:
+        ```
             - action: single_trace
               comment: COMMENT_STRING_TO_PASS_AS_REQUEST_KWARG
               daq: DAQ_ENDPOINT_NAME
               trace: TRACE_KWARG_TO_PASS_IN_DRIPLINE_REQUEST
               timeout: DRIPLINE_REQUEST_TIMEOUT
+        ```
         '''
         logger.info('taking single trace')
         if self._dry_run_mode:
@@ -663,6 +686,7 @@ class RunScript(object):
         of the form "shakedown of {}" to be parsed to "shakedown of NAME" or equivalent.
 
         Configfile entry:
+        ```
             - action: single_run
               timeout: TIMEOUT_FOR_START_RUN_CMDS
               run_name: FORMATABLE_STRING_FOR_RUN_NAME
@@ -670,6 +694,7 @@ class RunScript(object):
                 - daq_target: DAQ_NAME
                   run_duration: TIME_IN_SECONDS
               ...
+        ```
         '''
         logger.info('taking single run')
         if self._dry_run_mode:
@@ -758,6 +783,7 @@ class RunScript(object):
         also. There is not an obviously good reason for this.
 
         Configfile entry:
+        ```
             - action: multi_run
               operations: (default: [])
                 VALID_DO_OPERATION_LIST
@@ -776,6 +802,7 @@ class RunScript(object):
                     - DAQ_NAME
                     ...
               total_runs: NUMBER
+        ```
         '''
         # kwargs will be checked for "esr_runs" dict, but otherwise ignored
 
