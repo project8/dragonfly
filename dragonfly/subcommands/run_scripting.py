@@ -91,53 +91,6 @@ The documentation for each action is kept with its implementing method as a doc 
 In each case, the method is named with the prefix `action_`
 ---
 
-multi_run -> probably the most useful/sophisticated action, effectively provides
-    a for-loop structure. Each iteration will first go through any sets and/or cmds
-    provided in operations, then collect a single run. The "value" field for sets will be modified in that
-    it can be either a list, a dictionary or a string (it can also be a simple float/int).
-    If it is a dictionary, a value will be expected to be indexable from the run_iterator
-    (which starts at 0). If a string, then a value will be determiend using eval(VALUE.format(run_count)).
-    Similarly, the run_name may contain both/either "{run_count}" or {daq_target}
-    which will be passed as named replacements to format() (note that there will
-    not be any un-named values to unpack). The run_duration may be a value (which
-    will be used for all runs), or it may be an expression similar to the above
-    sets (allowing for runs of variable duration). Note that for using esr scan in multi_run,
-    one should give at least one field inside the esr_runs: for example, endpoint: esr_interface
-
-      - action: multi_run
-        operations:
-          - sets:
-              - name: NAME
-                value:
-                  0: VALUE
-                  1: VALUE
-                  2: VALUE
-              - name: NAME
-                value: "EXPRESION*{}"
-              ...
-          - cmds:
-              - endpoint: ENDPOINT_NAME
-                method_name: method_name
-                (value: ...)
-        esr_runs:
-            timeout (int||float): 600
-            config_instruments (bool): True (optional)
-            coils (list): [1,2,3,4,5] (optional)
-            n_fits (int): 2 (optional)
-        save_trace:
-            trace: X
-            comment: 'comment_{run_count}'
-            daq:
-                - NAME
-            timeout: 10
-        runs:
-            run_duration: {VALUE | "EXPRESSION" | {RUN_COUNT: VALUE, ...}}
-            run_name: STRING_OPTIONALLY_WITH_{daq_target}_AND/OR_{run_count}
-            daq_targets:
-              - NAME
-              - NAME
-
-        total_runs: VALUE
 '''
 
 from __future__ import absolute_import
@@ -786,6 +739,44 @@ class RunScript(object):
 
 
     def action_multi_run(self, total_runs=None, operations=[], runs=None, **kwargs):
+        '''
+        probably the most useful/sophisticated action, effectively provides
+        a for-loop structure. Each iteration will first go through any sets and/or cmds
+        provided in operations, then collect a single run. The "value" field for sets will be modified in that
+        it can be either a list, a dictionary or a string (it can also be a simple float/int).
+        If it is a dictionary, a value will be expected to be indexable from the run_iterator
+        (which starts at 0). If a string, then a value will be determiend using eval(VALUE.format(run_count)).
+        Similarly, the run_name may contain both/either "{run_count}" or {daq_target}
+        which will be passed as named replacements to format() (note that there will
+        not be any un-named values to unpack). The run_duration may be a value (which
+        will be used for all runs), or it may be an expression similar to the above
+        sets (allowing for runs of variable duration). Note that for using esr scan in multi_run,
+        one should give at least one field inside the esr_runs: for example, endpoint: esr_interface
+        NOTE: in the runs block, a run_duration value will override the value provided in any particular
+        daq config... this seems unintuitive but is what was done.
+        NOTE: daq_targets is only considered if there is not a daq_configs entry... this seems unintuitive
+        also. There is not an obviously good reason for this.
+
+        Configfile entry:
+            - action: multi_run
+              operations: (default: [])
+                VALID_DO_OPERATION_LIST
+              esr_runs: (default:{})
+                  VALID_ESR_RUN_BLOCK
+              save_trace: (default: )
+                  VALID_SAVE_TRACE_ACTION_BLOCK
+              runs:
+                  timeout: START_RUN_REQEUST_TIMEOUT
+                  run_duration: {VALUE | "EXPRESSION" | {RUN_COUNT: VALUE, ...}}
+                  run_name: STRING_OPTIONALLY_WITH_{daq_target}_AND/OR_{run_count}
+                  daq_config:
+                    - daq_targets: NAME
+                      run_duration: RUN_DURATION_IN_SECONDS
+                  daq_targets:
+                    - DAQ_NAME
+                    ...
+              total_runs: NUMBER
+        '''
         # kwargs will be checked for "esr_runs" dict, but otherwise ignored
 
         # establish default values for cache (in case of first call)
