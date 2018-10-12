@@ -41,7 +41,7 @@ dependency_links = [
 
 # RTD (afaik) requires an nominal build
 if on_rtd:
-    requirements = extras_require['asteval', 'doc']
+    requirements = ['asteval'] + extras_require['doc']
 
 everything = set()
 for deps in extras_require.values():
