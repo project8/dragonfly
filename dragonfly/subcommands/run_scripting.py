@@ -281,7 +281,6 @@ class RunScript(object):
         should still be done automatically (using loggers, sets/cmds to endpoints, etc.)
 
         Configfile entry:
-        .. code-block::
 
             - action: pause_for_user
               message: STRING_TO_PRINT_PRIOR_TO_PAUSE
@@ -299,10 +298,9 @@ class RunScript(object):
         wait for specified period of time
 
         Configfile entry:
-        ```
+
             - action: sleep
               duration: (int||float) THE_DURATION
-        ```
         '''
         if isinstance(duration,int) or isinstance(duration,float):
             logger.info("Sleeping for {} sec, ignoring args: {}".format(duration, kwargs))
@@ -318,13 +316,12 @@ class RunScript(object):
         lockout_key is not given (or is None), one will be generated and cached.
 
         Configfile entry:
-        ```
+
             - action: lockout
               lockout_key: KEY (default: None)
               endpoints: (default: [])
                 - NAME
                   ...
-        ```
         '''
         if lockout_key is not None:
             self._lockout_key = lockout_key
@@ -352,8 +349,8 @@ class RunScript(object):
         itself to be modified/computed at run time. This is used, for example, to determine a datetime
         which is a certain amount of time in the future, relative to the execution datetime of the cmd.
 
-        ```
         Configfile entry:
+
             - action: cmd
               cmds:
                 - endpoint: ENDPOINT_NAME
@@ -363,7 +360,6 @@ class RunScript(object):
                   (ARGUMENT: ARG_VALUE)
                   ...
                 ...
-        ```
         '''
         # mandatory fields are <endpoint> and <method_name> for each cmd
         logger.info('doing cmd block')
@@ -402,7 +398,7 @@ class RunScript(object):
         adding a "no_check: True" to the endpoint set.
 
         Configfile entry:
-        ```
+
             - action: set
               sets:
                 - name: ENDPOINT_NAME
@@ -414,7 +410,6 @@ class RunScript(object):
                   payload_field: (value_raw/value_cal) FIELD_NAME (default: )
                   target_value: TARGET_OF_SET (default: )
                   tolerance: TOLERANCE (default: 1.)
-        ```
         '''
         logger.info('doing set block')
         set_kwargs = {'endpoint':None, 'value':None}
@@ -591,13 +586,12 @@ class RunScript(object):
         action types.
 
         Configfile entry:
-        ```
+
             - action: do
               operations:
                 - (sleep/sets/cmds):
                   A_VALID_OPERATIONS_LIST_OF_THIS_TYPE
                   ...
-        ```
         '''
         logger.info('doing do block')
         for i_do,this_do in enumerate(operations):
@@ -623,12 +617,11 @@ class RunScript(object):
         so it may be useful to include these in particular in run script file.
 
         Configfile entry:
-        ```
+
             - action: esr_run
               timeout: (int||float) DURATION (default: )
               CMD_ARG: CMD_ARG_VALUE
               ...
-        ```
         '''
         logger.info('Taking esr scan <esr_interface.run_scan> with args:\n{}'.format(kwargs))
         if self._dry_run_mode:
@@ -650,13 +643,12 @@ class RunScript(object):
         The name given should be the absolute path for the daq to save the file.
 
         Configfile entry:
-        ```
+
             - action: single_trace
               comment: COMMENT_STRING_TO_PASS_AS_REQUEST_KWARG
               daq: DAQ_ENDPOINT_NAME
               trace: TRACE_KWARG_TO_PASS_IN_DRIPLINE_REQUEST
               timeout: DRIPLINE_REQUEST_TIMEOUT
-        ```
         '''
         logger.info('taking single trace')
         if self._dry_run_mode:
@@ -688,7 +680,7 @@ class RunScript(object):
         of the form "shakedown of {}" to be parsed to "shakedown of NAME" or equivalent.
 
         Configfile entry:
-        ```
+
             - action: single_run
               timeout: TIMEOUT_FOR_START_RUN_CMDS
               run_name: FORMATABLE_STRING_FOR_RUN_NAME
@@ -696,7 +688,6 @@ class RunScript(object):
                 - daq_target: DAQ_NAME
                   run_duration: TIME_IN_SECONDS
               ...
-        ```
         '''
         logger.info('taking single run')
         if self._dry_run_mode:
@@ -785,7 +776,7 @@ class RunScript(object):
         also. There is not an obviously good reason for this.
 
         Configfile entry:
-        ```
+
             - action: multi_run
               operations: (default: [])
                 VALID_DO_OPERATION_LIST
@@ -804,7 +795,6 @@ class RunScript(object):
                     - DAQ_NAME
                     ...
               total_runs: NUMBER
-        ```
         '''
         # kwargs will be checked for "esr_runs" dict, but otherwise ignored
 
