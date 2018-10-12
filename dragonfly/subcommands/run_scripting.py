@@ -27,9 +27,7 @@ values. The required and optional configurations for each are described further 
 
     action: {pause_for_user, sleep, lockout, set, cmd, do, esr_run, single_run, multi_run}
 
-That is, at the highest level, the file should look like:
-
-.. code-block::
+That is, at the highest level, the file should look like::
 
     - action: VALUE_FROM_ABOVE
       ...
@@ -58,9 +56,7 @@ the following bullet list:
   enclosed in parenthesis (the description paragraph should also explain this).
 
 Let's take an example. The following is a contrived example configuration description,
-followed by a valid block based on it.
-
-.. code-block:: 
+followed by a valid block based on it.::
 
   - action: profit
     currency: (dollar/bitcoin/euro) VALUE (default: dollar)
@@ -73,9 +69,8 @@ followed by a valid block based on it.
       ...
 
 
-A sample valid example would then be:
+A valid example would then be::
 
-  ```
   - action: profit
     currency: dollar
     suppliers:
@@ -87,14 +82,12 @@ A sample valid example would then be:
       washers: 0.62
       nuts: 0.77
       paper_towels: 2.50
-  ```
 
-or another (with minimum fields):
-  ```
+or another (with minimum fields)::
+
   - action: profit
     suppliers:
       - ebay
-  ```
 
 The documentation for each action is kept with its implementing method as a doc string.
 In each case, the method is named with the prefix `action_`
@@ -280,7 +273,7 @@ class RunScript(object):
         has to be done manually. Any result of the user action which needs to be measured
         should still be done automatically (using loggers, sets/cmds to endpoints, etc.)
 
-        Configfile entry:
+        Configfile entry::
 
             - action: pause_for_user
               message: STRING_TO_PRINT_PRIOR_TO_PAUSE
@@ -297,7 +290,7 @@ class RunScript(object):
         '''
         wait for specified period of time
 
-        Configfile entry:
+        Configfile entry::
 
             - action: sleep
               duration: (int||float) THE_DURATION
@@ -315,7 +308,7 @@ class RunScript(object):
         key. An unlock will automatically be called at the end of execution. If a
         lockout_key is not given (or is None), one will be generated and cached.
 
-        Configfile entry:
+        Configfile entry::
 
             - action: lockout
               lockout_key: KEY (default: None)
@@ -349,7 +342,7 @@ class RunScript(object):
         itself to be modified/computed at run time. This is used, for example, to determine a datetime
         which is a certain amount of time in the future, relative to the execution datetime of the cmd.
 
-        Configfile entry:
+        Configfile entry::
 
             - action: cmd
               cmds:
@@ -397,7 +390,7 @@ class RunScript(object):
         The automatic check after the set of a specific endpoint can be disabled by
         adding a "no_check: True" to the endpoint set.
 
-        Configfile entry:
+        Configfile entry::
 
             - action: set
               sets:
@@ -585,7 +578,7 @@ class RunScript(object):
         new functionality at the top-level of a file, relative to the specifiction
         action types.
 
-        Configfile entry:
+        Configfile entry::
 
             - action: do
               operations:
@@ -616,7 +609,7 @@ class RunScript(object):
             n_fits: (int) number of fits to attempt on ESR traces (default: 2)
         so it may be useful to include these in particular in run script file.
 
-        Configfile entry:
+        Configfile entry::
 
             - action: esr_run
               timeout: (int||float) DURATION (default: )
@@ -642,7 +635,7 @@ class RunScript(object):
         The trace corresponds to the instanteneous or cumulated fourier transform of the signal.
         The name given should be the absolute path for the daq to save the file.
 
-        Configfile entry:
+        Configfile entry::
 
             - action: single_trace
               comment: COMMENT_STRING_TO_PASS_AS_REQUEST_KWARG
@@ -679,7 +672,7 @@ class RunScript(object):
         of the daq_target list with .format(**{'name': <daq_target>}), allowing names
         of the form "shakedown of {}" to be parsed to "shakedown of NAME" or equivalent.
 
-        Configfile entry:
+        Configfile entry::
 
             - action: single_run
               timeout: TIMEOUT_FOR_START_RUN_CMDS
@@ -775,7 +768,7 @@ class RunScript(object):
         NOTE: daq_targets is only considered if there is not a daq_configs entry... this seems unintuitive
         also. There is not an obviously good reason for this.
 
-        Configfile entry:
+        Configfile entry::
 
             - action: multi_run
               operations: (default: [])
