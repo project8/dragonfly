@@ -86,132 +86,10 @@ or another (with minimum fields):
     suppliers:
       - ebay
 
+
+The documentation for each action is kept with its implementing method as a doc string.
+In each case, the method is named with the prefix `action_`
 ---
-
-
-pause_for_user -> print a message to the user and wait for a response. The content
-    of the user's reply will not be stored or used. This allows indefinate pauses
-    for user action. For example, changing the vertical position of the insert, which
-    has to be done manually. Any result of the user action which needs to be measured
-    should still be done automatically (using loggers, sets/cmds to endpoints, etc.)
-
-        - action: pause_for_user
-          message: STRING_TO_PRINT_PRIOR_TO_PAUSE
-
-sleep -> wait for specified period of time
-
-        - action: sleep
-          duration: (int||float) THE_DURATION
-
-lockout -> send a lockout command to the specified list of endpoints. If a lockout
-    action is called, all subsequent requests will use the automatically generated
-    key. An unlock will automatically be called at the end of execution. If a
-    lockout_key is not given (or is None), one will be generated and cached.
-
-        - action: lockout
-          lockout_key: KEY (default: None)
-          endpoints: (default: [])
-            - NAME
-            ...
-
-set -> a list of sets to assign new endpoint values. There is also support for
-    ensuring the desired state has been reached. This check can be done using a different
-    endpoint (for example, the actual current output of trap_coil_X can be checked using
-    trap_coil_X_current_output after setting trap_coil_X_current_limit). If no endpoint name
-    is given in "get_name", the check will use the endpoint used to set the value.
-    One can define target_value to be compared with the get_value; if None, the set_value is used.
-    The target_value can be a bool, string, float/int. Warning, some strings have been determined to
-    be "special" (on/of, enable/disable, enabled/disabled, positive/negative) and will be translated
-    to either '1' or '0'. This is a recurring source of confusion and should be refactored, such
-    a project is non-trivial because of the amount of existing logic and the fact that it would
-    break previously working run scripts.
-    The check can use the raw or calibrated value of the get_value.
-    The tolerance between a "target_value" and the "value_get" can be set in an
-    absolute scale (ex/default: 1) or a relative one (ex/default: 5%).
-    The automatic check after the set of a specific endpoint can be disabled by
-    adding a "no_check: True" to the endpoint set.
-
-        - action: set
-          sets:
-            - name: ENDPOINT_NAME
-              value: NEW_VALUE
-              timeout: DURATION (default: )
-              no_check: (True/False) SELECTION (default: False)
-              sleep_time_before_check: DURATION (default: )
-              get_name: NAME (default: )
-              payload_field: (value_raw/value_cal) FIELD_NAME (default: )
-              target_value: TARGET_OF_SET (default: )
-              tolerance: TOLERANCE (default: 1.)
-
-cmd -> send a cmd request to an existing endpoint. The key ARGUMENT names an
-    argument that will be given to the method and ARG_VALUE is the value it will be assigned
-    For example, one can use "action_cmd" to start_timed_run (even if this is unoptimzed) by assigning:
-    "endpoint: daq_target", "method_name: start_timed_run", "run_name: name_of_the_run",
-    "run_time: duration_of_the_run". The asteval_format behavior is a feature which is known to be very
-    subtle. It is itself a dictionary, which allows the value of other keys within the command dictionary
-    itself to be modified/computed at run time. This is used, for example, to determine a datetime
-    which is a certain amount of time in the future, relative to the execution datetime of the cmd.
-
-        - action: cmd
-          cmds:
-            - endpoint: ENDPOINT_NAME
-              timeout: DURATION (default: )
-              asteval_format: (default: {})
-              method_name: METHOD
-              (ARGUMENT: ARG_VALUE)
-              ...
-            ...
-
-do -> combine a set of set, cmd, and/or sleep actions as described above.
-    This is included because it is helpful within multi_runs and adds no 
-    new functionality at the top-level of a file, relative to the specifiction
-    action types.
-
-        - action: do
-          operations:
-            - (sleep/sets/cmds):
-              A_VALID_OPERATIONS_LIST_OF_THIS_TYPE
-            ...
-
-esr_run -> send a cmd run_scan to the esr service endpoint(esr_interface). The available
-    arguments to send in the cmd are determined by the ESR service itself, but the most
-    common/useful ones are
-          config_instruments: (bool) configure lockin, sweeper, and relays (default: True)
-          coils: (list) esr coils to use (default: [1,2,3,4,5])
-          n_fits: (int) number of fits to attempt on ESR traces (default: 2)
-    so it may be useful to include these in particular in run script file.
-
-        - action: esr_run
-          timeout: (int||float) DURATION (default: )
-          CMD_ARG: CMD_ARG_VALUE
-          ...
-
-single_trace -> collect the trace using one or more DAQ systems (if implemented).
-    The trace corresponds to the instanteneous or cumulated fourier transform of the signal.
-    The name given should be the absolute path for the daq to save the file.
-
-        - action: single_trace
-          comment: 'trace_comment'
-          daq:
-            - NAME
-          timeout: X
-
-single_run -> collect a single run using one or more DAQ systems. The value provided
-    for the run_duration currently must be number in seconds, it would be nice if
-    in the future we could also accept strings that are mathematical expressions
-    (so that you could do things like 2*60*60 to convert 2 hours to seconds, making
-    it possible to represent the hours units with "*60*60" and keep the relevant 2).
-    The run_name will be passed along to the start_timed_run method of each element
-    of the daq_target list with .format(**{'name': <daq_target>}), allowing names
-    of the form "shakedown of {}" to be parsed to "shakedown of NAME" or equivalent.
-
-        - action: single_run
-          run_duration: TIME_IN_SECONDS
-          run_name: STRING_FOR_RUN_NAME
-          daq_targets:
-            - NAME
-            - NAME
-          ...
 
 multi_run -> probably the most useful/sophisticated action, effectively provides
     a for-loop structure. Each iteration will first go through any sets and/or cmds
@@ -433,6 +311,19 @@ class RunScript(object):
         fp.close()
 
     def action_pause_for_user(self, message, **kwargs):
+        '''
+        print a message to the user and wait for a response. The content
+        of the user's reply will not be stored or used. This allows indefinate pauses
+        for user action. For example, changing the vertical position of the insert, which
+        has to be done manually. Any result of the user action which needs to be measured
+        should still be done automatically (using loggers, sets/cmds to endpoints, etc.)
+
+        Configfile entry:
+            - action: pause_for_user
+              message: STRING_TO_PRINT_PRIOR_TO_PAUSE
+        '''
+
+
         # note, this is python2 specific... (in python3 it is input not raw_input
         # but python2 has something different named input
         userinput = 0
@@ -440,6 +331,13 @@ class RunScript(object):
             userinput = str.lower(raw_input('{}\n(Type \'y\' to continue)\n'.format(message)))
 
     def action_sleep(self, duration, **kwargs):
+        '''
+        wait for specified period of time
+
+        Configfile entry:
+            - action: sleep
+              duration: (int||float) THE_DURATION
+        '''
         if isinstance(duration,int) or isinstance(duration,float):
             logger.info("Sleeping for {} sec, ignoring args: {}".format(duration, kwargs))
         else:
@@ -447,6 +345,19 @@ class RunScript(object):
         time.sleep(duration)
 
     def action_lockout(self, endpoints=[], lockout_key=None, **kwargs):
+        '''
+        send a lockout command to the specified list of endpoints. If a lockout
+        action is called, all subsequent requests will use the automatically generated
+        key. An unlock will automatically be called at the end of execution. If a
+        lockout_key is not given (or is None), one will be generated and cached.
+
+        Configfile entry:
+            - action: lockout
+              lockout_key: KEY (default: None)
+              endpoints: (default: [])
+                - NAME
+                  ...
+        '''
         if lockout_key is not None:
             self._lockout_key = lockout_key
         if self._lockout_key is None:
@@ -463,6 +374,27 @@ class RunScript(object):
                 raise dripline.core.exception_map[result.retcode](result.return_msg)
 
     def action_cmd(self, cmds, **kwargs):
+        '''
+        send a cmd request to an existing endpoint. The key ARGUMENT names an
+        argument that will be given to the method and ARG_VALUE is the value it will be assigned
+        For example, one can use "action_cmd" to start_timed_run (even if this is unoptimzed) by assigning:
+        "endpoint: daq_target", "method_name: start_timed_run", "run_name: name_of_the_run",
+        "run_time: duration_of_the_run". The asteval_format behavior is a feature which is known to be very
+        subtle. It is itself a dictionary, which allows the value of other keys within the command dictionary
+        itself to be modified/computed at run time. This is used, for example, to determine a datetime
+        which is a certain amount of time in the future, relative to the execution datetime of the cmd.
+
+        Configfile entry:
+            - action: cmd
+              cmds:
+                - endpoint: ENDPOINT_NAME
+                  timeout: DURATION (default: )
+                  asteval_format: (default: {})
+                  method_name: METHOD
+                  (ARGUMENT: ARG_VALUE)
+                  ...
+                ...
+        '''
         # mandatory fields are <endpoint> and <method_name> for each cmd
         logger.info('doing cmd block')
         for this_cmd in cmds:
@@ -481,6 +413,37 @@ class RunScript(object):
             self.interface.cmd(**cmd_kwargs)
 
     def action_set(self, sets, **kwargs):
+        '''
+        a list of sets to assign new endpoint values. There is also support for
+        ensuring the desired state has been reached. This check can be done using a different
+        endpoint (for example, the actual current output of trap_coil_X can be checked using
+        trap_coil_X_current_output after setting trap_coil_X_current_limit). If no endpoint name
+        is given in "get_name", the check will use the endpoint used to set the value.
+        One can define target_value to be compared with the get_value; if None, the set_value is used.
+        The target_value can be a bool, string, float/int. Warning, some strings have been determined to
+        be "special" (on/of, enable/disable, enabled/disabled, positive/negative) and will be translated
+        to either '1' or '0'. This is a recurring source of confusion and should be refactored, such
+        a project is non-trivial because of the amount of existing logic and the fact that it would
+        break previously working run scripts.
+        The check can use the raw or calibrated value of the get_value.
+        The tolerance between a "target_value" and the "value_get" can be set in an
+        absolute scale (ex/default: 1) or a relative one (ex/default: 5%).
+        The automatic check after the set of a specific endpoint can be disabled by
+        adding a "no_check: True" to the endpoint set.
+
+        Configfile entry:
+            - action: set
+              sets:
+                - name: ENDPOINT_NAME
+                  value: NEW_VALUE
+                  timeout: DURATION (default: )
+                  no_check: (True/False) SELECTION (default: False)
+                  sleep_time_before_check: DURATION (default: )
+                  get_name: NAME (default: )
+                  payload_field: (value_raw/value_cal) FIELD_NAME (default: )
+                  target_value: TARGET_OF_SET (default: )
+                  tolerance: TOLERANCE (default: 1.)
+        '''
         logger.info('doing set block')
         set_kwargs = {'endpoint':None, 'value':None}
         get_kwargs = {'endpoint':None}
@@ -649,6 +612,19 @@ class RunScript(object):
             logger.info('{} checked to {}'.format(this_set['name'],value_get))
 
     def action_do(self, operations, **kwargs):
+        '''
+        combine a set of set, cmd, and/or sleep actions as described above.
+        This is included because it is helpful within multi_runs and adds no 
+        new functionality at the top-level of a file, relative to the specifiction
+        action types.
+
+        Configfile entry:
+            - action: do
+              operations:
+                - (sleep/sets/cmds):
+                  A_VALID_OPERATIONS_LIST_OF_THIS_TYPE
+                  ...
+        '''
         logger.info('doing do block')
         for i_do,this_do in enumerate(operations):
             logger.info('doing operation #{}'.format(i_do))
@@ -663,6 +639,21 @@ class RunScript(object):
                     logger.info('operation <{}> unknown: skipping!'.format(key))
 
     def action_esr_run(self, **kwargs):
+        '''
+        send a cmd run_scan to the esr service endpoint(esr_interface). The available
+        arguments to send in the cmd are determined by the ESR service itself, but the most
+        common/useful ones are
+            config_instruments: (bool) configure lockin, sweeper, and relays (default: True)
+            coils: (list) esr coils to use (default: [1,2,3,4,5])
+            n_fits: (int) number of fits to attempt on ESR traces (default: 2)
+        so it may be useful to include these in particular in run script file.
+
+        Configfile entry:
+            - action: esr_run
+              timeout: (int||float) DURATION (default: )
+              CMD_ARG: CMD_ARG_VALUE
+              ...
+        '''
         logger.info('Taking esr scan <esr_interface.run_scan> with args:\n{}'.format(kwargs))
         if self._dry_run_mode:
             logger.info('--dry-run flag: not starting an esr scan')
@@ -677,6 +668,18 @@ class RunScript(object):
     # if available, this allows to record the trace/noise background on a daq.
     # this method depends on a method named "save_trace" defined in the associated daq class
     def action_single_trace(self, daq, trace, comment, timeout=None,**kwargs):
+        '''
+        collect the trace using one or more DAQ systems (if implemented).
+        The trace corresponds to the instanteneous or cumulated fourier transform of the signal.
+        The name given should be the absolute path for the daq to save the file.
+
+        Configfile entry:
+            - action: single_trace
+              comment: COMMENT_STRING_TO_PASS_AS_REQUEST_KWARG
+              daq: DAQ_ENDPOINT_NAME
+              trace: TRACE_KWARG_TO_PASS_IN_DRIPLINE_REQUEST
+              timeout: DRIPLINE_REQUEST_TIMEOUT
+        '''
         logger.info('taking single trace')
         if self._dry_run_mode:
             logger.info('--dry-run flag: not starting an trace acquisition')
@@ -696,6 +699,25 @@ class RunScript(object):
     # take a single run using one or several daq.
     # this method depends on a method named "start_timed_run" defined in the associated daq class
     def action_single_run(self, daq_configs, run_name, timeout=None, **kwargs):
+        '''
+        collect a single run using one or more DAQ systems. The value provided
+        for the run_duration currently must be number in seconds, it would be nice if
+        in the future we could also accept strings that are mathematical expressions
+        (so that you could do things like 2*60*60 to convert 2 hours to seconds, making
+        it possible to represent the hours units with "*60*60" and keep the relevant 2).
+        The run_name will be passed along to the start_timed_run method of each element
+        of the daq_target list with .format(**{'name': <daq_target>}), allowing names
+        of the form "shakedown of {}" to be parsed to "shakedown of NAME" or equivalent.
+
+        Configfile entry:
+            - action: single_run
+              timeout: TIMEOUT_FOR_START_RUN_CMDS
+              run_name: FORMATABLE_STRING_FOR_RUN_NAME
+              daq_configs:
+                - daq_target: DAQ_NAME
+                  run_duration: TIME_IN_SECONDS
+              ...
+        '''
         logger.info('taking single run')
         if self._dry_run_mode:
             logger.info('--dry-run flag: not starting an electron run')
