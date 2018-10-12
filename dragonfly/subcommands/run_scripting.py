@@ -1,193 +1,96 @@
-
 '''
-A parser which defines a syntax for writing run scripts. This should in principle
+Overview
+~~~~~~~~
+
+A YAML parser which defines a syntax for writing run "scripts." This should in principle
 make it possible to define any data acquisition task (which might take hours or
 even multiple days) in advance and have it proceed fully automatically. Furthermore,
 "standard" run sets (such as calibrations) could be fully standardized and the same
 run file used every time.
 
 As with everything else, YAML will be the tested and preferred format for these files
-(since json doesn't support comments), but json is expected to also work since
-PyYAML can also parse that by default.
+(since json doesn't support comments). But of course json is a subset of YAML.
 
-The file should parse to a list of dictionaries. Each dictionary will define a type of
-action to take, in order, with various configurable parameters. Each will specify the
-action with a line:
+In addition to the configuration file itself, there are several runtime options. These
+are listed here and maintained as part of the argparse help fields.
+    - "--force-restart" (-f)
+    - "--dry-run" (-d)
+
+
+Input File
+~~~~~~~~~~
+
+The file should parse to a list of dictionaries. Each of these dictionaries will define
+a type of action to take, in order from the file, with various configurable parameters.
+Each *must* specify the action by including the key "action" with one of the following
+values. The required and optional configurations for each are described further below.
 
     action: {pause_for_user, sleep, lockout, set, cmd, do, esr_run, single_run, multi_run}
 
-Several flags exists:
-    - "--force-restart" (-f): remove the cache and force the execution script to start from the very begining.
-    - "--dry-run" (-d): globally disable the possibility to start a run (in single_run and multi_run).
+That is, at the highest level, the file should look like:
 
-pause_for_user -> print a message to the user and wait for a response. The content
-    of the user's reply will not be stored or used. This allows indefinate pauses
-    for user action. For example, changing the vertical position of the insert, which
-    has to be done manually. Any result of the user action which needs to be measured
-    should still be done automatically (using loggers, sets/cmds to endpoints, etc.)
+    - action: VALUE_FROM_ABOVE
+      ...
+    - action: VALUE_FROM_ABOVE
+      ...
+    ...
 
-        - action: pause_for_user
-          message: STRING_TO_PRINT_PRIOR_TO_PAUSE
+Throughout the documentation for valid actions, we adopt some conventions to indicate
+how you should fill in information (we used some of them above). I'll try to describe in
+the following bullet list:
 
-sleep -> wait for specified period of time
+- items in ALL_CAPITALS indicate that you need to provide the value.
+- an elipsis (...) indicates that the list of entries may be extended, following preceding pattern
+- sometimes it may not be obvious what the "type" of a value may be named within parenthesis ();
+  multiple valid types will be separated with || (a syntax for "or" in some programming languages);
+  this will come before the ALL_CAPS_INDICATION_TO_ADD_A_VALUE
+- sometimes the valid value for a parameter must come from a limited set. This will follow the
+  pattern as above for types, but will use a forward slash (/) to separate valid values.
+- sometimes named configuration fields are optional. This will be indicated by a default value
+  listed in parenthesis after the ALL_CAPS_INDICATION_TO_ADD_A_VALUE if it is single-valued, or on
+  the line with the key if it takes multiple values (which will be described on subsequent lines).
+  Note that sometimes the default behavior is not to include the entry at all (this is not the
+  same as 0, or None); such a case is indicated by "(default: )"
+- sometimes both the key and value must be provided, in this case the entire entry will be
+  enclosed in parenthesis (the description paragraph should also explain this).
 
-        - action: sleep
-          duration: (int||float)
+Let's take an example. The following is a contrived example configuration description,
+followed by a valid block based on it.
 
-lockout -> send a lockout command to the specified list of endpoints. If a lockout
-    action is called, all subsequent requests will use the automatically generated
-    key. An unlock will automatically be called at the end of execution. For now,
-    the only available configuration is the list of endpoints to lock:
+  - action: profit
+    currency: (dollar/bitcoin/euro) VALUE (default: dollar)
+    rounding: VALUE (default: 0.05)
+    suppliers:
+      - SUPPLIER_NAME
+      ...
+    product_map: (default: {})
+      PRODUCT_NAME: (number) PRODUCT_PRICE
+      ...
 
-        - action: lockout
-          endpoints:
-            - NAME
-            - NAME
-            ...
+A sample valid example would then be:
 
-set -> an improved method which sends a list of set requests to change/ensure a
-    desired system state and make sure that this state has been reached.
-    The check can be done using an other endpoint (for example, the actual
-    current output of trap_coil_X can be check using trap_coil_X_current_output
-    after setting trap_coil_X_current_limit).
-    If no endpoint name is given in "get_name", the check will use the endpoint used to set the value.
-    On can define target_value to be compared with the get_value; if None, the set_value is used.
-    The target_value can be a bool, string, float/int.
-    The check can use the raw or calibrated value of the get_value.
-    The tolerance between a "target_value" and the "value_get" can be set in an
-    absolute scale (ex/default: 1) or a relative one (ex/default: 5%).
-    The automatic check after the set of a specific endpoint can be disabled by
-    adding a "no_check: True" to the endpoint set.
-    Sooner or later, this method should be replaced by a set_and_check within dripline...
+  - action: profit
+    currency: dollar
+    suppliers:
+      - amazon
+      - walmart
+      - mcmaster
+    product_map:
+      bolts: 1.53
+      washers: 0.62
+      nuts: 0.77
+      paper_towels: 2.50
 
-        - action: set
-          sets:
-            - name: NAME
-              value: VALUE
-              get_name: NAME
-              no_check: True/False
-              payload_field: value_raw/value_cal
-              target_value: TARGET_OF_SET
-              tolerance: TOLERANCE (default: 1.)
+or another (with minimum fields):
+  - action: profit
+    suppliers:
+      - ebay
 
-cmd -> send a cmd requests to an existing endpoint. The paramter "param" is the name
-    of the variable that needs to be given to the method and "vparam" the desired value.
-    For example, one can use "action_cmd" to start_timed_run (even if this is unoptimzed) by assigning:
-    "endpoint: daq_target", "method_name: start_timed_run", "run_name: name_of_the_run",
-    "run_time: duration_of_the_run"
 
-        - action: cmd
-          cmds:
-            - endpoint: ENDPOINT_NAME
-              method_name: method_name
-              (param: vparam)
-          ...
+The documentation for each action is kept with its implementing method as a doc string.
+In each case, the method is named with the prefix `action_`
+---
 
-do -> combine the set and cmd actions within one list of "operations". Same deal as above...
-
-        - action: do
-          operations:
-            - sleep:
-                duration: VALUE
-            - sets:
-              - name: NAME
-                value: VALUE
-                ...
-            - cmds:
-              - endpoint: oz
-                method_name: do_a_magic_trick
-                param: 1.3
-            - sets:
-              - name: chips
-                value: 2.4
-                payload_field: value_raw
-
-esr_run -> send a cmd <method_name> to the esr service endpoint. First three fields
-    are required by dripline.core.Interface, other three fields correspond to esr run
-    settings and are optional (defaults are predefined in esr service script).
-    The general structure of the action block is:
-
-        - action: esr_run
-          timeout (int||float): (recommended setting: 600)
-         OPTIONAL ARGUMENTS:
-          config_instruments (bool): configure lockin, sweeper, and relays (default: True)
-          coils (list): esr coils to use (default: [1,2,3,4,5])
-          n_fits (int): number of fits to attempt on ESR traces (default: 2)
-
-single_trace -> collect the trace using one or more DAQ systems (if implemented).
-    The trace corresponds to the instanteneous or cumulated fourier transform of the signal.
-    The name given should be the absolute path for the daq to save the file.
-
-        - action: single_trace
-          comment: 'trace_comment'
-          daq:
-            - NAME
-          timeout: X
-
-single_run -> collect a single run using one or more DAQ systems. The value provided
-    for the run_duration currently must be number in seconds, it would be nice if
-    in the future we could also accept strings that are mathematical expressions
-    (so that you could do things like 2*60*60 to convert 2 hours to seconds, making
-    it possible to represent the hours units with "*60*60" and keep the relevant 2).
-    The run_name will be passed along to the start_timed_run method of each element
-    of the daq_target list with .format(**{'name': <daq_target>}), allowing names
-    of the form "shakedown of {}" to be parsed to "shakedown of NAME" or equivalent.
-
-        - action: single_run
-          run_duration: TIME_IN_SECONDS
-          run_name: STRING_FOR_RUN_NAME
-          daq_targets:
-            - NAME
-            - NAME
-          ...
-
-multi_run -> probably the most useful/sophisticated action, effectively provides
-    a for-loop structure. Each iteration will first go through any sets and/or cmds
-    provided in operations, then collect a single run. The "value" field for sets will be modified in that
-    it can be either a list, a dictionary or a string (it can also be a simple float/int).
-    If it is a dictionary, a value will be expected to be indexable from the run_iterator
-    (which starts at 0). If a string, then a value will be determiend using eval(VALUE.format(run_count)).
-    Similarly, the run_name may contain both/either "{run_count}" or {daq_target}
-    which will be passed as named replacements to format() (note that there will
-    not be any un-named values to unpack). The run_duration may be a value (which
-    will be used for all runs), or it may be an expression similar to the above
-    sets (allowing for runs of variable duration). Note that for using esr scan in multi_run,
-    one should give at least one field inside the esr_runs: for example, endpoint: esr_interface
-
-      - action: multi_run
-        operations:
-          - sets:
-              - name: NAME
-                value:
-                  0: VALUE
-                  1: VALUE
-                  2: VALUE
-              - name: NAME
-                value: "EXPRESION*{}"
-              ...
-          - cmds:
-              - endpoint: ENDPOINT_NAME
-                method_name: method_name
-                (value: ...)
-        esr_runs:
-            timeout (int||float): 600
-            config_instruments (bool): True (optional)
-            coils (list): [1,2,3,4,5] (optional)
-            n_fits (int): 2 (optional)
-        save_trace:
-            trace: X
-            comment: 'comment_{run_count}'
-            daq:
-                - NAME
-            timeout: 10
-        runs:
-            run_duration: {VALUE | "EXPRESSION" | {RUN_COUNT: VALUE, ...}}
-            run_name: STRING_OPTIONALLY_WITH_{daq_target}_AND/OR_{run_count}
-            daq_targets:
-              - NAME
-              - NAME
-
-        total_runs: VALUE
 '''
 
 from __future__ import absolute_import
@@ -289,12 +192,12 @@ class RunScript(object):
         parser.add_argument('-f','--force-restart',
                             action='store_true',
                             default = False,
-                            help='forcing to restarting the whole execution script, regardless of its completion status',
+                            help='force execution to restart the  execution script from the beginning, regardless of its previous completion status',
                            )
         parser.add_argument('-d','--dry-run',
                             action='store_true',
                             default = False,
-                            help='flag which disactivates the daq start_timed_run globally (aka for the whole execution script)',
+                            help='flag which prevents the daq from taking data by overriding start_timed_run',
                            )
 
     def __call__(self, kwargs):
@@ -361,6 +264,19 @@ class RunScript(object):
         fp.close()
 
     def action_pause_for_user(self, message, **kwargs):
+        '''
+        print a message to the user and wait for a response. The content
+        of the user's reply will not be stored or used. This allows indefinate pauses
+        for user action. For example, changing the vertical position of the insert, which
+        has to be done manually. Any result of the user action which needs to be measured
+        should still be done automatically (using loggers, sets/cmds to endpoints, etc.)
+
+        Configfile entry:
+            - action: pause_for_user
+              message: STRING_TO_PRINT_PRIOR_TO_PAUSE
+        '''
+
+
         # note, this is python2 specific... (in python3 it is input not raw_input
         # but python2 has something different named input
         userinput = 0
@@ -368,6 +284,13 @@ class RunScript(object):
             userinput = str.lower(raw_input('{}\n(Type \'y\' to continue)\n'.format(message)))
 
     def action_sleep(self, duration, **kwargs):
+        '''
+        wait for specified period of time
+
+        Configfile entry:
+            - action: sleep
+              duration: (int||float) THE_DURATION
+        '''
         if isinstance(duration,int) or isinstance(duration,float):
             logger.info("Sleeping for {} sec, ignoring args: {}".format(duration, kwargs))
         else:
@@ -375,6 +298,19 @@ class RunScript(object):
         time.sleep(duration)
 
     def action_lockout(self, endpoints=[], lockout_key=None, **kwargs):
+        '''
+        send a lockout command to the specified list of endpoints. If a lockout
+        action is called, all subsequent requests will use the automatically generated
+        key. An unlock will automatically be called at the end of execution. If a
+        lockout_key is not given (or is None), one will be generated and cached.
+
+        Configfile entry:
+            - action: lockout
+              lockout_key: KEY (default: None)
+              endpoints: (default: [])
+                - NAME
+                  ...
+        '''
         if lockout_key is not None:
             self._lockout_key = lockout_key
         if self._lockout_key is None:
@@ -391,6 +327,27 @@ class RunScript(object):
                 raise dripline.core.exception_map[result.retcode](result.return_msg)
 
     def action_cmd(self, cmds, **kwargs):
+        '''
+        send a cmd request to an existing endpoint. The key ARGUMENT names an
+        argument that will be given to the method and ARG_VALUE is the value it will be assigned
+        For example, one can use "action_cmd" to start_timed_run (even if this is unoptimzed) by assigning:
+        "endpoint: daq_target", "method_name: start_timed_run", "run_name: name_of_the_run",
+        "run_time: duration_of_the_run". The asteval_format behavior is a feature which is known to be very
+        subtle. It is itself a dictionary, which allows the value of other keys within the command dictionary
+        itself to be modified/computed at run time. This is used, for example, to determine a datetime
+        which is a certain amount of time in the future, relative to the execution datetime of the cmd.
+
+        Configfile entry:
+            - action: cmd
+              cmds:
+                - endpoint: ENDPOINT_NAME
+                  timeout: DURATION (default: )
+                  asteval_format: (default: {})
+                  method_name: METHOD
+                  (ARGUMENT: ARG_VALUE)
+                  ...
+                ...
+        '''
         # mandatory fields are <endpoint> and <method_name> for each cmd
         logger.info('doing cmd block')
         for this_cmd in cmds:
@@ -409,6 +366,37 @@ class RunScript(object):
             self.interface.cmd(**cmd_kwargs)
 
     def action_set(self, sets, **kwargs):
+        '''
+        a list of sets to assign new endpoint values. There is also support for
+        ensuring the desired state has been reached. This check can be done using a different
+        endpoint (for example, the actual current output of trap_coil_X can be checked using
+        trap_coil_X_current_output after setting trap_coil_X_current_limit). If no endpoint name
+        is given in "get_name", the check will use the endpoint used to set the value.
+        One can define target_value to be compared with the get_value; if None, the set_value is used.
+        The target_value can be a bool, string, float/int. Warning, some strings have been determined to
+        be "special" (on/of, enable/disable, enabled/disabled, positive/negative) and will be translated
+        to either '1' or '0'. This is a recurring source of confusion and should be refactored, such
+        a project is non-trivial because of the amount of existing logic and the fact that it would
+        break previously working run scripts.
+        The check can use the raw or calibrated value of the get_value.
+        The tolerance between a "target_value" and the "value_get" can be set in an
+        absolute scale (ex/default: 1) or a relative one (ex/default: 5%).
+        The automatic check after the set of a specific endpoint can be disabled by
+        adding a "no_check: True" to the endpoint set.
+
+        Configfile entry:
+            - action: set
+              sets:
+                - name: ENDPOINT_NAME
+                  value: NEW_VALUE
+                  timeout: DURATION (default: )
+                  no_check: (True/False) SELECTION (default: False)
+                  sleep_time_before_check: DURATION (default: )
+                  get_name: NAME (default: )
+                  payload_field: (value_raw/value_cal) FIELD_NAME (default: )
+                  target_value: TARGET_OF_SET (default: )
+                  tolerance: TOLERANCE (default: 1.)
+        '''
         logger.info('doing set block')
         set_kwargs = {'endpoint':None, 'value':None}
         get_kwargs = {'endpoint':None}
@@ -480,9 +468,6 @@ class RunScript(object):
             # checking a target has been given (else use the endpoint used to set)
             if 'target_value' in this_set:
                 target_value = this_set['target_value']
-            elif 'default_set' in this_set:
-                logger.debug('default_set ({}) given for <{}>: using this as target_value'.format(this_set['default_set'],a_target))
-                target_value = this_set['default_set']
             else:
                 logger.debug('no target_value given: using value ({}) as a target_value to check'.format(this_set['value']))
                 target_value = this_set['value']
@@ -580,6 +565,19 @@ class RunScript(object):
             logger.info('{} checked to {}'.format(this_set['name'],value_get))
 
     def action_do(self, operations, **kwargs):
+        '''
+        combine a set of set, cmd, and/or sleep actions as described above.
+        This is included because it is helpful within multi_runs and adds no 
+        new functionality at the top-level of a file, relative to the specifiction
+        action types.
+
+        Configfile entry:
+            - action: do
+              operations:
+                - (sleep/sets/cmds):
+                  A_VALID_OPERATIONS_LIST_OF_THIS_TYPE
+                  ...
+        '''
         logger.info('doing do block')
         for i_do,this_do in enumerate(operations):
             logger.info('doing operation #{}'.format(i_do))
@@ -594,6 +592,21 @@ class RunScript(object):
                     logger.info('operation <{}> unknown: skipping!'.format(key))
 
     def action_esr_run(self, **kwargs):
+        '''
+        send a cmd run_scan to the esr service endpoint(esr_interface). The available
+        arguments to send in the cmd are determined by the ESR service itself, but the most
+        common/useful ones are
+            config_instruments: (bool) configure lockin, sweeper, and relays (default: True)
+            coils: (list) esr coils to use (default: [1,2,3,4,5])
+            n_fits: (int) number of fits to attempt on ESR traces (default: 2)
+        so it may be useful to include these in particular in run script file.
+
+        Configfile entry:
+            - action: esr_run
+              timeout: (int||float) DURATION (default: )
+              CMD_ARG: CMD_ARG_VALUE
+              ...
+        '''
         logger.info('Taking esr scan <esr_interface.run_scan> with args:\n{}'.format(kwargs))
         if self._dry_run_mode:
             logger.info('--dry-run flag: not starting an esr scan')
@@ -608,6 +621,18 @@ class RunScript(object):
     # if available, this allows to record the trace/noise background on a daq.
     # this method depends on a method named "save_trace" defined in the associated daq class
     def action_single_trace(self, daq, trace, comment, timeout=None,**kwargs):
+        '''
+        collect the trace using one or more DAQ systems (if implemented).
+        The trace corresponds to the instanteneous or cumulated fourier transform of the signal.
+        The name given should be the absolute path for the daq to save the file.
+
+        Configfile entry:
+            - action: single_trace
+              comment: COMMENT_STRING_TO_PASS_AS_REQUEST_KWARG
+              daq: DAQ_ENDPOINT_NAME
+              trace: TRACE_KWARG_TO_PASS_IN_DRIPLINE_REQUEST
+              timeout: DRIPLINE_REQUEST_TIMEOUT
+        '''
         logger.info('taking single trace')
         if self._dry_run_mode:
             logger.info('--dry-run flag: not starting an trace acquisition')
@@ -627,6 +652,25 @@ class RunScript(object):
     # take a single run using one or several daq.
     # this method depends on a method named "start_timed_run" defined in the associated daq class
     def action_single_run(self, daq_configs, run_name, timeout=None, **kwargs):
+        '''
+        collect a single run using one or more DAQ systems. The value provided
+        for the run_duration currently must be number in seconds, it would be nice if
+        in the future we could also accept strings that are mathematical expressions
+        (so that you could do things like 2*60*60 to convert 2 hours to seconds, making
+        it possible to represent the hours units with "*60*60" and keep the relevant 2).
+        The run_name will be passed along to the start_timed_run method of each element
+        of the daq_target list with .format(**{'name': <daq_target>}), allowing names
+        of the form "shakedown of {}" to be parsed to "shakedown of NAME" or equivalent.
+
+        Configfile entry:
+            - action: single_run
+              timeout: TIMEOUT_FOR_START_RUN_CMDS
+              run_name: FORMATABLE_STRING_FOR_RUN_NAME
+              daq_configs:
+                - daq_target: DAQ_NAME
+                  run_duration: TIME_IN_SECONDS
+              ...
+        '''
         logger.info('taking single run')
         if self._dry_run_mode:
             logger.info('--dry-run flag: not starting an electron run')
@@ -695,6 +739,44 @@ class RunScript(object):
 
 
     def action_multi_run(self, total_runs=None, operations=[], runs=None, **kwargs):
+        '''
+        probably the most useful/sophisticated action, effectively provides
+        a for-loop structure. Each iteration will first go through any sets and/or cmds
+        provided in operations, then collect a single run. The "value" field for sets will be modified in that
+        it can be either a list, a dictionary or a string (it can also be a simple float/int).
+        If it is a dictionary, a value will be expected to be indexable from the run_iterator
+        (which starts at 0). If a string, then a value will be determiend using eval(VALUE.format(run_count)).
+        Similarly, the run_name may contain both/either "{run_count}" or {daq_target}
+        which will be passed as named replacements to format() (note that there will
+        not be any un-named values to unpack). The run_duration may be a value (which
+        will be used for all runs), or it may be an expression similar to the above
+        sets (allowing for runs of variable duration). Note that for using esr scan in multi_run,
+        one should give at least one field inside the esr_runs: for example, endpoint: esr_interface
+        NOTE: in the runs block, a run_duration value will override the value provided in any particular
+        daq config... this seems unintuitive but is what was done.
+        NOTE: daq_targets is only considered if there is not a daq_configs entry... this seems unintuitive
+        also. There is not an obviously good reason for this.
+
+        Configfile entry:
+            - action: multi_run
+              operations: (default: [])
+                VALID_DO_OPERATION_LIST
+              esr_runs: (default:{})
+                  VALID_ESR_RUN_BLOCK
+              save_trace: (default: )
+                  VALID_SAVE_TRACE_ACTION_BLOCK
+              runs:
+                  timeout: START_RUN_REQEUST_TIMEOUT
+                  run_duration: {VALUE | "EXPRESSION" | {RUN_COUNT: VALUE, ...}}
+                  run_name: STRING_OPTIONALLY_WITH_{daq_target}_AND/OR_{run_count}
+                  daq_config:
+                    - daq_targets: NAME
+                      run_duration: RUN_DURATION_IN_SECONDS
+                  daq_targets:
+                    - DAQ_NAME
+                    ...
+              total_runs: NUMBER
+        '''
         # kwargs will be checked for "esr_runs" dict, but otherwise ignored
 
         # establish default values for cache (in case of first call)
