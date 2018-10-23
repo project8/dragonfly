@@ -21,6 +21,7 @@ except ImportError:
 from datetime import datetime
 from itertools import groupby
 import collections
+import six
 
 # local imports
 from dripline.core import Provider, Endpoint, fancy_doc, constants
@@ -109,7 +110,7 @@ class SQLTable(Endpoint):
     A class for making calls to _insert_with_return
     '''
     def __init__(self, table_name, schema,
-                 required_insert_names=None,
+                 required_insert_names=[],
                  return_col_names=[],
                  optional_insert_names=[],
                  default_insert_values={},
@@ -201,7 +202,7 @@ class SQLTable(Endpoint):
             raise DriplineInternalError('InsertDBEndpoint must have a RunDBInterface as provider')
         # make sure that all provided insert values are expected
         for col in kwargs.keys():
-            if not col in self.column_map.keys():
+            if not col in self._column_map.keys():
                 #raise DriplineDatabaseError('not allowed to insert into: {}'.format(col))
                 logger.warning('got an unexpected insert column <{}>'.format(col))
                 kwargs.pop(col)
@@ -211,7 +212,7 @@ class SQLTable(Endpoint):
                 raise DriplineDatabaseError('a value for <{}> is required!\ngot: {}'.format(col, kwargs))
         # build the insert dict
         this_insert = self._default_insert_dict.copy()
-        this_insert.update({self.column_map[payload_key]:value for key,value in kwargs.items()})
+        this_insert.update({self._column_map[key]:value for key,value in kwargs.items()})
         return_vals = self._insert_with_return(this_insert, self._return_names,)
         return return_vals
 

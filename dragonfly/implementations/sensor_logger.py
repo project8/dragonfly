@@ -21,9 +21,11 @@ class SensorLogger(Gogol, PostgreSQLInterface):
     '''
     Project 8 slow control table implementation
     '''
-    def __init__(self, sensor_type_map_table, data_tables_dict={}, **kwargs):
+    def __init__(self, sensor_type_map_table, sensor_type_column_name='type', sensor_type_match_column='endpoint_name', data_tables_dict={}, **kwargs):
         '''
         sensor_type_map_table (str): name of the child endpoint of this instance which provides access to the endpoint_id_map, which stores the sensor type
+        sensor_type_column_name (str): name of the column to use for the return type (matched against keys in the data_tables_dict argument here)
+        sensor_type_match_column (str): column against which to check for matches to the sensor name
         data_tables_dict (dict): dictionary mapping types (in the sensor_type_map_table) to child endpoints of this instance which provide access to the data_table for that type
         '''
         # listen to sensor_value alerts channel
@@ -32,6 +34,8 @@ class SensorLogger(Gogol, PostgreSQLInterface):
         Gogol.__init__(self, **kwargs)
 
         self._sensor_type_map_table = sensor_type_map_table
+        self._sensor_type_column_name = sensor_type_column_name
+        self._sensor_type_match_column = sensor_type_match_column
         self._sensor_types = {}
         self._data_tables = data_tables_dict
         self.service = self
@@ -57,15 +61,15 @@ class SensorLogger(Gogol, PostgreSQLInterface):
         ### Get the type and table for the sensor
         this_type = None
         this_table = self.endpoints[self._sensor_type_map_table]
-        this_type = this_table.do_select(return_cols=['type'],
-                                         where_eq_dict={'endpoint_name':sensor_name},
+        this_type = this_table.do_select(return_cols=[self._sensor_type_column_name],
+                                         where_eq_dict={self._sensor_type_match_column:sensor_name},
                                         )
         if not this_type[1]:
             logger.critical('endpoint with name "{}" was not found in database hence failed to log its value; might need to add it to the db'.format(sensor_name))
         else:
             this_table = self.endpoints[self._sensor_type_map_table]
-            this_type = this_table.do_select(return_cols=['type'],
-                                             where_eq_dict={'endpoint_name':sensor_name},
+            this_type = this_table.do_select(return_cols=[self._sensor_type_column_name],
+                                             where_eq_dict={self._sensor_type_match_column:sensor_name},
                                             )
             self._sensor_types[sensor_name] = this_type[1][0][0]
             this_data_table = self.endpoints[self._data_tables[self._sensor_types[sensor_name]]]
