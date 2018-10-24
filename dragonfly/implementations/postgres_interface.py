@@ -21,6 +21,7 @@ except ImportError:
 from datetime import datetime
 from itertools import groupby
 import collections
+import six
 
 # local imports
 from dripline.core import Provider, Endpoint, fancy_doc, constants
@@ -109,7 +110,7 @@ class SQLTable(Endpoint):
     A class for making calls to _insert_with_return
     '''
     def __init__(self, table_name, schema,
-                 required_insert_names=None,
+                 required_insert_names=[],
                  return_col_names=[],
                  optional_insert_names=[],
                  default_insert_values={},
@@ -118,9 +119,9 @@ class SQLTable(Endpoint):
         '''
         table_name (str): name of the table within the database
         schema (str): name of the schema where the table is located
-        required_insert_names (list): list of names (str) of the table columns which must be included on every requested insert
+        required_insert_names (list): list of names (str||dict) of the table columns which must be included on every requested insert (if dict: keys are 'column' and 'payload_key', if string it is assumed that both are that value)
         return_col_names (list): list of names (str) of columns whose values should be returned on completion of the insert
-        optional_insert_names (list): list of names (str) of columns which the user may specify on an insert request, but which may be omitted
+        optional_insert_names (list): list of names (str||dict) of columns which the user may specify on an insert request, but which may be omitted (if dict: keys are 'column' and 'payload_key', if string it is assumed that both are that value)
         default_insert_values (dict): dictionary of {column_names: values} to serve as defaults when inserting, any values provided explicitly on the insert request will override these values
         '''
         if not 'sqlalchemy' in globals():
@@ -130,10 +131,25 @@ class SQLTable(Endpoint):
         self.table_name = table_name
         self.schema = schema
         self._return_names = return_col_names
-        self._required_insert_names = required_insert_names
-        self._optional_insert_names = optional_insert_names
+        self._column_map = {}
+        self._required_insert_names = self._ensure_col_key_map(required_insert_names)
+        self._optional_insert_names = self._ensure_col_key_map(optional_insert_names)
         self._default_insert_dict = default_insert_values
 
+    def _ensure_col_key_map(self, column_list):
+        to_return = []
+        for a_col in column_list:
+            if isinstance(a_col, six.string_types):
+                to_return.append({'column': a_col, 'payload_key': a_col})
+                self._column_map[a_col] = a_col
+            elif isinstance(a_col, dict):
+                if not 'column' in a_col or not 'payload_key' in a_col:
+                    raise KeyError("column insert map <{}> does not contain the required keys, ['column', 'payload_key']".format(a_col))
+                to_return.append(a_col)
+                self._column_map[a_col['payload_key']] = a_col['column']
+            else:
+                raise TypeError("column info <{}> is not of an expected type".format(a_col))
+        return to_return
 
     def do_select(self, return_cols=[], where_eq_dict={}, where_lt_dict={}, where_gt_dict={}):
         '''
@@ -186,20 +202,18 @@ class SQLTable(Endpoint):
             raise DriplineInternalError('InsertDBEndpoint must have a RunDBInterface as provider')
         # make sure that all provided insert values are expected
         for col in kwargs.keys():
-            if (not col in self._required_insert_names) and (not col in self._optional_insert_names):
+            if not col in self._column_map.keys():
                 #raise DriplineDatabaseError('not allowed to insert into: {}'.format(col))
                 logger.warning('got an unexpected insert column <{}>'.format(col))
                 kwargs.pop(col)
         # make sure that all required columns are present
         for col in self._required_insert_names:
-            if not col in kwargs.keys():
+            if not col['payload_key'] in kwargs.keys():
                 raise DriplineDatabaseError('a value for <{}> is required!\ngot: {}'.format(col, kwargs))
         # build the insert dict
         this_insert = self._default_insert_dict.copy()
-        this_insert.update(kwargs)
-        return_vals = self._insert_with_return(this_insert,
-                                               self._return_names,
-                                              )
+        this_insert.update({self._column_map[key]:value for key,value in kwargs.items()})
+        return_vals = self._insert_with_return(this_insert, self._return_names,)
         return return_vals
 
 @fancy_doc
