@@ -1,0 +1,7 @@
+{
+	"max_age": "2h",
+
+	"root_dirs": ["/my/data/hot-dir", "/my/data/warm-dir"],
+
+	"ignore_dirs": ["/my/data/hot-dir/keepthis"]
+}
