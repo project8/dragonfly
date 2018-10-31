@@ -1,4 +1,4 @@
-import os, datetime, logging, json
+import os, datetime, logging
 
 from dripline.core import Endpoint, Scheduler, fancy_doc
 
@@ -11,12 +11,9 @@ class DungBeetle(Endpoint,Scheduler):
         Endpoint.__init__(self, **kwargs)
         Scheduler.__init__(self, **kwargs)
         
-	self.root_dirs, self.max_age, self.ignore_dirs
-	with open('DungBeetleConfig.json') as json_load:
-	    config = json.load(json_load)
-            self.root_dirs = config['root_dirs']
-            self.max_age = config['max_age']
-            self.ignore_dirs = config['ignore_dirs']
+        self.root_dirs = root_dirs
+        self.max_age = max_age
+        self.ignore_dirs = ignore_dirs
 
     # convert a string representing time to seconds
     def get_seconds(self, time):
