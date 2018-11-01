@@ -13,36 +13,36 @@ class AtOperator():
     def __init__(self):
 
         self.calendar_scope = 'https://www.googleapis.com/auth/calendar.readonly'
-	self.slack_client = SlackClient(os.environ.get('BOT_TOKEN'))
-	self.bot_id = None
+        self.slack_client = SlackClient(os.environ.get('BOT_TOKEN'))
+        self.bot_id = None
 
     # get credentials from google calendar
     def get_credentials(self):
-    	creds_dir = os.path.join(os.path.expanduser('~'), '.credentials')
-     	if not os.path.exists(creds_dir):
-     	    os.makedirs(creds_dir)
-    	creds_path = os.path.join(creds_dir, 'calendar-go-quickstart.json')
-    	store = file.Storage(creds_path)
-    	creds = store.get()
-    	if not creds or creds.invalid:
+        creds_dir = os.path.join(os.path.expanduser('~'), '.credentials')
+        if not os.path.exists(creds_dir):
+            os.makedirs(creds_dir)
+        creds_path = os.path.join(creds_dir, 'calendar-go-quickstart.json')
+        store = file.Storage(creds_path)
+        creds = store.get()
+        if not creds or creds.invalid:
             flow = client.flow_from_clientsecrets('credentials.json', self.calendar_scope)
             creds = tools.run_flow(flow, store)
         return creds
 
     # get a list of events beging 
     def get_event_list(self, creds, length):
-    	service = build('calendar', 'v3', http=creds.authorize(Http()))
-    	time = datetime.datetime.now().isoformat() + 'Z'
-    	events_list = service.events().list(calendarId='primary', timeMin=time, 
+        service = build('calendar', 'v3', http=creds.authorize(Http()))
+        time = datetime.datetime.now().isoformat() + 'Z'
+        events_list = service.events().list(calendarId='primary', timeMin=time, 
                                             maxResults=length, singleEvents=True, 
                                             orderBy='startTime').execute()
-    	events = events_list.get('items', [])
-    	if not events:
+        events = events_list.get('items', [])
+        if not events:
             raise Exception('No events found.')
-    	result = []
+        result = []
         for event in events:
             result.append(event['summary'])
-    	return result
+        return result
 
     def get_operator_name(self, event_list):
         return 'a random dude'
