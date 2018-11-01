@@ -6,8 +6,8 @@ __all__ = []
 __all__.append('DungBeetle')
 @fancy_doc
 class DungBeetle(Endpoint,Scheduler):
-
-    def __init__(self, root_dirs = [], max_age = "2h", ignore_dirs = [], **kwargs):
+    def __init__(self, root_dirs = [], max_age = "2h", 
+					ignore_dirs = [], **kwargs):
         Endpoint.__init__(self, **kwargs)
         Scheduler.__init__(self, **kwargs)
         
@@ -48,6 +48,6 @@ class DungBeetle(Endpoint,Scheduler):
             else:
                 raise Exception(" path [{}] does not exist.".format(root_dir))    
    
-    def secheduled_action(self):
+    def scheduled_action(self):
         self.clean_dir()
-
+        
