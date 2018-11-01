@@ -34,8 +34,8 @@ class AtOperator():
     	service = build('calendar', 'v3', http=creds.authorize(Http()))
     	time = datetime.datetime.now().isoformat() + 'Z'
     	events_list = service.events().list(calendarId='primary', timeMin=time, 
-						maxResults=length, singleEvents=True, 
-						orderBy='startTime').execute()
+                                            maxResults=length, singleEvents=True, 
+                                            orderBy='startTime').execute()
     	events = events_list.get('items', [])
     	if not events:
             raise Exception('No events found.')
@@ -45,44 +45,44 @@ class AtOperator():
     	return result
 
     def get_operator_name(self, event_list):
-	return 'a random dude'
+        return 'a random dude'
 
     def get_operator_id(self, name):
-	return 'UDsomething'
+        return 'UDsomething'
 
     def at_operator(self, channel, operator_id):
-    	self.slack_client.api_call("chat.postMessage", channel=channel, text='got it!', 
-					as_user=True)
-	self.slack_client.api_call("chat.postMessage", link_names=1, channel=channel, 
-					text='<@' + operator_id + '>', as_user=True)
+        self.slack_client.api_call("chat.postMessage", channel=channel, text='got it!', 
+                                    as_user=True)
+        self.slack_client.api_call("chat.postMessage", link_names=1, channel=channel, 
+                                    text='<@' + operator_id + '>', as_user=True)
 
 
     def parse_output(self, rtm_output):
-    	output = rtm_output
-    	if output and len(output) > 0:
+        output = rtm_output
+        if output and len(output) > 0:
             for o in output:
                 if o and 'text' in o and ('@' + str(self.bot_id)) in o['text']:
                     return o['channel']
-    	return None, None
+        return None, None
 
 
 
     def run(self):
-	logging.getLogger('googleapiclient.discovery_cache').setLevel(logging.ERROR)
-	if self.slack_client.rtm_connect():
-    	    logging.info('connected!')
-    	    self.bot_id = self.slack_client.api_call('auth.test')['user_id']
-    	while True:
-            channel = self.parse_output(self.slack_client.rtm_read())
-            if channel:
-		creds = self.get_credentials()
-		event_list = self.get_event_list(creds, 50)
-		operator_name = self.get_operator_name(event_list)
-		operator_id = self.get_operator_id(operator_name)
-            	self.at_operator(channel, operator_id)
-	    time.sleep(1)
-	else:
-    	    logging.error("fail!!!")
+        logging.getLogger('googleapiclient.discovery_cache').setLevel(logging.ERROR)
+        if self.slack_client.rtm_connect():
+            logging.info('connected!')
+            self.bot_id = self.slack_client.api_call('auth.test')['user_id']
+            while True:
+                channel = self.parse_output(self.slack_client.rtm_read())
+                if channel:
+                    creds = self.get_credentials()
+                    event_list = self.get_event_list(creds, 50)
+                    operator_name = self.get_operator_name(event_list)
+                    operator_id = self.get_operator_id(operator_name)
+                    self.at_operator(channel, operator_id)
+                time.sleep(1)
+        else:
+            logging.error("fail!!!")
 
 
 
