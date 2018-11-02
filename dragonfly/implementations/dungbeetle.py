@@ -6,6 +6,9 @@ __all__ = []
 __all__.append('DungBeetle')
 @fancy_doc
 class DungBeetle(Endpoint,Scheduler):
+    '''
+    A scheduler endpoint for removing stale directories.
+    '''
     def __init__(self,
                  root_dirs = [],
                  max_age = {"hours":2},
@@ -35,7 +38,7 @@ class DungBeetle(Endpoint,Scheduler):
                     os.rmdir(path)
                     logging.info(" path [{}] has been removed.".format(path))
                 except OSError, err:
-                    logging.warn(" path [{}] not removed because not empty".format(path))
+                    logging.warning(" path [{}] not removed because not empty".format(path))
 
     # clean up empty directories under a specific directory without deleting itself
     def clean_dir(self):
