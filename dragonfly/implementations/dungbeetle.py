@@ -6,8 +6,11 @@ __all__ = []
 __all__.append('DungBeetle')
 @fancy_doc
 class DungBeetle(Endpoint,Scheduler):
-    def __init__(self, root_dirs = [], max_age = {"hours":2}, 
-					ignore_dirs = [], **kwargs):
+    def __init__(self,
+                 root_dirs = [],
+                 max_age = {"hours":2},
+                 ignore_dirs = [],
+                 **kwargs):
         '''
         root_dirs (list of str): list of strings naming paths to monitor, these dirs are not removed
         max_age (dict): min age for a directory to be removed if empty, is a dict of kwargs to datetime.timedelta.__init__
@@ -21,13 +24,13 @@ class DungBeetle(Endpoint,Scheduler):
         self.ignore_dirs = ignore_dirs
 
     # recursively delete empty directories
-    def del_dir(self, path, min_ctime):
+    def del_dir(self, path, min_creation_time):
         if os.path.isdir(path):
-            ctime = datetime.datetime.fromtimestamp(os.path.getctime(path))
+            creation_time = datetime.datetime.fromtimestamp(os.path.getctime(path))
             for item in os.listdir(path):
                 sub_path = os.path.join(path, item)
-                self.del_dir(sub_path, min_ctime)
-            if ctime < min_ctime and (not path in self.ignore_dirs):
+                self.del_dir(sub_path, min_creation_time)
+            if creation_time < min_creation_time and (not path in self.ignore_dirs):
                 try:
                     os.rmdir(path)
                     logging.info(" path [{}] has been removed.".format(path))
@@ -36,12 +39,12 @@ class DungBeetle(Endpoint,Scheduler):
 
     # clean up empty directories under a specific directory without deleting itself
     def clean_dir(self):
-        min_ctime = datetime.datetime.now() - self.max_age
+        min_creation_time = datetime.datetime.now() - self.max_age
 	for root_dir in self.root_dirs:
             if os.path.isdir(root_dir):
                 for item in os.listdir(root_dir):
                     sub_path = os.path.join(root_dir, item)
-                    self.del_dir(sub_path, min_ctime)
+                    self.del_dir(sub_path, min_creation_time)
             else:
                 raise Exception(" path [{}] does not exist.".format(root_dir))    
    
