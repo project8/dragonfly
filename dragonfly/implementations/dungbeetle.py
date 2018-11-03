@@ -2,6 +2,9 @@ import os, datetime, logging
 
 from dripline.core import Endpoint, Scheduler, fancy_doc
 
+logger = logging.getLogger(__name__)
+
+
 __all__ = []
 __all__.append('DungBeetle')
 @fancy_doc
@@ -36,14 +39,16 @@ class DungBeetle(Endpoint,Scheduler):
             if creation_time < min_creation_time and (not path in self.ignore_dirs):
                 try:
                     os.rmdir(path)
-                    logging.info(" path [{}] has been removed.".format(path))
+                    logger.info(" path [{}] has been removed.".format(path))
                 except OSError, err:
-                    logging.warning(" path [{}] not removed because not empty".format(path))
+                    logger.warning(" path [{}] not removed because not empty".format(path))
 
     # clean up empty directories under a specific directory without deleting itself
     def clean_dir(self):
+        logger.debug("going to clean directories")
         min_creation_time = datetime.datetime.now() - self.max_age
         for root_dir in self.root_dirs:
+            logger.debug("checking {}".format(root_dir))
             if os.path.isdir(root_dir):
                 for item in os.listdir(root_dir):
                     sub_path = os.path.join(root_dir, item)
@@ -52,5 +57,6 @@ class DungBeetle(Endpoint,Scheduler):
                 raise Exception(" path [{}] does not exist.".format(root_dir))
 
     def scheduled_action(self):
+        logger.info("doing scheduled check")
         self.clean_dir()
 
