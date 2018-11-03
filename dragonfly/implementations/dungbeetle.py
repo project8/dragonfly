@@ -21,7 +21,7 @@ class DungBeetle(Endpoint,Scheduler):
         '''
         Endpoint.__init__(self, **kwargs)
         Scheduler.__init__(self, **kwargs)
-        
+
         self.root_dirs = root_dirs
         self.max_age = datetime.timedelta(**max_age)
         self.ignore_dirs = ignore_dirs
@@ -43,14 +43,14 @@ class DungBeetle(Endpoint,Scheduler):
     # clean up empty directories under a specific directory without deleting itself
     def clean_dir(self):
         min_creation_time = datetime.datetime.now() - self.max_age
-	for root_dir in self.root_dirs:
+        for root_dir in self.root_dirs:
             if os.path.isdir(root_dir):
                 for item in os.listdir(root_dir):
                     sub_path = os.path.join(root_dir, item)
                     self.del_dir(sub_path, min_creation_time)
             else:
-                raise Exception(" path [{}] does not exist.".format(root_dir))    
-   
+                raise Exception(" path [{}] does not exist.".format(root_dir))
+
     def scheduled_action(self):
         self.clean_dir()
-        
+
