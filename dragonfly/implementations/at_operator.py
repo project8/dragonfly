@@ -9,12 +9,16 @@ logging.basicConfig()
 
 # need to export BOT_TOKEN first
 class AtOperator():
-
+    
     def __init__(self):
 
         self.calendar_scope = 'https://www.googleapis.com/auth/calendar.readonly'
         self.slack_client = SlackClient(os.environ.get('BOT_TOKEN'))
         self.bot_id = None
+
+        self.current_operator_name = None
+        self.current_operator_id = None
+        self.expire_time = datetime.datetime(2000, 1, 1, 0, 0, 0, 0).isoformat() + 'Z'
 
     # get credentials from google calendar
     def get_credentials(self):
@@ -32,29 +36,33 @@ class AtOperator():
     # get a list of events beging 
     def get_event_list(self, creds, length):
         service = build('calendar', 'v3', http=creds.authorize(Http()))
-        time = datetime.datetime.now().isoformat() + 'Z'
-        events_list = service.events().list(calendarId='primary', timeMin=time, 
+        time_now = datetime.datetime.now().isoformat() + 'Z'
+        events_list = service.events().list(calendarId='primary', timeMin=time_now, 
                                             maxResults=length, singleEvents=True, 
                                             orderBy='startTime').execute()
         events = events_list.get('items', [])
         if not events:
             raise Exception('No events found.')
-        result = []
+        summaries = []
+        end_times = []
         for event in events:
-            result.append(event['summary'])
-        return result
+            summaries.append(event['summary'])
+            end_times.append(event['end'])
+        return summaries, end_times
 
-    def get_operator_name(self, event_list):
-        return 'a random dude'
+    def get_operator_name_and_expire_time(self, event_summaries, event_end_times):
+        name = 'a random dude'
+        expire_time = datetime.datetime.today()
+        return name, expire_time
 
     def get_operator_id(self, name):
         return 'UDsomething'
 
     def at_operator(self, channel, operator_id):
         self.slack_client.api_call("chat.postMessage", channel=channel, text='got it!', 
-                                    as_user=True)
+                                   as_user=True)
         self.slack_client.api_call("chat.postMessage", link_names=1, channel=channel, 
-                                    text='<@' + operator_id + '>', as_user=True)
+                                   text='<@' + operator_id + '>', as_user=True)
 
 
     def parse_output(self, rtm_output):
@@ -75,11 +83,18 @@ class AtOperator():
             while True:
                 channel = self.parse_output(self.slack_client.rtm_read())
                 if channel:
-                    creds = self.get_credentials()
-                    event_list = self.get_event_list(creds, 50)
-                    operator_name = self.get_operator_name(event_list)
-                    operator_id = self.get_operator_id(operator_name)
-                    self.at_operator(channel, operator_id)
+                    # if saved information for current operator is out-of-date,
+                    # update it by going to the Google calendar
+                    time_now = datetime.datetime.now().isoformat() + 'Z'
+                    if time_now > self.expire_time:
+                        creds = self.get_credentials()
+                        event_summaries, event_end_times = self.get_event_list(creds, 50)
+                        new_operator_name, new_expire_time= self.get_operator_name(event_list)
+                        self.expire_time = new_expire_time
+                        if new_operator_name != self.current_operator_name:
+                            self.current_operator_name = new_operator_name
+                            self.current_operator_id = self.get_operator_id(self.current_operator_name)
+                    self.at_operator(channel, self.current_operator_id)
                 time.sleep(1)
         else:
             logging.error("fail!!!")
