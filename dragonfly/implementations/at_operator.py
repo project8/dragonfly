@@ -17,7 +17,7 @@ class AtOperator():
 
         self.current_operator_name = None
         self.current_operator_id = None
-        self.expire_time = datetime.datetime(2000, 1, 1, 0, 0, 0, 0).isoformat() + 'Z'
+        self.expiration_time = datetime.datetime(2000, 1, 1, 0, 0, 0, 0).isoformat() + 'Z'
 
 
     # get credentials from google calendar
@@ -48,13 +48,10 @@ class AtOperator():
         for event in events:
             if 'Operator:' in event['summary']:
                 name = event['summary'].replace('Operator: ', '')
-                if event['end']['datetime'] != '':
-                    return name, event['end']['datetime']
+                if event['end'].get('dateTime') != None:
+                    return name, event['end'].get('dateTime').isoformat() + 'Z'
                 else:
-                    return name, datetime.datetime.combine(event['end']['date'], datetime.datetime.max.time())
-        #name = 'Yadi'
-        #expiration_time = datetime.datetime.today()
-        #return name, expiration_time
+                    return name, datetime.datetime.combine(datetime.datetime.strptime(event['end'].get('date'),'%Y-%m-%d'), datetime.datetime.max.time()).isoformat() + 'Z'
         return None, None
 
     def construct_id_dictionary(self):
@@ -115,7 +112,7 @@ class AtOperator():
                                
                             else:
                                 raise Exception('The operator listed on Google calendar is not found in Slack.')
-                     self.at_operator(channel, self.current_operator_id)
+                    self.at_operator(channel, self.current_operator_id)
                 time.sleep(1)
         else:
             logging.error("fail!!!")
