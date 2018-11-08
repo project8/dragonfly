@@ -1,4 +1,5 @@
 import datetime, logging, os, time
+from dateutil import parser
 # for google
 from googleapiclient.discovery import build
 from httplib2 import Http
@@ -15,9 +16,8 @@ class AtOperator():
         self.calendar_scope = 'https://www.googleapis.com/auth/calendar.readonly'
         self.slack_client = SlackClient(os.environ.get('BOT_TOKEN'))
 
-        self.current_operator_name = None
-        self.current_operator_id = None
-        self.expiration_time = datetime.datetime(2000, 1, 1, 0, 0, 0, 0).isoformat() + 'Z'
+        self.current_operator_name = ''
+        self.current_operator_id = ''
 
 
     # get credentials from google calendar
@@ -33,26 +33,37 @@ class AtOperator():
             creds = tools.run_flow(flow, store)
         return creds
 
-    def get_event_list(self, creds, length):
+    def get_event_list(self, creds):
         service = build('calendar', 'v3', http=creds.authorize(Http()))
-        time_now = datetime.datetime.now().isoformat() + 'Z'
-        events_list = service.events().list(calendarId='primary', timeMin=time_now, 
-                                            maxResults=length, singleEvents=True, 
+        time= (datetime.datetime.now() - datetime.timedelta(hours=10)).isoformat() + 'Z'
+        events_list = service.events().list(calendarId='primary', timeMin=time, 
+                                            maxResults=100, singleEvents=True, 
                                             orderBy='startTime').execute()
         events = events_list.get('items', [])
         if not events:
             raise Exception('No events found.')
         return events
 
-    def get_operator_name_and_expiration_time(self, events):
+    def get_event_time(self, event, start):
+        point = 'start'
+        if not start:
+            point = 'end'
+        if event[point].get('dateTime') != None:
+            return parser.parse(event[point].get('dateTime')).replace(tzinfo=None)
+        else:
+            date = datetime.datetime.strptime(event[point].get('date'),'%Y-%m-%d')
+            if start:
+                return datetime.datetime.combine(date, datetime.datetime.min.time())
+            else:
+                return datetime.datetime.combine(date, datetime.datetime.max.time())
+        
+    def get_operator_name(self, events):
         for event in events:
             if 'Operator:' in event['summary']:
-                name = event['summary'].replace('Operator: ', '')
-                if event['end'].get('dateTime') != None:
-                    return name, event['end'].get('dateTime').isoformat() + 'Z'
-                else:
-                    return name, datetime.datetime.combine(datetime.datetime.strptime(event['end'].get('date'),'%Y-%m-%d'), datetime.datetime.max.time()).isoformat() + 'Z'
-        return None, None
+                time_now = datetime.datetime.now()
+                if self.get_event_time(event, True) < time_now and self.get_event_time(event, False) > time_now:
+                    return event['summary'].replace('Operator: ', '')
+        return None
 
     def construct_id_dictionary(self):
         request = self.slack_client.api_call("users.list")
@@ -78,7 +89,7 @@ class AtOperator():
             for o in output:
                 if o and 'text' in o and ('@' + str(bot_id)) in o['text']:
                     return o['channel']
-        return None, None
+        return None
 
 
 
@@ -91,28 +102,25 @@ class AtOperator():
             while True:
                 channel = self.parse_output(self.slack_client.rtm_read(), bot_id)
                 if channel:
-                    # if saved information for current operator is out-of-date,
-                    # update it by going to the Google calendar
-                    time_now = datetime.datetime.now().isoformat() + 'Z'
-                    if str(time_now) > str(self.expiration_time):
-                        creds = self.get_credentials()
-                        events = self.get_event_list(creds, 50)
-                        new_operator_name, new_expiration_time = self.get_operator_name_and_expiration_time(events)
-                        if not new_operator_name:
+                    creds = self.get_credentials()
+                    events = self.get_event_list(creds)
+                    new_operator_name = self.get_operator_name(events)
+                    if not new_operator_name:
+                        self.slack_client.api_call("chat.postMessage", 
+                                                   channel=channel, 
+                                                   text='No operator is on duty now.', 
+                                                   as_user=True)
+                    else:
+                        if new_operator_name in id_dictionary:
+                            if new_operator_name != self.current_operator_name:
+                                self.current_operator_name = new_operator_name
+                                self.current_operator_id =id_dictionary[self.current_operator_name]
+                            self.at_operator(channel, self.current_operator_id)
+                        else:
                             self.slack_client.api_call("chat.postMessage", 
                                                        channel=channel, 
-                                                       text='No operator is on duty now.', 
+                                                       text='The operator listed on Google calendar is not found in Slack.', 
                                                        as_user=True)
-                        else:
-                            if new_operator_name in id_dictionary:
-                                self.expiration_time = new_expiration_time
-                                if new_operator_name != self.current_operator_name:
-                                    self.current_operator_name = new_operator_name
-                                    self.current_operator_id =id_dictionary[self.current_operator_name]
-                               
-                            else:
-                                raise Exception('The operator listed on Google calendar is not found in Slack.')
-                    self.at_operator(channel, self.current_operator_id)
                 time.sleep(1)
         else:
             logging.error("fail!!!")
