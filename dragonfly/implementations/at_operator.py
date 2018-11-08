@@ -14,11 +14,11 @@ class AtOperator():
 
         self.calendar_scope = 'https://www.googleapis.com/auth/calendar.readonly'
         self.slack_client = SlackClient(os.environ.get('BOT_TOKEN'))
-        self.bot_id = None
 
         self.current_operator_name = None
         self.current_operator_id = None
         self.expire_time = datetime.datetime(2000, 1, 1, 0, 0, 0, 0).isoformat() + 'Z'
+
 
     # get credentials from google calendar
     def get_credentials(self):
@@ -33,7 +33,6 @@ class AtOperator():
             creds = tools.run_flow(flow, store)
         return creds
 
-    # get a list of events beging 
     def get_event_list(self, creds, length):
         service = build('calendar', 'v3', http=creds.authorize(Http()))
         time_now = datetime.datetime.now().isoformat() + 'Z'
@@ -43,33 +42,44 @@ class AtOperator():
         events = events_list.get('items', [])
         if not events:
             raise Exception('No events found.')
-        summaries = []
-        end_times = []
+        return events
+
+    def get_operator_name_and_expiration_time(self, events):
         for event in events:
-            summaries.append(event['summary'])
-            end_times.append(event['end'])
-        return summaries, end_times
+            if 'Operator:' in event['summary']:
+                name = event['summary'].replace('Operator: ', '')
+                if event['end']['datetime'] != '':
+                    return name, event['end']['datetime']
+                else:
+                    return name, datetime.datetime.combine(event['end']['date'], datetime.datetime.max.time())
+        #name = 'Yadi'
+        #expiration_time = datetime.datetime.today()
+        #return name, expiration_time
+        return None, None
 
-    def get_operator_name_and_expire_time(self, event_summaries, event_end_times):
-        name = 'a random dude'
-        expire_time = datetime.datetime.today()
-        return name, expire_time
-
-    def get_operator_id(self, name):
-        return 'UDsomething'
+    def construct_id_dictionary(self):
+        request = self.slack_client.api_call("users.list")
+        if request['ok']:
+            id_dictionary = {}
+            for m in request['members']:
+                if not m['is_bot']:
+                    id_dictionary[m['real_name']] = m['id']
+            return id_dictionary
+        else:
+            raise Exception('Cannot get the list of users')
 
     def at_operator(self, channel, operator_id):
-        self.slack_client.api_call("chat.postMessage", channel=channel, text='got it!', 
+        self.slack_client.api_call("chat.postMessage", channel=channel, text='Get it!', 
                                    as_user=True)
         self.slack_client.api_call("chat.postMessage", link_names=1, channel=channel, 
                                    text='<@' + operator_id + '>', as_user=True)
 
 
-    def parse_output(self, rtm_output):
+    def parse_output(self, rtm_output, bot_id):
         output = rtm_output
         if output and len(output) > 0:
             for o in output:
-                if o and 'text' in o and ('@' + str(self.bot_id)) in o['text']:
+                if o and 'text' in o and ('@' + str(bot_id)) in o['text']:
                     return o['channel']
         return None, None
 
@@ -79,22 +89,33 @@ class AtOperator():
         logging.getLogger('googleapiclient.discovery_cache').setLevel(logging.ERROR)
         if self.slack_client.rtm_connect():
             logging.info('connected!')
-            self.bot_id = self.slack_client.api_call('auth.test')['user_id']
+            bot_id = self.slack_client.api_call('auth.test')['user_id']
+            id_dictionary = self.construct_id_dictionary()
             while True:
-                channel = self.parse_output(self.slack_client.rtm_read())
+                channel = self.parse_output(self.slack_client.rtm_read(), bot_id)
                 if channel:
                     # if saved information for current operator is out-of-date,
                     # update it by going to the Google calendar
                     time_now = datetime.datetime.now().isoformat() + 'Z'
-                    if time_now > self.expire_time:
+                    if str(time_now) > str(self.expiration_time):
                         creds = self.get_credentials()
-                        event_summaries, event_end_times = self.get_event_list(creds, 50)
-                        new_operator_name, new_expire_time= self.get_operator_name(event_list)
-                        self.expire_time = new_expire_time
-                        if new_operator_name != self.current_operator_name:
-                            self.current_operator_name = new_operator_name
-                            self.current_operator_id = self.get_operator_id(self.current_operator_name)
-                    self.at_operator(channel, self.current_operator_id)
+                        events = self.get_event_list(creds, 50)
+                        new_operator_name, new_expiration_time = self.get_operator_name_and_expiration_time(events)
+                        if not new_operator_name:
+                            self.slack_client.api_call("chat.postMessage", 
+                                                       channel=channel, 
+                                                       text='No operator is on duty now.', 
+                                                       as_user=True)
+                        else:
+                            if new_operator_name in id_dictionary:
+                                self.expiration_time = new_expiration_time
+                                if new_operator_name != self.current_operator_name:
+                                    self.current_operator_name = new_operator_name
+                                    self.current_operator_id =id_dictionary[self.current_operator_name]
+                               
+                            else:
+                                raise Exception('The operator listed on Google calendar is not found in Slack.')
+                     self.at_operator(channel, self.current_operator_id)
                 time.sleep(1)
         else:
             logging.error("fail!!!")
