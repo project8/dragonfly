@@ -18,7 +18,11 @@ class AtOperator():
 
         self.current_operator_name = ''
         self.current_operator_id = ''
+        self.temporary_operator_id = []
 
+        self.full_name_to_id_dictionary = {}
+        self.id_to_username_dictionary = {}
+        self.username_to_id_dictionary = {}
 
     # get credentials from google calendar
     def get_credentials(self):
@@ -65,31 +69,82 @@ class AtOperator():
                     return event['summary'].replace('Operator: ', '')
         return None
 
-    def construct_id_dictionary(self):
+    def construct_dictionaries(self):
         request = self.slack_client.api_call("users.list")
         if request['ok']:
-            id_dictionary = {}
             for m in request['members']:
                 if not m['is_bot']:
-                    id_dictionary[m['real_name']] = m['id']
-            return id_dictionary
+                    self.full_name_to_id_dictionary[m['real_name']] = m['id']
+                    self.id_to_username_dictionary[m['id']] = m['name']
+                    self.username_to_id_dictionary[m['name']] = m['id']
         else:
             raise Exception('Cannot get the list of users')
 
+    def send_message(self, channel, text):
+        self.slack_client.api_call("chat.postMessage", channel=channel, text=text, as_user=True)
+
     def at_operator(self, channel, operator_id):
-        self.slack_client.api_call("chat.postMessage", channel=channel, text='Get it!', 
-                                   as_user=True)
-        self.slack_client.api_call("chat.postMessage", link_names=1, channel=channel, 
-                                   text='<@' + operator_id + '>', as_user=True)
+        self.send_message(channel, "Get it!")
+        self.send_message(channel, '<@' + operator_id + '>')
+        
+    def command_hello(self, channel, user_id):
+        self.send_message(channel, "Hi, " + self.id_to_username_dictionary[user_id] + ".")
 
+    def command_help(self, channel):
+        message = "You can either address me with `@operator` or enter a command.\n\n" + \
+                  "If you address me with `@operator` I'll pass a notification on to the current operator.\n\n" + \
+                  "I determine the current operator from the Operator entries in the Google calendar. If you need to make modifications to the current or future operator, please contact the operations coordinator.\n\n" + \
+                  "If you enter a command, I can take certain actions:\n" + \
+                  "\t`!hello`: say hi\n" + \
+                  "\t`!help`: display this help message\n" + \
+                  "\t`!whoisop`: show who the current operator is, plus any temporary operators\n" + \
+                  "\t`!tempoperator [username (optional)]`: add yourself or someone else as a temporary operator; leave the username blank to add yourself\n" + \
+                  "\t`!removetempoperator [username (optional)]`: remove yourself or someone else as temporary operator; leave the username blank to remove yourself"
+        self.send_message(channel, message)
+        
+    def command_whoisop(self, channel):
+        if self.current_operator_id == "" and len(self.temporary_operator_id) == 0:
+            self.send_message(channel, "There is no operator assigned right now.")
+        else:
+            if self.current_operator_id != "":
+                self.send_message(channel, "The operator is " + self.id_to_username_dictionary[self.current_operator_id] + "." )
+            if self.temporary_operator_id != "":
+                message = "Temporary operator(s): "
+                for operator_id in self.temporary_operator_id:
+                    message += self.id_to_username_dictionary[operator_id] + " "
+                self.send_message(channel, message)
+    
+    def command_tempoperator(self, channel, user_id, operator_name = ""):
+        if operator_name == "":
+            self.temporary_operator_id.append(user_id)
+            self.send_message(channel, "Use your powers wisely, " + self.id_to_username_dictionary[user_id] + ".")
+        elif operator_name not in self.username_to_id_dictionary:
+                self.send_message(channel, "Sorry, I don't recognize that username.")
+        else:
+            self.temporary_operator_id.append(self.username_to_id_dictionary[operator_name])
+            self.send_message(channel, "Use your powers wisely, " + operator_name + '.')
 
+    def command_removetempoperator(self, channel, user_id, operator_name = ""):
+        remove = user_id
+        if operator_name != "":
+            if operator_name not in self.username_to_id_dictionary:
+                self.send_message(channel, "SOrry, I don't rocognize that username.")
+                return
+            remove = self.username_to_id_dictionary[operator_name]
+        if remove not in self.temporary_operator_id:
+            self.send_message(channel, self.id_to_username_dictionary[remove] + "is not currently listed as a temporary operator.")
+            return
+        self.temporary_operator_id.remove(remove)
+        self.send_message(channel, "Ok, you're all done. Thanks!")
+            
+            
     def parse_output(self, rtm_output, bot_id):
         output = rtm_output
         if output and len(output) > 0:
             for o in output:
                 if o and 'text' in o and ('@' + str(bot_id)) in o['text']:
-                    return o['channel']
-        return None
+                    return o['channel'], o['user']
+        return None, None
 
 
 
@@ -98,29 +153,30 @@ class AtOperator():
         if self.slack_client.rtm_connect():
             logging.info('connected!')
             bot_id = self.slack_client.api_call('auth.test')['user_id']
-            id_dictionary = self.construct_id_dictionary()
+            self.construct_dictionaries()
             while True:
-                channel = self.parse_output(self.slack_client.rtm_read(), bot_id)
+                channel, user = self.parse_output(self.slack_client.rtm_read(), bot_id)
                 if channel:
                     creds = self.get_credentials()
                     events = self.get_event_list(creds)
                     new_operator_name = self.get_operator_name(events)
                     if not new_operator_name:
+                        self.current_operator_name = ""
+                        self.current_operator_id = ""
                         self.slack_client.api_call("chat.postMessage", 
                                                    channel=channel, 
                                                    text='No operator is on duty now.', 
                                                    as_user=True)
+                    elif new_operator_name in self.full_name_to_id_dictionary:
+                        if new_operator_name != self.current_operator_name:
+                            self.current_operator_name = new_operator_name
+                            self.current_operator_id = self.full_name_to_id_dictionary[self.current_operator_name]
+                        self.at_operator(channel, self.current_operator_id)
                     else:
-                        if new_operator_name in id_dictionary:
-                            if new_operator_name != self.current_operator_name:
-                                self.current_operator_name = new_operator_name
-                                self.current_operator_id =id_dictionary[self.current_operator_name]
-                            self.at_operator(channel, self.current_operator_id)
-                        else:
-                            self.slack_client.api_call("chat.postMessage", 
-                                                       channel=channel, 
-                                                       text='The operator listed on Google calendar is not found in Slack.', 
-                                                       as_user=True)
+                        self.slack_client.api_call("chat.postMessage", 
+                                                   channel=channel, 
+                                                   text='The operator listed on Google calendar is not found in Slack.', 
+                                                   as_user=True)
                 time.sleep(1)
         else:
             logging.error("fail!!!")
@@ -128,5 +184,6 @@ class AtOperator():
 
 
 if __name__ == '__main__':
+
     o = AtOperator()
     o.run()
