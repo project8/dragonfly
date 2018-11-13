@@ -1,4 +1,4 @@
-import datetime, logging, os, time
+import datetime, logging, os, time, inspect
 from dateutil import parser
 # for google
 from googleapiclient.discovery import build
@@ -23,6 +23,8 @@ class AtOperator():
         self.full_name_to_id_dictionary = {}
         self.id_to_username_dictionary = {}
         self.username_to_id_dictionary = {}
+
+        self.command_dictionary = {}
 
     # get credentials from google calendar
     def get_credentials(self):
@@ -83,9 +85,15 @@ class AtOperator():
     def send_message(self, channel, text):
         self.slack_client.api_call("chat.postMessage", channel=channel, text=text, as_user=True)
 
-    def at_operator(self, channel, operator_id):
+    def at_operator(self, channel):
         self.send_message(channel, "Get it!")
-        self.send_message(channel, '<@' + operator_id + '>')
+        if len(self.temporary_operator_id) != 0:
+            message = ""
+            for operator_id in self.temporary_operator_id:
+                message += "@<" + operator_id + "> "
+        else:
+            self.send_message(channel, "@<" + self.current_operator_id + ">")
+
         
     def command_hello(self, channel, user_id):
         self.send_message(channel, "Hi, " + self.id_to_username_dictionary[user_id] + ".")
@@ -108,7 +116,7 @@ class AtOperator():
         else:
             if self.current_operator_id != "":
                 self.send_message(channel, "The operator is " + self.id_to_username_dictionary[self.current_operator_id] + "." )
-            if self.temporary_operator_id != "":
+            if len(self.temporary_operator_id) != 0:
                 message = "Temporary operator(s): "
                 for operator_id in self.temporary_operator_id:
                     message += self.id_to_username_dictionary[operator_id] + " "
@@ -128,7 +136,7 @@ class AtOperator():
         remove = user_id
         if operator_name != "":
             if operator_name not in self.username_to_id_dictionary:
-                self.send_message(channel, "SOrry, I don't rocognize that username.")
+                self.send_message(channel, "Sorry, I don't rocognize that username.")
                 return
             remove = self.username_to_id_dictionary[operator_name]
         if remove not in self.temporary_operator_id:
@@ -137,14 +145,35 @@ class AtOperator():
         self.temporary_operator_id.remove(remove)
         self.send_message(channel, "Ok, you're all done. Thanks!")
             
-            
+    def construct_command_dictionary(self):
+        self.command_dictionary["!hello"] = self.command_hello
+        self.command_dictionary["!help"] = self.command_help
+        self.command_dictionary["!whoisop"] = self.command_whoisop
+        self.command_dictionary["!tempoperator"] = self.command_tempoperator
+        self.command_dictionary["!removetempoperator"] = self.command_removetempoperator
+
+
     def parse_output(self, rtm_output, bot_id):
         output = rtm_output
         if output and len(output) > 0:
             for o in output:
-                if o and 'text' in o and ('@' + str(bot_id)) in o['text']:
-                    return o['channel'], o['user']
-        return None, None
+                if o and 'text' in o:
+                    if ('@' + str(bot_id)) in o['text']:
+                        return o['channel']
+                    tokens = o['text'].split(' ', 1)
+                    command = tokens[0]
+                    if command in self.command_dictionary:
+                        channel = o["channel"]
+                        user_id = o["user"]
+                        operator_name = ""
+                        if len(tokens) > 1 and tokens[1].startswith('[') and "]" in tokens[1]:
+                            sub_tokens = tokens[1].split(']', 1)
+                            operator_name = sub_tokens[0].replace('[', '')
+                        func = self.command_dictionary[command]
+                        num_args = len(inspect.signature(func).parameters)
+                        args = [channel, user_id, operator_name]
+                        func(*args[:num_args])
+        return None
 
 
 
@@ -154,8 +183,9 @@ class AtOperator():
             logging.info('connected!')
             bot_id = self.slack_client.api_call('auth.test')['user_id']
             self.construct_dictionaries()
+            self.construct_command_dictionary()
             while True:
-                channel, user = self.parse_output(self.slack_client.rtm_read(), bot_id)
+                channel = self.parse_output(self.slack_client.rtm_read(), bot_id)
                 if channel:
                     creds = self.get_credentials()
                     events = self.get_event_list(creds)
@@ -163,20 +193,14 @@ class AtOperator():
                     if not new_operator_name:
                         self.current_operator_name = ""
                         self.current_operator_id = ""
-                        self.slack_client.api_call("chat.postMessage", 
-                                                   channel=channel, 
-                                                   text='No operator is on duty now.', 
-                                                   as_user=True)
+                        self.send_message(channel, 'No operator is on duty now.')
                     elif new_operator_name in self.full_name_to_id_dictionary:
                         if new_operator_name != self.current_operator_name:
                             self.current_operator_name = new_operator_name
                             self.current_operator_id = self.full_name_to_id_dictionary[self.current_operator_name]
-                        self.at_operator(channel, self.current_operator_id)
+                        self.at_operator(channel)
                     else:
-                        self.slack_client.api_call("chat.postMessage", 
-                                                   channel=channel, 
-                                                   text='The operator listed on Google calendar is not found in Slack.', 
-                                                   as_user=True)
+                        self.send_message(channel,'The operator listed on Google calendar is not found in Slack.') 
                 time.sleep(1)
         else:
             logging.error("fail!!!")
