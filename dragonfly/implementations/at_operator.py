@@ -1,4 +1,4 @@
-import datetime, logging, os, time, inspect
+import datetime, logging, os, time, funcsigs
 from dateutil import parser
 # for google
 from googleapiclient.discovery import build
@@ -6,9 +6,9 @@ from httplib2 import Http
 from oauth2client import file, client, tools
 # for slack
 from slackclient import SlackClient
-logging.basicConfig()
 
 # need to export BOT_TOKEN first
+
 class AtOperator():
     
     def __init__(self):
@@ -170,7 +170,7 @@ class AtOperator():
                             sub_tokens = tokens[1].split(']', 1)
                             operator_name = sub_tokens[0].replace('[', '')
                         func = self.command_dictionary[command]
-                        num_args = len(inspect.signature(func).parameters)
+                        num_args = len(funcsigs.signature(func).parameters)
                         args = [channel, user_id, operator_name]
                         func(*args[:num_args])
         return None
@@ -208,6 +208,6 @@ class AtOperator():
 
 
 if __name__ == '__main__':
-
+    logging.basicConfig()
     o = AtOperator()
     o.run()
