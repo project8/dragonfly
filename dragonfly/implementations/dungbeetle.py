@@ -33,15 +33,18 @@ class DungBeetle(Endpoint,Scheduler):
     def del_dir(self, path, min_creation_time):
         if os.path.isdir(path):
             creation_time = datetime.datetime.fromtimestamp(os.path.getctime(path))
+            no_sub_dir = True
             for item in os.listdir(path):
                 sub_path = os.path.join(path, item)
+                no_sub_dir = no_sub_dir and (not os.path.isdir(sub_path))
                 self.del_dir(sub_path, min_creation_time)
             if creation_time < min_creation_time and (not path in self.ignore_dirs):
                 try:
                     os.rmdir(path)
                     logger.info(" path [{}] has been removed.".format(path))
                 except OSError, err:
-                    logger.warning(" path [{}] not removed because not empty".format(path))
+                    if no_sub_dir:
+                        logger.warning(" path [{}] not removed because not empty".format(path))
 
     # clean up empty directories under a specific directory without deleting itself
     def clean_dir(self):
