@@ -70,7 +70,7 @@ class DungBeetle(Endpoint,Scheduler):
         logger.info("doing scheduled check")
         processed_dirs_per_cycle = []
         self.clean_dir(processed_dirs_per_cycle)
-        for dir in self.processed_dirs:
-            if dir not in processed_dirs_per_cycle:
-                del self.processed_dirs[dir]
+        for directory in list(self.processed_dirs):
+            if directory not in processed_dirs_per_cycle:
+                del self.processed_dirs[directory]
 
