@@ -18,4 +18,4 @@ setup_calls:
     method: _on_set
     args: "on"
     kwargs:
-        routing_key_specifier: logging_status
+        routing_key_specifier: schedule_status
