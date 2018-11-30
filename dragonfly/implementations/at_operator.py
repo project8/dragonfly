@@ -7,14 +7,23 @@ from oauth2client import file, client, tools
 # for slack
 from slackclient import SlackClient
 
+# for dripline
+from dripline.core import Endpoint, fancy_doc
+from subprocess_mixin import *
+
+__all__ = []
+__all__.append('AtOperator')
+
 logger = logging.getLogger(__name__)
 
-class AtOperator():
+@fancy_doc
+class AtOperator(SlowSubprocessMixin, Endpoint):
     
     def __init__(self, 
                  path = '/home/yadiw/Desktop/Operator/bot_token.json', 
                  monitor_channel_name = 'general',
-                 update_interval = {"hours":12}):
+                 update_interval = {"hours":12},
+                 **kwargs):
         '''
             path: the absolute path where the bot token is stored.
             monitor_channel_name: the name of Slack monitor channel. 
@@ -42,6 +51,10 @@ class AtOperator():
         self.command_dictionary = {}
 
         self.update_interval = datetime.timedelta(**update_interval)
+
+
+        Endpoint.__init__(self, **kwargs)
+        SlowSubprocessMixin.__init__(self,self.run)
 
     # Return credentials from google calendar.
     def get_credentials(self):
@@ -391,9 +404,8 @@ class AtOperator():
             logger.critical(" An error occurs when connecting to Slack.")
             os._exit(1)
 
-'''
 if __name__ == '__main__':
     logging.basicConfig()
     logger.setLevel("INFO")
     o = AtOperator()
-'''
+    o.start_control_process()
