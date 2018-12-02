@@ -77,7 +77,7 @@ class DungBeetle(Endpoint,Scheduler):
         for directory in list(self.processed_dirs):
             if directory not in processed_dirs_per_cycle:
                 del self.processed_dirs[directory]
-            elif self.processed_dirs[directory]  > 1 and self.processed_dirs[directory ]% self.warning_interval == 1:
+            elif self.processed_dirs[directory] > 1 and self.processed_dirs[directory] % self.warning_interval == 1:
                 old_warning_list.append(directory)
         message = ''
         new_list_length = len(new_warning_list)
