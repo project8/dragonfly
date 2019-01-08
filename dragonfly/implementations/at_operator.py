@@ -70,7 +70,19 @@ class AtOperator(SlowSubprocessMixin, Endpoint):
         store = oauth2client.file.Storage(creds_path)
         creds = store.get()
         if not creds or creds.invalid:
-            flow = oauth2client.client.flow_from_clientsecrets('credentials.json', 'https://www.googleapis.com/auth/calendar.readonly')
+            logger.warning(' Asking for the authorization...')
+            temp_path = os.path.join(os.path.expanduser('/tmp/'), '.google_creds.json')
+            google = {}
+            config_file = json.loads(open(os.path.expanduser('~') + '/.project8_authentications.json').read())
+            if 'google' in config_file:
+                google = config_file['google']
+            else:
+                logger.warning(' Unable to find Google calendar authentication in <~/.project8_authentications.json>')
+                os._exit(1)
+            fh = open(temp_path, 'a+')
+            fh.write(json.dumps(google))
+            fh.close()
+            flow = oauth2client.client.flow_from_clientsecrets(temp_path, 'https://www.googleapis.com/auth/calendar.readonly')
             creds = oauth2client.tools.run_flow(flow, store)
         return creds
 
@@ -386,7 +398,7 @@ class AtOperator(SlowSubprocessMixin, Endpoint):
             creds = self.get_credentials()
             events = self.get_event_list(creds)
             if not events:
-                logger.critical(' Unable to get Google Calendar event list.')
+                logger.critical(' Unable to find any Google Calendar event.')
                 os._exit(1)
             logger.info(' Successfully get ' + str(len(events)) + ' events from Google Calendar.')
             update_time = datetime.datetime.now() + self.update_interval
