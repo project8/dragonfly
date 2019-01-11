@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 class AtOperator(SlowSubprocessMixin, Endpoint):
     
     def __init__(self, 
-                 monitor_channel_name = 'general',
+                 monitor_channel_name = 'slack_test',
                  update_interval = {"hours":12},
                  **kwargs):
         '''
@@ -70,19 +70,7 @@ class AtOperator(SlowSubprocessMixin, Endpoint):
         store = oauth2client.file.Storage(creds_path)
         creds = store.get()
         if not creds or creds.invalid:
-            logger.warning(' Asking for the authorization...')
-            temp_path = os.path.join(os.path.expanduser('/tmp/'), '.google_creds.json')
-            google = {}
-            config_file = json.loads(open(os.path.expanduser('~') + '/.project8_authentications.json').read())
-            if 'google' in config_file:
-                google = config_file['google']
-            else:
-                logger.warning(' Unable to find Google calendar authentication in <~/.project8_authentications.json>')
-                os._exit(1)
-            fh = open(temp_path, 'a+')
-            fh.write(json.dumps(google))
-            fh.close()
-            flow = oauth2client.client.flow_from_clientsecrets(temp_path, 'https://www.googleapis.com/auth/calendar.readonly')
+            flow = oauth2client.client.flow_from_clientsecrets('credentials.json', 'https://www.googleapis.com/auth/calendar.readonly')
             creds = oauth2client.tools.run_flow(flow, store)
         return creds
 
@@ -197,7 +185,7 @@ class AtOperator(SlowSubprocessMixin, Endpoint):
             id_to_username_dictionary = {}
             username_to_id_dictionary = {}
             for m in request['members']:
-                if not m['is_bot']:
+                if not m['is_bot'] and not m['deleted']:
                     full_name_to_id_dictionary[m['real_name']] = m['id']
                     id_to_username_dictionary[m['id']] = m['name']
                     username_to_id_dictionary[m['name']] = m['id']
