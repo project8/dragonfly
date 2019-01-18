@@ -66,7 +66,7 @@ class AtOperator(SlowSubprocessMixin, Endpoint):
         creds_dir = os.path.join(os.path.expanduser('~'), '.credentials')
         if not os.path.exists(creds_dir):
             os.makedirs(creds_dir)
-        creds_path = os.path.join(creds_dir, 'calendar-go-quickstart.json')
+        creds_path = os.path.join(creds_dir, 'calendar-quick-start.json')
         store = oauth2client.file.Storage(creds_path)
         creds = store.get()
         if not creds or creds.invalid:
