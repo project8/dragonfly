@@ -22,15 +22,24 @@ class AtOperator(SlowSubprocessMixin, Endpoint):
     def __init__(self, 
                  monitor_channel_name = 'slack_test',
                  update_interval = {"hours":12},
+                 authentication_path = ".project8_authentications.json",
                  **kwargs):
         '''
-            monitor_channel_name: the name of Slack monitor channel. 
-            update_interval: the time interval between regular checks and updates.
+        monitor_channel_name: the name of Slack monitor channel. 
+        update_interval     : the time interval between regular checks and updates.
+        authentication_path : the absolute path of the file that stores the authentication info.
         '''
-
         this_home = os.path.expanduser('~')
         slack = {}
-        config_file = json.loads(open(this_home+'/.project8_authentications.json').read())
+        config_file = {}
+        try:
+            config_file = json.loads(open(os.path.join(this_home, authentication_path)).read())
+        except IOError, err:
+            logger.critical(' The provided authentication file does not exist')
+            os._exit(1)
+        except ValueError, err:
+            logger.critical(' The provided authentication file is invalid.')
+            os_exit(1)
         if 'slack' in config_file:
             slack = config_file['slack']
             self.slack_client = slackclient.SlackClient(slack)
@@ -59,10 +68,10 @@ class AtOperator(SlowSubprocessMixin, Endpoint):
         Endpoint.__init__(self, **kwargs)
         SlowSubprocessMixin.__init__(self,self.run)
 
-    '''
-    Return credentials from google calendar.
-    '''
     def get_credentials(self):
+        '''
+        Return google calendar credentials.
+        '''
         creds_dir = os.path.join(os.path.expanduser('~'), '.credentials')
         if not os.path.exists(creds_dir):
             os.makedirs(creds_dir)
@@ -70,16 +79,15 @@ class AtOperator(SlowSubprocessMixin, Endpoint):
         store = oauth2client.file.Storage(creds_path)
         creds = store.get()
         if not creds or creds.invalid:
-            flow = oauth2client.client.flow_from_clientsecrets('credentials.json', 'https://www.googleapis.com/auth/calendar.readonly')
-            creds = oauth2client.tools.run_flow(flow, store)
+            logger.critical(" The Google calendar credential file does not exist or is invalid.")
+            os._exit(1)
         return creds
 
-    '''
-    Return a list of events found from the given calendar.
-    Parameter needed:
-      creds = the credentials from google calendar
-    '''
     def get_event_list(self, creds):
+        '''
+        Return a list of events found from the given calendar.
+        creds: google calendar credentials.
+        '''
         service = googleapiclient.discovery.build('calendar', 'v3', http=creds.authorize(httplib2.Http()))
         time= (datetime.datetime.now() - datetime.timedelta(hours=10)).isoformat() + 'Z'
         events_list = service.events().list(calendarId='primary', timeMin=time, 
@@ -88,13 +96,13 @@ class AtOperator(SlowSubprocessMixin, Endpoint):
         events = events_list.get('items', [])
         return events
     
-    '''
-    Return the start/end time of a given event, without the timezone info.
-    Parameters needed:
-      event = a single event retrieved from google calendar
-      start = True if looking for start time, False if looking for end time
-    '''
+
     def get_event_time(self, event, start):
+        '''
+        Return the start/end time of a given event, without the timezone info.
+        event: a single event retrieved from google calendar
+        start: True if looking for start time, False if looking for end time
+        '''
         point = 'start'
         if not start:
             point = 'end'
@@ -104,12 +112,11 @@ class AtOperator(SlowSubprocessMixin, Endpoint):
             date = datetime.datetime.strptime(event[point].get('date'),'%Y-%m-%d')
             return datetime.datetime.combine(date, datetime.datetime.min.time()) + datetime.timedelta(hours=9)
 
-    '''
-    Return the name of current operator, the time when his/her shift ends, and the time when the next shift begins.
-    Parameter neededL
-      events = the list of events found from google calendar
-    '''
     def get_operator_name_and_time(self, events):
+        '''
+        Return the name of current operator, the time when his/her shift ends, and the time when the next shift begins.
+        events: a list of events found from google calendar
+        '''
         current_operator_name = None
         current_shift_end_time = None
         next_shift_start_time = None
@@ -126,25 +133,23 @@ class AtOperator(SlowSubprocessMixin, Endpoint):
                     break
         return current_operator_name, current_shift_end_time, next_shift_start_time
     
-    '''
-    Send a given message to a given Slack channel.
-    Parameters needed:
-      channel = the channel id
-      text    = the message to be sent
-    '''
     def send_message(self, channel, text):
+        '''
+        Send a given message to a given Slack channel if the channel exists.
+        channel: Slack channel id
+        text   : a string to be sent
+        '''
         if channel in self.channel_id_to_name_dictionary:
             self.slack_client.api_call("chat.postMessage", channel=channel, text=text, as_user=True)
 
-    '''
-    Check whether nor not the given new operator name is valid. If so, update information for current operator.
-    Parameter needed:
-      new_operator_name = the full name of the new operator
-      shift_end_time    = the end time corresponding to this operator
-      initial           = True when called the first time, False otherwise
-      regular_check     = True when called during a regular check, False otherwise
-    '''
     def check_operator_validity(self, new_operator_name, shift_end_time, initial, regular_check):
+        '''
+        Check whether nor not the given new operator name is valid. If so, update information for current operator.
+        new_operator_name: the full name of the new operator
+        shift_end_time   : the end time corresponding to this operator
+        initial          : True when called the first time, False otherwise
+        regular_check    : True when called during a regular check, False otherwise
+        '''
         message = ''
         if not new_operator_name:
             self.current_operator_name = ""
@@ -174,11 +179,10 @@ class AtOperator(SlowSubprocessMixin, Endpoint):
         if not regular_check:
             self.send_message(self.monitor_channel_id, message)
 
-    '''
-    Return 3 dictionaries storing information of Slack users: 
-    full name to id, id to username, and username to id.
-    '''
     def construct_user_dictionaries(self):
+        '''
+        Return 3 dictionaries storing information of Slack users: full name to id, id to username, and username to id.
+        '''
         request = self.slack_client.api_call("users.list")
         if request['ok']:
             full_name_to_id_dictionary = {}
@@ -194,11 +198,10 @@ class AtOperator(SlowSubprocessMixin, Endpoint):
         else:
             return None, None, None
 
-    '''
-    Return 2 dictionaries storing information of Slack channels: 
-    channel name to id, and channel id to name.
-    '''
     def construct_channel_dictionaries(self):
+        '''
+        Return 2 dictionaries storing information of Slack channels: channel name to id, and channel id to name.
+        '''
         logger.info(" Trying to construct an dictionary mapping channel names to their ids.")
         request = self.slack_client.api_call("conversations.list")
         if request['ok']:
@@ -213,13 +216,11 @@ class AtOperator(SlowSubprocessMixin, Endpoint):
         else:
             return None, None
 
-    '''
-    Send a Slack message to @ the operator (@ temporary operator(s) if exists,
-    otherwise @ the one listed on google calendar.)
-    Parameters needed:
-      channel = id of the channel where the message will be sent
-    '''
     def at_operator(self, channel):
+        '''
+        Send a Slack message to @ the operator (@ temporary operator(s) if exists, otherwise @ the one listed on google calendar.)
+        channel: id of the channel where the message will be sent
+        '''
         self.send_message(channel, "Get it!")
         if len(self.temporary_operator_id) != 0:
             logger.info(' Found temporary operator(s)!')
@@ -232,21 +233,19 @@ class AtOperator(SlowSubprocessMixin, Endpoint):
         else:
             self.send_message(channel, "<@" + self.current_operator_id + ">")
 
-    '''
-    Display a greeting message in a Slack channel.
-    Parameters needed:
-      channel = id of the channel where the message will be sent
-      user_id = id of the user who called the command
-    '''
     def command_hello(self, channel, user_id):
+        '''
+        Display a greeting message in a Slack channel.
+        channel: id of the channel where the message will be sent
+        user_id: id of the user who called the command
+        '''
         self.send_message(channel, "Hi, " + self.id_to_username_dictionary[user_id] + ".")
 
-    '''
-    Display a helper message in a Slack channel.
-    Parameter needed:
-      channel = id of the channel where the message will be sent
-    '''
     def command_help(self, channel):
+        '''
+        Display a helper message in a Slack channel.
+        channel: id of the channel where the message will be sent
+        '''
         message = "You can either address me with `@operator` or enter a command.\n\n" + \
                   "If you address me with `@operator` I'll pass a notification on to the current operator.\n\n" + \
                   "I determine the current operator from the Operator entries in the Google calendar. If you need to make modifications to the current or future operator, please contact the operations coordinator.\n\n" + \
@@ -258,12 +257,11 @@ class AtOperator(SlowSubprocessMixin, Endpoint):
                   "\t`!removetempoperator [username (optional)]`: remove yourself or someone else as temporary operator; leave the username blank to remove yourself"
         self.send_message(channel, message)
 
-    '''
-    Display current and temporary operator(s) to a Slack channel.
-    Parameter needed:
-      channel = id of the channel where the message will be sent
-    '''
     def command_whoisop(self, channel):
+        '''
+        Display current and temporary operator(s) to a Slack channel.
+        channel: id of the channel where the message will be sent
+        '''
         if self.current_operator_id == "" and len(self.temporary_operator_id) == 0:
             self.send_message(channel, "There is no operator assigned right now.")
         else:
@@ -275,14 +273,13 @@ class AtOperator(SlowSubprocessMixin, Endpoint):
                     message += self.id_to_username_dictionary[operator_id] + " "
                 self.send_message(channel, message)
 
-    '''
-    Add a new temporary operator.
-    Parameter needed:
-      channel       = id of the Slack channel where the message will be sent
-      user_id       = id of the user who called the command
-      operator_name = new temporary operator to be added; the user itself  will be added if empty
-    '''
     def command_tempoperator(self, channel, user_id, operator_name = ""):
+        '''
+        Add a new temporary operator.
+        channel      : id of the Slack channel where the message will be sent
+        user_id      : id of the user who called the command
+        operator_name: new temporary operator to be added; the user itself  will be added if empty
+        '''
         if operator_name == "":
             self.temporary_operator_id.append(user_id)
             self.temporary_operator_id = list(set(self.temporary_operator_id))
@@ -293,14 +290,13 @@ class AtOperator(SlowSubprocessMixin, Endpoint):
             self.temporary_operator_id.append(self.username_to_id_dictionary[operator_name])
             self.send_message(channel, "Use your powers wisely, " + operator_name + '.')
 
-    '''
-    Remove the given temporary operator
-    Parameter needed:
-      channel       = id of the Slack channel where the message will be sent
-      user_id       = id of the user who called the command
-      operator_name = the temporary operator to be removed; the user itself will be removedd if empty
-    '''
     def command_removetempoperator(self, channel, user_id, operator_name = ""):
+        '''
+        Remove the given temporary operator.
+        channel      : id of the Slack channel where the message will be sent
+        user_id      : id of the user who called the command
+        operator_name: the temporary operator to be removed; the user itself will be removedd if empty
+        '''
         remove = user_id
         if operator_name != "":
             if operator_name not in self.username_to_id_dictionary:
@@ -313,10 +309,10 @@ class AtOperator(SlowSubprocessMixin, Endpoint):
         self.temporary_operator_id.remove(remove)
         self.send_message(channel, "Ok, you're all done. Thanks!")
 
-    '''
-    Return a dictionary containing all Slack helper commands
-    '''
     def construct_command_dictionary(self):
+        '''
+        Return a dictionary containing all Slack helper commands.
+        '''
         self.command_dictionary["!hello"] = self.command_hello
         self.command_dictionary["!help"] = self.command_help
         self.command_dictionary["!whoisop"] = self.command_whoisop
@@ -324,13 +320,12 @@ class AtOperator(SlowSubprocessMixin, Endpoint):
         self.command_dictionary["!removetempoperator"] = self.command_removetempoperator
         logger.info(' Constructed dictionaries for operator helper commands on Slack.')
 
-    '''
-    Parse the given Slack output and check whether or not I am called
-    Parameters needed:
-      rtm_output = the Slack runtime output
-      bot_id     = my bot id
-    '''
     def parse_output(self, rtm_output, bot_id):
+        '''
+        Parse the given Slack output and check whether or not I am called.
+        rtm_output: Slack runtime output
+        bot_id    : my bot id
+        '''
         output = rtm_output
         if output and len(output) > 0:
             for o in output:
@@ -354,10 +349,10 @@ class AtOperator(SlowSubprocessMixin, Endpoint):
                         func(*args[:num_args])
         return None
 
-    '''
-    The main loop
-    '''
     def run(self):
+        '''
+        The main loop.
+        '''
         logging.getLogger('googleapiclient.discovery_cache').setLevel(logging.ERROR)
         if self.slack_client.rtm_connect():
             logger.info(' Connected!')
