@@ -11,7 +11,7 @@ except EnvironmentError:
     pass
 except Exception as err:
     print(err)
-    verstr = 'v0.0.0-???'
+    verstr = 'v0.0.0'
 
 on_rtd = os.environ.get("READTHEDOCS", None) == 'True'
 

@@ -8,6 +8,7 @@ from .alert_spammer import *
 from .at_operator import *
 from .daq_db_interface import *
 from .daq_run_interface import *
+from .dungbeetle import *
 from .esr_measurement import *
 from .ethernet_provider import *
 from .kv_store import *
