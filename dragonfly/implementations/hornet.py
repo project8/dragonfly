@@ -1,67 +1,59 @@
-import logging, json, os, argparse, Queue
+import logging, os, Queue, datetime, yaml, time, multiprocessing, sys, ast
 
-import hornet
+from hornet_watcher import *
+from hornet_mover import *
+from hornet_printer import *
 
+from subprocess_mixin import *
 
-class Hornet():
+logger = logging.getLogger(__name__)
 
-
-    def main(self):
-        hornet.initializeLogging()
-
-        parser = argparse.ArgumentParser(description='This is the description for hornet.py',
-                                         add_help = False)
-        parser.add_argument('--help',action='help',help='display this dialog')
-        parser.add_argument('--config',action='store',required=True,help='JSON configuration file')
-        parser.add_argument('--files',nargs='+',action='store',help=argparse.SUPPRESS)
-        args = vars(parser.parse_args())
-        print(str(args))
-        config_path = args['config']
-        files = args['files']
-
-        hornet.log.info(' reading config file: ' + config_path)
+class Hornet(SlowSubprocessMixin):
+    
+    def __init__(self, 
+                 process_interval,
+                 watcher_config,
+                 modules,
+                 **kwargs):
         
-        this_home = os.path.expanduser('~')
-        try:
-            config = json.loads(open(os.path.join(this_home, config_path)).read())
-            hornet.log.debug(' Full configuration: ' + str(config))
-            hornet.configureLogging(config)
-        except IOError, err:
-            hornet.log.critical(' The provided config file does not exist.')
-            os._exit(1)
-        except ValueError, err:
-            hornet.log.critical(' The provided config file is invalid.')
-            os._exit(1)
+        self.process_interval = datetime.timedelta(**process_interval)
+        self.watcher_config = watcher_config
+        self.modules = modules
+        SlowSubprocessMixin.__init__(self, self.run)
 
-        # amqp and slack
+    def run(self):
 
-        # threads used: 
-        #   scheduler, classifier, watcher, mover;
-        #   N nearline workers and M shippers
-        nThreads = 4 + config['workers']['n-workers'] + config['shipper']['n-shippers']
-        if nThreads > hornet.maxThreads:
-            hornet.log.critical(' Maximum number of threads exceeded.')
-            os._exit(1)
+        logger.info(' Setting up the watcher')
+        manager = multiprocessing.Manager()
+        watcher_output_queue = manager.Queue()
+        watcher = HornetWatcher(self.watcher_config, watcher_output_queue)
         
-        queueSize = config["scheduler"]["queue-size"]
-        if len(files) > queueSize:
-            queueSize = len(files)
-            config['scheduler']['queue-size'] = queueSize
-            # change the file as well?
-        
-        # set up channels - TODO: controlQueue and requestQueue
-        schedulingQueue = Queue.Queue(maxsize=queueSize)
-        threadCountQueue = Queue.Queue(maxsize=hornet.maxThreads)
+        modules = {}
+        for module in self.modules:
+            module_config = self.modules[module]
+            logger.info(' Setting up the ' + module)
+            logger.debug(module_config)
+            hornet_class = getattr(sys.modules[__name__], module_config['module'])
+            modules[module] = hornet_class(**module_config)
+  
+        watcher.start_control_process()
+        process_time = datetime.datetime.now() + self.process_interval
 
-        # amqp and slack
+        while True:
+            if (datetime.datetime.now() > process_time):
+                watcher_count = 0
+                while not watcher_output_queue.empty():
+                    watcher_count += 1
+                    context = ast.literal_eval(watcher_output_queue.get())
+                    logger.debug(' Here is the info I get from the watcher: ' + str(context))
+                    path = context['path']
+                    jobs = context['jobs']
+                    logger.debug(' I have found jobs ' + str(jobs) + ' for ' + path)
+                    for job in jobs:
+                        path = modules[job].run(path)
+                logger.info(' I have processed ' + str(watcher_count) + ' item(s) .')
+                process_time = datetime.datetime.now() + self.process_interval
 
-        for f in files:
-            print('Scheduling ' + f)
-            schedulingQueue.put(f)
-
-
-
-if __name__ == '__main__':
-    logging.basicConfig()
-    h = Hornet()
-    h.main()
+        # how to reach here?
+        logger.info(' I am closing the watcher.')
+        watcher.stop_control_process(10)
