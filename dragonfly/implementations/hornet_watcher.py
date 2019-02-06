@@ -2,14 +2,21 @@ import pyinotify, Queue, logging, os, re, ast
 
 import hornet
 
+from dripline.core import fancy_doc
+
 from subprocess_mixin import *
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
 
+@fancy_doc
 class HornetWatcher(SlowSubprocessMixin):
 
     def __init__(self, config, output_queue):
+        '''
+        A hornet watcher keeps staring at given directories and put file context to the output queue every time it notices a file close.
+        config      : a dictionary contains a list of directories to be watched, a list of directories to be ignored, and the classification of different types of files (see example file for details).
+        output_queue: a multiprocessing queue shared by hornet and the watcher.
+        '''
         self.dirs = config['dirs']
 
         self.ignore_dirs = []
@@ -41,6 +48,13 @@ class HornetWatcher(SlowSubprocessMixin):
     
     class EventHandler(pyinotify.ProcessEvent):
         def __init__(self, dirs, ignore_dirs, types, output_queue):
+            '''
+            The event handler is responsible for classifying the file.
+            dirs        : a list of directories being watched.
+            ignore_dirs : a list of directories being ignored.
+            types       : a list of dictionaries containing the regular expression/extension and jobs to do for each type of files.
+            output_queue: the multiprocessing queue shared by hornet and the watcher.
+            '''
             pyinotify.ProcessEvent.__init__(self)
             self.dirs = dirs
             self.ignore_dirs = ignore_dirs
@@ -48,6 +62,10 @@ class HornetWatcher(SlowSubprocessMixin):
             self.output_queue = output_queue
 
         def find_jobs(self, path):
+            '''
+            Returns a list of jobs to do for the given file.
+            path: the absolute path of the file to be classified.
+            '''
             file_name = os.path.basename(path)
             type_found = False
             for t in self.types:
@@ -65,6 +83,10 @@ class HornetWatcher(SlowSubprocessMixin):
             return None
 
         def process_IN_CLOSE_WRITE(self, event):
+            '''
+            If the file being closed can be classified, do so and put the context into the queue.
+            event: the pyinofity event detected.
+            '''
             path = event.pathname
             for directory in self.ignore_dirs:
                 if path.startswith(directory):
@@ -82,6 +104,9 @@ class HornetWatcher(SlowSubprocessMixin):
                     self.output_queue.put_nowait(context)
 
     def watch(self):
+        '''
+        Start watching at specific directories and take action when noticing a file close.
+        '''
         wm = pyinotify.WatchManager()
         mask = pyinotify.IN_CLOSE_WRITE
         this_home = os.path.expanduser('~')

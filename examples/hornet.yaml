@@ -5,7 +5,7 @@ endpoints:
   - name: hornet
     module: Hornet
     process_interval:
-    seconds: 30
+      seconds: 30
     watcher_config:
       dirs: &anchor
         - /arandomdir  

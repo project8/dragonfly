@@ -21,7 +21,12 @@ class Hornet(SlowSubprocessMixin, Endpoint):
                  watcher_config,
                  modules,
                  **kwargs):
-        
+        '''
+        Hornet watches for file close events in certain directories, and process files based on their classifications.
+        process_interval: the time interval between two file processing.
+        watcher_config  : a dictionaty containing a list of directories to watch, a list of directories to ignore, and a dictionary conatining different classifications for files (see example yaml file for details).
+        modules         : a dictionary containing hornet modules.
+        '''
         self.process_interval = datetime.timedelta(**process_interval)
         self.watcher_config = watcher_config
         self.modules = modules
@@ -29,6 +34,11 @@ class Hornet(SlowSubprocessMixin, Endpoint):
         SlowSubprocessMixin.__init__(self, self.run)
 
     def process_files(self, watcher_output_queue, modules):
+        '''
+        Get files and their jobs to do from the given queue and process them one by one.
+        watcher_output_queue: the queue shared between hornet and its watcher that contains file information. Each file context retrieved from the queue contains the absolute path of the file, and its job to do.
+        modules             : a dictionary contains all the instances of modules - each of them should contain a run() method, which takes the file path as parameter and also return a path.
+        '''
         logger.info(' I am ready to process files!')
         watcher_count = 0
         try:
@@ -42,12 +52,11 @@ class Hornet(SlowSubprocessMixin, Endpoint):
                     logger.debug(' I am sending the file to the ' + job)
                     path = modules[job].run(path)
             logger.info(' I have processed ' + str(watcher_count) + ' item(s) .')
-        except IOError:
-            print('that is sad')
-
 
     def run(self):
-
+        '''
+        It processes files regularly, and tries to finish remaining works before being terminated,
+        '''
         logger.info(' Setting up the watcher')
         watcher_output_queue = multiprocessing.Queue()
         watcher = HornetWatcher(self.watcher_config, watcher_output_queue)
