@@ -1,0 +1,32 @@
+name: hornet_service
+broker: rabbit_broker
+module: Spimescape
+endpoints:
+  - name: hornet
+    module: Hornet
+    process_interval:
+    seconds: 30
+    watcher_config:
+      dirs: &anchor
+        - /arandomdir  
+      ignore-dirs:
+        - /arandomdir/itssubdir
+      types:
+        egg:
+          regexp: runid(?P<run_id>[0-9]*)_(?P<fname_other>[A-Za-z0-9_]*).egg
+          jobs: 
+            - mover
+        rsa-mat:
+          regexp: runid(?P<run_id>[0-9]*)_(?P<fname_other>[A-Za-z0-9_]*).mat
+          jobs:
+            - mover
+        rsa-setup:
+          extension: ".Setup"
+          jobs:
+            - mover
+    hornet_modules:
+      mover:
+        module: HornetMover
+        src_dirs: *anchor
+        dst_dir: /adestination
+
