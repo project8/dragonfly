@@ -79,7 +79,7 @@ class HornetWatcher(SlowSubprocessMixin):
                     context['path'] = path
                     context['jobs'] = jobs
                     logger.debug(context)
-                    self.output_queue.put_nowait(str(context))
+                    self.output_queue.put_nowait(context)
 
     def watch(self):
         wm = pyinotify.WatchManager()
@@ -95,3 +95,4 @@ class HornetWatcher(SlowSubprocessMixin):
         eh = self.EventHandler(self.dirs, self.ignore_dirs, self.types, self.output_queue)
         notifier = pyinotify.Notifier(wm, eh)
         notifier.loop()
+

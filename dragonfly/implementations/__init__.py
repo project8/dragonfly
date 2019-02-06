@@ -10,6 +10,7 @@ from .daq_run_interface import *
 from .dungbeetle import *
 from .esr_measurement import *
 from .ethernet_provider import *
+from .hornet import *
 from .kv_store import *
 from .mdreceiver import *
 from .mesh_repeater import *

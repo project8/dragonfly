@@ -1,4 +1,4 @@
-import os, shutil, logging, Queue, ast
+import os, shutil, logging
 
 logger = logging.getLogger(__name__)
 
