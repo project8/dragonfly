@@ -1,7 +1,5 @@
 import pyinotify, Queue, logging, os, re, ast
 
-import hornet
-
 from dripline.core import fancy_doc
 
 from subprocess_mixin import *

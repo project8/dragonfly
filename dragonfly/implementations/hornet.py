@@ -2,7 +2,6 @@ import logging, os, datetime, yaml, time, multiprocessing, sys
 
 from hornet_watcher import *
 from hornet_mover import *
-from hornet_printer import *
 
 from dripline.core import Endpoint, fancy_doc
 
@@ -52,6 +51,8 @@ class Hornet(SlowSubprocessMixin, Endpoint):
                     logger.debug(' I am sending the file to the ' + job)
                     path = modules[job].run(path)
             logger.info(' I have processed ' + str(watcher_count) + ' item(s) .')
+        except Exception, e:
+            logger.error(e)
 
     def run(self):
         '''

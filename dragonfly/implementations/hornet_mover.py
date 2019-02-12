@@ -6,7 +6,7 @@ logger = logging.getLogger(__name__)
 
 
 @fancy_doc
-class HornetMover():
+class HornetMover(object):
     def __init__(self, src_dirs, dst_dir, **kwargs):
         '''
         A hornet mover moves one file at a time, while trying to keep the subdirectory structure the same as the one before moving.
