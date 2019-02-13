@@ -304,7 +304,7 @@ class AtOperator(SlowSubprocessMixin, Endpoint):
                 return
             remove = self.username_to_id_dictionary[operator_name]
         if remove not in self.temporary_operator_id:
-            self.send_message(channel, self.id_to_username_dictionary[remove] + "is not currently listed as a temporary operator.")
+            self.send_message(channel, self.id_to_username_dictionary[remove] + " is not currently listed as a temporary operator.")
             return
         self.temporary_operator_id.remove(remove)
         self.send_message(channel, "Ok, you're all done. Thanks!")
