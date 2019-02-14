@@ -8,9 +8,9 @@ endpoints:
       seconds: 30
     watcher_config:
       dirs: &anchor
-        - /home/yadiw/Desktop/test
+        - watcher/src
       ignore-dirs:
-        - /home/yadiw/Desktop/lala
+        - watcher/src/ignore
       types:
         egg:
           regexp: runid(?P<run_id>[0-9]*)_(?P<fname_other>[A-Za-z0-9_]*).egg
@@ -28,7 +28,7 @@ endpoints:
       mover:
         module: HornetMover
         src_dirs: *anchor
-        dst_dir: /home/yadiw/Desktop/t2
+        dst_dir: mover/dst
 setup_calls:
   - target: hornet
     method: start_control_process
