@@ -13,8 +13,11 @@ class HornetMover(object):
         src_dirs: a list of possible source directories of a file before moving
         dst_dir : the destination directory of a file after moving.
         '''
-        self.src_dirs = src_dirs
-        self.dst_dir = dst_dir
+        this_home = os.path.expanduser('~')
+        self.src_dirs = []
+        for directory in src_dirs:
+            self.src_dirs.append(os.path.join(this_home, directory))
+        self.dst_dir = os.path.join(this_home, dst_dir)
         if not os.path.exists(self.dst_dir):
             logger.warning(' The given destination does not exist.')
         

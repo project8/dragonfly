@@ -15,11 +15,13 @@ class HornetWatcher(SlowSubprocessMixin):
         config      : a dictionary contains a list of directories to be watched, a list of directories to be ignored, and the classification of different types of files (see example file for details).
         output_queue: a multiprocessing queue shared by hornet and the watcher.
         '''
-        self.dirs = config['dirs']
-
+        this_home = os.path.expanduser('~')
+        self.dirs = []
+        for directory in config['dirs']:
+            self.dirs.append(os.path.join(this_home, directory))
         self.ignore_dirs = []
-        if 'ignore-dirs' in config:
-            self.ignore_dirs = config['ignore-dirs']
+        for directory in config['ignore-dirs']:
+            self.ignore_dirs.append(os.path.join(this_home, directory))
         
         self.types = config['types']
         for t in self.types:
@@ -85,6 +87,7 @@ class HornetWatcher(SlowSubprocessMixin):
             If the file being closed can be classified, do so and put the context into the queue.
             event: the pyinofity event detected.
             '''
+            logger.debug(" A file close event is detected. Should it be ignored?")
             path = event.pathname
             for directory in self.ignore_dirs:
                 if path.startswith(directory):
@@ -107,14 +110,12 @@ class HornetWatcher(SlowSubprocessMixin):
         '''
         wm = pyinotify.WatchManager()
         mask = pyinotify.IN_CLOSE_WRITE
-        this_home = os.path.expanduser('~')
         for directory in self.dirs:
-            absolute_path = os.path.join(this_home, directory)
-            if os.path.exists(absolute_path):
-                wm.add_watch(absolute_path, mask, rec=True)
-                logger.info(' ' + absolute_path + ' is added to the watcher.')
+            if os.path.exists(directory):
+                wm.add_watch(directory, mask, rec=True)
+                logger.info(' ' + directory + ' is added to the watcher.')
             else:
-                logger.error(' The directory ' +absolute_path + ' does not exist.')
+                logger.error(' The directory ' + directory + ' does not exist.')
         eh = self.EventHandler(self.dirs, self.ignore_dirs, self.types, self.output_queue)
         notifier = pyinotify.Notifier(wm, eh)
         notifier.loop()
