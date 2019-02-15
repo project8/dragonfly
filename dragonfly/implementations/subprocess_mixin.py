@@ -50,8 +50,8 @@ class SlowSubprocessMixin(object):
                      }
         self._control_process = multiprocessing.Process(target=control_function, kwargs=top_kwargs)
 
-    @staticmethod
-    def basic_control_target(halt_event, target, args=(), kwargs={}):
+    #@staticmethod
+    def basic_control_target(self, halt_event, target, args=(), kwargs={}):
         '''
         A function which executes a worker function in a subprocess until either it returns, or a halt event is received.
         When the halt is set, the worker is terminated (the event is polled 10 times per second).
