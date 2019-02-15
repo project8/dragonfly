@@ -1,11 +1,13 @@
+from __future__ import absolute_import
+
 import logging, os, datetime, yaml, time, multiprocessing, sys
 
-from hornet_watcher import *
-from hornet_mover import *
+from .hornet_watcher import *
+from .hornet_mover import *
 
 from dripline.core import Endpoint, fancy_doc
 
-from subprocess_mixin import *
+from .subprocess_mixin import *
 
 __all__ = []
 __all__.append('Hornet')

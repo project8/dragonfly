@@ -30,7 +30,8 @@ extras_require={
     'roach': ['corr==0.7.3','katcp==0.5.5','construct==2.5.2','scipy==0.19.0','netifaces==0.10.5','adc5g==0.0.1'],
     'gpio': ['rpi.gpio'], #only for RPi
     'slack': ['slackclient'],
-    'spi': ['spidev']
+    'spi': ['spidev'],
+    'hornet': ['pyinotify']
 }
 
 dependency_links = [

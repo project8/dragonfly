@@ -1,8 +1,15 @@
-import pyinotify, Queue, logging, os, re, ast
+from __future__ import absolute_import
+
+try:
+    import pyinotify
+except ImportError:
+    pass
+
+import Queue, logging, os, re, ast
 
 from dripline.core import fancy_doc
 
-from subprocess_mixin import *
+from .subprocess_mixin import *
 
 logger = logging.getLogger(__name__)
 
@@ -15,6 +22,9 @@ class HornetWatcher(SlowSubprocessMixin):
         config      : a dictionary contains a list of directories to be watched, a list of directories to be ignored, and the classification of different types of files (see example file for details).
         output_queue: a multiprocessing queue shared by hornet and the watcher.
         '''
+        if 'pyinotify' not in globals():
+            raise ImportError('pyinotify not found, required for HornetWatcher class.')
+            
         this_home = os.path.expanduser('~')
         self.dirs = []
         for directory in config['dirs']:

@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+
 import os, shutil, logging
 
 from dripline.core import fancy_doc
