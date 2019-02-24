@@ -73,6 +73,9 @@ class AtOperator(SlowSubprocessMixin, Endpoint):
         SlowSubprocessMixin.__init__(self, self.run)
 
     def get_slack_client(self):
+        '''
+        Set up the slack client.
+        '''
         slack = ''
         config_file = json.loads(open(self.authentication_path).read())
         if 'slack' in config_file and 'operator' in config_file['slack']:
