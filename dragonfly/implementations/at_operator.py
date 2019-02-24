@@ -50,19 +50,7 @@ class AtOperator(SlowSubprocessMixin, Endpoint):
             os._exit(1)
 
         self.slack_client = None
-        slack = {}
-        config_file = {}
-        try:
-            config_file = json.loads(open(os.path.join(this_home, authentication_path)).read())
-        except IOError, err:
-            logger.critical(' The provided authentication file does not exist')
-            os._exit(1)
-        except ValueError, err:
-            logger.critical(' The provided authentication file is invalid.')
-            os._exit(1)
-        if 'slack' in config_file:
-            slack = config_file['slack']['operator']
-            self.slack_client = slackclient.SlackClient(slack)
+
         self.monitor_channel_name = monitor_channel_name
         self.monitor_channel_id = ''
         self.channel_name_to_id_dictionary = {}
@@ -85,7 +73,7 @@ class AtOperator(SlowSubprocessMixin, Endpoint):
         SlowSubprocessMixin.__init__(self, self.run)
 
     def get_slack_client(self):
-        slack = {}
+        slack = ''
         config_file = json.loads(open(self.authentication_path).read())
         if 'slack' in config_file and 'operator' in config_file['slack']:
             slack = config_file['slack']['operator']
