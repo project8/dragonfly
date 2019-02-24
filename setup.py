@@ -31,7 +31,7 @@ extras_require={
     'gpio': ['rpi.gpio'], #only for RPi
     'slack': ['slackclient'],
     'spi': ['spidev'],
-    'operator': ['oauth2client', 'google-api-python-client', 'python-dateutil', 'funcsigs', 'httplib2']
+    'operator': ['google-api-python-client', 'python-dateutil', 'funcsigs', 'google-auth', 'google_auth_oauthlib']
 }
 
 dependency_links = [

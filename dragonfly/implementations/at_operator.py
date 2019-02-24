@@ -3,7 +3,8 @@ from __future__ import absolute_import
 try:
     import dateutil, funcsigs
     # for google
-    import googleapiclient.discovery, oauth2client.file, oauth2client.client, oauth2client.tools, httplib2
+    import googleapiclient.discovery
+    from google.oauth2.credentials import Credentials
 except ImportError:
     pass
 
@@ -32,11 +33,23 @@ class AtOperator(SlowSubprocessMixin, Endpoint):
         update_interval     : the time interval between regular checks and updates.
         authentication_path : the absolute path of the file that stores the authentication info.
         '''
-        imports = ['dateutil', 'funcsigs', 'googleapiclient', 'oauth2client', 'httplib2']
+        imports = ['dateutil', 'funcsigs', 'googleapiclient', 'Credentials']
         for import_module in imports:
             if not import_module in globals():
                 raise ImportError(import_module + ' not found, required for AtOperator class.')
+
         this_home = os.path.expanduser('~')
+        self.authentication_path = os.path.join(this_home, authentication_path)
+        try:
+            json.loads(open(self.authentication_path).read())
+        except IOError, err:
+            logger.critical(' The provided authentication file does not exist')
+            os._exit(1)
+        except ValueError, err:
+            logger.critical(' The provided authentication file is invalid.')
+            os._exit(1)
+
+        self.slack_client = None
         slack = {}
         config_file = {}
         try:
@@ -46,14 +59,10 @@ class AtOperator(SlowSubprocessMixin, Endpoint):
             os._exit(1)
         except ValueError, err:
             logger.critical(' The provided authentication file is invalid.')
-            os_exit(1)
-        if 'slack' in config_file:
-            slack = config_file['slack']
-            self.slack_client = slackclient.SlackClient(slack)
-        else:
-            logger.warning('Unable to find slack credentials in <~/.project8_authentications.json>')
             os._exit(1)
-
+        if 'slack' in config_file:
+            slack = config_file['slack']['operator']
+            self.slack_client = slackclient.SlackClient(slack)
         self.monitor_channel_name = monitor_channel_name
         self.monitor_channel_id = ''
         self.channel_name_to_id_dictionary = {}
@@ -73,29 +82,38 @@ class AtOperator(SlowSubprocessMixin, Endpoint):
         self.update_interval = datetime.timedelta(**update_interval)
 
         Endpoint.__init__(self, **kwargs)
-        SlowSubprocessMixin.__init__(self,self.run)
+        SlowSubprocessMixin.__init__(self, self.run)
 
-    def get_credentials(self):
+    def get_slack_client(self):
+        slack = {}
+        config_file = json.loads(open(self.authentication_path).read())
+        if 'slack' in config_file and 'operator' in config_file['slack']:
+            slack = config_file['slack']['operator']
+            self.slack_client = slackclient.SlackClient(slack)
+        else:
+            logger.critical('Unable to find slack credentials for operator bot in <~/.project8_authentications.json>')
+            os._exit(1)
+
+    def get_calendar_credentials(self):
         '''
         Return google calendar credentials.
         '''
-        creds_dir = os.path.join(os.path.expanduser('~'), '.credentials')
-        if not os.path.exists(creds_dir):
-            os.makedirs(creds_dir)
-        creds_path = os.path.join(creds_dir, 'calendar-quick-start.json')
-        store = oauth2client.file.Storage(creds_path)
-        creds = store.get()
-        if not creds or creds.invalid:
-            logger.critical(" The Google calendar credential file does not exist or is invalid.")
+        creds_data = {}
+        config_file = json.loads(open(self.authentication_path).read())
+        if 'google' in config_file and 'calendar_credentials' in config_file['google']:
+            creds_data = config_file['google']['calendar_credentials']
+        try:
+            return Credentials(**creds_data)
+        except Exception:
+            logger.critical(' The Google calendar credentials does not exist or is invalid.')
             os._exit(1)
-        return creds
 
     def get_event_list(self, creds):
         '''
         Return a list of events found from the given calendar.
         creds: google calendar credentials.
         '''
-        service = googleapiclient.discovery.build('calendar', 'v3', http=creds.authorize(httplib2.Http()))
+        service = googleapiclient.discovery.build('calendar', 'v3', credentials=creds)
         time= (datetime.datetime.now() - datetime.timedelta(hours=10)).isoformat() + 'Z'
         events_list = service.events().list(calendarId='primary', timeMin=time, 
                                             maxResults=100, singleEvents=True, 
@@ -361,7 +379,8 @@ class AtOperator(SlowSubprocessMixin, Endpoint):
         The main loop.
         '''
         logging.getLogger('googleapiclient.discovery_cache').setLevel(logging.ERROR)
-        if self.slack_client.rtm_connect():
+        self.get_slack_client()
+        if self.slack_client.rtm_connect(auto_reconnect=True):
             logger.info(' Connected!')
             bot_id = self.slack_client.api_call('auth.test')['user_id']
             if not bot_id:
@@ -385,7 +404,7 @@ class AtOperator(SlowSubprocessMixin, Endpoint):
 
             self.construct_command_dictionary()
             
-            creds = self.get_credentials()
+            creds = self.get_calendar_credentials()
             events = self.get_event_list(creds)
             if not events:
                 logger.critical(' Unable to find any Google Calendar event.')
@@ -439,6 +458,7 @@ class AtOperator(SlowSubprocessMixin, Endpoint):
                         self.at_operator(channel)
 
                     time.sleep(1)
+
                 except KeyboardInterrupt:
                     logger.info(' Being terminated...')
                     self.send_message(self.monitor_channel_id, "I am being terminated... See you next time!")
