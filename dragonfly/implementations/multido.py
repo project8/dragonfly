@@ -7,14 +7,16 @@ __all__ = []
 
 from dripline.core import Endpoint, fancy_doc, exceptions
 
-import logging
+from .worker_pool import *
+
+import logging, multiprocessing
 
 logger = logging.getLogger(__name__)
 
 
 __all__.append('MultiDo')
 @fancy_doc
-class MultiDo(Endpoint):
+class MultiDo(Endpoint, WorkerPool):
     '''
     MultiDo is a convenience object allowing a single target to interact with
     multiple endpoints. MultiDo serves as the generic implementation with both
@@ -52,9 +54,15 @@ class MultiDo(Endpoint):
           check_field (str): return payload field to check against (value_cal, value_raw, or values), if different from displayed get field
         '''
         Endpoint.__init__(self, **kwargs)
+        WorkerPool.__init__(self, 5)
         self._set_condition_dict = set_condition_dict
         self._targets = []
-        for a_target in targets:
+        self.mp_manager = multiprocessing.Manager()
+
+        temp_targets = self.mp_manager.list()
+
+        def init_helper(self, a_target):
+        #for a_target in targets:
             these_details = {}
             ## SET options
             if 'default_set' in a_target:
@@ -95,167 +103,173 @@ class MultiDo(Endpoint):
             else:
                 these_details.update({'check_field':these_details['payload_field']})
 
-            self._targets.append([a_target['target'], these_details])
+            temp_targets.append([a_target['target'], these_details])
+
+        self.start_worker_pool(self.init_helper, [targets])
+        self._targets = list(temp_targets)
+
+    def on_get_helper(self, target, result_vals, result_reps):
+        a_target, details = target
+        try:
+            result = self.provider.get(target=a_target)
+            ret_val = result[details['payload_field']]
+            ret_rep = details['formatter'].format(ret_val)
+        except exceptions.DriplineException as err:
+            ret_val = None
+            ret_rep = '{} -> returned error <{}>:{}'.format(a_target, err.retcode, err)
+        except KeyError:
+            ret_val = None
+            ret_rep = '{} -> returned error <KeyError>:{} not in {}'.format(a_target, details['payload_field'], result.keys())
+        result_vals[a_target] = ret_val
+        result_reps.append(ret_rep)
 
     def on_get(self):
         '''
         attemps to get a single endpoint and return value and string representation for every target
         '''
-        result_vals = {}
-        result_reps = []
-        for a_target,details in self._targets:
-            try:
-                result = self.provider.get(target=a_target)
-                ret_val = result[details['payload_field']]
-                ret_rep = details['formatter'].format(ret_val)
-            except exceptions.DriplineException as err:
-                ret_val = None
-                ret_rep = '{} -> returned error <{}>:{}'.format(a_target, err.retcode, err)
-            except KeyError:
-                ret_val = None
-                ret_rep = '{} -> returned error <KeyError>:{} not in {}'.format(a_target, details['payload_field'], result.keys())
-            result_vals[a_target] = ret_val
-            result_reps.append(ret_rep)
-        return {'value_raw': result_vals, 'value_cal': '\n'.join(result_reps)}
+        result_vals = self.mp_manager.dict()
+        result_reps = self.mp_manager.list()
+        self.start_worker_pool(self.on_get_helper,[self._targets], result_vals, result_reps)
+        return {'value_raw': dict(result_vals), 'value_cal': '\n'.join(list(result_reps))}
 
+    def on_set_helper(self, target, value):
+        a_target, details = target
+        if 'get_only' in details and details['get_only'] is True:
+            continue
+        if 'default_set' in details:
+            value_to_set = details['default_set']
+        else:
+            value_to_set = value
+        logger.info('setting <{}>'.format(a_target))
+        self.provider.set(a_target, value_to_set)
+        # checking the value of the endpoint
+        if details['no_check']==True:
+            logger.info('no check after set required: skipping!')
+            continue
+        else:
+            logger.info('checking <{}>'.format(a_target))
+            result = self.provider.get(details['get_name'])
+            value_get = result[details['check_field']]
+
+        if isinstance(value_get,unicode):
+            logger.debug('result in unicode')
+            value_get = value_get.encode('utf-8')
+        value_get_temp = value_get
+        try:
+            value_get = float(value_get_temp)
+        except (ValueError, TypeError):
+            logger.debug('value get ({}) is not floatable'.format(value_get))
+            value_get = value_get_temp
+
+        # checking a target has been given (else use the endpoint used to set)
+        if 'target_value' in details:
+            target_value = details['target_value']
+        elif 'default_set' in details:
+            logger.info('default_set ({}) given for <{}>: using this as target_value'.format(details['default_set'],a_target))
+            target_value = details['default_set']
+        else:
+            logger.debug('no target_value given: using value ({}) as a target_value to check'.format(value))
+            target_value = value
+        if value_get==None:
+            raise exceptions.DriplineValueError('value get is a None')
+
+        # if the value we are checking is a float/int
+        if isinstance(value_get, (int,float)):
+            if not isinstance(target_value, (int,float)):
+                try:
+                    target_value = float(target_value)
+                except ValueError:
+                    logger.warning('target <{}> is not the same type as the value get: going to use the set value ({}) as target_value'.format(a_target,value))
+                    target_value = value
+            if isinstance(target_value, (int,float)):
+                if 'tolerance' in details:
+                    tolerance = details['tolerance']
+                else:
+                    tolerance = None
+                if tolerance==None:
+                    logger.debug('No tolerance given: assigning an arbitrary tolerance (1.)')
+                    tolerance = 1.
+                if not isinstance(tolerance,float) and not isinstance(tolerance,int) and not isinstance(tolerance,str):
+                    logger.warning('tolerance is not a float or a string: assigning an arbitrary tolerance (1.)')
+                    tolerance = 1.
+                if isinstance(tolerance,float) or isinstance(tolerance,int):
+                    if tolerance == 0:
+                        logger.debug('tolerance zero inacceptable: setting tolerance to 1.')
+                        tolerance = 1.
+                    logger.debug('testing a-t<b<a+t')
+                    if target_value -  tolerance <= value_get and value_get <= target_value + tolerance:
+                        logger.info('the value get <{}> ({}) is included in the target_value ({}) +- tolerance ({})'.format(a_target,value_get,target_value,tolerance))
+                    else:
+                        raise exceptions.DriplineValueError('the value get <{}> ({}) is NOT included in the target_value ({}) +- tolerance ({}): stopping here!'.format(a_target,value_get,target_value,tolerance))
+                elif isinstance(tolerance,str):
+                    if '%' not in tolerance:
+                        logger.debug('absolute tolerance')
+                        tolerance = float(tolerance)
+                    else:
+                        logger.debug('relative tolerance')
+                        match_number = re.compile('-?\ *[0-9]+\.?[0-9]*(?:[Ee]\ *-?\ *[0-9]+)?')
+                        tolerance = [float(x) for x in re.findall(match_number, tolerance)][0]*target_value/100.
+                    if tolerance == 0:
+                        logger.debug('tolerance zero inacceptable: setting tolerance to 1.')
+                        tolerance = 1.
+                    logger.debug('testing a-t<b<a+t')
+                    if target_value -  tolerance <= value_get and value_get <= target_value + tolerance:
+                        logger.info('the value <{}> get ({}) is included in the target_value ({}) +- tolerance ({})'.format(a_target,value_get,target_value,tolerance))
+                    else:
+                        raise exceptions.DriplineValueError('the value <{}> get ({}) is NOT included in the target_value ({}) +- tolerance ({}): stopping here!'.format(a_target,value_get,target_value,tolerance))
+                else:
+                    raise exceptions.DriplineValueError('tolerance is not a float, int or string: stopping here')
+            else:
+                raise exceptions.DriplineValueError('Cannot check! value set and target_value are not the same type as value get (float/int): stopping here!')
+
+        # if the value we are checking is a string
+        elif isinstance(value_get, str):
+            target_backup = target_value
+            value_get_backup = value_get
+
+            if value_get=='on' or value_get=='enable' or value_get=='enabled' or value_get == 'positive':
+                value_get=1
+            elif value_get=='off' or value_get=='disable' or value_get=='disabled' or value_get == 'negative':
+                value_get=0
+
+            if isinstance(target_value,str):
+                # changing target in the dictionary
+                if target_value=='on' or target_value=='enable' or target_value=='enabled' or target_value == 'positive':
+                    target_value=1
+                if target_value=='off' or target_value=='disable' or target_value=='disabled' or target_value ==  'negative':
+                    target_value=0
+                # raise exceptions.DriplineValueError('Cannot check! value set and target_value are not the same type as value get (string): stopping here!')
+                # checking is target and value_get are the same
+
+            if target_value==value_get:
+                logger.info('value get ({}) corresponds to the target ({}): going on'.format(value_get_backup,target_backup))
+            else:
+                raise exceptions.DriplineValueError('value get ({}) DOES NOT correspond to the target_value ({}): stopping here!'.format(value_get_backup,target_backup))
+
+        # if the value we are checking is a bool
+        elif isinstance(value_get, bool):
+            if not isinstance(target_value,bool):
+                logger.warning('target_value is not the same type as the value get: going to use the set value ({}) as target_value'.format(value))
+                target_value = value
+            if isinstance(target_value,bool):
+                if value_get==target_value:
+                    logger.info('value get ({}) corresponds to the target ({}): going on'.format(value_get,target_value))
+                else:
+                    raise exceptions.DriplineValueError('value get ({}) DOES NOT correspond to the target ({}): stopping here!'.format(value_get,target_value))
+            else:
+                raise exceptions.DriplineValueError('Cannot check! value set and target are not the same type as value get (string): stopping here!')
+
+        # if you are in this "else", this means that you either wanted to mess up with us or you are not viligant enough
+        else:
+            raise exceptions.DriplineValueError('value get ({}) is not a float, int, string, bool, None ({}): SUPER WEIRD!'.format(value_get,type(value_get)))
+
+        logger.info('{} set to {}'.format(a_target,value_get))
 
     def on_set(self, value):
         '''
         Performs sets and checks ... #TODO_DOC
         '''
-
-        for a_target,details in self._targets:
-            if 'get_only' in details and details['get_only'] is True:
-                continue
-            if 'default_set' in details:
-                value_to_set = details['default_set']
-            else:
-                value_to_set = value
-            logger.info('setting <{}>'.format(a_target))
-            self.provider.set(a_target, value_to_set)
-            # checking the value of the endpoint
-            if details['no_check']==True:
-                logger.info('no check after set required: skipping!')
-                continue
-            else:
-                logger.info('checking <{}>'.format(a_target))
-                result = self.provider.get(details['get_name'])
-                value_get = result[details['check_field']]
-
-            if isinstance(value_get,unicode):
-                logger.debug('result in unicode')
-                value_get = value_get.encode('utf-8')
-            value_get_temp = value_get
-            try:
-                value_get = float(value_get_temp)
-            except (ValueError, TypeError):
-                logger.debug('value get ({}) is not floatable'.format(value_get))
-                value_get = value_get_temp
-
-            # checking a target has been given (else use the endpoint used to set)
-            if 'target_value' in details:
-                target_value = details['target_value']
-            elif 'default_set' in details:
-                logger.info('default_set ({}) given for <{}>: using this as target_value'.format(details['default_set'],a_target))
-                target_value = details['default_set']
-            else:
-                logger.debug('no target_value given: using value ({}) as a target_value to check'.format(value))
-                target_value = value
-            if value_get==None:
-                raise exceptions.DriplineValueError('value get is a None')
-
-            # if the value we are checking is a float/int
-            if isinstance(value_get, (int,float)):
-                if not isinstance(target_value, (int,float)):
-                    try:
-                        target_value = float(target_value)
-                    except ValueError:
-                        logger.warning('target <{}> is not the same type as the value get: going to use the set value ({}) as target_value'.format(a_target,value))
-                        target_value = value
-                if isinstance(target_value, (int,float)):
-                    if 'tolerance' in details:
-                        tolerance = details['tolerance']
-                    else:
-                        tolerance = None
-                    if tolerance==None:
-                        logger.debug('No tolerance given: assigning an arbitrary tolerance (1.)')
-                        tolerance = 1.
-                    if not isinstance(tolerance,float) and not isinstance(tolerance,int) and not isinstance(tolerance,str):
-                        logger.warning('tolerance is not a float or a string: assigning an arbitrary tolerance (1.)')
-                        tolerance = 1.
-                    if isinstance(tolerance,float) or isinstance(tolerance,int):
-                        if tolerance == 0:
-                            logger.debug('tolerance zero inacceptable: setting tolerance to 1.')
-                            tolerance = 1.
-                        logger.debug('testing a-t<b<a+t')
-                        if target_value -  tolerance <= value_get and value_get <= target_value + tolerance:
-                            logger.info('the value get <{}> ({}) is included in the target_value ({}) +- tolerance ({})'.format(a_target,value_get,target_value,tolerance))
-                        else:
-                            raise exceptions.DriplineValueError('the value get <{}> ({}) is NOT included in the target_value ({}) +- tolerance ({}): stopping here!'.format(a_target,value_get,target_value,tolerance))
-                    elif isinstance(tolerance,str):
-                        if '%' not in tolerance:
-                            logger.debug('absolute tolerance')
-                            tolerance = float(tolerance)
-                        else:
-                            logger.debug('relative tolerance')
-                            match_number = re.compile('-?\ *[0-9]+\.?[0-9]*(?:[Ee]\ *-?\ *[0-9]+)?')
-                            tolerance = [float(x) for x in re.findall(match_number, tolerance)][0]*target_value/100.
-                        if tolerance == 0:
-                            logger.debug('tolerance zero inacceptable: setting tolerance to 1.')
-                            tolerance = 1.
-                        logger.debug('testing a-t<b<a+t')
-                        if target_value -  tolerance <= value_get and value_get <= target_value + tolerance:
-                            logger.info('the value <{}> get ({}) is included in the target_value ({}) +- tolerance ({})'.format(a_target,value_get,target_value,tolerance))
-                        else:
-                            raise exceptions.DriplineValueError('the value <{}> get ({}) is NOT included in the target_value ({}) +- tolerance ({}): stopping here!'.format(a_target,value_get,target_value,tolerance))
-                    else:
-                        raise exceptions.DriplineValueError('tolerance is not a float, int or string: stopping here')
-                else:
-                    raise exceptions.DriplineValueError('Cannot check! value set and target_value are not the same type as value get (float/int): stopping here!')
-
-            # if the value we are checking is a string
-            elif isinstance(value_get, str):
-                target_backup = target_value
-                value_get_backup = value_get
-
-                if value_get=='on' or value_get=='enable' or value_get=='enabled' or value_get == 'positive':
-                    value_get=1
-                elif value_get=='off' or value_get=='disable' or value_get=='disabled' or value_get == 'negative':
-                    value_get=0
-
-                if isinstance(target_value,str):
-                    # changing target in the dictionary
-                    if target_value=='on' or target_value=='enable' or target_value=='enabled' or target_value == 'positive':
-                        target_value=1
-                    if target_value=='off' or target_value=='disable' or target_value=='disabled' or target_value ==  'negative':
-                        target_value=0
-                    # raise exceptions.DriplineValueError('Cannot check! value set and target_value are not the same type as value get (string): stopping here!')
-                    # checking is target and value_get are the same
-
-                if target_value==value_get:
-                    logger.info('value get ({}) corresponds to the target ({}): going on'.format(value_get_backup,target_backup))
-                else:
-                    raise exceptions.DriplineValueError('value get ({}) DOES NOT correspond to the target_value ({}): stopping here!'.format(value_get_backup,target_backup))
-
-            # if the value we are checking is a bool
-            elif isinstance(value_get, bool):
-                if not isinstance(target_value,bool):
-                    logger.warning('target_value is not the same type as the value get: going to use the set value ({}) as target_value'.format(value))
-                    target_value = value
-                if isinstance(target_value,bool):
-                    if value_get==target_value:
-                        logger.info('value get ({}) corresponds to the target ({}): going on'.format(value_get,target_value))
-                    else:
-                        raise exceptions.DriplineValueError('value get ({}) DOES NOT correspond to the target ({}): stopping here!'.format(value_get,target_value))
-                else:
-                    raise exceptions.DriplineValueError('Cannot check! value set and target are not the same type as value get (string): stopping here!')
-
-            # if you are in this "else", this means that you either wanted to mess up with us or you are not viligant enough
-            else:
-                raise exceptions.DriplineValueError('value get ({}) is not a float, int, string, bool, None ({}): SUPER WEIRD!'.format(value_get,type(value_get)))
-
-            logger.info('{} set to {}'.format(a_target,value_get))
-
+        self.start_worker_pool(self.on_set_helper,[self._targets], value)
         return 'set and check successful'
 
     def _set_condition(self, number):
