@@ -53,60 +53,61 @@ class MultiDo(Endpoint, WorkerPool):
           get_only (bool): skip endpoint for set routine
           check_field (str): return payload field to check against (value_cal, value_raw, or values), if different from displayed get field
         '''
-        Endpoint.__init__(self, **kwargs)
         WorkerPool.__init__(self, 5)
+        Endpoint.__init__(self, **kwargs)
         self._set_condition_dict = set_condition_dict
         self._targets = []
-        self.mp_manager = multiprocessing.Manager()
 
-        temp_targets = self.mp_manager.list()
+        temp_targets = multiprocessing.Manager().list()
 
-        def init_helper(self, a_target):
-        #for a_target in targets:
-            these_details = {}
-            ## SET options
-            if 'default_set' in a_target:
-                these_details.update({'default_set':a_target['default_set']})
-            ## GET options
-            if 'payload_field' in a_target:
-                these_details.update({'payload_field':a_target['payload_field']})
-            else:
-                these_details.update({'payload_field':'value_cal'})
-            if 'units' in a_target and 'formatter' in a_target:
-                raise exceptions.DriplineValueError('may not specify both "units" and "formatter"')
-            if 'formatter' in a_target:
-                these_details['formatter'] = a_target['formatter']
-            elif 'units' in a_target:
-                these_details['formatter'] = '{} -> {} [{}]'.format(a_target['target'], '{}', a_target['units'])
-            else:
-                these_details['formatter'] = '{} -> {}'.format(a_target['target'], '{}')
-            ## CHECK options
-            if 'tolerance' in a_target:
-                these_details.update({'tolerance':a_target['tolerance']})
-            else:
-                these_details.update({'tolerance': 0.99})
-            if 'no_check' in a_target:
-                these_details.update({'no_check':a_target['no_check']})
-            else:
-                these_details.update({'no_check':False})
-            if 'get_target' in a_target:
-                these_details.update({'get_name':a_target['get_target']})
-            else:
-                these_details.update({'get_name':a_target['target']})
-            if 'target_value' in a_target:
-                these_details.update({'target_value':a_target['target_value']})
-            # Differentiate set/get behavior in MultiDo
-            if 'get_only' in a_target:
-                these_details.update({'get_only':a_target['get_only']})
-            if 'check_field' in a_target:
-                these_details.update({'check_field':a_target['check_field']})
-            else:
-                these_details.update({'check_field':these_details['payload_field']})
-
-            temp_targets.append([a_target['target'], these_details])
-
-        self.start_worker_pool(self.init_helper, [targets])
+        self.start_worker_pool(app, [targets], [temp_targets])
         self._targets = list(temp_targets)
+        logger.debug(self._targets)
+        
+    def init_helper(self, a_target, targets):
+    #for a_target in targets:
+        these_details = {}
+        ## SET options
+        if 'default_set' in a_target:
+            these_details.update({'default_set':a_target['default_set']})
+        ## GET options
+        if 'payload_field' in a_target:
+            these_details.update({'payload_field':a_target['payload_field']})
+        else:
+            these_details.update({'payload_field':'value_cal'})
+        if 'units' in a_target and 'formatter' in a_target:
+            raise exceptions.DriplineValueError('may not specify both "units" and "formatter"')
+        if 'formatter' in a_target:
+            these_details['formatter'] = a_target['formatter']
+        elif 'units' in a_target:
+            these_details['formatter'] = '{} -> {} [{}]'.format(a_target['target'], '{}', a_target['units'])
+        else:
+            these_details['formatter'] = '{} -> {}'.format(a_target['target'], '{}')
+        ## CHECK options
+        if 'tolerance' in a_target:
+            these_details.update({'tolerance':a_target['tolerance']})
+        else:
+            these_details.update({'tolerance': 0.99})
+        if 'no_check' in a_target:
+            these_details.update({'no_check':a_target['no_check']})
+        else:
+            these_details.update({'no_check':False})
+        if 'get_target' in a_target:
+            these_details.update({'get_name':a_target['get_target']})
+        else:
+            these_details.update({'get_name':a_target['target']})
+        if 'target_value' in a_target:
+            these_details.update({'target_value':a_target['target_value']})
+        # Differentiate set/get behavior in MultiDo
+        if 'get_only' in a_target:
+            these_details.update({'get_only':a_target['get_only']})
+        if 'check_field' in a_target:
+            these_details.update({'check_field':a_target['check_field']})
+        else:
+            these_details.update({'check_field':these_details['payload_field']})
+
+        targets.append([a_target['target'], these_details])
+        logger.debug(targets)
 
     def on_get_helper(self, target, result_vals, result_reps):
         a_target, details = target
@@ -127,15 +128,15 @@ class MultiDo(Endpoint, WorkerPool):
         '''
         attemps to get a single endpoint and return value and string representation for every target
         '''
-        result_vals = self.mp_manager.dict()
-        result_reps = self.mp_manager.list()
-        self.start_worker_pool(self.on_get_helper,[self._targets], result_vals, result_reps)
+        result_vals = multiprocessing.Manager().dict()
+        result_reps = multiprocessing.Manager().list()
+        self.start_worker_pool(self.on_get_helper,[self._targets], [result_vals, result_reps])
         return {'value_raw': dict(result_vals), 'value_cal': '\n'.join(list(result_reps))}
 
     def on_set_helper(self, target, value):
         a_target, details = target
         if 'get_only' in details and details['get_only'] is True:
-            continue
+            return
         if 'default_set' in details:
             value_to_set = details['default_set']
         else:
@@ -145,7 +146,7 @@ class MultiDo(Endpoint, WorkerPool):
         # checking the value of the endpoint
         if details['no_check']==True:
             logger.info('no check after set required: skipping!')
-            continue
+            return
         else:
             logger.info('checking <{}>'.format(a_target))
             result = self.provider.get(details['get_name'])
@@ -269,7 +270,7 @@ class MultiDo(Endpoint, WorkerPool):
         '''
         Performs sets and checks ... #TODO_DOC
         '''
-        self.start_worker_pool(self.on_set_helper,[self._targets], value)
+        self.start_worker_pool(self.on_set_helper,[self._targets], [value])
         return 'set and check successful'
 
     def _set_condition(self, number):
