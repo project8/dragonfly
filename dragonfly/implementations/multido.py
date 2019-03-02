@@ -60,7 +60,7 @@ class MultiDo(Endpoint, WorkerPool):
 
         temp_targets = multiprocessing.Manager().list()
 
-        self.start_worker_pool(app, [targets], [temp_targets])
+        self.start_worker_pool(self.init_helper, [targets], [temp_targets])
         self._targets = list(temp_targets)
         logger.debug(self._targets)
         
