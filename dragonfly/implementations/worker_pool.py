@@ -50,21 +50,20 @@ class WorkerPool(object):
 
     def start_worker_pool(self, func, iterables=[], constants=[]):
         logger.debug(' Trying to start a worker pool with ' +  str(iterables) + '    '+ str(constants))
+        r = None
         if not (isinstance(iterables, list) and isinstance(constants, list)):
-
             logger.error(" Don't forget to put iterables and constants in lists")
-            return
-        if len(iterables) == 0:
+        elif len(iterables) == 0:
             logger.warning(" I receive no iterables... Will do this sequentially.")
-            return func(*constants)
-        if len(constants) == 0:
+            r = func(*constants)
+        elif len(constants) == 0:
             logger.debug(' I get only iterables!')
             iterable = zip(*iterables)
             r = self.pool.map(self.worker, iterable)
         else:
             logger.debug(' I get both iterables and constants!')
             args_tuple = self.unpack_pack(func, iterables, constants)
-        r =  self.pool.map(self.worker, args_tuple)
+            r =  self.pool.map(self.worker, args_tuple)
         return r
         
 class Class(WorkerPool): # for testing
