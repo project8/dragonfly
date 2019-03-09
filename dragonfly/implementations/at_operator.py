@@ -43,13 +43,16 @@ class AtOperator(SlowSubprocessMixin, Endpoint):
         try:
             json.loads(open(self.authentication_path).read())
         except IOError, err:
-            logger.critical(' The provided authentication file does not exist')
+            logger.critical('The provided authentication file does not exist')
             os._exit(1)
         except ValueError, err:
-            logger.critical(' The provided authentication file is invalid.')
+            logger.critical('The provided authentication file is invalid.')
             os._exit(1)
 
         self.slack_client = None
+        self.bot_id = None
+
+        self._creds = None
 
         self.monitor_channel_name = monitor_channel_name
         self.monitor_channel_id = ''
@@ -59,6 +62,8 @@ class AtOperator(SlowSubprocessMixin, Endpoint):
         self.current_operator_name = ''
         self.current_operator_id = ''
         self.current_shift_end_time = datetime.datetime.now()
+        self.next_shift_start_time = None
+
         self.temporary_operator_id = []
 
         self.full_name_to_id_dictionary = {}
@@ -96,7 +101,7 @@ class AtOperator(SlowSubprocessMixin, Endpoint):
         try:
             return Credentials(**creds_data)
         except Exception:
-            logger.critical(' The Google calendar credentials does not exist or is invalid.')
+            logger.critical('The Google calendar credentials does not exist or is invalid.')
             os._exit(1)
 
     def get_event_list(self, creds):
@@ -171,7 +176,7 @@ class AtOperator(SlowSubprocessMixin, Endpoint):
             self.current_operator_name = ""
             self.current_operator_id = ""
             self.current_shift_end_time = datetime.datetime.now() + self.update_interval + datetime.timedelta(hours=1)
-            logger.info(' No current operator found in Google Calendar.')
+            logger.info('No current operator found in Google Calendar.')
             if not initial:
                 message = 'The last operator has ended their shift: Good job!\n'
             message += 'No new operator found.'
@@ -179,17 +184,17 @@ class AtOperator(SlowSubprocessMixin, Endpoint):
             self.current_operator_name = ""
             self.current_operator_id = ""
             self.current_shift_end_time = datetime.datetime.now() + self.update_interval + datetime.timedelta(hours=1)
-            logger.warning(' The operator listed in Google Calendar (' + new_operator_name + ') is not found in Slack!')
+            logger.warning('The operator listed in Google Calendar (' + new_operator_name + ') is not found in Slack!')
             message = 'The operator listed in Google Calendar is not found in Slack.'
         elif new_operator_name != self.current_operator_name:
             self.current_operator_name = new_operator_name
             self.current_operator_id = self.full_name_to_id_dictionary[self.current_operator_name]
             self.current_shift_end_time = shift_end_time
-            logger.info(' Found a new operator: ' + new_operator_name)
+            logger.info('Found a new operator: ' + new_operator_name)
             self.send_message(self.monitor_channel_id, "I've found a new operator: " + new_operator_name + ". The shift will end at " + str(shift_end_time))
         elif shift_end_time > self.current_shift_end_time:
             self.current_shift_end_time = shift_end_time
-            logger.info(' Extended the shift time for current operator!')
+            logger.info('Extended the shift time for current operator!')
             message = "It seems that the shift for current operator is extended! \n"
             message += "I'm not sure whether this branch will be used though."
         if not regular_check:
@@ -209,7 +214,7 @@ class AtOperator(SlowSubprocessMixin, Endpoint):
                     full_name_to_id_dictionary[m['real_name']] = m['id']
                     id_to_username_dictionary[m['id']] = m['name']
                     username_to_id_dictionary[m['name']] = m['id']
-            logger.info(' Constructed dictionaries for full names, Slack usernames and ids.')
+            logger.info('Constructed dictionaries for full names, Slack usernames and ids.')
             return full_name_to_id_dictionary, id_to_username_dictionary, username_to_id_dictionary
         else:
             return None, None, None
@@ -218,7 +223,7 @@ class AtOperator(SlowSubprocessMixin, Endpoint):
         '''
         Return 2 dictionaries storing information of Slack channels: channel name to id, and channel id to name.
         '''
-        logger.info(" Trying to construct an dictionary mapping channel names to their ids.")
+        logger.info("Trying to construct an dictionary mapping channel names to their ids.")
         request = self.slack_client.api_call("conversations.list")
         if request['ok']:
             channel_name_to_id_dictionary = {}
@@ -226,7 +231,7 @@ class AtOperator(SlowSubprocessMixin, Endpoint):
             for c in request['channels']:
                 channel_name_to_id_dictionary[c['name']] = c['id']
                 channel_id_to_name_dictionary[c['id']] = c['name']
-            logger.info(' Constructed dictionaries containing information of ' + str(len(request['channels'])) + ' channels.')
+            logger.info('Constructed dictionaries containing information of {} channels.'.format(str(len(request['channels']))))
             return channel_name_to_id_dictionary, channel_id_to_name_dictionary
 
         else:
@@ -237,9 +242,8 @@ class AtOperator(SlowSubprocessMixin, Endpoint):
         Send a Slack message to @ the operator (@ temporary operator(s) if exists, otherwise @ the one listed on google calendar.)
         channel: id of the channel where the message will be sent
         '''
-        self.send_message(channel, "Get it!")
         if len(self.temporary_operator_id) != 0:
-            logger.info(' Found temporary operator(s)!')
+            logger.info('Found temporary operator(s)!')
             message = ""
             for operator_id in self.temporary_operator_id:
                 message += "<@" + operator_id + "> "
@@ -316,7 +320,7 @@ class AtOperator(SlowSubprocessMixin, Endpoint):
         remove = user_id
         if operator_name != "":
             if operator_name not in self.username_to_id_dictionary:
-                self.send_message(channel, "Sorry, I don't rocognize that username.")
+                self.send_message(channel, "Sorry, I don't recognize that username.")
                 return
             remove = self.username_to_id_dictionary[operator_name]
         if remove not in self.temporary_operator_id:
@@ -334,7 +338,7 @@ class AtOperator(SlowSubprocessMixin, Endpoint):
         self.command_dictionary["!whoisop"] = self.command_whoisop
         self.command_dictionary["!tempoperator"] = self.command_tempoperator
         self.command_dictionary["!removetempoperator"] = self.command_removetempoperator
-        logger.info(' Constructed dictionaries for operator helper commands on Slack.')
+        logger.info('Constructed dictionaries for operator helper commands on Slack.')
 
     def parse_output(self, rtm_output, bot_id):
         '''
@@ -351,110 +355,115 @@ class AtOperator(SlowSubprocessMixin, Endpoint):
                     tokens = o['text'].split(' ', 1)
                     command = tokens[0]
                     if command in self.command_dictionary:
-                        logger.info(' A helper command [' + command + '] is called!')
+                        logger.info('A helper command [' + command + '] is called!')
                         channel = o["channel"]
                         user_id = o["user"]
                         operator_name = ""
                         if len(tokens) > 1 and tokens[1].startswith('[') and "]" in tokens[1]:
                             sub_tokens = tokens[1].split(']', 1)
                             operator_name = sub_tokens[0].replace('[', '')
-                            logger.info(' Found a potential operator name [' + operator_name + '] !')
+                            logger.info('Found a potential operator name [' + operator_name + '] !')
                         func = self.command_dictionary[command]
                         num_args = len(funcsigs.signature(func).parameters)
                         args = [channel, user_id, operator_name]
                         func(*args[:num_args])
         return None
+    
+    def initialize(self):
+        '''
+
+        '''
+        logging.getLogger('googleapiclient.discovery_cache').setLevel(logging.ERROR)
+        self.get_slack_client()
+        if self.slack_client.rtm_connect(auto_reconnect=True):
+            logger.info('Connected!')
+            self.bot_id = self.slack_client.api_call('auth.test')['user_id']
+            if not self.bot_id:
+                logger.critical('Unable to get the bot user ID.')
+                os._exit(1)
+            logger.info('Got Slack Operator bot id.')
+            self.full_name_to_id_dictionary, self.id_to_username_dictionary, self.username_to_id_dictionary = self.construct_user_dictionaries()
+            if not self.full_name_to_id_dictionary:
+                logger.critical(" Cannot get the list of users.")
+                os._exit(1)
+            self.channel_name_to_id_dictionary, self.channel_id_to_name_dictionary = self.construct_channel_dictionaries()
+            if not self.channel_name_to_id_dictionary:
+                logger.error('Cannot get the list of channels, therefore cannot find the monitor channel. Related functionalities will be disabled.')
+            elif self.monitor_channel_name not in self.channel_name_to_id_dictionary:
+                logger.error('The name of monitor channel is not found. Related functionalities will be disabled.')
+            else:
+                self.monitor_channel_id = self.channel_name_to_id_dictionary[self.monitor_channel_name]
+                logger.info('The id for monitor channel [' + self.monitor_channel_name + '] is found! ')
+
+            self.construct_command_dictionary()
+            
+            self._creds = self.get_calendar_credentials()
+            events = self.get_event_list(self._creds)
+            if not events:
+                logger.critical('Unable to find any Google Calendar event.')
+                os._exit(1)
+            logger.info('Successfully get ' + str(len(events)) + ' events from Google Calendar.')
+
+            self.send_message(self.monitor_channel_id, "Have no fear, @operator is here!")
+            
+            logger.info('Trying to retrieve information regarding current operator...')
+            new_operator_name, shift_end_time, self.next_shift_start_time = self.get_operator_name_and_time(events)
+            self.check_operator_validity(new_operator_name, shift_end_time, True, False)
+            return events
+        else:
+            logger.critical("An error occurs when connecting to Slack.")
+            os._exit(1)
 
     def run(self):
         '''
         The main loop.
         '''
-        logging.getLogger('googleapiclient.discovery_cache').setLevel(logging.ERROR)
-        self.get_slack_client()
-        if self.slack_client.rtm_connect(auto_reconnect=True):
-            logger.info(' Connected!')
-            bot_id = self.slack_client.api_call('auth.test')['user_id']
-            if not bot_id:
-                logger.critical(' Unable to get the bot user ID.')
-                os._exit(1)
-            logger.info(' Got Slack Operator bot id.')
-
-            self.full_name_to_id_dictionary, self.id_to_username_dictionary, self.username_to_id_dictionary = self.construct_user_dictionaries()
-            if not self.full_name_to_id_dictionary:
-                logger.critical(" Cannot get the list of users.")
-                os._exit(1)
-
-            self.channel_name_to_id_dictionary, self.channel_id_to_name_dictionary = self.construct_channel_dictionaries()
-            if not self.channel_name_to_id_dictionary:
-                logger.error(' Cannot get the list of channels, therefore cannot find the monitor channel. Related functionalities will be disabled.')
-            elif self.monitor_channel_name not in self.channel_name_to_id_dictionary:
-                logger.error(' The name of monitor channel is not found. Related functionalities will be disabled.')
-            else:
-                self.monitor_channel_id = self.channel_name_to_id_dictionary[self.monitor_channel_name]
-                logger.info(' The id for monitor channel [' + self.monitor_channel_name + '] is found! ')
-
-            self.construct_command_dictionary()
-            
-            creds = self.get_calendar_credentials()
-            events = self.get_event_list(creds)
-            if not events:
-                logger.critical(' Unable to find any Google Calendar event.')
-                os._exit(1)
-            logger.info(' Successfully get ' + str(len(events)) + ' events from Google Calendar.')
-            update_time = datetime.datetime.now() + self.update_interval
-            logger.info(' Next update will occur at ' + str (update_time))
-
-            self.send_message(self.monitor_channel_id, "Have no fear, @operator is here!")
-            
-            logger.info(' Trying to retrieve information regarding current operator...')
-            new_operator_name, shift_end_time, next_shift_start_time = self.get_operator_name_and_time(events)
-            self.check_operator_validity(new_operator_name, shift_end_time, True, False)
+        events = self.initialize()
+        update_time = datetime.datetime.now() + self.update_interval
+        logger.info('Next update will occur at ' + str (update_time))
+        try:
             while True:
-                try:
-                    channel = self.parse_output(self.slack_client.rtm_read(), bot_id)
-                    time_now = datetime.datetime.now()
-                    # Regular check and update
-                    if time_now > update_time:
-                        # Try to update the event list
-                        new_events = self.get_event_list(creds)
-                        if not new_events:
-                            logger.info(' The update of Google Calendar event list fails. Information might be outdated.')
-                        else:
-                            events = new_events
-                            logger.info(' Updated the Google Calendar event list.')
-                        # Try to update Slack users information
-                        new_full_name_to_id_dictionary, new_id_to_username_dictionary,new_username_to_id_dictionary = self.construct_user_dictionaries()
-                        if not new_full_name_to_id_dictionary:
-                            logger.info(" The update of Slack users information falis. Information might be outdated.")
-                        else:
-                            self.full_name_to_id_dictionary = new_full_name_to_id_dictionary
-                            self.id_to_username_dictionary =  new_id_to_username_dictionary
-                            self.username_to_id_dictionary = new_username_to_id_dictionary 
-                            logger.info(' Updated Slack users information.')
-                        # Try to update operator information
-                        new_operator_name, shift_end_time, next_shift_start_time = self.get_operator_name_and_time(events)
-                        self.check_operator_validity(new_operator_name, shift_end_time, False, True)
-                        logger.info(' Updated the operator information.')
-                        update_time = datetime.datetime.now() + self.update_interval 
-                        logger.info(' Next update will occur at ' + str(update_time))
-                    # Update when a shift ends or it's time for next shift to shart
-                    if time_now > self.current_shift_end_time or (next_shift_start_time and time_now > next_shift_start_time):
-                        logger.info(' It seems that the current operator has ended his/her shift! Trying to find a new one...')
-                        new_operator_name, shift_end_time, next_shift_start_time = self.get_operator_name_and_time(events)
-                        self.check_operator_validity(new_operator_name, shift_end_time, False, False)
-                    # When @operator is called
-                    if channel:
-                        channel_name = self.channel_id_to_name_dictionary[channel]
-                        logger.info(' @operator is called in the channel [' + channel_name + ']! Looking for the operator...')
-                        self.at_operator(channel)
+                channel = self.parse_output(self.slack_client.rtm_read(), self.bot_id)
+                time_now = datetime.datetime.now()
+                # Regular check and update
+                if time_now > update_time:
+                    # Try to update the event list
+                    new_events = self.get_event_list(self._creds)
+                    if not new_events:
+                        logger.info('The update of Google Calendar event list fails. Information might be outdated.')
+                    else:
+                        events = new_events
+                        logger.info('Updated the Google Calendar event list.')
+                    # Try to update Slack users information
+                    new_full_name_to_id_dictionary, new_id_to_username_dictionary,new_username_to_id_dictionary = self.construct_user_dictionaries()
+                    if not new_full_name_to_id_dictionary:
+                        logger.info("The update of Slack users information falis. Information might be outdated.")
+                    else:
+                        self.full_name_to_id_dictionary = new_full_name_to_id_dictionary
+                        self.id_to_username_dictionary =  new_id_to_username_dictionary
+                        self.username_to_id_dictionary = new_username_to_id_dictionary 
+                        logger.info('Updated Slack users information.')
+                    # Try to update operator information - 
+                    new_operator_name, shift_end_time, self.next_shift_start_time = self.get_operator_name_and_time(events)
+                    self.check_operator_validity(new_operator_name, shift_end_time, False, True)
+                    logger.info('Updated the operator information.')
+                    update_time = datetime.datetime.now() + self.update_interval 
+                    logger.info('Next update will occur at ' + str(update_time))
+                # Update when a shift ends or it's time for next shift to shart
+                if time_now > self.current_shift_end_time or (self.next_shift_start_time and time_now > self.next_shift_start_time):
+                    logger.info('It seems that the current operator has ended his/her shift! Trying to find a new one...')
+                    new_operator_name, shift_end_time, self.next_shift_start_time = self.get_operator_name_and_time(events)
+                    self.check_operator_validity(new_operator_name, shift_end_time, False, False)
+                # When @operator is called
+                if channel:
+                    channel_name = self.channel_id_to_name_dictionary[channel]
+                    logger.info('@operator is called in the channel [' + channel_name + ']! Looking for the operator...')
+                    self.at_operator(channel)
 
-                    time.sleep(1)
+                time.sleep(1)
 
-                except KeyboardInterrupt:
-                    logger.info(' Being terminated...')
-                    self.send_message(self.monitor_channel_id, "I am being terminated... See you next time!")
-                    os._exit(0)
-                    
-        else:
-            logger.critical(" An error occurs when connecting to Slack.")
-            os._exit(1)
+        finally:
+            logger.info('Being terminated...')
+            self.send_message(self.monitor_channel_id, "I am being terminated... See you next time!")
+            os._exit(0)
+
