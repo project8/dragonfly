@@ -371,7 +371,8 @@ class AtOperator(SlowSubprocessMixin, Endpoint):
     
     def initialize(self):
         '''
-
+        Try to check and assign values to instance variables before entering the main loop.
+        Return a list of Google Calendar events if everything seems to be in order.
         '''
         logging.getLogger('googleapiclient.discovery_cache').setLevel(logging.ERROR)
         self.get_slack_client()
