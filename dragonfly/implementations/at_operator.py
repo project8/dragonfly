@@ -239,19 +239,21 @@ class AtOperator(SlowSubprocessMixin, Endpoint):
 
     def at_operator(self, channel):
         '''
-        Send a Slack message to @ the operator (@ temporary operator(s) if exists, otherwise @ the one listed on google calendar.)
+        Send a Slack message to @ the operator (the one listed on Google calendar, and temporary operator(s) if exists.)
         channel: id of the channel where the message will be sent
         '''
-        if len(self.temporary_operator_id) != 0:
-            logger.info('Found temporary operator(s)!')
-            message = ""
-            for operator_id in self.temporary_operator_id:
-                message += "<@" + operator_id + "> "
-            self.send_message(channel, message)
-        elif self.current_operator_id == "":
+        if len(self.temporary_operator_id) == 0 and self.current_operator_id == "":
             self.send_message(channel, 'There is no operator on shift right now.')
         else:
-            self.send_message(channel, "<@" + self.current_operator_id + ">")
+            message = ""
+            if self.current_operator_id != "":
+                logger.debug('Found the current operator!')
+                message += "<@" + self.current_operator_id + "> "
+            if len(self.temporary_operator_id) != 0:
+                logger.debug('Found temporary operator(s)!')
+                for operator_id in self.temporary_operator_id:
+                    message += "<@" + operator_id + "> "
+            self.send_message(channel, message)
 
     def command_hello(self, channel, user_id):
         '''
