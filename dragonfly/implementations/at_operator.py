@@ -13,7 +13,7 @@ import datetime, logging, os, time, json
 import slackclient
 
 from dripline.core import Endpoint, fancy_doc
-from .subprocess_mixin import *
+from .subprocess_mixin import SlowSubprocessMixin
 
 __all__ = []
 __all__.append('AtOperator')
