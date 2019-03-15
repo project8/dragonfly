@@ -87,7 +87,7 @@ class AtOperator(SlowSubprocessMixin, Endpoint):
             slack = config_file['slack']['operator']
             self.slack_client = slackclient.SlackClient(slack)
         else:
-            logger.critical('Unable to find slack credentials for operator bot in <~/.project8_authentications.json>')
+            logger.critical('Unable to find slack credentials for operator bot in {}'.format(self.authentication_path))
             os._exit(1)
 
     def get_calendar_credentials(self):
