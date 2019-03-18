@@ -126,6 +126,7 @@ class FormatSpime(Spime):
                  set_str=None,
                  set_value_lowercase=True,
                  set_value_map=None,
+                 extract_raw_regex=None,
                  **kwargs):
         '''
         get_str (str): sent verbatim in the event of on_get; if None, getting of endpoint is disabled
@@ -134,12 +135,14 @@ class FormatSpime(Spime):
         set_value_lowercase (bool): default option to map all string set value to .lower()
             **WARNING: never set to False if using a set_value_map dict
         set_value_map (str||dict): inverse of calibration to map raw set value to value sent; either a dictionary or an asteval-interpretable string
+        extract_raw_regex (str): regular expression search pattern applied to get return. If None, not applied
         '''
         Spime.__init__(self, **kwargs)
         self._get_reply_float = get_reply_float
         self._get_str = get_str
         self._set_str = set_str
         self._set_value_map = set_value_map
+        self._extract_raw_regex = extract_raw_regex
         self.evaluator = asteval.Interpreter()
         if set_value_map is not None and not isinstance(set_value_map, (dict,str)):
             raise DriplineValueError("Invalid set_value_map config for {}; type is {} not dict".format(self.name, type(set_value_map)))
@@ -153,6 +156,14 @@ class FormatSpime(Spime):
             raise DriplineMethodNotSupportedError('<{}> has no get string available'.format(self.name))
         result = self.provider.send([self._get_str])
         logger.debug('result is: {}'.format(result))
+        if self._extract_raw_regex is not None:
+            first_result = result
+            matches = re.search(self._extract_raw_regex, first_result)
+            if matches is None:
+                logger.error('matching returned none')
+                raise dripline.core.DriplineValueError('returned result [{}] has no match to input regex [{}]'.format(first_result, self._extract_raw_regex))
+            logger.info("matches are: {}".format(matches.groupdict()))
+            result = matches.groupdict()['value_raw']
         if self._get_reply_float:
             logger.debug('desired format is: float')
             formatted_result = map(float, re.findall("[-+]?\d+\.\d+",format(result)))
