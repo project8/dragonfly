@@ -135,7 +135,7 @@ class FormatSpime(Spime):
         set_value_lowercase (bool): default option to map all string set value to .lower()
             **WARNING: never set to False if using a set_value_map dict
         set_value_map (str||dict): inverse of calibration to map raw set value to value sent; either a dictionary or an asteval-interpretable string
-        extract_raw_regex (str): regular expression search pattern applied to get return. If None, not applied
+        extract_raw_regex (str): regular expression search pattern applied to get return. Must be constructed with an extraction group keyed with the name "value_raw" (ie r'(?P<value_raw>)' ) 
         '''
         Spime.__init__(self, **kwargs)
         self._get_reply_float = get_reply_float
