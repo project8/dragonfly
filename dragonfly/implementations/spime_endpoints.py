@@ -162,7 +162,7 @@ class FormatSpime(Spime):
             if matches is None:
                 logger.error('matching returned none')
                 raise dripline.core.DriplineValueError('returned result [{}] has no match to input regex [{}]'.format(first_result, self._extract_raw_regex))
-            logger.info("matches are: {}".format(matches.groupdict()))
+            logger.debug("matches are: {}".format(matches.groupdict()))
             result = matches.groupdict()['value_raw']
         if self._get_reply_float:
             logger.debug('desired format is: float')
