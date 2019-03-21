@@ -5,6 +5,7 @@ Convenience object allowing a single target to interact with multiple endpoints
 from __future__ import absolute_import
 __all__ = []
 
+from time import sleep
 from dripline.core import Endpoint, fancy_doc, exceptions
 
 import logging
@@ -65,7 +66,7 @@ class MultiDo(Endpoint):
             else:
                 these_details.update({'payload_field':'value_cal'})
             if 'units' in a_target and 'formatter' in a_target:
-                raise exceptions.DriplineValueError('may not specify both "units" and "formatter"')
+                raise exceptions.DriplineValueError('{} : {} - may not specify both "units" and "formatter"'.format(self.name,a_target['target']))
             if 'formatter' in a_target:
                 these_details['formatter'] = a_target['formatter']
             elif 'units' in a_target:
@@ -87,6 +88,8 @@ class MultiDo(Endpoint):
                 these_details.update({'get_name':a_target['target']})
             if 'target_value' in a_target:
                 these_details.update({'target_value':a_target['target_value']})
+            if 'delay_check' in a_target:
+                these_details.update({'delay_check':a_target['delay_check']})
             # Differentiate set/get behavior in MultiDo
             if 'get_only' in a_target:
                 these_details.update({'get_only':a_target['get_only']})
@@ -138,6 +141,9 @@ class MultiDo(Endpoint):
                 logger.info('no check after set required: skipping!')
                 continue
             else:
+                if 'delay_check' in details:
+                    logger.debug('sleeping for {} sec'.format(details['delay_check']))
+                    sleep(details['delay_check'])
                 logger.info('checking <{}>'.format(a_target))
                 result = self.provider.get(details['get_name'])
                 value_get = result[details['check_field']]
@@ -162,7 +168,7 @@ class MultiDo(Endpoint):
                 logger.debug('no target_value given: using value ({}) as a target_value to check'.format(value))
                 target_value = value
             if value_get==None:
-                raise exceptions.DriplineValueError('value get is a None')
+                raise exceptions.DriplineValueError('{} value get is None'.format(a_target))
 
             # if the value we are checking is a float/int
             if isinstance(value_get, (int,float)):
@@ -191,7 +197,7 @@ class MultiDo(Endpoint):
                         if target_value -  tolerance <= value_get and value_get <= target_value + tolerance:
                             logger.info('the value get <{}> ({}) is included in the target_value ({}) +- tolerance ({})'.format(a_target,value_get,target_value,tolerance))
                         else:
-                            raise exceptions.DriplineValueError('the value get <{}> ({}) is NOT included in the target_value ({}) +- tolerance ({}): stopping here!'.format(a_target,value_get,target_value,tolerance))
+                            raise exceptions.DriplineValueError('{} value get ({}) is NOT included in the target_value ({}) +- tolerance ({}): stopping here!'.format(a_target,value_get,target_value,tolerance))
                     elif isinstance(tolerance,str):
                         if '%' not in tolerance:
                             logger.debug('absolute tolerance')
@@ -207,11 +213,11 @@ class MultiDo(Endpoint):
                         if target_value -  tolerance <= value_get and value_get <= target_value + tolerance:
                             logger.info('the value <{}> get ({}) is included in the target_value ({}) +- tolerance ({})'.format(a_target,value_get,target_value,tolerance))
                         else:
-                            raise exceptions.DriplineValueError('the value <{}> get ({}) is NOT included in the target_value ({}) +- tolerance ({}): stopping here!'.format(a_target,value_get,target_value,tolerance))
+                            raise exceptions.DriplineValueError('{} value get ({}) is NOT included in the target_value ({}) +- tolerance ({}): stopping here!'.format(a_target,value_get,target_value,tolerance))
                     else:
-                        raise exceptions.DriplineValueError('tolerance is not a float, int or string: stopping here')
+                        raise exceptions.DriplineValueError('{} tolerance is not a float, int or string: stopping here'.format(a_target))
                 else:
-                    raise exceptions.DriplineValueError('Cannot check! value set and target_value are not the same type as value get (float/int): stopping here!')
+                    raise exceptions.DriplineValueError('Cannot check! {} value set and target_value are not the same type as value get (float/int): stopping here!'.format(a_target))
 
             # if the value we are checking is a string
             elif isinstance(value_get, str):
@@ -229,13 +235,12 @@ class MultiDo(Endpoint):
                         target_value=1
                     if target_value=='off' or target_value=='disable' or target_value=='disabled' or target_value ==  'negative':
                         target_value=0
-                    # raise exceptions.DriplineValueError('Cannot check! value set and target_value are not the same type as value get (string): stopping here!')
                     # checking is target and value_get are the same
 
                 if target_value==value_get:
                     logger.info('value get ({}) corresponds to the target ({}): going on'.format(value_get_backup,target_backup))
                 else:
-                    raise exceptions.DriplineValueError('value get ({}) DOES NOT correspond to the target_value ({}): stopping here!'.format(value_get_backup,target_backup))
+                    raise exceptions.DriplineValueError('{} value get ({}) DOES NOT correspond to the target_value ({}): stopping here!'.format(a_target,value_get_backup,target_backup))
 
             # if the value we are checking is a bool
             elif isinstance(value_get, bool):
@@ -246,13 +251,13 @@ class MultiDo(Endpoint):
                     if value_get==target_value:
                         logger.info('value get ({}) corresponds to the target ({}): going on'.format(value_get,target_value))
                     else:
-                        raise exceptions.DriplineValueError('value get ({}) DOES NOT correspond to the target ({}): stopping here!'.format(value_get,target_value))
+                        raise exceptions.DriplineValueError('{} value get ({}) DOES NOT correspond to the target ({}): stopping here!'.format(a_target,value_get,target_value))
                 else:
                     raise exceptions.DriplineValueError('Cannot check! value set and target are not the same type as value get (string): stopping here!')
 
             # if you are in this "else", this means that you either wanted to mess up with us or you are not viligant enough
             else:
-                raise exceptions.DriplineValueError('value get ({}) is not a float, int, string, bool, None ({}): SUPER WEIRD!'.format(value_get,type(value_get)))
+                raise exceptions.DriplineValueError('{} value get ({}) is not a float, int, string, bool, None ({}): SUPER WEIRD!'.format(a_target,value_get,type(value_get)))
 
             logger.info('{} set to {}'.format(a_target,value_get))
 
