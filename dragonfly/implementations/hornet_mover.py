@@ -21,7 +21,7 @@ class HornetMover(object):
             self.src_dirs.append(os.path.join(this_home, directory))
         self.dst_dir = os.path.join(this_home, dst_dir)
         if not os.path.exists(self.dst_dir):
-            logger.warning(' The given destination does not exist.')
+            logger.warning('The given destination does not exist.')
         
     def move_file(self, base_dir, sub_path):
         '''
@@ -31,17 +31,17 @@ class HornetMover(object):
         '''
         src = os.path.join(base_dir, sub_path)
         if not os.path.exists(src):
-            logger.warning(' The given path for source file is invalid.')
+            logger.warning('The given path for source file is invalid.')
             return src
         dst = os.path.join(self.dst_dir, sub_path)
         if not os.path.exists(os.path.dirname(dst)):
             try:
                 os.makedirs(os.path.dirname(dst))
             except OSError:
-                logger.error(' Unable to create directories in ' + self.dst_dir)
+                logger.error('Unable to create directories in ' + self.dst_dir)
                 os._exit(1)
         shutil.move(src, dst)
-        logger.debug(' Moved ' + sub_path + ' from ' + src + ' to ' + dst)
+        logger.debug('Moved ' + sub_path + ' from ' + src + ' to ' + dst)
         return dst
     
     def get_sub_path(self, path):
@@ -60,7 +60,7 @@ class HornetMover(object):
         Move the given file and return its new path.
         path: the absolute path for the file to be moved.
         '''
-        logger.debug(" I am trying to move " + path)
+        logger.debug("I am trying to move " + path)
         base_dir, sub_path = self.get_sub_path(path)
         if sub_path:
             new_path = self.move_file(base_dir, sub_path)

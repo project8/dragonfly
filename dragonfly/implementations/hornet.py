@@ -2,12 +2,12 @@ from __future__ import absolute_import
 
 import logging, os, datetime, yaml, time, multiprocessing, sys
 
-from .hornet_watcher import *
-from .hornet_mover import *
+from .hornet_watcher import HornetWatcher
+from .hornet_mover import HornetMover
 
 from dripline.core import Endpoint, fancy_doc
 
-from .subprocess_mixin import *
+from .subprocess_mixin import SlowSubprocessMixin
 
 __all__ = []
 __all__.append('Hornet')
@@ -48,47 +48,46 @@ class Hornet(SlowSubprocessMixin, Endpoint):
                 context = watcher_output_queue.get_nowait()
                 path = context['path']
                 jobs = context['jobs']
-                logger.debug(' I have found jobs ' + str(jobs) + ' for ' + path)
+                logger.debug('I have found jobs ' + str(jobs) + ' for ' + path)
                 for job in jobs:
-                    logger.debug(' I am sending the file to the ' + job)
+                    logger.debug('I am sending the file to the ' + job)
                     path = modules[job].run(path)
-            logger.info(' I have processed ' + str(watcher_count) + ' item(s) .')
-        except Exception, e:
+            logger.info('I have processed ' + str(watcher_count) + ' item(s) .')
+        except Exception, e: # just in case
             logger.error(e)
 
     def run(self):
         '''
         It processes files regularly, and tries to finish remaining works before being terminated,
         '''
-        logger.info(' Setting up the watcher')
+        logger.info('Setting up the watcher')
         watcher_output_queue = multiprocessing.Queue()
         watcher = HornetWatcher(self.watcher_config, watcher_output_queue)
         
         modules = {}
         for module in self.modules:
             module_config = self.modules[module]
-            logger.info(' Setting up the ' + module)
+            logger.info('Setting up the ' + module)
             logger.debug(module_config)
             hornet_class = getattr(sys.modules[__name__], module_config['module'])
             modules[module] = hornet_class(**module_config)
   
         watcher.start_control_process()
         process_time = datetime.datetime.now() + self.process_interval
-        logger.info(' I will start at ' + str(process_time))
-
-        while True:
-            try:
+        logger.info('I will start at ' + str(process_time))
+        
+        try:
+            while True:
                 if (datetime.datetime.now() > process_time):
                     self.process_files(watcher_output_queue, modules)
                     process_time = datetime.datetime.now() + self.process_interval
                     logger.info(' I will be working again at ' + str(process_time))
-            except KeyboardInterrupt:
-                logger.info(' I am being terminated. Trying to finish remaining work first...')
-                watcher.join_control_process()
-                self.process_files(watcher_output_queue, modules)
-                print(watcher_output_queue)
-                logger.info(' The watcher has been closed. See you next time!')
-                os._exit(0)
+        finally:
+            logger.info('I am being terminated. Trying to finish remaining work first...')
+            watcher.join_control_process()
+            self.process_files(watcher_output_queue, modules)
+            logger.info('The watcher has been closed. See you next time!')
+            os._exit(0)
                 
 
 
