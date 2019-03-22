@@ -167,7 +167,7 @@ class MultiDo(Endpoint):
             else:
                 logger.debug('no target_value given: using value ({}) as a target_value to check'.format(value))
                 target_value = value
-            if value_get==None:
+            if value_get is None:
                 raise exceptions.DriplineValueError('{} value get is None'.format(a_target))
 
             # if the value we are checking is a float/int
@@ -183,7 +183,7 @@ class MultiDo(Endpoint):
                         tolerance = details['tolerance']
                     else:
                         tolerance = None
-                    if tolerance==None:
+                    if tolerance is None:
                         logger.debug('No tolerance given: assigning an arbitrary tolerance (1.)')
                         tolerance = 1.
                     if not isinstance(tolerance,float) and not isinstance(tolerance,int) and not isinstance(tolerance,str):
