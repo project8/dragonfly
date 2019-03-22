@@ -172,7 +172,7 @@ class MultiDo(Endpoint):
 
             # if the value we are checking is a float/int
             if isinstance(value_get, (int,float)):
-                if not isinstance(target_value, (int,float)):
+                if not isinstance(target_value, (int, float)):
                     try:
                         target_value = float(target_value)
                     except ValueError:
@@ -183,37 +183,37 @@ class MultiDo(Endpoint):
                         tolerance = details['tolerance']
                     else:
                         tolerance = None
-                    if tolerance is None:
+                    if tolerance==None:
                         logger.debug('No tolerance given: assigning an arbitrary tolerance (1.)')
                         tolerance = 1.
-                    if not isinstance(tolerance,float) and not isinstance(tolerance,int) and not isinstance(tolerance,str):
+                    if not isinstance(tolerance, float) and not isinstance(tolerance, int) and not isinstance(tolerance, str):
                         logger.warning('tolerance is not a float or a string: assigning an arbitrary tolerance (1.)')
                         tolerance = 1.
-                    if isinstance(tolerance,float) or isinstance(tolerance,int):
+                    if isinstance(tolerance, float) or isinstance(tolerance, int):
                         if tolerance == 0:
                             logger.debug('tolerance zero inacceptable: setting tolerance to 1.')
                             tolerance = 1.
                         logger.debug('testing a-t<b<a+t')
                         if target_value -  tolerance <= value_get and value_get <= target_value + tolerance:
-                            logger.info('the value get <{}> ({}) is included in the target_value ({}) +- tolerance ({})'.format(a_target,value_get,target_value,tolerance))
+                            logger.info('the value get <{}> ({}) is included in the target_value ({}) +- tolerance ({})'.format(a_target, value_get, target_value, tolerance))
                         else:
-                            raise exceptions.DriplineValueError('{} value get ({}) is NOT included in the target_value ({}) +- tolerance ({}): stopping here!'.format(a_target,value_get,target_value,tolerance))
-                    elif isinstance(tolerance,str):
+                            raise exceptions.DriplineValueError('{} value get ({}) is NOT included in the target_value ({}) +- tolerance ({}): stopping here!'.format(a_target, value_get, target_value, tolerance))
+                    elif isinstance(tolerance, str):
                         if '%' not in tolerance:
                             logger.debug('absolute tolerance')
                             tolerance = float(tolerance)
                         else:
                             logger.debug('relative tolerance')
                             match_number = re.compile('-?\ *[0-9]+\.?[0-9]*(?:[Ee]\ *-?\ *[0-9]+)?')
-                            tolerance = [float(x) for x in re.findall(match_number, tolerance)][0]*target_value/100.
+                            tolerance = [float(x) for x in re.findall(match_number, tolerance)][0] * target_value / 100.
                         if tolerance == 0:
                             logger.debug('tolerance zero inacceptable: setting tolerance to 1.')
                             tolerance = 1.
                         logger.debug('testing a-t<b<a+t')
                         if target_value -  tolerance <= value_get and value_get <= target_value + tolerance:
-                            logger.info('the value <{}> get ({}) is included in the target_value ({}) +- tolerance ({})'.format(a_target,value_get,target_value,tolerance))
+                            logger.info('the value <{}> get ({}) is included in the target_value ({}) +- tolerance ({})'.format(a_target, value_get, target_value, tolerance))
                         else:
-                            raise exceptions.DriplineValueError('{} value get ({}) is NOT included in the target_value ({}) +- tolerance ({}): stopping here!'.format(a_target,value_get,target_value,tolerance))
+                            raise exceptions.DriplineValueError('{} value get ({}) is NOT included in the target_value ({}) +- tolerance ({}): stopping here!'.format(a_target, value_get, target_value, tolerance))
                     else:
                         raise exceptions.DriplineValueError('{} tolerance is not a float, int or string: stopping here'.format(a_target))
                 else:
@@ -224,42 +224,42 @@ class MultiDo(Endpoint):
                 target_backup = target_value
                 value_get_backup = value_get
 
-                if value_get=='on' or value_get=='enable' or value_get=='enabled' or value_get == 'positive':
-                    value_get=1
-                elif value_get=='off' or value_get=='disable' or value_get=='disabled' or value_get == 'negative':
-                    value_get=0
+                if value_get == 'on' or value_get == 'enable' or value_get == 'enabled' or value_get == 'positive':
+                    value_get = 1
+                elif value_get == 'off' or value_get == 'disable' or value_get == 'disabled' or value_get == 'negative':
+                    value_get = 0
 
-                if isinstance(target_value,str):
+                if isinstance(target_value, str):
                     # changing target in the dictionary
-                    if target_value=='on' or target_value=='enable' or target_value=='enabled' or target_value == 'positive':
-                        target_value=1
-                    if target_value=='off' or target_value=='disable' or target_value=='disabled' or target_value ==  'negative':
-                        target_value=0
+                    if target_value == 'on' or target_value == 'enable' or target_value == 'enabled' or target_value == 'positive':
+                        target_value = 1
+                    if target_value == 'off' or target_value == 'disable' or target_value == 'disabled' or target_value ==  'negative':
+                        target_value = 0
                     # checking is target and value_get are the same
 
-                if target_value==value_get:
-                    logger.info('value get ({}) corresponds to the target ({}): going on'.format(value_get_backup,target_backup))
+                if target_value == value_get:
+                    logger.info('value get ({}) corresponds to the target ({}): going on'.format(value_get_backup, target_backup))
                 else:
-                    raise exceptions.DriplineValueError('{} value get ({}) DOES NOT correspond to the target_value ({}): stopping here!'.format(a_target,value_get_backup,target_backup))
+                    raise exceptions.DriplineValueError('{} value get ({}) DOES NOT correspond to the target_value ({}): stopping here!'.format(a_target, value_get_backup, target_backup))
 
             # if the value we are checking is a bool
             elif isinstance(value_get, bool):
-                if not isinstance(target_value,bool):
+                if not isinstance(target_value, bool):
                     logger.warning('target_value is not the same type as the value get: going to use the set value ({}) as target_value'.format(value))
                     target_value = value
-                if isinstance(target_value,bool):
-                    if value_get==target_value:
-                        logger.info('value get ({}) corresponds to the target ({}): going on'.format(value_get,target_value))
+                if isinstance(target_value, bool):
+                    if value_get == target_value:
+                        logger.info('value get ({}) corresponds to the target ({}): going on'.format(value_get, target_value))
                     else:
-                        raise exceptions.DriplineValueError('{} value get ({}) DOES NOT correspond to the target ({}): stopping here!'.format(a_target,value_get,target_value))
+                        raise exceptions.DriplineValueError('{} value get ({}) DOES NOT correspond to the target ({}): stopping here!'.format(a_target, value_get, target_value))
                 else:
                     raise exceptions.DriplineValueError('Cannot check! value set and target are not the same type as value get (string): stopping here!')
 
             # if you are in this "else", this means that you either wanted to mess up with us or you are not viligant enough
             else:
-                raise exceptions.DriplineValueError('{} value get ({}) is not a float, int, string, bool, None ({}): SUPER WEIRD!'.format(a_target,value_get,type(value_get)))
+                raise exceptions.DriplineValueError('{} value get ({}) is not a float, int, string, bool, None ({}): SUPER WEIRD!'.format(a_target, value_get, type(value_get)))
 
-            logger.info('{} set to {}'.format(a_target,value_get))
+            logger.info('{} set to {}'.format(a_target, value_get))
 
         return 'set and check successful'
 
@@ -273,7 +273,7 @@ class MultiDo(Endpoint):
         logger.debug('receiving a set_condition {} request'.format(number))
         if number in self._set_condition_dict:
             value = self._set_condition_dict[number]
-            logger.warning('Condition {} reached!  Applying set of {} to {}'.format(number,value,self.name))
+            logger.warning('Condition {} reached!  Applying set of {} to {}'.format(number, value,self.name))
             self.on_set(value)
         else:
             logger.debug('condition {} is unknown: ignoring!'.format(number))
@@ -302,8 +302,8 @@ class MultiSet(MultiDo):
     '''
     def __init__(self, **kwargs):
         for a_target in kwargs['targets']:
-            if 'no_check' in a_target and a_target['no_check']==False:
-                logger.critical("MultiSet forces no_check option for all endpoints.  Option for {} of {} overridden.".format(a_target['target'],kwargs['name']))
+            if 'no_check' in a_target and a_target['no_check'] == False:
+                logger.critical("MultiSet forces no_check option for all endpoints.  Option for {} of {} overridden.".format(a_target['target'], kwargs['name']))
             a_target.update({'no_check':True})
         MultiDo.__init__(self, **kwargs)
 
