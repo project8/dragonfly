@@ -87,7 +87,7 @@ class SlackInterface(Gogol):
         self._update_history(routing_info['from'])
         username = routing_info['from']
         if routing_info['level'] not in self._mapping:
-            logger.debug("don't know this level: {}".format(level))
+            logger.debug("don't know this level: {}".format(routing_info['level']))
             return
         if self._is_allowed_to_talk(routing_info['from']):
             if msg.payload == "":
