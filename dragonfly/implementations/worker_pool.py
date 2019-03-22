@@ -13,6 +13,13 @@ logger = logging.getLogger(__name__)
 
 import copy_reg, types
 
+def _pickle_method(m):
+    if m.im_self is None:
+        return getattr, (m.im_class, m.im_func.func_name)
+    else:
+        return getattr, (m.im_self, m.im_func.func_name)
+copy_reg.pickle(types.MethodType, _pickle_method)
+
 class WorkerPool(object):
     def __init__(self, max_workers):
         '''
@@ -28,12 +35,6 @@ class WorkerPool(object):
         self.max_workers = max_workers
 
 
-        def _pickle_method(m):
-            if m.im_self is None:
-                return getattr, (m.im_class, m.im_func.func_name)
-            else:
-                return getattr, (m.im_self, m.im_func.func_name)
-        copy_reg.pickle(types.MethodType, _pickle_method)
 
     #def __getstate__(self): # unnecessary in container - but let's keep it for now
     #    self_dict = self.__dict__.copy()
