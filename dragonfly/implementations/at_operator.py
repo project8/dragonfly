@@ -5,12 +5,11 @@ try:
     # for google
     import googleapiclient.discovery
     from google.oauth2.credentials import Credentials
+    import slackclient
 except ImportError:
     pass
 
 import datetime, logging, os, time, json
-# for slack
-import slackclient
 
 from dripline.core import Endpoint, fancy_doc
 from .subprocess_mixin import SlowSubprocessMixin
@@ -22,18 +21,18 @@ logger = logging.getLogger(__name__)
 
 @fancy_doc
 class AtOperator(SlowSubprocessMixin, Endpoint):
-    
-    def __init__(self, 
+
+    def __init__(self,
                  monitor_channel_name = 'slack_test',
                  update_interval = {"hours":12},
                  authentication_path = ".project8_authentications.json",
                  **kwargs):
         '''
-        monitor_channel_name: the name of Slack monitor channel. 
+        monitor_channel_name: the name of Slack monitor channel.
         update_interval     : the time interval between regular checks and updates.
         authentication_path : the absolute path of the file that stores the authentication info.
         '''
-        imports = ['dateutil', 'funcsigs', 'googleapiclient', 'Credentials']
+        imports = ['dateutil', 'funcsigs', 'googleapiclient', 'Credentials', 'slackclient']
         for import_module in imports:
             if not import_module in globals():
                 raise ImportError(import_module + ' not found, required for AtOperator class.')
@@ -111,12 +110,12 @@ class AtOperator(SlowSubprocessMixin, Endpoint):
         '''
         service = googleapiclient.discovery.build('calendar', 'v3', credentials=creds)
         time= (datetime.datetime.now() - datetime.timedelta(hours=10)).isoformat() + 'Z'
-        events_list = service.events().list(calendarId='primary', timeMin=time, 
-                                            maxResults=100, singleEvents=True, 
+        events_list = service.events().list(calendarId='primary', timeMin=time,
+                                            maxResults=100, singleEvents=True,
                                             orderBy='startTime').execute()
         events = events_list.get('items', [])
         return events
-    
+
 
     def get_event_time(self, event, start):
         '''
@@ -153,7 +152,7 @@ class AtOperator(SlowSubprocessMixin, Endpoint):
                     next_shift_start_time = start_time
                     break
         return current_operator_name, current_shift_end_time, next_shift_start_time
-    
+
     def send_message(self, channel, text):
         '''
         Send a given message to a given Slack channel if the channel exists.
@@ -370,7 +369,7 @@ class AtOperator(SlowSubprocessMixin, Endpoint):
                         args = [channel, user_id, operator_name]
                         func(*args[:num_args])
         return None
-    
+
     def initialize(self):
         '''
         Try to check and assign values to instance variables before entering the main loop.
@@ -399,7 +398,7 @@ class AtOperator(SlowSubprocessMixin, Endpoint):
                 logger.info('The id for monitor channel [' + self.monitor_channel_name + '] is found! ')
 
             self.construct_command_dictionary()
-            
+
             self._creds = self.get_calendar_credentials()
             events = self.get_event_list(self._creds)
             if not events:
@@ -408,7 +407,7 @@ class AtOperator(SlowSubprocessMixin, Endpoint):
             logger.info('Successfully get ' + str(len(events)) + ' events from Google Calendar.')
 
             self.send_message(self.monitor_channel_id, "Have no fear, @operator is here!")
-            
+
             logger.info('Trying to retrieve information regarding current operator...')
             new_operator_name, shift_end_time, self.next_shift_start_time = self.get_operator_name_and_time(events)
             self.check_operator_validity(new_operator_name, shift_end_time, True, False)
@@ -444,13 +443,13 @@ class AtOperator(SlowSubprocessMixin, Endpoint):
                     else:
                         self.full_name_to_id_dictionary = new_full_name_to_id_dictionary
                         self.id_to_username_dictionary =  new_id_to_username_dictionary
-                        self.username_to_id_dictionary = new_username_to_id_dictionary 
+                        self.username_to_id_dictionary = new_username_to_id_dictionary
                         logger.info('Updated Slack users information.')
-                    # Try to update operator information - 
+                    # Try to update operator information -
                     new_operator_name, shift_end_time, self.next_shift_start_time = self.get_operator_name_and_time(events)
                     self.check_operator_validity(new_operator_name, shift_end_time, False, True)
                     logger.info('Updated the operator information.')
-                    update_time = datetime.datetime.now() + self.update_interval 
+                    update_time = datetime.datetime.now() + self.update_interval
                     logger.info('Next update will occur at ' + str(update_time))
                 # Update when a shift ends or it's time for next shift to shart
                 if time_now > self.current_shift_end_time or (self.next_shift_start_time and time_now > self.next_shift_start_time):
@@ -469,4 +468,3 @@ class AtOperator(SlowSubprocessMixin, Endpoint):
             logger.info('Being terminated...')
             self.send_message(self.monitor_channel_id, "I am being terminated... See you next time!")
             os._exit(0)
-
