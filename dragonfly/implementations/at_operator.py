@@ -25,6 +25,7 @@ class AtOperator(SlowSubprocessMixin, Endpoint):
     def __init__(self,
                  monitor_channel_name = 'slack_test',
                  update_interval = {"hours":12},
+                 ping_interval = {"seconds":30},
                  authentication_path = ".project8_authentications.json",
                  **kwargs):
         '''
@@ -72,7 +73,8 @@ class AtOperator(SlowSubprocessMixin, Endpoint):
         self.command_dictionary = {}
 
         self.update_interval = datetime.timedelta(**update_interval)
-
+        self.ping_interval = datetime.timedelta(**ping_interval)
+        
         Endpoint.__init__(self, **kwargs)
         SlowSubprocessMixin.__init__(self, self.run)
 
@@ -369,7 +371,7 @@ class AtOperator(SlowSubprocessMixin, Endpoint):
                         args = [channel, user_id, operator_name]
                         func(*args[:num_args])
         return None
-
+    
     def initialize(self):
         '''
         Try to check and assign values to instance variables before entering the main loop.
@@ -421,12 +423,17 @@ class AtOperator(SlowSubprocessMixin, Endpoint):
         The main loop.
         '''
         events = self.initialize()
+        ping_time = datetime.datetime.now() + self.ping_interval
         update_time = datetime.datetime.now() + self.update_interval
         logger.info('Next update will occur at ' + str (update_time))
         try:
             while True:
                 channel = self.parse_output(self.slack_client.rtm_read(), self.bot_id)
                 time_now = datetime.datetime.now()
+                # ping the slack server on a regular basis to stay connected
+                if time_now > ping_time
+                    self.slack_client.server.ping()
+                    ping_time = datetime.datetime.now() + self.ping_interval
                 # Regular check and update
                 if time_now > update_time:
                     # Try to update the event list
@@ -451,7 +458,7 @@ class AtOperator(SlowSubprocessMixin, Endpoint):
                     logger.info('Updated the operator information.')
                     update_time = datetime.datetime.now() + self.update_interval
                     logger.info('Next update will occur at ' + str(update_time))
-                # Update when a shift ends or it's time for next shift to shart
+                # Update when a shift ends or it's time for next shift to start
                 if time_now > self.current_shift_end_time or (self.next_shift_start_time and time_now > self.next_shift_start_time):
                     logger.info('It seems that the current operator has ended his/her shift! Trying to find a new one...')
                     new_operator_name, shift_end_time, self.next_shift_start_time = self.get_operator_name_and_time(events)
