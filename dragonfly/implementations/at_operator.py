@@ -431,7 +431,7 @@ class AtOperator(SlowSubprocessMixin, Endpoint):
                 channel = self.parse_output(self.slack_client.rtm_read(), self.bot_id)
                 time_now = datetime.datetime.now()
                 # ping the slack server on a regular basis to stay connected
-                if time_now > ping_time
+                if time_now > ping_time:
                     self.slack_client.server.ping()
                     ping_time = datetime.datetime.now() + self.ping_interval
                 # Regular check and update
