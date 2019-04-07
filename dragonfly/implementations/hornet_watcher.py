@@ -11,6 +11,10 @@ from dripline.core import fancy_doc
 
 from .subprocess_mixin import SlowSubprocessMixin
 
+
+__all__ = []
+__all__.append('HornetWatcher')
+
 logger = logging.getLogger(__name__)
 
 @fancy_doc
@@ -129,4 +133,3 @@ class HornetWatcher(SlowSubprocessMixin):
         eh = self.EventHandler(self.dirs, self.ignore_dirs, self.types, self.output_queue)
         notifier = pyinotify.Notifier(wm, eh)
         notifier.loop()
-

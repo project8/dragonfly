@@ -1,6 +1,7 @@
 from __future__ import absolute_import
 
-import logging, os, datetime, yaml, time, multiprocessing, sys
+import logging, os, datetime, time, multiprocessing, sys
+import yaml
 
 from .hornet_watcher import HornetWatcher
 from .hornet_mover import HornetMover
@@ -26,7 +27,7 @@ class Hornet(SlowSubprocessMixin, Endpoint):
         Hornet watches for file close events in certain directories, and process files based on their classifications.
         process_interval: the time interval between two file processing.
         watcher_config  : a dictionaty containing a list of directories to watch, a list of directories to ignore, and a dictionary conatining different classifications for files (see example yaml file for details).
-        modules         : a dictionary containing hornet modules.
+        modules         : a dictionary containing hornet modules, and each module should contain an instance method run().
         '''
         self.process_interval = datetime.timedelta(**process_interval)
         self.watcher_config = watcher_config
@@ -58,7 +59,7 @@ class Hornet(SlowSubprocessMixin, Endpoint):
 
     def run(self):
         '''
-        It processes files regularly, and tries to finish remaining works before being terminated,
+        It processes files on a regular basis.
         '''
         logger.info('Setting up the watcher')
         watcher_output_queue = multiprocessing.Queue()
@@ -83,15 +84,7 @@ class Hornet(SlowSubprocessMixin, Endpoint):
                     process_time = datetime.datetime.now() + self.process_interval
                     logger.info(' I will be working again at ' + str(process_time))
         finally:
-            logger.info('I am being terminated. Trying to finish remaining work first...')
+            logger.info('I am being terminated. Trying to close the watcher...')
             watcher.join_control_process()
-            self.process_files(watcher_output_queue, modules)
             logger.info('The watcher has been closed. See you next time!')
             os._exit(0)
-                
-
-
-
-
-
-

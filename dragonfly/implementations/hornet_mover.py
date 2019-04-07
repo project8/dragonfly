@@ -4,8 +4,10 @@ import os, shutil, logging
 
 from dripline.core import fancy_doc
 
-logger = logging.getLogger(__name__)
+__all__ = []
+__all__.append('HornetMover')
 
+logger = logging.getLogger(__name__)
 
 @fancy_doc
 class HornetMover(object):
