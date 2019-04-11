@@ -213,7 +213,7 @@ class DriplineParser(argparse.ArgumentParser):
                 try:
                     file_str = open(these_args.config).read()
                     import yaml
-                    conf_file = yaml.load(file_str)
+                    conf_file = yaml.safe_load(file_str)
                     if 'broker' in args_dict and 'broker' in conf_file:
                         if args_dict['broker'] is None:
                             del args_dict['broker']
