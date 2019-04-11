@@ -9,6 +9,7 @@ try:
 except ImportError:
     pass
 
+import asteval # parse calendar event json into dict
 import datetime, logging, os, time, json
 
 from dripline.core import Endpoint, fancy_doc
@@ -74,7 +75,9 @@ class AtOperator(SlowSubprocessMixin, Endpoint):
 
         self.update_interval = datetime.timedelta(**update_interval)
         self.ping_interval = datetime.timedelta(**ping_interval)
-        
+
+        self.evaluator = asteval.Interpreter()
+
         Endpoint.__init__(self, **kwargs)
         SlowSubprocessMixin.__init__(self, self.run)
 
@@ -110,7 +113,7 @@ class AtOperator(SlowSubprocessMixin, Endpoint):
         Return a list of events found from the given calendar.
         creds: google calendar credentials.
         '''
-        service = googleapiclient.discovery.build('calendar', 'v3', credentials=creds)
+        service = googleapiclient.discovery.build('calendar', 'v3', credentials=creds, cache_discovery=False)
         time= (datetime.datetime.now() - datetime.timedelta(hours=10)).isoformat() + 'Z'
         events_list = service.events().list(calendarId='primary', timeMin=time,
                                             maxResults=100, singleEvents=True,
@@ -128,11 +131,12 @@ class AtOperator(SlowSubprocessMixin, Endpoint):
         point = 'start'
         if not start:
             point = 'end'
-        if event[point].get('dateTime') != None:
-            return dateutil.parser.parse(event[point].get('dateTime')).replace(tzinfo=None)
+        if event[point].get('date') is not None:
+            return datetime.datetime.strptime(event[point].get('date'),'%Y-%m-%d') + datetime.timedelta(hours=9)
         else:
-            date = datetime.datetime.strptime(event[point].get('date'),'%Y-%m-%d')
-            return datetime.datetime.combine(date, datetime.datetime.min.time()) + datetime.timedelta(hours=9)
+            logger.warning('Unexpected {} time in on-call event: {}'.format(point,event[point].get('dateTime')))
+            if event[point].get('dateTime') is not None:
+                return dateutil.parser.parse(event[point].get('dateTime')).replace(tzinfo=None)
 
     def get_operator_name_and_time(self, events):
         '''
@@ -142,15 +146,23 @@ class AtOperator(SlowSubprocessMixin, Endpoint):
         current_operator_name = None
         current_shift_end_time = None
         next_shift_start_time = None
+        time_now = datetime.datetime.now()
         for event in events:
-            if 'Operator:' in event['summary']:
-                time_now = datetime.datetime.now()
-                start_time = self.get_event_time(event, True)
-                end_time = self.get_event_time(event, False)
-                if not current_operator_name and start_time < time_now and end_time > time_now:
-                    current_operator_name =  event['summary'].replace('Operator: ', '')
+            if not event['summary'].startswith('On-Call:'):
+                continue
+            start_time = self.get_event_time(event, True)
+            end_time = self.get_event_time(event, False)
+            if 'description' not in event:
+                logger.warning('Invalid GCal event format for <{}>'.format(event['summary']))
+                continue
+            description = self.evaluator(event['description'])
+            if current_operator_name is None and start_time < time_now and end_time > time_now:
+                current_operator_name = description.get('Operator')
+                current_shift_end_time = end_time
+            elif start_time > time_now:
+                if description.get('Operator') == current_operator_name:
                     current_shift_end_time = end_time
-                elif start_time > time_now:
+                else:
                     next_shift_start_time = start_time
                     break
         return current_operator_name, current_shift_end_time, next_shift_start_time
@@ -371,13 +383,12 @@ class AtOperator(SlowSubprocessMixin, Endpoint):
                         args = [channel, user_id, operator_name]
                         func(*args[:num_args])
         return None
-    
+
     def initialize(self):
         '''
         Try to check and assign values to instance variables before entering the main loop.
         Return a list of Google Calendar events if everything seems to be in order.
         '''
-        logging.getLogger('googleapiclient.discovery_cache').setLevel(logging.ERROR)
         self.get_slack_client()
         if self.slack_client.rtm_connect(auto_reconnect=True):
             logger.info('Connected!')
@@ -446,7 +457,7 @@ class AtOperator(SlowSubprocessMixin, Endpoint):
                     # Try to update Slack users information
                     new_full_name_to_id_dictionary, new_id_to_username_dictionary,new_username_to_id_dictionary = self.construct_user_dictionaries()
                     if not new_full_name_to_id_dictionary:
-                        logger.info("The update of Slack users information falis. Information might be outdated.")
+                        logger.info("The update of Slack users information fails. Information might be outdated.")
                     else:
                         self.full_name_to_id_dictionary = new_full_name_to_id_dictionary
                         self.id_to_username_dictionary =  new_id_to_username_dictionary
