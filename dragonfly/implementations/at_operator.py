@@ -41,10 +41,10 @@ class AtOperator(SlowSubprocessMixin, Endpoint):
         self.authentication_path = os.path.join(this_home, authentication_path)
         try:
             json.loads(open(self.authentication_path).read())
-        except IOError, err:
+        except IOError( err):
             logger.critical('The provided authentication file does not exist')
             os._exit(1)
-        except ValueError, err:
+        except ValueError( err):
             logger.critical('The provided authentication file is invalid.')
             os._exit(1)
 

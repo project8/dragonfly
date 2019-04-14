@@ -46,7 +46,7 @@ class DungBeetle(Endpoint,Scheduler):
                 try:
                     os.rmdir(path)
                     logger.info(" path [{}] has been removed.".format(path))
-                except OSError, err:
+                except OSError(err):
                     if no_sub_dir:
                         processed_dirs_per_cycle.append(path)
                         if path not in self.processed_dirs:
