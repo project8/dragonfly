@@ -53,7 +53,10 @@ class Hornet(SlowSubprocessMixin, Endpoint):
                 for job in jobs:
                     logger.debug('I am sending the file to the ' + job)
                     path = modules[job].run(path)
-            logger.info('I have processed ' + str(watcher_count) + ' item(s) .')
+            logger.info("Finish processing files. Sending an alert message.")
+            message = 'I have processed ' + str(watcher_count) + ' item(s) .'
+            severity = 'status_message.{}.{}'.format("notice",self.service.name)
+            self.service.send_alert(severity=severity,alert=message)        
         except Exception, e: # just in case
             logger.error(e)
 
