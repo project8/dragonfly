@@ -483,6 +483,7 @@ class AtOperator(SlowSubprocessMixin, Endpoint):
                 time.sleep(1)
         except Exception as err:
             logger.error(err)
+            self.send_message(self.monitor_channel_id, "An unknown error occurs...")
             os._exit(1)
         finally:
             logger.info('Being terminated...')
