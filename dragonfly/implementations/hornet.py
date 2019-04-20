@@ -74,6 +74,8 @@ class Hornet(SlowSubprocessMixin, Endpoint):
             modules[module] = hornet_class(**module_config)
   
         watcher.start_control_process()
+        logger.info('Start to process existing files first.')
+        self.process_files(watcher_output_queue, modules)
         process_time = datetime.datetime.now() + self.process_interval
         logger.info('I will start at ' + str(process_time))
         

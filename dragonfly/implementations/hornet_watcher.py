@@ -23,7 +23,7 @@ class HornetWatcher(SlowSubprocessMixin):
     def __init__(self, config, output_queue):
         '''
         A hornet watcher keeps staring at given directories and put file context to the output queue every time it notices a file close.
-        config      : a dictionary contains a list of directories to be watched, a list of directories to be ignored, and the classification of different types of files (see example file for details).
+        config      : a dictionary contains a list of directories to be watched, a list of directories to be ignored, the minimum age for an existing qualified file to be processed, and the classification of different types of files (see example file for details).
         output_queue: a multiprocessing queue shared by hornet and the watcher.
         '''
         if 'pyinotify' not in globals():
@@ -34,9 +34,10 @@ class HornetWatcher(SlowSubprocessMixin):
         for directory in config['dirs']:
             self.dirs.append(os.path.join(this_home, directory))
         self.ignore_dirs = []
-        for directory in config['ignore-dirs']:
+        for directory in config['ignore_dirs']:
             self.ignore_dirs.append(os.path.join(this_home, directory))
-        
+        self.min_age = datetime.timedelta(**(config['min_age']))
+
         self.types = config['types']
         for t in self.types:
             if t == '':
@@ -96,13 +97,11 @@ class HornetWatcher(SlowSubprocessMixin):
             logger.warning('I cannot classify [' + path + ']')
             return None
 
-        def process_IN_CLOSE_WRITE(self, event):
+        def put_to_queue(self, path):
             '''
-            If the file being closed can be classified, do so and put the context into the queue.
-            event: the pyinofity event detected.
+            If the file at given path can be classified, do so and put the context into the queue.
+            path: the absolute path of a file
             '''
-            logger.debug("A file close event is detected. Should it be ignored?")
-            path = event.pathname
             for directory in self.ignore_dirs:
                 if path.startswith(directory):
                     return
@@ -118,18 +117,40 @@ class HornetWatcher(SlowSubprocessMixin):
                     logger.debug(context)
                     self.output_queue.put_nowait(context)
 
+        def process_IN_CLOSE_WRITE(self, event):
+            '''
+            If a file is closed, try to put it to the queue.
+            event: the pyinofity event detected.
+            '''
+            path = event.pathname
+            logger.debug("A file close event is detected: " + str(path))
+            path = event.pathname
+            self.put_to_queue(path)
+
     def watch(self):
         '''
         Start watching at specific directories and take action when noticing a file close.
         '''
         wm = pyinotify.WatchManager()
         mask = pyinotify.IN_CLOSE_WRITE
+        eh = self.EventHandler(self.dirs, self.ignore_dirs, self.types, self.output_queue)
+
+        time_now = datetime.datetime.now()
         for directory in self.dirs:
             if os.path.exists(directory):
+                # recursively find files in the directory,
+                # and if a file's creation time is early enough,
+                # try to put it to the queue
+                for dirpath, dirnames, files in os.walk(directory):
+                    for name in files:
+                        path = os.path.join(dirpath, name)
+                        creation_time = datetime.datetime.fromtimestamp(os.path.getctime(path))
+                        if creation_time + self.min_age < time_now:
+                            eh.put_to_queue(path)
+                # add the directory itself to watcher
                 wm.add_watch(directory, mask, rec=True)
                 logger.info(directory + ' is added to the watcher.')
             else:
                 logger.error('The directory ' + directory + ' does not exist.')
-        eh = self.EventHandler(self.dirs, self.ignore_dirs, self.types, self.output_queue)
         notifier = pyinotify.Notifier(wm, eh)
         notifier.loop()
