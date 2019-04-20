@@ -5,7 +5,7 @@ try:
 except ImportError:
     pass
 
-import Queue, logging, os, re, ast
+import Queue, logging, os, re, ast, datetime
 
 from dripline.core import fancy_doc
 
@@ -105,7 +105,6 @@ class HornetWatcher(SlowSubprocessMixin):
             for directory in self.ignore_dirs:
                 if path.startswith(directory):
                     return
-            logger.debug("File was closed with writing: " + path)
             for directory in self.dirs:
                 if path.startswith(directory):
                     jobs = self.find_jobs(path)
@@ -123,7 +122,7 @@ class HornetWatcher(SlowSubprocessMixin):
             event: the pyinofity event detected.
             '''
             path = event.pathname
-            logger.debug("A file close event is detected: " + str(path))
+            logger.debug("A file is closed with writing: " + path)
             path = event.pathname
             self.put_to_queue(path)
 
