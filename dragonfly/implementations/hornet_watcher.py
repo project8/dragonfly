@@ -5,7 +5,7 @@ try:
 except ImportError:
     pass
 
-import Queue, logging, os, re, ast, datetime
+import Queue, logging, os, re, ast, datetime, time
 
 from dripline.core import fancy_doc
 
@@ -124,6 +124,13 @@ class HornetWatcher(SlowSubprocessMixin):
             path = event.pathname
             logger.debug("A file is closed with writing: " + path)
             path = event.pathname
+            creation_time = datetime.datetime.fromtimestamp(os.path.getctime(path))
+            time_now = datetime.datetime.now()
+            file_delay_time = 15
+            min_age = datetime.timedelta(file_delay_time)
+            if creation_time + min_age > time_now:
+                time.sleep(file_delay_time)
+            logger.info(path + ' is added. Age '+ str(time_now-creation_time))
             self.put_to_queue(path)
 
     def watch(self):
