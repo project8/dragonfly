@@ -16,6 +16,7 @@ __all__ = []
 __all__.append('HornetWatcher')
 
 logger = logging.getLogger(__name__)
+wm = pyinotify.WatchManager()
 
 @fancy_doc
 class HornetWatcher(SlowSubprocessMixin):
@@ -116,6 +117,13 @@ class HornetWatcher(SlowSubprocessMixin):
                     logger.debug(context)
                     self.output_queue.put_nowait(context)
 
+        def process_IN_CREATE(self, event):
+            path = event.pathname
+            logger.debug("A file is opened with writing: " + path)
+            if os.path.isdir(path):
+                mask = pyinotify.IN_CLOSE_WRITE | pyinotify.IN_CREATE
+                wm.add_watch(path, mask, rec=True)
+
         def process_IN_CLOSE_WRITE(self, event):
             '''
             If a file is closed, try to put it to the queue.
@@ -137,8 +145,7 @@ class HornetWatcher(SlowSubprocessMixin):
         '''
         Start watching at specific directories and take action when noticing a file close.
         '''
-        wm = pyinotify.WatchManager()
-        mask = pyinotify.IN_CLOSE_WRITE
+        mask = pyinotify.IN_CLOSE_WRITE | pyinotify.IN_CREATE
         eh = self.EventHandler(self.dirs, self.ignore_dirs, self.types, self.output_queue)
 
         time_now = datetime.datetime.now()
