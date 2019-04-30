@@ -16,7 +16,6 @@ __all__ = []
 __all__.append('HornetWatcher')
 
 logger = logging.getLogger(__name__)
-wm = pyinotify.WatchManager()
 
 @fancy_doc
 class HornetWatcher(SlowSubprocessMixin):
@@ -117,13 +116,6 @@ class HornetWatcher(SlowSubprocessMixin):
                     logger.debug(context)
                     self.output_queue.put_nowait(context)
 
-        def process_IN_CREATE(self, event):
-            path = event.pathname
-            logger.debug("A file is opened with writing: " + path)
-            if os.path.isdir(path):
-                mask = pyinotify.IN_CLOSE_WRITE | pyinotify.IN_CREATE
-                wm.add_watch(path, mask, rec=True)
-
         def process_IN_CLOSE_WRITE(self, event):
             '''
             If a file is closed, try to put it to the queue.
@@ -145,9 +137,9 @@ class HornetWatcher(SlowSubprocessMixin):
         '''
         Start watching at specific directories and take action when noticing a file close.
         '''
-        mask = pyinotify.IN_CLOSE_WRITE | pyinotify.IN_CREATE
+        wm = pyinotify.WatchManager()
+        mask = pyinotify.IN_CLOSE_WRITE
         eh = self.EventHandler(self.dirs, self.ignore_dirs, self.types, self.output_queue)
-
         time_now = datetime.datetime.now()
         for directory in self.dirs:
             if os.path.exists(directory):
@@ -161,7 +153,7 @@ class HornetWatcher(SlowSubprocessMixin):
                         if creation_time + self.min_age < time_now:
                             eh.put_to_queue(path)
                 # add the directory itself to watcher
-                wm.add_watch(directory, mask, rec=True)
+                wm.add_watch(directory, mask, rec=True, auto_add=True)
                 logger.info(directory + ' is added to the watcher.')
             else:
                 logger.error('The directory ' + directory + ' does not exist.')
