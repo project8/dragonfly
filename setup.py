@@ -32,7 +32,7 @@ extras_require={
     'slack': ['slackclient'],
     'spi': ['spidev'],
     'hornet': ['pyinotify'],
-    'operator': ['google-api-python-client', 'python-dateutil', 'funcsigs', 'google-auth'],
+    'operator': ['google-api-python-client', 'python-dateutil', 'funcsigs', 'google-auth', 'slackclient'],
 }
 
 dependency_links = [
