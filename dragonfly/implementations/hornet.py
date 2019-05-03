@@ -3,7 +3,10 @@ from __future__ import absolute_import
 import logging, os, datetime, time, multiprocessing, sys
 import yaml
 
-from .hornet_watcher import HornetWatcher
+try:
+    from .hornet_watcher import HornetWatcher
+except (ImportError,NameError):
+    pass
 from .hornet_mover import HornetMover
 
 from dripline.core import Endpoint, fancy_doc
@@ -29,6 +32,8 @@ class Hornet(SlowSubprocessMixin, Endpoint):
         watcher_config  : a dictionaty containing a list of directories to watch, a list of directories to ignore, and a dictionary conatining different classifications for files (see example yaml file for details).
         modules         : a dictionary containing hornet modules, and each module should contain an instance method run().
         '''
+        if 'HornetWatcher' not in globals():
+            raise ImportError('HornetWatcher not found, required for Hornet class.')
         self.process_interval = datetime.timedelta(**process_interval)
         self.watcher_config = watcher_config
         self.modules = modules
