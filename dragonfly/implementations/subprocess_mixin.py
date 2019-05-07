@@ -42,13 +42,14 @@ class SlowSubprocessMixin(object):
         '''
         if control_function is None:
             control_function = self.basic_control_target
+        self.control_function = control_function
         self._halt_event = multiprocessing.Event()
-        top_kwargs = {'target': worker_function,
-                      'args': worker_args,
-                      'kwargs': worker_kwargs,
-                      'halt_event': self._halt_event,
-                     }
-        self._control_process = multiprocessing.Process(target=control_function, kwargs=top_kwargs)
+        self.top_kwargs = {'target': worker_function,
+                           'args': worker_args,
+                           'kwargs': worker_kwargs,
+                           'halt_event': self._halt_event,
+                          }
+        self._control_process = multiprocessing.Process(target=self.control_function, kwargs=self.top_kwargs)
 
     #@staticmethod
     def basic_control_target(self, halt_event, target, args=(), kwargs={}):
@@ -62,8 +63,6 @@ class SlowSubprocessMixin(object):
         args (tuple): items to unpack as positional args to target
         kwargs (dict): items to unpack as kwargs to target
         '''
-        if halt_event is None:
-            halt_event = multiprocessing.Event()
         _worker_process = multiprocessing.Process(target=target, args=args, kwargs=kwargs)
         _worker_process.start()
         while (not halt_event.is_set()) and (_worker_process.is_alive()):
@@ -77,6 +76,10 @@ class SlowSubprocessMixin(object):
         '''
         wrapper to call multiprocessing.Process.start()
         '''
+        if self._control_process.exitcode is not None:
+            logger.info("recreating control process")
+            self._halt_event.clear()
+            self._control_process = multiprocessing.Process(target=self.control_function, kwargs=self.top_kwargs)
         logger.info("starting a slow thing controller")
         self._control_process.start()
 

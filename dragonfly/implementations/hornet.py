@@ -20,8 +20,8 @@ logger = logging.getLogger(__name__)
 
 @fancy_doc
 class Hornet(SlowSubprocessMixin, Endpoint):
-    
-    def __init__(self, 
+
+    def __init__(self,
                  process_interval,
                  watcher_config,
                  modules,
@@ -59,9 +59,12 @@ class Hornet(SlowSubprocessMixin, Endpoint):
                     logger.debug('I am sending the file to the ' + job)
                     path = modules[job].run(path)
             logger.info("Finish processing files. Sending an alert message.")
-            message = 'I have processed ' + str(watcher_count) + ' item(s).'
-            severity = 'status_message.{}.{}'.format("notice", self.service.name)
-            self.service.send_alert(severity=severity, alert=message)
+            if watcher_count > 0:
+                message = 'I have processed ' + str(watcher_count) + ' item(s).'
+                severity = 'status_message.{}.{}'.format("notice", self.service.name)
+                self.service.send_alert(severity=severity, alert=message)
+            else:
+                logger.debug('no files processed')
         except Exception, e: # just in case
             logger.error(e)
 
@@ -72,7 +75,7 @@ class Hornet(SlowSubprocessMixin, Endpoint):
         logger.info('Setting up the watcher')
         watcher_output_queue = multiprocessing.Queue()
         watcher = HornetWatcher(self.watcher_config, watcher_output_queue)
-        
+
         modules = {}
         for module in self.modules:
             module_config = self.modules[module]
@@ -80,11 +83,11 @@ class Hornet(SlowSubprocessMixin, Endpoint):
             logger.debug(module_config)
             hornet_class = getattr(sys.modules[__name__], module_config['module'])
             modules[module] = hornet_class(**module_config)
-  
+
         watcher.start_control_process()
         process_time = datetime.datetime.now() + self.process_interval
         logger.info('I will start at ' + str(process_time))
-        
+
         try:
             while True:
                 if (datetime.datetime.now() > process_time):
