@@ -97,6 +97,5 @@ class Hornet(SlowSubprocessMixin, Endpoint):
         finally:
             logger.info('I am being terminated. Trying to close the watcher...')
             watcher.stop_control_process()
-            watcher.join_control_process()
             logger.info('The watcher has been closed. See you next time!')
             os._exit(0)

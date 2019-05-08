@@ -111,6 +111,7 @@ class SlowSubprocessMixin(object):
         if self._control_process.exitcode is None:
             logger.debug("it didn't stop on its own, terminate")
             self._control_process.terminate()
+            self._control_process.join(timeout)
         else:
             logger.debug("controller stopped on its own")
 
