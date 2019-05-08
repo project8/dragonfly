@@ -65,8 +65,8 @@ class Hornet(SlowSubprocessMixin, Endpoint):
                 self.service.send_alert(severity=severity, alert=message)
             else:
                 logger.debug('no files processed')
-        except Exception, e: # just in case
-            logger.error(e)
+        except Exception as err: # just in case
+            logger.error(err)
 
     def run(self):
         '''
