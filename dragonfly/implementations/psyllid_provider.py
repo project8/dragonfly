@@ -158,9 +158,9 @@ class PsyllidProvider(core.Provider):
             self.provider.cmd(self.queue_dict[channel],'deactivate-daq')
             time.sleep(1)
             self.request_status(channel)
-           if self.status_value_dict[channel]!=0:
-              logger.error('Deactivating failed')
-              raise core.exceptions.DriplineGenericDAQError('Deactivating psyllid failed')
+            if self.status_value_dict[channel]!=0:
+                logger.error('Deactivating failed')
+                raise core.exceptions.DriplineGenericDAQError('Deactivating psyllid failed')
 
         else:
             logger.info('Psyllid instance of channel {} is already deactivated'.format(channel))
