@@ -135,12 +135,11 @@ class PsyllidProvider(core.Provider):
         Tells psyllid to activate and checks whether activation was successful
         '''
         self.request_status(channel)
-        if self.status_value_dict[channel] == 0:
+        if self.status_value_dict[channel] != 4:
             logger.info('Activating Psyllid instance for channel {}'.format(channel))
             self.provider.cmd(self.queue_dict[channel], 'activate-daq')
         else:
-            logger.error('Cannot activate Psyllid instance of channel {}'.format(channel))
-            raise core.exceptions.DriplineGenericDAQError('Psyllid is not deactivated')
+            logger.info('Psyllid instance of channel {} is already activated'.format(channel))
         time.sleep(1)
         self.request_status(channel)
         if self.status_value_dict[channel]!=4:
@@ -157,8 +156,7 @@ class PsyllidProvider(core.Provider):
             logger.info('Deactivating Psyllid instance of channel {}'.format(channel))
             self.provider.cmd(self.queue_dict[channel],'deactivate-daq')
         else:
-            logger.error('Cannot deactivate Psyllid instance of channel {}'.format(channel))
-            raise core.exceptions.DriplineGenericDAQError('Psyllid is already deactivated')
+            logger.info('Psyllid instance of channel {} is already deactivated'.format(channel))
         time.sleep(1)
         self.request_status(channel)
         if self.status_value_dict[channel]!=0:
@@ -174,14 +172,18 @@ class PsyllidProvider(core.Provider):
         if self.status_value_dict[channel] == 4:
             logger.info('Reactivating Psyllid instance of channel {}'.format(channel))
             self.provider.cmd(self.queue_dict[channel], 'reactivate-daq')
+            time.sleep(2)
+            self.request_status(channel)
+            if self.status_value_dict[channel]!=4:
+                logger.error('Reactivating failed')
+                raise core.exceptions.DriplineGenericDAQError('Reactivating psyllid failed')
+
+        elif self.status_value_dict[channel] == 0:
+            logger.warning('Psyllid is deactivated. Trying to activate instead of re-activate')
+            self.activate(channel)
         else:
             logger.error('Cannot reactivate Psyllid instance of channel {}'.format(channel))
             raise core.exceptions.DriplineGenericDAQError('Psyllid is not activated and can therefore not be reactivated')
-        time.sleep(2)
-        self.request_status(channel)
-        if self.status_value_dict[channel]!=4:
-            logger.error('Reactivating failed')
-            raise core.exceptions.DriplineGenericDAQError('Reactivating psyllid failed')
 
 
     def save_reactivate(self, channel):
@@ -189,10 +191,12 @@ class PsyllidProvider(core.Provider):
         Reactivate results in the loss of all active-node configurations
         This method stores settings and re-sets them after reactivation
         '''
+        self.get_acquisition_mode(channel)
         if self.mode_dict[channel] == 'triggering':
             # store trigger configuration
             result = self.get_trigger_configuration(channel)
         # reactivate psyllid (all trigger and frequency settings are lost)
+        self.get_central_frequency(channel)
         self.reactivate(channel)
         # re-set central frequency
         self.set_central_frequency(channel, self.freq_dict[channel])
@@ -499,7 +503,7 @@ class PsyllidProvider(core.Provider):
         self.start_run(channel ,1000, self.temp_file)
         time.sleep(1)
 
-        self._write_trigger_mask(channel, filename)
+        # self.write_trigger_mask(channel, filename)
 
         logger.info('Telling psyllid to use monarch again for next run')
         self.provider.set(self.queue_dict[channel]+'.use-monarch', True)
@@ -513,7 +517,7 @@ class PsyllidProvider(core.Provider):
         self.provider.cmd(self.queue_dict[channel],request)
 
 
-    def _write_trigger_mask(self, channel, filename):
+    def write_trigger_mask(self, channel, filename):
         '''
         Tells psyllid to write a frequency mask to a json file
         '''
