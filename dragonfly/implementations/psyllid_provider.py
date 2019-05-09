@@ -505,7 +505,7 @@ class PsyllidProvider(core.Provider):
         self.start_run(channel ,1000, self.temp_file)
         time.sleep(1)
 
-        # self.write_trigger_mask(channel, filename)
+        # self._write_trigger_mask(channel, filename)
 
         logger.info('Telling psyllid to use monarch again for next run')
         self.provider.set(self.queue_dict[channel]+'.use-monarch', True)
@@ -519,7 +519,7 @@ class PsyllidProvider(core.Provider):
         self.provider.cmd(self.queue_dict[channel],request)
 
 
-    def write_trigger_mask(self, channel, filename):
+    def _write_trigger_mask(self, channel, filename):
         '''
         Tells psyllid to write a frequency mask to a json file
         '''
