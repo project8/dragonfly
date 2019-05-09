@@ -138,13 +138,14 @@ class PsyllidProvider(core.Provider):
         if self.status_value_dict[channel] != 4:
             logger.info('Activating Psyllid instance for channel {}'.format(channel))
             self.provider.cmd(self.queue_dict[channel], 'activate-daq')
+            time.sleep(1)
+            self.request_status(channel)
+            if self.status_value_dict[channel]!=4:
+                logger.error('Activating failed')
+                raise core.exceptions.DriplineGenericDAQError('Activating psyllid failed')
+
         else:
             logger.info('Psyllid instance of channel {} is already activated'.format(channel))
-        time.sleep(1)
-        self.request_status(channel)
-        if self.status_value_dict[channel]!=4:
-            logger.error('Activating failed')
-            raise core.exceptions.DriplineGenericDAQError('Activating psyllid failed')
 
 
     def deactivate(self, channel):
@@ -155,13 +156,14 @@ class PsyllidProvider(core.Provider):
         if self.status_value_dict[channel] != 0:
             logger.info('Deactivating Psyllid instance of channel {}'.format(channel))
             self.provider.cmd(self.queue_dict[channel],'deactivate-daq')
+            time.sleep(1)
+            self.request_status(channel)
+           if self.status_value_dict[channel]!=0:
+              logger.error('Deactivating failed')
+              raise core.exceptions.DriplineGenericDAQError('Deactivating psyllid failed')
+
         else:
             logger.info('Psyllid instance of channel {} is already deactivated'.format(channel))
-        time.sleep(1)
-        self.request_status(channel)
-        if self.status_value_dict[channel]!=0:
-            logger.error('Deactivating failed')
-            raise core.exceptions.DriplineGenericDAQError('Deactivating psyllid failed')
 
 
     def reactivate(self, channel):
