@@ -29,7 +29,7 @@ class Hornet(SlowSubprocessMixin, Endpoint):
         '''
         Hornet watches for file close events in certain directories, and process files based on their classifications.
         process_interval: the time interval between two file processing.
-        watcher_config  : a dictionaty containing a list of directories to watch, a list of directories to ignore, and a dictionary conatining different classifications for files (see example yaml file for details).
+        watcher_config  : a dictionary containing a list of directories to watch, a list of directories to ignore, and a dictionary conatining different classifications for files (see example yaml file for details).
         modules         : a dictionary containing hornet modules, and each module should contain an instance method run().
         '''
         if 'HornetWatcher' not in globals():
@@ -96,6 +96,6 @@ class Hornet(SlowSubprocessMixin, Endpoint):
                     logger.info(' I will be working again at ' + str(process_time))
         finally:
             logger.info('I am being terminated. Trying to close the watcher...')
-            watcher.join_control_process()
+            watcher.stop_control_process()
             logger.info('The watcher has been closed. See you next time!')
             os._exit(0)

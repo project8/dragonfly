@@ -158,4 +158,7 @@ class HornetWatcher(SlowSubprocessMixin):
             else:
                 logger.error('The directory ' + directory + ' does not exist.')
         notifier = pyinotify.Notifier(wm, eh)
-        notifier.loop()
+        try:
+            notifier.loop()
+        except Exception as err:
+            logger.info("crashing with error {}".format(err))

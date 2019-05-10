@@ -27,7 +27,8 @@ extras_require={
     'debug': ['ipdb'],
     'doc': ['sphinx', 'sphinx_rtd_theme', 'sphinxcontrib-programoutput', 'better-apidoc', 'dripline'],
     'max31856': ['adafruit_max31856', 'rpi.gpio'], #only for RPi
-    'roach': ['corr==0.7.3', 'katcp==0.5.5', 'construct==2.5.2', 'scipy==0.19.0', 'netifaces==0.10.5', 'adc5g==0.0.1'],
+    'roach': ['corr==0.7.3', 'katcp==0.5.5', 'construct==2.5.2', 'scipy==0.19.0', 'netifaces==0.10.5',
+              'adc5g @ git+https://github.com/sma-wideband/adc_tests.git@65a2ef4e1cf68bee35176a1171d923a73952e13e'],
     'gpio': ['rpi.gpio'], #only for RPi
     'slack': ['slackclient'],
     'spi': ['spidev'],
@@ -36,7 +37,6 @@ extras_require={
 }
 
 dependency_links = [
-    'git+https://github.com/sma-wideband/adc_tests.git@65a2ef4e1cf68bee35176a1171d923a73952e13e#egg=adc5g-0.0.1',
     'git+https://github.com/johnrbnsn/Adafruit_Python_MAX31856.git#egg=adafruit_max31856-0.0.1',
     'git+https://github.com/project8/dripline-python.git@a18507d29a05ac1767d9503bcf5efa74d5083daf#egg=dripline',
 ]

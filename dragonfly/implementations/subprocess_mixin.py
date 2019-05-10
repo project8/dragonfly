@@ -96,7 +96,7 @@ class SlowSubprocessMixin(object):
         '''
         return self._control_process.is_alive()
 
-    def stop_control_process(self, timeout=0):
+    def stop_control_process(self, timeout=1):
         '''
         Signal the subprocess that it should terminate by setting the halt_event and then terminate it.
 
