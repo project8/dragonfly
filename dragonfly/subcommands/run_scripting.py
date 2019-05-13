@@ -103,7 +103,7 @@ import json
 import logging
 import time
 import uuid
-import types
+from six import string_types
 import re as re
 
 
@@ -497,7 +497,7 @@ class RunScript(object):
                     if tolerance==None:
                         logger.debug('No tolerance given: assigning an arbitrary tolerance (1.)')
                         tolerance = 1.
-                    if not isinstance(tolerance,float) and not isinstance(tolerance,int) and not isinstance(tolerance,types.StringType):
+                    if not isinstance(tolerance,float) and not isinstance(tolerance,int) and not isinstance(tolerance, string_types):
                         logger.debug('tolerance is not a float or a string: assigning an arbitrary tolerance (1.)')
                         tolerance = 1.
                     if isinstance(tolerance,float) or isinstance(tolerance,int):
@@ -508,7 +508,7 @@ class RunScript(object):
                             logger.debug('the value get ({}) is included in the target_value ({}) +- tolerance ({})'.format(value_get,target_value,tolerance))
                         else:
                             raise dripline.core.DriplineValueError('the value get ({}) is NOT included in the target_value ({}) +- tolerance ({}): stopping here!'.format(value_get,target_value,tolerance))
-                    elif isinstance(tolerance,types.StringType):
+                    elif isinstance(tolerance, string_types):
                         if '%' not in tolerance:
                             tolerance = float(tolerance)
                         else:
@@ -527,11 +527,11 @@ class RunScript(object):
                     raise dripline.core.DriplineValueError('Cannot check! value set and target_value are not the same type as value get (float/int): stopping here!')
 
             # if the value we are checking is a string
-            elif isinstance(value_get, types.StringType):
-                if not isinstance(target_value,types.StringType):
+            elif isinstance(value_get, string_types):
+                if not isinstance(target_value, string_types):
                     logger.debug('target_value is not the same type as the value get: going to use the set value ({}) as target_value'.format(this_set['value']))
                     target_value==this_set['value']
-                if isinstance(target_value,types.StringType):
+                if isinstance(target_value, string_types):
                     target_value_backup = target_value
                     value_get_backup = value_get
                     # changing target_value in the dictionary
@@ -815,7 +815,7 @@ class RunScript(object):
             # then the evaluated_operations dictionary is procceded using the action_do()
             evaluated_operations = []
             for a_do in operations:
-                key = a_do.keys()[0]
+                key = list(a_do.keys())[0]
                 # logger.info('doing operation #{}: {}'.format(i_do,key))
                 if key == 'sets':
                     these_sets = []

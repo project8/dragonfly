@@ -74,7 +74,7 @@ class Pinger(Endpoint,Scheduler):
 
     def silence_ping(self, service, endtime):
         if service not in self.pinger_dict:
-            raise exceptions.DriplineValueError("Invalid service <{}>, not found in {}".format(service, self.pinger_dict.keys()))
+            raise exceptions.DriplineValueError("Invalid service <{}>, not found in {}".format(service, list(self.pinger_dict.keys())))
         enddatetime = datetime.datetime.strptime(endtime,constants.TIME_FORMAT)
         if enddatetime < datetime.datetime.utcnow():
             self.pinger_dict[service] = { 'status' : 'active' }

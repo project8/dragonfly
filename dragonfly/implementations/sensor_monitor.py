@@ -51,7 +51,7 @@ class SensorMonitor(Gogol):
 
     def silence_alarm(self, target, alarm_ct, endtime):
         if target not in self.monitors:
-            raise exceptions.DriplineValueError("Invalid target <{}>, not found in {}".format(target, self.monitors.keys()))
+            raise exceptions.DriplineValueError("Invalid target <{}>, not found in {}".format(target, list(self.monitors.keys())))
         if alarm_ct not in range(len(self.monitors[target]['alarms'])):
             raise exceptions.DriplineValueError("Invalid alarm_ct provided <{}>, target only has {} alarms configured".format(endtime, len(self.monitors[target]['alarms'])))
         enddatetime = datetime.datetime.strptime(endtime,constants.TIME_FORMAT)
