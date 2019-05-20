@@ -146,6 +146,8 @@ class FormatSpime(Spime):
         self.evaluator = asteval.Interpreter()
         if set_value_map is not None and not isinstance(set_value_map, (dict,str)):
             raise DriplineValueError("Invalid set_value_map config for {}; type is {} not dict".format(self.name, type(set_value_map)))
+        if get_reply_float is not None and extraxt_raw_regex is not None:
+            raise DriplineValueError("Invalid config option for {}; get_reply_float and extract_raw_regex are mutually exclusive".format(self.name))
         self._set_value_lowercase = set_value_lowercase
         if isinstance(set_value_map, dict) and not set_value_lowercase:
             raise DriplineValueError("Invalid config option for {} with set_value_map and set_value_lowercase=False".format(self.name))
@@ -156,6 +158,8 @@ class FormatSpime(Spime):
             raise DriplineMethodNotSupportedError('<{}> has no get string available'.format(self.name))
         result = self.provider.send([self._get_str])
         logger.debug('result is: {}'.format(result))
+        if self._get_reply_float:
+            self._extract_raw_regex =r'(?P<value_raw>[-+]?\d+\.\d+)'
         if self._extract_raw_regex is not None:
             first_result = result
             matches = re.search(self._extract_raw_regex, first_result)
@@ -164,12 +168,8 @@ class FormatSpime(Spime):
                 raise dripline.core.DriplineValueError('returned result [{}] has no match to input regex [{}]'.format(first_result, self._extract_raw_regex))
             logger.debug("matches are: {}".format(matches.groupdict()))
             result = matches.groupdict()['value_raw']
-        if self._get_reply_float:
-            logger.debug('desired format is: float')
-            formatted_result = map(float, re.findall("[-+]?\d+\.\d+",format(result)))
-            # formatted_result = map(float, re.findall("[-+]?(?: \d* \. \d+ )(?: [Ee] [+-]? \d+ )",format(result)))
-            logger.debug('formatted result is {}'.format(formatted_result[0]))
-            return formatted_result[0]
+        else:
+            raise DriplineValueError("One of extract_raw_regex or get_reply_float must be set.")
         return result
 
     def on_set(self, value):
