@@ -186,13 +186,12 @@ class SQLTable(Endpoint):
                 return_values = insert_result.first()
             else:
                 return_values = []
+        except sqlalchemy.exc.IntegrityError as err:
+            raise DriplineDatabaseError(err)
         except Exception as err:
-            if str(err).startswith('(psycopg2.IntegrityError)'):
-                raise DriplineDatabaseError(str(err))
-            else:
-                logger.critical('received an unexpected SQL error while trying to insert:\n{}'.format(str(ins) % insert_kv_dict))
-                logger.info('traceback is:\n{}'.format(traceback.format_exc()))
-                return
+            logger.critical('received an unexpected SQL error while trying to insert:\n{}'.format(str(ins) % insert_kv_dict))
+            logger.info('traceback is:\n{}'.format(traceback.format_exc()))
+            return
         return dict(zip(return_col_names_list, return_values))
 
     def do_insert(self, *args, **kwargs):

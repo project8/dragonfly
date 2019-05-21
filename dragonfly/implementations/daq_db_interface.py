@@ -89,14 +89,12 @@ class RunDBInterface(Provider):
                         return_values[i]=value.strftime(constants.TIME_FORMAT)
             else:
                 return_values = []
+        except (sqlalchemy.esc.DataError, sqlalchemy.esc.IntegrityError) as err:
+            logger.critical('failed to make an SQL insert and receive return. error:\n{}'.format(str(err)))
+            raise DriplineDatabaseError(err)
         except Exception as err:
-            db_errs = ('(psycopg2.IntegrityError)','(psycopg2.DataError)')
-            if str(err).startswith(db_errs):
-                logger.error('failed to make an SQL insert and receive return. error:\n{}'.format(str(err)))
-                raise DriplineDatabaseError(str(err))
-            else:
-                logger.warning('unknown error while working with sql')
-                raise
+            logger.error('unknown error while working with sql')
+            raise
         return dict(zip(return_col_names_list, return_values))
 
 

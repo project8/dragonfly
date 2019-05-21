@@ -75,7 +75,6 @@ class DAQProvider(core.Provider):
         self._run_name = None
         self.run_id = None
         self._start_time = None
-        self._start_time = None
         self._run_meta = None
         self._run_snapshot = None
         self._run_time = None

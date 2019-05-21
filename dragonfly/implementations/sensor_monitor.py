@@ -38,6 +38,7 @@ class SensorMonitor(Gogol):
         '''
         self.start_time = datetime.datetime.utcnow()
         self.configure_monitors(sensors)
+        self.routing_key = routing_key_base
         kwargs.update({'keys':[routing_key_base+x for x in self.monitors.keys()]})
         Gogol.__init__(self, **kwargs)
 
@@ -67,7 +68,7 @@ class SensorMonitor(Gogol):
 
 
     def this_consume(self, message, method):
-        sensor = method.routing_key[13:]
+        sensor = method.routing_key.split(self.routing_key)[1]
         if sensor not in self.monitors.keys():
             logger.warning('Received invalid routing key <{}> in method\n\t{}'.format(sensor,method))
             return
