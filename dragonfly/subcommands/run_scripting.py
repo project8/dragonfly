@@ -489,7 +489,7 @@ class RunScript(object):
                     except ValueError:
                         logger.debug('target_value is not the same type as the value get: going to use the set value ({}) as target_value'.format(this_set['value']))
                         target_value = this_set['value']
-                if isinstance(target_value, (int,float)):
+                if isinstance(target_value, (int, float)):
                     if 'tolerance' in this_set:
                         tolerance = this_set['tolerance']
                     else:
@@ -497,30 +497,30 @@ class RunScript(object):
                     if tolerance==None:
                         logger.debug('No tolerance given: assigning an arbitrary tolerance (1.)')
                         tolerance = 1.
-                    if not isinstance(tolerance,float) and not isinstance(tolerance,int) and not isinstance(tolerance, string_types):
+                    if not isinstance(tolerance, float) and not isinstance(tolerance, int) and not isinstance(tolerance, string_types):
                         logger.debug('tolerance is not a float or a string: assigning an arbitrary tolerance (1.)')
                         tolerance = 1.
-                    if isinstance(tolerance,float) or isinstance(tolerance,int):
+                    if isinstance(tolerance, float) or isinstance(tolerance, int):
                         if tolerance == 0:
                             logger.debug('tolerance zero inacceptable: setting tolerance to 1.')
                             tolerance = 1.
                         if target_value -  tolerance <= value_get and value_get <= target_value + tolerance:
-                            logger.debug('the value get ({}) is included in the target_value ({}) +- tolerance ({})'.format(value_get,target_value,tolerance))
+                            logger.debug('the value get ({}) is included in the target_value ({}) +- tolerance ({})'.format(value_get, target_value, tolerance))
                         else:
-                            raise dripline.core.DriplineValueError('the value get ({}) is NOT included in the target_value ({}) +- tolerance ({}): stopping here!'.format(value_get,target_value,tolerance))
+                            raise dripline.core.DriplineValueError('the value get ({}) is NOT included in the target_value ({}) +- tolerance ({}): stopping here!'.format(value_get, target_value, tolerance))
                     elif isinstance(tolerance, string_types):
                         if '%' not in tolerance:
                             tolerance = float(tolerance)
                         else:
                             match_number = re.compile('-?\ *[0-9]+\.?[0-9]*(?:[Ee]\ *-?\ *[0-9]+)?')
-                            tolerance = [float(x) for x in re.findall(match_number, tolerance)][0]*target_value/100.
+                            tolerance = [float(x) for x in re.findall(match_number, tolerance)][0] * target_value / 100.
                         if tolerance == 0:
                             logger.debug('tolerance zero inacceptable: setting tolerance to 1.')
                             tolerance = 1.
                         if target_value -  tolerance <= value_get and value_get <= target_value + tolerance:
-                            logger.debug('the value get ({}) is included in the target_value ({}) +- tolerance ({})'.format(value_get,target_value,tolerance))
+                            logger.debug('the value get ({}) is included in the target_value ({}) +- tolerance ({})'.format(value_get, target_value, tolerance))
                         else:
-                            raise dripline.core.DriplineValueError('the value get ({}) is NOT included in the target_value ({}) +- tolerance ({}): stopping here!'.format(value_get,target_value,tolerance))
+                            raise dripline.core.DriplineValueError('the value get ({}) is NOT included in the target_value ({}) +- tolerance ({}): stopping here!'.format(value_get, target_value, tolerance))
                     else:
                         raise dripline.core.DriplineValueError('tolerance is not a float, int or string: stopping here')
                 else:
@@ -546,30 +546,30 @@ class RunScript(object):
                         value_get = '0'
                     # checking is target_value and value_get are the same
                     if target_value==value_get:
-                        logger.debug('value get ({}) corresponds to the target_value ({}): going on'.format(value_get_backup,target_value_backup))
+                        logger.debug('value get ({}) corresponds to the target_value ({}): going on'.format(value_get_backup, target_value_backup))
                     else:
-                        raise dripline.core.DriplineValueError('value get ({}) DOES NOT correspond to the target_value ({}): stopping here!'.format(value_get_backup,target_value_backup))
+                        raise dripline.core.DriplineValueError('value get ({}) DOES NOT correspond to the target_value ({}): stopping here!'.format(value_get_backup, target_value_backup))
                 else:
                     raise dripline.core.DriplineValueError('Cannot check! value set and target_value are not the same type as value get (string): stopping here!')
 
             # if the value we are checking is a bool
             elif isinstance(value_get, bool):
-                if not isinstance(target_value,bool):
+                if not isinstance(target_value, bool):
                     logger.debug('target_value is not the same type as the value get: going to use the set value ({}) as target_value'.format(this_set['value']))
                     target_value==this_set['value']
-                if isinstance(target_value,bool):
+                if isinstance(target_value, bool):
                     if value_get==target_value:
-                        logger.debug('value get ({}) corresponds to the target_value ({}): going on'.format(value_get,target_value))
+                        logger.debug('value get ({}) corresponds to the target_value ({}): going on'.format(value_get, target_value))
                     else:
-                        raise dripline.core.DriplineValueError('value get ({}) DOES NOT correspond to the target_value ({}): stopping here!'.format(value_get,target_value))
+                        raise dripline.core.DriplineValueError('value get ({}) DOES NOT correspond to the target_value ({}): stopping here!'.format(value_get, target_value))
                 else:
                     raise dripline.core.DriplineValueError('Cannot check! value set and target_value are not the same type as value get (string): stopping here!')
 
             # if you are in this "else", this means that you either wanted to mess up with us or you are not viligant enough
             else:
-                raise dripline.core.DriplineValueError('value get ({}) is not a float, int, string, bool, None ({}): SUPER WEIRD!'.format(value_get,type(value_get)))
+                raise dripline.core.DriplineValueError('value get ({}) is not a float, int, string, bool, None ({}): SUPER WEIRD!'.format(value_get, type(value_get)))
 
-            logger.info('{} checked to {}'.format(this_set['name'],value_get))
+            logger.info('{} checked to {}'.format(this_set['name'], value_get))
 
     def action_do(self, operations, **kwargs):
         '''
