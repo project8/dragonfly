@@ -4,7 +4,7 @@ Do simple stuff like gets and sets.
 """
 from __future__ import absolute_import
 
-import types
+from six import string_types
 import uuid
 import ast
 
@@ -37,7 +37,7 @@ class GenericAgent(object):
         payload = {}
         for val in args.values:
             temp_val = self.cast_arg(val)
-            if isinstance(temp_val, types.StringType):
+            if isinstance(temp_val, string_types):
                 if len(temp_val.split('=')) > 1:
                     value = self.cast_arg('='.join(temp_val.split('=')[1:]))
                     payload.update({temp_val.split('=')[0]:value})
@@ -101,7 +101,7 @@ class GenericAgent(object):
         try:
             temp_val = ast.literal_eval(value)
         except (ValueError,SyntaxError):
-            if isinstance(temp_val, types.StringType):
+            if isinstance(temp_val, string_types):
                 try:
                     if value.lower() == 'true':
                         temp_val = True

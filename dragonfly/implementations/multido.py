@@ -116,7 +116,7 @@ class MultiDo(Endpoint):
                 ret_rep = '{} -> returned error <{}>:{}'.format(a_target, err.retcode, err)
             except KeyError:
                 ret_val = None
-                ret_rep = '{} -> returned error <KeyError>:{} not in {}'.format(a_target, details['payload_field'], result.keys())
+                ret_rep = '{} -> returned error <KeyError>:{} not in {}'.format(a_target, details['payload_field'], list(result.keys()))
             result_vals[a_target] = ret_val
             result_reps.append(ret_rep)
         return {'value_raw': result_vals, 'value_cal': '\n'.join(result_reps)}
