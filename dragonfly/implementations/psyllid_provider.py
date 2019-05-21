@@ -67,9 +67,9 @@ class PsyllidProvider(core.Provider):
         '''
         Returns mode_dict containing the information which psyllid instance is in triggering or streaming mode
         Stopped psyllid instances are in acquisition mode None
-        Content of mode_dict is not updated at this point
-        Content of mode_dict is updated by calling prepare_daq_system (in roach_daq_run_interface) or check_all_psyllid_instances
         '''
+        for channel in self.channel_dict.keys():
+            self.get_acquisition_mode(channel)
         return self.mode_dict
 
 
@@ -83,6 +83,8 @@ class PsyllidProvider(core.Provider):
         '''
         Returns the number of psyllid instances that are activated
         '''
+        for channel in self.channel_dict.keys():
+            self.request_status(channel)
         active_channels = [i for i in self.status_value_dict.keys() if self.status_value_dict[i]==4]
         return active_channels
 
@@ -132,51 +134,58 @@ class PsyllidProvider(core.Provider):
         '''
         Tells psyllid to activate and checks whether activation was successful
         '''
-        if self.status_value_dict[channel] == 0:
+        self.request_status(channel)
+        if self.status_value_dict[channel] != 4:
             logger.info('Activating Psyllid instance for channel {}'.format(channel))
             self.provider.cmd(self.queue_dict[channel], 'activate-daq')
+            time.sleep(1)
+            self.request_status(channel)
+            if self.status_value_dict[channel]!=4:
+                logger.error('Activating failed')
+                raise core.exceptions.DriplineGenericDAQError('Activating psyllid failed')
+
         else:
-            logger.error('Cannot activate Psyllid instance of channel {}'.format(channel))
-            raise core.exceptions.DriplineGenericDAQError('Psyllid is not deactivated')
-        time.sleep(1)
-        self.request_status(channel)
-        if self.status_value_dict[channel]!=4:
-            logger.error('Activating failed')
-            raise core.exceptions.DriplineGenericDAQError('Activating psyllid failed')
+            logger.info('Psyllid instance of channel {} is already activated'.format(channel))
 
 
     def deactivate(self, channel):
         '''
         Tells psyllid to deactivate and checks whether deactivation was successful
         '''
+        self.request_status(channel)
         if self.status_value_dict[channel] != 0:
             logger.info('Deactivating Psyllid instance of channel {}'.format(channel))
             self.provider.cmd(self.queue_dict[channel],'deactivate-daq')
+            time.sleep(1)
+            self.request_status(channel)
+            if self.status_value_dict[channel]!=0:
+                logger.error('Deactivating failed')
+                raise core.exceptions.DriplineGenericDAQError('Deactivating psyllid failed')
+
         else:
-            logger.error('Cannot deactivate Psyllid instance of channel {}'.format(channel))
-            raise core.exceptions.DriplineGenericDAQError('Psyllid is already deactivated')
-        time.sleep(1)
-        self.request_status(channel)
-        if self.status_value_dict[channel]!=0:
-            logger.error('Deactivating failed')
-            raise core.exceptions.DriplineGenericDAQError('Deactivating psyllid failed')
+            logger.info('Psyllid instance of channel {} is already deactivated'.format(channel))
 
 
     def reactivate(self, channel):
         '''
         Tells psyllid to reactivate and checks whether reactivation was successful
         '''
+        self.request_status(channel)
         if self.status_value_dict[channel] == 4:
             logger.info('Reactivating Psyllid instance of channel {}'.format(channel))
             self.provider.cmd(self.queue_dict[channel], 'reactivate-daq')
+            time.sleep(2)
+            self.request_status(channel)
+            if self.status_value_dict[channel]!=4:
+                logger.error('Reactivating failed')
+                raise core.exceptions.DriplineGenericDAQError('Reactivating psyllid failed')
+
+        elif self.status_value_dict[channel] == 0:
+            logger.warning('Psyllid is deactivated. Trying to activate instead of re-activate')
+            self.activate(channel)
         else:
             logger.error('Cannot reactivate Psyllid instance of channel {}'.format(channel))
             raise core.exceptions.DriplineGenericDAQError('Psyllid is not activated and can therefore not be reactivated')
-        time.sleep(2)
-        self.request_status(channel)
-        if self.status_value_dict[channel]!=4:
-            logger.error('Reactivating failed')
-            raise core.exceptions.DriplineGenericDAQError('Reactivating psyllid failed')
 
 
     def save_reactivate(self, channel):
@@ -184,10 +193,12 @@ class PsyllidProvider(core.Provider):
         Reactivate results in the loss of all active-node configurations
         This method stores settings and re-sets them after reactivation
         '''
+        self.get_acquisition_mode(channel)
         if self.mode_dict[channel] == 'triggering':
             # store trigger configuration
             result = self.get_trigger_configuration(channel)
         # reactivate psyllid (all trigger and frequency settings are lost)
+        self.get_central_frequency(channel)
         self.reactivate(channel)
         # re-set central frequency
         self.set_central_frequency(channel, self.freq_dict[channel])
@@ -210,6 +221,8 @@ class PsyllidProvider(core.Provider):
         '''
         Returns a dictionary with all central frequencies
         '''
+        for channel in self.channel_dict.keys():
+            self.get_central_frequency(channel)
         return self.freq_dict
 
 
@@ -250,7 +263,7 @@ class PsyllidProvider(core.Provider):
         request = '.active-config.{}.{}.center-freq'.format(self.channel_dict[channel], routing_key_map[self.mode_dict[channel]])
         self.provider.set(self.queue_dict[channel]+request, cf)
         logger.info('Set central frequency of {} writer for channel {} to {} Hz'.format(self.mode_dict[channel], channel, cf))
-        self.freq_dict[channel]=cf
+        self.get_central_frequency(channel)
 
 
     def is_psyllid_using_monarch(self, channel):
@@ -492,7 +505,7 @@ class PsyllidProvider(core.Provider):
         self.start_run(channel ,1000, self.temp_file)
         time.sleep(1)
 
-        self._write_trigger_mask(channel, filename)
+        # self._write_trigger_mask(channel, filename)
 
         logger.info('Telling psyllid to use monarch again for next run')
         self.provider.set(self.queue_dict[channel]+'.use-monarch', True)
