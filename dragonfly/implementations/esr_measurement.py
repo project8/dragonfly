@@ -5,6 +5,7 @@ A service for interfacing with the ESR
 from __future__ import absolute_import
 __all__ = []
 
+import six
 import os
 import logging
 import json
@@ -163,9 +164,9 @@ class ESR_Measurement(core.Endpoint):
         Sets endpoint to value
 
         endptname (str): name of endpoint
-        val (int,float,str,unicode): value of endpoint to set
+        val (int,float,str): value of endpoint to set
         '''
-        if not isinstance(val, (int,float,str,unicode)):
+        if not isinstance(val, (int,float,six.string_types)):
             logger.warning("set value is of type {} with value {}, cannot process".format(type(val), val))
             raise TypeError
         result = self.provider.set(target=endptname, value=val)

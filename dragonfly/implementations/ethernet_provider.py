@@ -16,6 +16,7 @@ Optional config options:
 from __future__ import absolute_import
 import socket
 import threading
+import six
 
 from dripline.core import Provider, exceptions, fancy_doc
 
@@ -122,7 +123,7 @@ class EthernetProvider(Provider):
         commands (list||None): list of command(s) to send to the instrument following (re)connection to the instrument, still must return a reply!
                              : if impossible, set as None to skip
         '''
-        if isinstance(commands, (unicode,str)):
+        if isinstance(commands, six.string_types):
             commands = [commands]
         self.alock.acquire()
 

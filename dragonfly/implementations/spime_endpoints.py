@@ -30,6 +30,7 @@ Custom spime catalog (alphabetical):
 '''
 from __future__ import absolute_import
 
+import six
 import asteval # used for FormatSpime, ADS1115CalcSpime
 import os #used for DiopsidSpime
 import re # used for FormatSpime
@@ -175,7 +176,7 @@ class FormatSpime(Spime):
     def on_set(self, value):
         if self._set_str is None:
             raise DriplineMethodNotSupportedError('<{}> has no set string available'.format(self.name))
-        if isinstance(value, (str,unicode)) and self._set_value_lowercase:
+        if isinstance(value, six.string_types) and self._set_value_lowercase:
             value = value.lower()
         if self._set_value_map is None:
             mapped_value = value
@@ -389,7 +390,7 @@ class GPIOSpime(Spime):
             raise DriplineMethodNotSupportedError("<{}> has no set pin available".format(self.name))
         if isinstance(self._set_value_map, dict) and value in self._set_value_map:
             raw_value = value
-            if isinstance(value, (str,unicode)):
+            if isinstance(value, six.string_types):
                 value = value.lower()
             value = self._set_value_map[value]
             logger.debug('raw set value is {}; mapped value is: {}'.format(raw_value, value))
@@ -467,7 +468,7 @@ class IonGaugeSpime(Spime):
     def on_set(self, value):
         if self._set_str is None:
             raise DriplineMethodNotSupportedError("setting not available for {}".format(self.name))
-        if isinstance(value, (str,unicode)):
+        if isinstance(value, six.string_types):
             value = value.lower()
         if (self._set_value_map is not None) and (value in self._set_value_map):
             mapped_value = self._set_value_map[value]

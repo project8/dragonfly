@@ -4,8 +4,8 @@ A service for uniform interfacing with the RSA
 
 from __future__ import absolute_import
 
-
 # standard imports
+import six
 import logging
 import json
 from datetime import datetime
@@ -135,7 +135,7 @@ class RSAAcquisitionInterface(DAQProvider):
         if self.trace_path is None:
             raise DriplineValueError("No trace_path in RSA config file: save_trace feature disabled!")
 
-        if isinstance(comment,(str,unicode)):
+        if isinstance(comment,six.string_types):
             comment = comment.replace(" ","_")
         datenow = datetime.now()
         filename = "{0:%Y}/{0:%m%d}/{0:%Y%m%d_%H%M%S}/{0:%Y%m%d_%H%M%S}_Trace{1}_{2}".format(datenow,trace,comment)
