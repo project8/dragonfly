@@ -227,9 +227,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
             for key in ('fmt', 'tfrr', 'eb'):
                 psyllid_config_kwargs['payload'].update( { 'key' : key } )
                 setup['psyllid'].update( { key : self.provider.cmd(**psyllid_config_kwargs) } )
-        payload = { 'contents': setup,
-                    'filename': '{}/{}_setup.json'.format(directory,filename) }
-        self.provider.cmd(self._metadata_target, 'write_json', payload=payload)
+        self._send_metadata( type='setup', data=setup)
 
         logger.info('block roach channel')
         self.provider.cmd(self.daq_target, 'block_channel', payload = self.payload_channel)

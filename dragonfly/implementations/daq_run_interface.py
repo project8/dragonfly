@@ -115,10 +115,11 @@ class DAQProvider(core.Provider):
         self.run_name = run_name
         self._run_meta = {'DAQ': self.daq_name,
                           'run_time': self._run_time,
+                          'run_id': self.run_id
                          }
 
         self._do_prerun_gets()
-        self._send_metadata()
+        self._send_metadata(type='meta', data=self._run_meta)
         logger.debug('these meta will be {}'.format(self._run_meta))
         logger.info('start_run finished')
 
@@ -172,25 +173,24 @@ class DAQProvider(core.Provider):
     def determine_RF_ROI(self):
         raise core.exceptions.DriplineMethodNotSupportedError('subclass must implement RF ROI determination')
 
-    def _send_metadata(self):
+    def _send_metadata(self, type, data):
         '''
         Sends metadata to metadata target (mdreceiver) to be written to file(s)
         '''
-        logger.info('metadata should broadcast')
-        filename = '{directory}/{runNyx:03d}yyyxxx/{runNx:06d}xxx/{runN:09d}/{prefix}{runN:09d}_meta.json'.format(
+        logger.info('metadata {} should broadcast'.format(type))
+        filename = '{directory}/{runNyx:03d}yyyxxx/{runNx:06d}xxx/{runN:09d}/{prefix}{runN:09d}_{type}.json'.format(
                                                                     directory=self.meta_data_directory_path,
                                                                     prefix=self.filename_prefix,
                                                                     runNyx=self.run_id/1000000,
                                                                     runNx=self.run_id/1000,
-                                                                    runN=self.run_id
+                                                                    runN=self.run_id,
+                                                                    type=type
                                                                    )
-        this_payload = {'contents': self._run_meta,
+        this_payload = {'contents': data,
                         'filename': filename,
                        }
-        this_payload['contents']['run_id'] = self.run_id
-        # note, the following line has an empty method/RKS, this shouldn't be the case but is what golang expects
         self.provider.cmd(self._metadata_target, 'write_json', payload=this_payload)
-        logger.debug('meta sent')
+        logger.debug('metadata sent')
 
     def start_timed_run(self, run_name, run_time):
         '''
