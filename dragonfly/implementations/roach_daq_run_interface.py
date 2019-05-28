@@ -237,8 +237,6 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         logger.info('run duration in ms: {}'.format(duration))
 
         psyllid_filename = filename+'.egg'
-        if not os.path.exists(directory):
-            os.makedirs(directory)
 
         logger.info('Going to tell psyllid to start the run')
         payload = {'channel':self.channel_id, 'filename': os.path.join(directory, psyllid_filename), 'duration':duration}

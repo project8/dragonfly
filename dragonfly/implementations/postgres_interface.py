@@ -390,7 +390,7 @@ class SQLSnapshot(SQLTable):
         try:
             return datetime.strptime(timestamp, constants.TIME_FORMAT)
         except ValueError:
-            raise DriplineValueError('"{}" is not a valid timestamp format, use "YYYY-MM-DDThh:mm:ssZ"'.format(timestamp))
+            raise DriplineValueError('"{}" is not a valid timestamp format, use "YYYY-MM-DDThh:mm:ss.usZ"'.format(timestamp))
 
 
     def _connect_id_table(self):
