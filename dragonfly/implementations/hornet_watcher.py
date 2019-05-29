@@ -124,7 +124,11 @@ class HornetWatcher(SlowSubprocessMixin):
             path = event.pathname
             logger.debug("A file is closed with writing: " + path)
             path = event.pathname
-            creation_time = datetime.datetime.fromtimestamp(os.path.getctime(path))
+            try:
+                creation_time = datetime.datetime.fromtimestamp(os.path.getctime(path))
+            except OSError as err:
+                logger.info(err)
+                return
             time_now = datetime.datetime.now()
             file_delay_time = 15
             min_age = datetime.timedelta(file_delay_time)
