@@ -162,7 +162,7 @@ class FormatSpime(Spime):
             matches = re.search(self._extract_raw_regex, first_result)
             if matches is None:
                 logger.error('matching returned none')
-                raise dripline.core.DriplineValueError('returned result [{}] has no match to input regex [{}]'.format(first_result, self._extract_raw_regex))
+                raise DriplineValueError('returned result [{}] has no match to input regex [{}]'.format(first_result, self._extract_raw_regex))
             logger.debug("matches are: {}".format(matches.groupdict()))
             result = matches.groupdict()['value_raw']
         if self._get_reply_float:
@@ -222,7 +222,7 @@ class ADS1115Spime(Spime):
         elif measurement == "single":
             self.measurement = ADS1115().read_adc
         else:
-            raise exceptions.DriplineValueError("Invalid measurement option {}; must be differential or single".format(measurement))
+            raise DriplineValueError("Invalid measurement option {}; must be differential or single".format(measurement))
 
     # Read
     @calibrate()
@@ -266,7 +266,7 @@ class ADS1115CalcSpime(Spime):
             elif entry['measurement'] == 'single':
                 entry['measurement'] = ADS1115().read_adc
             else:
-                raise exceptions.DriplineValueError("Invalid measurement option {}; must be differential or single".format(entry['measurement']))
+                raise DriplineValueError("Invalid measurement option {}; must be differential or single".format(entry['measurement']))
         self.measurements = measurements
         self.logic = logic
         self.evaluator = asteval.Interpreter()
@@ -362,13 +362,13 @@ class GPIOSpime(Spime):
             if not isinstance(inpin, list):
                 inpin = [inpin]
             if not all(isinstance(pin, int) for pin in inpin):
-                raise exceptions.DriplineValueError("Invalid inpin <{}> for {}, requires int or list of int".format(repr(inpin), self.name))
+                raise DriplineValueError("Invalid inpin <{}> for {}, requires int or list of int".format(repr(inpin), self.name))
         self._inpin = inpin
         if outpin is not None:
             if not isinstance(outpin, list):
                 outpin = [outpin]
             if not all(isinstance(pin,int) for pin in outpin):
-                raise exceptions.DriplineValueError("Invalid outpin <{}> for {}, requires int or list of int".format(repr(outpin), self.name))
+                raise DriplineValueError("Invalid outpin <{}> for {}, requires int or list of int".format(repr(outpin), self.name))
         self._outpin = outpin
         if self._inpin is None and self._outpin is not None:
             self._inpin = self._outpin
