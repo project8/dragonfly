@@ -107,12 +107,6 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
             self.provider.cmd(self.psyllid_interface, 'activate', payload = self.payload_channel)
             self.status_value = self.provider.cmd(self.psyllid_interface, 'request_status', payload = self.payload_channel)['values'][0]
 
-        active_channels = self.provider.get(self.psyllid_interface + '.active_channels')
-        logger.info(active_channels)
-        if self.channel_id in active_channels==False:
-            logger.error('The Psyllid and ROACH2 channel interfaces do not match')
-            raise core.exceptions.DriplineGenericDAQError('The Psyllid and ROACH channel interfaces do not match')
-
 
     @property
     def is_running(self):
