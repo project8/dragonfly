@@ -460,6 +460,8 @@ class IonGaugeSpime(Spime):
 
     @calibrate()
     def on_get(self):
+        if self._get_str is None:
+            raise DriplineMethodNotSupportedError("getting not available for {}".format(self.name))
         result = self.provider.send([self._get_str])
         if result[:3] != self._address:
             raise DriplineHardwareError("Response address mismatch!  Response address is {}, expected address is {}".format(result, self._address))
