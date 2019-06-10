@@ -452,7 +452,10 @@ class IonGaugeSpime(Spime):
         '''
         Spime.__init__(self, **kwargs)
         self._get_str = get_str
-        self._address = '*'+get_str[1:3]
+        if self._get_str is not None:
+            self._address = '*'+get_str[1:3]
+        else:
+            self._address = '*'+set_str[1:3]
         self._set_str = set_str
         self._set_value_map = set_value_map
         if set_value_map is not None and not isinstance(set_value_map, dict):
