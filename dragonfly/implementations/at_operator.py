@@ -323,6 +323,7 @@ class AtOperator(SlowSubprocessMixin, Endpoint):
             self.send_message(channel, "Sorry, I don't recognize that username.")
         else:
             self.temporary_operator_id.append(self.username_to_id_dictionary[operator_name])
+            self.temporary_operator_id = list(set(self.temporary_operator_id))
             self.send_message(channel, "Use your powers wisely, " + operator_name + '.')
 
     def command_removetempoperator(self, channel, user_id, operator_name = ""):
