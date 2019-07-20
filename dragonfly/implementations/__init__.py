@@ -5,7 +5,7 @@ Implementation of instrument services.
 from __future__ import absolute_import
 
 from .alert_spammer import *
-from .at_operator import *
+from .at_on_call import *
 from .daq_db_interface import *
 from .daq_run_interface import *
 from .dungbeetle import *
