@@ -93,8 +93,8 @@ class AtOnCall(SlowSubprocessMixin, Endpoint):
         '''
         slack = ''
         config_file = json.loads(open(self.authentication_path).read())
-        if 'slack' in config_file and self.on_call.role in config_file['slack']:
-            slack = config_file['slack'][self.on_call.role]
+        if 'slack' in config_file and self.on_call_role in config_file['slack']:
+            slack = config_file['slack'][self.on_call_role]
             self.slack_client = slackclient.SlackClient(slack)
         else:
             logger.critical('Unable to find slack credentials for {} bot in {}'.format(self.on_call_role, self.authentication_path))
@@ -290,16 +290,16 @@ class AtOnCall(SlowSubprocessMixin, Endpoint):
         Display a bot-specific helper message in a Slack channel.
         channel: id of the channel where the message will be sent
         '''
-        message = "You can either address me with `@{0}` or enter a command.\n\n" + \
-                  "If you address me with `@{0}` I'll pass a notification on to the current {0}.\n\n" + \
-                  "I determine the current {0} from the {1} entries in the Google calendar. If you need to make modifications to the current or future {0}, please contact the operations coordinator.\n\n" + \
+        message = "You can either address me with `@{}` or enter a command.\n\n".format(self.on_call_role) + \
+                  "If you address me with `@{}` I'll pass a notification on to the current {}.\n\n".format(self.on_call_role, self.on_call_role) + \
+                  "I determine the current from the entries in the Google calendar. If you need to make modifications to the current or future on-call, please contact the operations coordinator.\n\n".format(self.on_call_role, self.calendar_name) + \
                   "If you enter a command, I can take certain actions:\n" + \
                   "\t`!hello`: say hi\n" + \
                   "\t`!help`: display home-channel bot help message\n" + \
-                  "\t`!help{0}`: display specific bot help message\n" + \
-                  "\t`!whois{0}`: show who the current {0} is, plus any temporary {0}\n" + \
-                  "\t`!temp{0} [username (optional)]`: add yourself or someone else as a temporary {0}; leave the username blank to add yourself\n" + \
-                  "\t`!removetemp{0} [username (optional)]`: remove yourself or someone else as temporary {0}; leave the username blank to remove yourself".format(self.on_call_role,self.calendar_name)
+                  "\t`!help{}`: display specific bot help message\n".format(self.on_call_role) + \
+                  "\t`!whois{}`: show who the current {} is, plus any temporary {}\n".format(self.on_call_role,self.on_call_role,self.on_call_role) + \
+                  "\t`!temp{} [username (optional)]`: add yourself or someone else as a temporary {}; leave the username blank to add yourself\n".format(self.on_call_role, self.on_call_role) + \
+                  "\t`!removetemp{} [username (optional)]`: remove yourself or someone else as temporary {}; leave the username blank to remove yourself".format(self.on_call_role, self.on_call_role)
         self.send_message(channel, message)
 
 
@@ -364,6 +364,7 @@ class AtOnCall(SlowSubprocessMixin, Endpoint):
             self.send_message(channel, self.id_to_username_dictionary[remove] + " is not currently listed as a temporary {}.".format(self.on_call_role))
             return
         self.temporary_on_call_id.remove(remove)
+        self.send_message(channel, "Ok, you're all done. Thanks!")
 
     def construct_command_dictionary(self):
         '''
@@ -499,7 +500,7 @@ class AtOnCall(SlowSubprocessMixin, Endpoint):
                 # When @on-call is called
                 if channel:
                     channel_name = self.channel_id_to_name_dictionary[channel]
-                    log_info_message = '@{0} is called in the channel [' + channel_name + ']! Looking for the {0}...'.format(self.on_call_role)
+                    log_info_message = '@{} is called in the channel [' + channel_name + ']! Looking for the {}...'.format(self.on_call_role, self.on_call_role)
                     logger.info(log_info_message)
                     self.at_on_call(channel)
 
