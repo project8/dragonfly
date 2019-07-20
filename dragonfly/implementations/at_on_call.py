@@ -280,11 +280,14 @@ class AtOnCall(SlowSubprocessMixin, Endpoint):
         channel: id of the channel where the message will be sent
         user_id: id of the user who called the command
         '''
-        self.send_message(channel, "Hi, " + self.id_to_username_dictionary[user_id] + ".")
+        if self.channel_id_to_name_dictionary[channel] == self.monitor_channel_name:
+            self.send_message(channel, "Hi, " + self.id_to_username_dictionary[user_id] + ".")
+        else:
+            logger.debug('{} !hello not called from correct channel, skipping...'.format(self.on_call_role))
 
-    def command_help(self, channel):
+    def command_helponcall(self, channel):
         '''
-        Display a helper message in a Slack channel.
+        Display a bot-specific helper message in a Slack channel.
         channel: id of the channel where the message will be sent
         '''
         message = "You can either address me with `@{0}` or enter a command.\n\n" + \
@@ -292,11 +295,23 @@ class AtOnCall(SlowSubprocessMixin, Endpoint):
                   "I determine the current {0} from the {1} entries in the Google calendar. If you need to make modifications to the current or future {0}, please contact the operations coordinator.\n\n" + \
                   "If you enter a command, I can take certain actions:\n" + \
                   "\t`!hello`: say hi\n" + \
-                  "\t`!help`: display this help message\n" + \
+                  "\t`!help`: display home-channel bot help message\n" + \
+                  "\t`!help{0}`: display specific bot help message\n" + \
                   "\t`!whois{0}`: show who the current {0} is, plus any temporary {0}\n" + \
-                  "\t`!temp{0} [username (optional)]`: add yourself or someone else as a temporary operator; leave the username blank to add yourself\n" + \
+                  "\t`!temp{0} [username (optional)]`: add yourself or someone else as a temporary {0}; leave the username blank to add yourself\n" + \
                   "\t`!removetemp{0} [username (optional)]`: remove yourself or someone else as temporary {0}; leave the username blank to remove yourself".format(self.on_call_role,self.calendar_name)
         self.send_message(channel, message)
+
+
+    def command_help(self, channel):
+        '''
+        Display a general helper message in monitored Slack channel, common to all bots.
+        channel: id of the channel where the message will be sent
+        '''
+        if self.channel_id_to_name_dictionary[channel] == self.monitor_channel_name:
+            self.command_helponcall(channel)
+        else:
+            logger.debug('{} !help not called from monitor channel, skipping...'.format(self.on_call_role))
 
     def command_whoisoncall(self, channel):
         '''
@@ -337,7 +352,7 @@ class AtOnCall(SlowSubprocessMixin, Endpoint):
         Remove the given temporary on-call.
         channel      : id of the Slack channel where the message will be sent
         user_id      : id of the user who called the command
-        on_call_name: the temporary on-call to be removed; the user itself will be removedd if empty
+        on_call_name: the temporary on-call to be removed; the user itself will be removed if empty
         '''
         remove = user_id
         if on_call_name != "":
@@ -356,9 +371,10 @@ class AtOnCall(SlowSubprocessMixin, Endpoint):
         '''
         self.command_dictionary["!hello"] = self.command_hello
         self.command_dictionary["!help"] = self.command_help
-        self.command_dictionary["!whois{}".format(self.on_call_role)] = self.command_whoisoncall
-        self.command_dictionary["!temp{}".format(self.on_call_role)] = self.command_temponcall
-        self.command_dictionary["!removetemp{}".format(self.on_call_role)] = self.command_removetemponcall
+        self.command_dictionary["!help"+self.on_call_role] = self.command_helponcall
+        self.command_dictionary["!whois"+self.on_call_role] = self.command_whoisoncall
+        self.command_dictionary["!temp"+self.on_call_role] = self.command_temponcall
+        self.command_dictionary["!removetemp"+self.on_call_role] = self.command_removetemponcall
         logger.info('Constructed dictionaries for {} helper commands on Slack.'.format(self.on_call_role))
 
     def parse_output(self, rtm_output, bot_id):
