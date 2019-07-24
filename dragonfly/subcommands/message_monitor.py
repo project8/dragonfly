@@ -18,7 +18,7 @@ __all__ = []
 class Monitor(Service):
     def __init__(self, payload_only, **kwargs):
         Service.__init__(self, **kwargs)
-        self._bindings.append([kwargs['exchange'],kwargs['keys']])
+        self._bindings.extend([[kwargs['exchange'],key] for key in kwargs['keys']])
         self._payload_only = payload_only
 
     def on_any_message(self, unused_channel, basic_deliver, properties, body):
@@ -66,7 +66,7 @@ class MessageMonitor(object):
                             '--keys',
                             metavar='keys',
                             help='amqp binding keys to follow',
-                            default='#',
+                            default=['#'],
                             nargs='*',
                            )
         parser.add_argument('-po',
