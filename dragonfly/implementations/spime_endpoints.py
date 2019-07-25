@@ -36,7 +36,7 @@ import os #used for DiopsidSpime
 import re # used for FormatSpime
 import datetime # used for GPIOPUDSpime
 try:
-    from Adafruit_ADS1x15 import ADS1115 # used for ADS1115Spime, ADS1115CalcSpime
+    from Adafruit_ADS1x15 import ADS1x15, ADS1115 # used for ADS1115Spime, ADS1115CalcSpime
 except ImportError:
     pass
 
@@ -213,7 +213,10 @@ class ADS1115Spime(Spime):
          - 2 = Channel 1 minus channel 3
          - 3 = Channel 2 minus channel 3
         '''
+        if not 'ADS1115' in globals():
+            raise ImportError('Adafruit_ADS1x15 not found, required for ADS1115Spime class')
         Spime.__init__(self, **kwargs)
+        ADS1x15.ADS1x15_CONFIG_GAIN[0] = 0
         self.gain = gain
         self.read_option = read_option
         self.gain_conversion = gain_conversion

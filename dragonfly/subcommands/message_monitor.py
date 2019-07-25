@@ -53,7 +53,7 @@ class MessageMonitor(object):
         try:
             monitor.run()
         except KeyboardInterrupt:
-            logger.warning('received <Ctrl+c>... exiting')
+            logger.info('received <Ctrl+c>... exiting')
 
     def update_parser(self, parser):
         parser.add_argument('-e',
