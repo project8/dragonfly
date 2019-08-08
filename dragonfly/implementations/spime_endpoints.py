@@ -37,6 +37,7 @@ import re # used for FormatSpime
 import datetime # used for GPIOPUDSpime
 try:
     from Adafruit_ADS1x15 import ADS1x15, ADS1115 # used for ADS1115Spime, ADS1115CalcSpime
+    ADS1x15.ADS1x15_CONFIG_GAIN[0] = 0
 except ImportError:
     pass
 
@@ -216,7 +217,6 @@ class ADS1115Spime(Spime):
         if not 'ADS1115' in globals():
             raise ImportError('Adafruit_ADS1x15 not found, required for ADS1115Spime class')
         Spime.__init__(self, **kwargs)
-        ADS1x15.ADS1x15_CONFIG_GAIN[0] = 0
         self.gain = gain
         self.read_option = read_option
         self.gain_conversion = gain_conversion
@@ -262,6 +262,8 @@ class ADS1115CalcSpime(Spime):
         measurements (list): list of measurements, each a dict with read_option, gain, and measurement type defined
         logic (str): calculation applied to results of measurements
         '''
+        if not 'ADS1115' in globals():
+            raise ImportError('Adafruit_ADS1x15 not found, required for ADS1115Spime class')
         Spime.__init__(self, **kwargs)
         for entry in measurements:
             if entry['measurement'] == 'differential':
