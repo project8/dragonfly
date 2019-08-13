@@ -23,7 +23,7 @@ requirements = [
 extras_require={
     'ads1x15': ['Adafruit_ADS1x15'],
     'colorlog' : ['colorlog'],
-    'database': ['psycopg2', 'sqlalchemy'], #this may also require system packages
+    'database': ['psycopg2-binary', 'sqlalchemy'], #this may also require system packages
     'debug': ['ipdb'],
     'doc': ['sphinx', 'sphinx_rtd_theme', 'sphinxcontrib-programoutput', 'better-apidoc', 'dripline'],
     'max31856': ['adafruit_max31856', 'rpi.gpio'], #only for RPi
