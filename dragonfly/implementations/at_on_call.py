@@ -5,7 +5,7 @@ try:
     # for google
     import googleapiclient.discovery
     from google.oauth2.credentials import Credentials
-    import slackclient
+    import slack
 except ImportError:
     pass
 
@@ -38,7 +38,7 @@ class AtOnCall(SlowSubprocessMixin, Endpoint):
         update_interval     : the time interval between regular checks and updates.
         authentication_path : the absolute path of the file that stores the authentication info.
         '''
-        imports = ['dateutil', 'funcsigs', 'googleapiclient', 'Credentials', 'slackclient']
+        imports = ['dateutil', 'funcsigs', 'googleapiclient', 'Credentials', 'slack']
         for import_module in imports:
             if not import_module in globals():
                 raise ImportError(import_module + ' not found, required for AtOnCall class.')
@@ -55,6 +55,7 @@ class AtOnCall(SlowSubprocessMixin, Endpoint):
             os._exit(1)
 
         self.slack_client = None
+        self.rtm_client = None
         self.bot_id = None
 
         self._creds = None
@@ -95,7 +96,8 @@ class AtOnCall(SlowSubprocessMixin, Endpoint):
         config_file = json.loads(open(self.authentication_path).read())
         if 'slack' in config_file and self.on_call_role in config_file['slack']:
             slack = config_file['slack'][self.on_call_role]
-            self.slack_client = slackclient.SlackClient(slack)
+            self.slack_client = slack.WebClient(slack_token)
+            self.rtm_client = slack.RTMClient(slack_token)
         else:
             logger.critical('Unable to find slack credentials for {} bot in {}'.format(self.on_call_role, self.authentication_path))
             os._exit(1)
@@ -452,6 +454,7 @@ class AtOnCall(SlowSubprocessMixin, Endpoint):
             logger.critical("An error occurs when connecting to Slack.")
             os._exit(1)
 
+    #@slack.RTMClient.run_on(event='message')
     def run(self):
         '''
         The main loop.
@@ -466,7 +469,7 @@ class AtOnCall(SlowSubprocessMixin, Endpoint):
                 time_now = datetime.datetime.now()
                 # ping the slack server on a regular basis to stay connected
                 if time_now > ping_time:
-                    self.slack_client.server.ping()
+                    self.rtm_client.ping()
                     ping_time = datetime.datetime.now() + self.ping_interval
                 # Regular check and update
                 if time_now > update_time:

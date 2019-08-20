@@ -11,7 +11,7 @@ import re
 from datetime import datetime, timedelta
 
 try:
-    import slackclient
+    import slack
 except ImportError:
     pass
 
@@ -38,8 +38,8 @@ class SlackInterface(Gogol):
         number_sentence_per_speaking_time: number of messages allowed during speaking_time before being muted
         time_between_warnings: time between sending warnings
         '''
-        if not 'slackclient' in globals():
-            raise ImportError('slackclient not found, required for SlackInterface class')
+        if not 'slack' in globals():
+            raise ImportError('slack not found, required for SlackInterface class')
         # listen to status_message alerts channel
         #kwargs.update({'exchange':'alerts','keys':['status_message.#.#']})
         kwargs.update({'keys':['status_message.#.#']})
@@ -61,7 +61,7 @@ class SlackInterface(Gogol):
         elif 'token' in slack:
             token = slack['token']
         if token:
-            self.slackclient = slackclient.SlackClient(token)
+            self.slackclient = slack.WebClient(token)
         else:
             self.slackclient = None
             raise dripline.core.exceptions.DriplineValueError('Warning! unable to find slack token in <~/.project8_authentications.json>')
