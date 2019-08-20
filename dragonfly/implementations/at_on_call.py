@@ -263,6 +263,10 @@ class AtOnCall(SlowSubprocessMixin, Endpoint):
         Send a Slack message to @ the on-call (the one listed on Google calendar, and temporary on-call(s) if exists.)
         channel: id of the channel where the message will be sent
         '''
+        channel_name = self.channel_id_to_name_dictionary[channel]
+        log_info_message = '@{} is called in the channel [' + channel_name + ']! Looking for the {}...'.format(self.on_call_role, self.on_call_role)
+        logger.info(log_info_message)
+
         if len(self.temporary_on_call_id) == 0 and self.current_on_call_id == "":
             self.send_message(channel, 'There is no {} on shift right now.'.format(self.on_call_role))
         else:
@@ -380,18 +384,18 @@ class AtOnCall(SlowSubprocessMixin, Endpoint):
         self.command_dictionary["!removetemp"+self.on_call_role] = self.command_removetemponcall
         logger.info('Constructed dictionaries for {} helper commands on Slack.'.format(self.on_call_role))
 
-    def parse_output(self, rtm_output, bot_id):
+    @slack.RTMClient.run_on(event='message')
+    def parse_output(self, **payload)
         '''
         Parse the given Slack output and check whether or not I am called.
-        rtm_output: Slack runtime output
-        bot_id    : my bot id
+        payload: Slack runtime output
         '''
-        output = rtm_output
+        output = payload['data']
         if output and len(output) > 0:
             for o in output:
                 if o and 'text' in o:
-                    if ('@' + str(bot_id)) in o['text']:
-                        return o['channel']
+                    if ('@' + str(self.bot_id)) in o['text']:
+                        self.at_on_call( o['channel'] )
                     tokens = o['text'].split(' ', 1)
                     command = tokens[0]
                     if command in self.command_dictionary:
@@ -415,8 +419,7 @@ class AtOnCall(SlowSubprocessMixin, Endpoint):
         Return a list of Google Calendar events if everything seems to be in order.
         '''
         self.get_slack_client()
-        if self.slack_client.rtm_connect(auto_reconnect=True):
-            logger.info('Connected!')
+        try:
             self.bot_id = self.slack_client.api_call('auth.test')['user_id']
             if not self.bot_id:
                 logger.critical('Unable to get the bot user ID.')
@@ -450,11 +453,10 @@ class AtOnCall(SlowSubprocessMixin, Endpoint):
             new_on_call_name, shift_end_time, self.next_shift_start_time = self.get_on_call_name_and_time(events)
             self.check_on_call_validity(new_on_call_name, shift_end_time, True, False)
             return events
-        else:
+        except:
             logger.critical("An error occurs when connecting to Slack.")
             os._exit(1)
 
-    #@slack.RTMClient.run_on(event='message')
     def run(self):
         '''
         The main loop.
@@ -463,9 +465,9 @@ class AtOnCall(SlowSubprocessMixin, Endpoint):
         ping_time = datetime.datetime.now() + self.ping_interval
         update_time = datetime.datetime.now() + self.update_interval
         logger.info('Next update will occur at ' + str (update_time))
+        self.rtm_client.start()
         try:
             while True:
-                channel = self.parse_output(self.slack_client.rtm_read(), self.bot_id)
                 time_now = datetime.datetime.now()
                 # ping the slack server on a regular basis to stay connected
                 if time_now > ping_time:
@@ -500,14 +502,7 @@ class AtOnCall(SlowSubprocessMixin, Endpoint):
                     logger.info('It seems that the current {} has ended his/her shift! Trying to find a new one...'.format(self.on_call_role))
                     new_on_call_name, shift_end_time, self.next_shift_start_time = self.get_on_call_name_and_time(events)
                     self.check_on_call_validity(new_on_call_name, shift_end_time, False, False)
-                # When @on-call is called
-                if channel:
-                    channel_name = self.channel_id_to_name_dictionary[channel]
-                    log_info_message = '@{} is called in the channel [' + channel_name + ']! Looking for the {}...'.format(self.on_call_role, self.on_call_role)
-                    logger.info(log_info_message)
-                    self.at_on_call(channel)
-
-                time.sleep(1)
+                time.sleep(60)
         except Exception as err:
             logger.error(err)
             self.send_message(self.monitor_channel_id, "An unknown error occurs...")
