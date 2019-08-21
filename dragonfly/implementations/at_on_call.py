@@ -385,7 +385,7 @@ class AtOnCall(SlowSubprocessMixin, Endpoint):
         logger.info('Constructed dictionaries for {} helper commands on Slack.'.format(self.on_call_role))
 
     @slack.RTMClient.run_on(event='message')
-    def parse_output(self, **payload)
+    def parse_output(self, **payload):
         '''
         Parse the given Slack output and check whether or not I am called.
         payload: Slack runtime output
@@ -502,7 +502,7 @@ class AtOnCall(SlowSubprocessMixin, Endpoint):
                     logger.info('It seems that the current {} has ended his/her shift! Trying to find a new one...'.format(self.on_call_role))
                     new_on_call_name, shift_end_time, self.next_shift_start_time = self.get_on_call_name_and_time(events)
                     self.check_on_call_validity(new_on_call_name, shift_end_time, False, False)
-                time.sleep(60)
+                time.sleep(1)
         except Exception as err:
             logger.error(err)
             self.send_message(self.monitor_channel_id, "An unknown error occurs...")
