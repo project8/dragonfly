@@ -164,6 +164,8 @@ class Roach2Interface(Roach2Provider):
 
 
     def get_central_frequency(self, channel):
+        cfg = ArtooDaq.read_ddc_1st_config(tag=channel)
+        self.freq_dict[channel] = cfg['digital']['f_c']
         return self.freq_dict[channel]
 
 
@@ -184,6 +186,8 @@ class Roach2Interface(Roach2Provider):
 
     @property
     def all_central_frequencies(self):
+        for channel in self.channel_list:
+            self.get_central_frequency(channel)
         return self.freq_dict
 
 
