@@ -8,4 +8,5 @@ ARG img_tag=v3.10.1
 FROM ${img_user}/${img_repo}:${img_tag}
 
 COPY . /dragonfly
+RUN apt-get install -y python3-psycopg2 libpq-dev
 RUN pip3 install /dragonfly[colorlog,database,slack]
