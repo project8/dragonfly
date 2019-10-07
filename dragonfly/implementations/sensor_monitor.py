@@ -60,7 +60,7 @@ class SensorMonitor(Gogol):
             self.monitors[target]['alarms'][alarm_ct].pop('silenced', None)
             self.monitors[target]['status'] = None
             return "Ignoring endtime in the past.  Alarm active!"
-        if enddatetime > datetime.datetime.utcnow()+datetime.timedelta(1):
+        if enddatetime > datetime.datetime.utcnow()+datetime.timedelta(4):
             raise exceptions.DriplineValueError("Invalid endtime provided <{}>, one day maximum silence interval".format(endtime))
         self.monitors[target]['alarms'][alarm_ct].update( { 'silenced' : enddatetime } )
         self.monitors[target]['status'] = 'SILENT'

@@ -18,6 +18,7 @@ branches:
   only:
     - master
     - develop
+    - hotfix/ci-builds
     - /^v\d+\.\d+\.\d+(-S*)?$/
 
 jobs:
@@ -37,7 +38,7 @@ jobs:
       script:
         - set -e
         - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
-        - .travis/bootstrap_image.sh -u driplineorg -r dripline-python -t v3.10.1 -a arm7 -i project8/dragonfly:`echo ${TRAVIS_BRANCH} | tr / _`
+        - .travis/bootstrap_image.sh -u driplineorg -r dripline-python -t v3.10.1-arm -a arm7 -i project8/dragonfly:`echo ${TRAVIS_BRANCH} | tr / _`
     - stage: assemble manifest
       script:
         - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
