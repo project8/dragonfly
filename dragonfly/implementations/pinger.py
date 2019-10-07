@@ -79,7 +79,7 @@ class Pinger(Endpoint,Scheduler):
         if enddatetime < datetime.datetime.utcnow():
             self.pinger_dict[service] = { 'status' : 'active' }
             return "Ignoring endtime in the past.  Pinger active!"
-        if enddatetime > datetime.datetime.utcnow()+datetime.timedelta(1):
+        if enddatetime > datetime.datetime.utcnow()+datetime.timedelta(4):
             raise exceptions.DriplineValueError("Invalid endtime provided <{}>, one day maximum silence interval".format(endtime))
         self.pinger_dict[service] = { 'status' : 'silenced',
                                       'timestamp' : enddatetime }
