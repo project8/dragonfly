@@ -33,6 +33,16 @@ class DungBeetle(Endpoint,Scheduler):
         self.processed_dirs = {}
         self.warning_interval = warning_interval
 
+    # delete old .nfs files that get stranded 
+    def clean_nfs(self, path, min_creation_time):
+        creation_time = datetime.datetime.fromtimestamp(os.path.getctime(path))
+        if creation_time < min_creation_time and (not path in self.ignore_dirs):
+            try:
+                os.rm(path)
+                logger.info(" file [{}] has been removed.".format(path))
+            except:
+                pass
+
     # recursively delete empty directories
     def del_dir(self, path, min_creation_time, processed_dirs_per_cycle, new_dirs):
         if os.path.isdir(path):
@@ -54,6 +64,8 @@ class DungBeetle(Endpoint,Scheduler):
                             new_dirs.append(path)
                         else:
                             self.processed_dirs[path] += 1
+        else if ".nfs" in path: 
+            clean_nfs(path, min_creation_time)
 
     # clean up empty directories under a specific directory without deleting itself
     def clean_dir(self, processed_dirs_per_cycle, new_dirs):
