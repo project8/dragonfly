@@ -14,7 +14,7 @@ class DungBeetle(Endpoint,Scheduler):
     '''
     def __init__(self,
                  root_dirs = [],
-                 max_age = {"minutes":3},
+                 max_age = {"hours":2},
                  ignore_dirs = [],
                  warning_interval = 12,
                  **kwargs):
