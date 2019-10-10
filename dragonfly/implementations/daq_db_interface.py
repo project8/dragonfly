@@ -10,7 +10,7 @@ __all__ = []
 # std libraries
 import json
 import os
-import types
+import six
 
 # 3rd party libraries
 try:
@@ -43,7 +43,7 @@ class RunDBInterface(Provider):
         '''
         if not 'sqlalchemy' in globals():
             raise ImportError('SQLAlchemy not found, required for RunDBInterface class')
-        if isinstance(tables, types.StringType):
+        if isinstance(tables, six.string_types):
             tables = [tables]
         Provider.__init__(self, *args, **kwargs)
 
