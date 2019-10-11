@@ -11,6 +11,14 @@ What we want as a user is some remote storage for such a key-value store, where
 we can ask dripline for the current value of ``key0`` and have it answer with
 whatever that current value may be.
 
+Note that this key-value store is entirely different from the database where 
+logged values will be stored. It is further different from a real sensor in
+that using `get` to look at the value of an endpoint, says, `Peaches`, from 
+this key-value store will always return the hard-coded value of that endpoint, 
+which is `0.75` for Peaches. A real sensor with endpoints like `gauge_7_pressure`
+or `trap_coil_3_current` will return the the physical value of those 
+parameters.
+
 
 A quick refresher
 -----------------
