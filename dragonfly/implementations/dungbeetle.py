@@ -40,8 +40,10 @@ class DungBeetle(Endpoint,Scheduler):
             try:
                 os.remove(path)
                 logger.info("nfs file [{}] has been removed.".format(path))
-            except:
-                pass
+            except OSError:
+                logger.warning("nfs file [{}] was not successfully removed".format(path))
+
+                
 
     # recursively delete empty directories
     def del_dir(self, path, min_creation_time, processed_dirs_per_cycle, new_dirs):
