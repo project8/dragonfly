@@ -39,7 +39,7 @@ class DungBeetle(Endpoint,Scheduler):
         if creation_time < min_creation_time and (not path in self.ignore_dirs):
             try:
                 os.remove(path)
-                logger.info("nfs file [{}] has been removed.".format(path))
+                logger.warning("nfs file [{}] has been removed.".format(path))
             except OSError:
                 logger.warning("nfs file [{}] was not successfully removed".format(path))
 
