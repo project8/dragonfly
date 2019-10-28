@@ -344,7 +344,7 @@ class SQLSnapshot(SQLTable):
         endpoint_list (list): list of endpoint names (str) of interest. Usage for dragonfly CLI e.g. endpoint_list='["endpoint_name1","endpoint_name_2",...]'
         '''
         timestamp = str(timestamp)
-        if isinstance(endpoint_list,types.ListType):
+        if isinstance(endpoint_list, list):
             endpoint_list = [str(item) for item in endpoint_list]
         else:
             logger.error('Received type "{}" for argument endpoint_list instead of Python list'.format(type(endpoint_list).__name__))

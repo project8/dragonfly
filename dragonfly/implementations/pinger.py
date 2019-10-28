@@ -38,7 +38,7 @@ class Pinger(Endpoint,Scheduler):
     def ping_status(self):
         formatted = { 'value_raw' : {},
                       'value_cal' : '' }
-        for service, value in self.pinger_dict.iteritems():
+        for service, value in self.pinger_dict.items():
             single = value.copy()
             if 'timestamp' in single:
                 single['timestamp'] = single['timestamp'].strftime(constants.TIME_FORMAT)
