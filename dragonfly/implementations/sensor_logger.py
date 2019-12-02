@@ -52,9 +52,6 @@ class SensorLogger(Gogol, PostgreSQLInterface):
     def this_consume(self, message, basic_deliver):
         logger.debug("consuming message to: {}".format(basic_deliver.routing_key))
         ### Get the sensor name
-        if not basic_deliver.routing_key.split('.')[0] == self.prefix:
-            logger.warning("should not consume this message")
-            return
         sensor_name = None
         if '.' in basic_deliver.routing_key:
             re_out = re.match(r'{}.(?P<from>\S+)'.format(self.prefix), basic_deliver.routing_key)
@@ -86,8 +83,9 @@ class SensorLogger(Gogol, PostgreSQLInterface):
             insert_data = {'endpoint_name': sensor_name,
                            'timestamp': message['timestamp'],
                           }
-            for key in ['value_raw', 'value_cal', 'memo']:
-                if key in message.payload:
-                    insert_data[key] = message.payload[key]
+            insert_data.update(message.payload)
+            #for key in ['value_raw', 'value_cal', 'memo']:
+            #    if key in message.payload:
+            #        insert_data[key] = message.payload[key]
             this_data_table.do_insert(**insert_data)
             logger.info('value logged for <{}>'.format(sensor_name))
