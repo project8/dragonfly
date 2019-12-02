@@ -31,8 +31,10 @@ import logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
-
 __all__.append('PostgreSQLInterface')
+__all__.append("SQLTable")
+__all__.append('SQLSnapshot')
+
 @fancy_doc
 class PostgreSQLInterface(Provider):
     '''
@@ -101,15 +103,13 @@ class PostgreSQLInterface(Provider):
         logger.debug('snapshot sent')
         return
 
-__all__.append("SQLTable")
+
 @fancy_doc
 class SQLTable(Endpoint):
     '''
     A class for making calls to _insert_with_return
     '''
     def __init__(self, table_name, schema,
-                 do_upsert=False,
-                 ignore_keys=[],
                  required_insert_names=[],
                  return_col_names=[],
                  optional_insert_names=[],
@@ -127,8 +127,6 @@ class SQLTable(Endpoint):
         if not 'sqlalchemy' in globals():
             raise ImportError('SQLAlchemy not found, required for SQLTable class')
         Endpoint.__init__(self, *args, **kwargs)
-        self.do_upsert = do_upsert
-        self.ignore_keys = ignore_keys
         self.table = None
         self.table_name = table_name
         self.schema = schema
@@ -180,15 +178,9 @@ class SQLTable(Endpoint):
 
     def _insert_with_return(self, insert_kv_dict, return_col_names_list):
         try:
-            #ins = self.table.insert().values(**insert_kv_dict)
-            ins = sqlalchemy.dialects.postgresql.insert(self.table).values(**insert_kv_dict)
+            ins = self.table.insert().values(**insert_kv_dict)
             if return_col_names_list:
-                logger.debug('adding return clause')
                 ins = ins.returning(*[self.table.c[col_name] for col_name in return_col_names_list])
-            if self.do_upsert:
-                p_keys = [key.name for key in sqlalchemy.inspection.inspect(self.table).primary_key]
-                update_d = {k:v for k,v in insert_kv_dict.items() if not k in p_keys}
-                ins = ins.on_conflict_do_update(index_elements=p_keys, set_=update_d)
             insert_result = ins.execute()
             if return_col_names_list:
                 return_values = insert_result.first()
@@ -223,7 +215,6 @@ class SQLTable(Endpoint):
         return_vals = self._insert_with_return(this_insert, self._return_names,)
         return return_vals
 
-__all__.append('SQLSnapshot')
 @fancy_doc
 class SQLSnapshot(SQLTable):
 
