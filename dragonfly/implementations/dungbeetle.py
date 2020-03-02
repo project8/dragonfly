@@ -47,7 +47,7 @@ class DungBeetle(Endpoint,Scheduler):
 
     # recursively delete empty directories
     def del_dir(self, path, min_creation_time, processed_dirs_per_cycle, new_dirs):
-        if not os.path.isdir(path):
+        if os.path.isfile(path):
             if ".nfs" in path or os.path.getsize(path) == 0:
                 self.clean_file(path, min_creation_time)
         elif os.path.isdir(path):
