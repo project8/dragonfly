@@ -16,7 +16,7 @@ env:
 
 jobs:
 
-  docker_build:
+  test_docker:
     name: Build and Test in Docker
 
     runs-on: ubuntu-20.04
