@@ -35,20 +35,20 @@ __all__ = []
 
 
 
-__all__.append('Roach2Provider')
-class Roach2Provider(ArtooDaq, core.Provider):
+__all__.append('Roach2Service')
+class Roach2Service(ArtooDaq, core.Service):
     '''
-    A DAQProvider for interacting with the Roach
+    A DAQService for interacting with the Roach
     '''
     def __init__(self, **kwargs):
 
 
-        core.Provider.__init__(self, **kwargs)
+        core.Service.__init__(self, **kwargs)
 
 
 
 __all__.append('Roach2Interface')
-class Roach2Interface(Roach2Provider):
+class Roach2Interface(Roach2Service):
     def __init__(self,
                  roach2_hostname = 'led',
                  channel_a_config = None,
@@ -63,7 +63,7 @@ class Roach2Interface(Roach2Provider):
                  **kwargs):
 
 
-        Roach2Provider.__init__(self, **kwargs)
+        Roach2Service.__init__(self, **kwargs)
 
         self.roach2_hostname = roach2_hostname
 
@@ -131,7 +131,7 @@ class Roach2Interface(Roach2Provider):
             if adc_cal_values[k] is None:
                 self.calibrated = False
                 logger.critical('ADC calibration failed')
-                raise core.exceptions.DriplineGenericDAQError('ADC calibration failed')
+                raise core.ThrowReply('DriplineGenericDAQError','ADC calibration failed')
         self.calibrated = True
 
 
@@ -171,7 +171,7 @@ class Roach2Interface(Roach2Provider):
         if self.block_dict[channel]==False:
             if cf > 1550e6 or cf < 50e6:
                 logger.error('Frequency out of allowed range: 50e6 - 1550e6 Hz')
-                raise core.exceptions.DriplineGenericDAQError('Frequency out of allowed range')
+                raise core.ThrowReply('DriplineGenericDAQError','Frequency out of allowed range')
             else:
                 logger.info('setting central frequency of channel {} to {}'.format(channel, cf))
                 cf = ArtooDaq.tune_ddc_1st_to_freq(self, cf, tag=channel)
@@ -179,7 +179,7 @@ class Roach2Interface(Roach2Provider):
                 return cf
         else:
             logger.error('Channel {} is blocked'.format(channel))
-            raise core.exceptions.DriplineGenericDAQError('Channel {} is blocked'.format(channel))
+            raise core.ThrowReply('DriplineGenericDAQError','Channel {} is blocked'.format(channel))
 
 
     @property
@@ -202,9 +202,9 @@ class Roach2Interface(Roach2Provider):
                 ArtooDaq.set_gain(self, gain, tag=channel)
                 self.gain_dict[channel] = gain
             else:
-                raise core.exceptions.DriplineGenericDAQError('Only gains between -8 and 7.93 are allowed')
+                raise core.ThrowReply('DriplineGenericDAQError','Only gains between -8 and 7.93 are allowed')
         else:
-            raise core.exceptions.DriplineGenericDAQError('Channel {} is blocked'.format(channel))
+            raise core.ThrowReply('DriplineGenericDAQError','Channel {} is blocked'.format(channel))
 
 
     def get_fft_shift_vector(self, tag):
