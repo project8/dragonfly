@@ -16,7 +16,7 @@ version.package = 'project8/dragonfly'
 version.commit = '---'
 __all__.append("version")
 
-from .dragonfly import *
-from .dragonfly import __all__ as __dragonfly_all
-__all__ += __dragonfly_all
+from .jitter_endpoint import *
+from .jitter_endpoint import __all__ as __jitter_all
+__all__ += __jitter_all
 
