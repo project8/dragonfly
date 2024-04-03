@@ -35,20 +35,9 @@ __all__ = []
 
 
 
-__all__.append('Roach2Service')
-class Roach2Service(ArtooDaq, core.Service):
-    '''
-    A DAQService for interacting with the Roach
-    '''
-    def __init__(self, **kwargs):
-
-
-        core.Service.__init__(self, **kwargs)
-
-
-
 __all__.append('Roach2Interface')
-class Roach2Interface(Roach2Service):
+class Roach2Interface(ArtooDaq, core.Service):
+    
     def __init__(self,
                  roach2_hostname = 'led',
                  channel_a_config = None,
@@ -63,7 +52,7 @@ class Roach2Interface(Roach2Service):
                  **kwargs):
 
 
-        Roach2Service.__init__(self, **kwargs)
+        core.Service.__init__(self, **kwargs)
 
         self.roach2_hostname = roach2_hostname
 
@@ -145,11 +134,12 @@ class Roach2Interface(Roach2Service):
         else:
             self.configured=False
             self.calibrated=False
-
+        print("\nDEBUG: is_running pnt 1 reached. \n")
         return self.configured
 
 
     def block_channel(self, channel):
+        print("\nDEBUG: reached block_channel pnt 1.\n")
         self.block_dict[channel]=True
 
 
