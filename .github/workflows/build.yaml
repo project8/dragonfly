@@ -10,7 +10,7 @@ on:
 env:
   BASE_IMAGE_USER: driplineorg
   BASE_IMAGE_REPO: dripline-python
-  BASE_IMAGE_VER: 'v4.5.8'
+  BASE_IMAGE_VER: 'v4.7.1'
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
 
