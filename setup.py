@@ -5,6 +5,6 @@ print('packages are: {}'.format(packages))
 
 setup(
     name="dragonfly",
-    version='v2.0.0',
+    version='v2.0.1',
     packages=packages,
 )
