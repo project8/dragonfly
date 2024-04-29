@@ -36,7 +36,7 @@ __all__ = []
 
 
 __all__.append('Roach2Interface')
-class Roach2Interface(ArtooDaq, core.Service):
+class Roach2Interface(ArtooDaq, core.Endpoint):
     
     def __init__(self,
                  roach2_hostname = 'led',
@@ -52,7 +52,7 @@ class Roach2Interface(ArtooDaq, core.Service):
                  **kwargs):
 
 
-        core.Service.__init__(self, **kwargs)
+        core.Endpoint.__init__(self, **kwargs)
 
         self.roach2_hostname = roach2_hostname
 
@@ -150,7 +150,7 @@ class Roach2Interface(ArtooDaq, core.Service):
     @property
     def blocked_channels(self):
         bc = [i for i in self.block_dict.keys() if self.block_dict[i]==True]
-        return bc
+        return ''.join(i for i in bc)
 
 
     def get_central_frequency(self, channel):
