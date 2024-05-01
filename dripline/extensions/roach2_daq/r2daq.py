@@ -139,8 +139,8 @@ class Packet():
         # unpack data in 64bit mode to correct for byte-order
         data_64bit = array(unpack(">{0}Q".format(cls.BYTES_IN_PAYLOAD//8),bytestr[cls.BYTES_IN_HEADER:]),dtype=uint64)
         data = zeros(cls.BYTES_IN_PAYLOAD,dtype=int8)
-        for ii in xrange(len(data_64bit)):
-            for jj in xrange(8):
+        for ii in range(len(data_64bit)):
+            for jj in range(8):
                 data[ii*8+jj] = int8((data_64bit[ii]>>uint64(8*jj))&uint64(0xFF))
         return Packet(ut,pktnum,did,ifid,ud0,ud1,res0,res1,fnt,data)
 
@@ -460,7 +460,7 @@ class ArtooDaq(object):
         except AttributeError:
             raise RuntimeError("No open data socket. Call open_dsoc() first.")
         pkts = []
-        for ii in xrange(n):
+        for ii in range(n):
             data = dsoc.recv(Packet.BYTES_IN_PACKET)
             pkts.append(Packet.FromByteString(data))
         if close_soc:
@@ -817,7 +817,7 @@ class ArtooDaq(object):
         groups = 8
         test_step = 10*res_offset
         logger.info("  Offset calibration ZDOK{0}:".format(zdok))
-        for ic in xrange(1,5):
+        for ic in range(1,5):
             adc5g.set_spi_offset(self.roach2,zdok,ic,0)
         x1 = self._snap_per_core(zdok=zdok,groups=groups)
         sx1 = x1.std(axis=0)
@@ -825,7 +825,7 @@ class ArtooDaq(object):
         logger.debug("    ...offset: with zero-offsets, means are                                        [{0}]".format(
             ", ".join(["{0:+7.4f}".format(imx) for imx in mx1])
         ))
-        for ic in xrange(1,5):
+        for ic in range(1,5):
             adc5g.set_spi_offset(self.roach2,zdok,ic,test_step)
         x2 = self._snap_per_core(zdok=zdok,groups=groups)
         sx2 = x2.std(axis=0)
@@ -836,7 +836,7 @@ class ArtooDaq(object):
         ))
         d_mx = (mx2 - mx1)/test_step
         core_offsets = -mx1/d_mx
-        for ic in xrange(1,5):
+        for ic in range(1,5):
             adc5g.set_spi_offset(self.roach2,zdok,ic,core_offsets[ic-1])
             core_offsets[ic-1] = adc5g.get_spi_offset(self.roach2,zdok,ic)
         x = self._snap_per_core(zdok=zdok,groups=groups)
@@ -848,8 +848,8 @@ class ArtooDaq(object):
         ))
         if any(abs(mx) >= otol):
             logger.debug("    ...offset: solution not good enough, iterating (tol={0:4.4f},iter={1:d})".format(otol,oiter))
-            for ii in xrange(0,oiter):
-                for ic in xrange(1,5):
+            for ii in range(0,oiter):
+                for ic in range(1,5):
                     if mx[ic-1] > otol:
                         adc5g.set_spi_offset(self.roach2,zdok,ic,core_offsets[ic-1]-res_offset)
                     elif mx[ic-1] < -otol:
@@ -884,7 +884,7 @@ class ArtooDaq(object):
         groups = 8
         test_step = 10*res_gain
         logger.info("  Gain calibration ZDOK{0}:".format(zdok))
-        for ic in xrange(1,5):
+        for ic in range(1,5):
             adc5g.set_spi_gain(self.roach2,zdok,ic,0)
         x1 = self._snap_per_core(zdok=zdok,groups=groups)
         sx1 = x1.std(axis=0)
@@ -894,7 +894,7 @@ class ArtooDaq(object):
             ", ".join(["{0:+7.4f}".format(isx) for isx in sx1])
         ))
         # only adjust gains for last three cores, core1 is the reference
-        for ic in xrange(2,5):
+        for ic in range(2,5):
             adc5g.set_spi_gain(self.roach2,zdok,ic,test_step)
         x2 = self._snap_per_core(zdok=zdok,groups=groups)
         sx2 = x2.std(axis=0)
@@ -911,7 +911,7 @@ class ArtooDaq(object):
         core_gains = 100*(1.0-sx1)/d_sx
         # set core1 gain to zero
         core_gains[0] = 0
-        for ic in xrange(2,5):
+        for ic in range(2,5):
             adc5g.set_spi_gain(self.roach2,zdok,ic,core_gains[ic-1])
             core_gains[ic-1] = adc5g.get_spi_gain(self.roach2,zdok,ic)
         x = self._snap_per_core(zdok=zdok,groups=groups)
@@ -924,8 +924,8 @@ class ArtooDaq(object):
         ))
         if any(abs(1.0-sx) >= gtol):
             logger.debug("    ...gain: solution not good enough, iterating (tol={0:4.4f},iter={1:d})".format(gtol,giter))
-            for ii in xrange(0,giter):
-                for ic in xrange(2,5):
+            for ii in range(0,giter):
+                for ic in range(2,5):
                     if (1.0-sx[ic-1]) > gtol:
                         adc5g.set_spi_gain(self.roach2,zdok,ic,core_gains[ic-1]+res_gain)
                     elif (1.0-sx[ic-1]) < -gtol:
@@ -960,7 +960,7 @@ class ArtooDaq(object):
         lim_phase = [-14.0,14.0]
         logger.info("  Phase calibration ZDOK{0}:".format(zdok))
         core_phases = zeros(4)
-        for ic in xrange(1,5):
+        for ic in range(1,5):
             core_phases[ic-1] = adc5g.get_spi_phase(self.roach2,zdok,ic)
         logger.info("    ...phase: tuning not implemented yet, phase parameters are [{0}]".format(
             ", ".join(["{0:+06.2f}".format(icp) for icp in core_phases])
@@ -989,7 +989,7 @@ class ArtooDaq(object):
             family of functions used to tune the core parameters.
         """
         x = zeros((0,4))
-        for ig in xrange(groups):
+        for ig in range(groups):
             grab = self.roach2.snapshot_get('snap_{0}_snapshot'.format(zdok))
             x_ = array(unpack('%ib' %grab['length'], grab['data']))
             x_ = x_.reshape((x_.size//4,4))
@@ -1155,7 +1155,7 @@ class ArtooDaq(object):
             raise RuntimeError("There should be 128 filter coefficients for 1st stage DDC, but {0} received".format(N))
         N_w = N//groupsize;
         words = zeros(N_w,uint32)
-        for bb in xrange(N):
+        for bb in range(N):
             gg = bb % groupsize
             nn = int(floor(bb/groupsize))
             b_uint32 = uint32(B[bb])
@@ -1163,9 +1163,9 @@ class ArtooDaq(object):
         # setup assignment dictionary
         assign_filter = {}
         base = 'ddc_1st_' + tag
-        for cb_id in xrange(8):
+        for cb_id in range(8):
             this_cb = base + '_cb{0}'.format(cb_id)
-            for g_id in xrange(4):
+            for g_id in range(4):
                 this_key = this_cb + '_g{0}'.format(g_id)
                 nn = 4*cb_id + g_id
                 this_val = words[nn]
@@ -1198,15 +1198,15 @@ class ArtooDaq(object):
         # read uint32 words
         words = zeros(N_w,uint32)
         base = 'ddc_1st_' + tag
-        for cb_id in xrange(8):
+        for cb_id in range(8):
             this_cb = base + '_cb{0}'.format(cb_id)
-            for g_id in xrange(4):
+            for g_id in range(4):
                 this_key = this_cb + '_g{0}'.format(g_id)
                 nn = 4*cb_id + g_id
                 words[nn] = self.roach2.read_int(this_key)
         # decompose into filter coefficients
         B = zeros(N,float32)
-        for bb in xrange(N):
+        for bb in range(N):
             gg = bb % groupsize
             nn = int(floor(bb/groupsize))
             b_int8 = ((words[nn] & (mask<<(w*gg)))>>(w*gg))
