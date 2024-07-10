@@ -19,13 +19,16 @@ from dripline import core
 
 logger = logging.getLogger(__name__)
 
+logger.info('HEEREE 01 HEEEEEEEREEEEEEEEEEEE')
 #phasmid import
 
 try:
+    logger.info('HEEEEEEEEEEEREEEEEEEEEEEEEEE')
     from .r2daq import ArtooDaq
     logger.info('Imported ArtooDaq')
 
 except ImportError:
+    logger.info('Failed to Import ArtooDaq')
     class ArtooDaq(object):
         def __init__(self, *args, **kwargs):
             raise RuntimeError("Dependency <ArtooDaq> not found but is required for ROACH2 support.")
@@ -52,6 +55,7 @@ class Roach2Interface(ArtooDaq, core.Endpoint):
                  **kwargs):
 
 
+        logger.debug("Roach2Interface __init__")
         core.Endpoint.__init__(self, **kwargs)
 
         self.roach2_hostname = roach2_hostname
@@ -134,12 +138,10 @@ class Roach2Interface(ArtooDaq, core.Endpoint):
         else:
             self.configured=False
             self.calibrated=False
-        print("\nDEBUG: is_running pnt 1 reached. \n")
-        return self.configured
+        return not bool(response)
 
 
     def block_channel(self, channel):
-        print("\nDEBUG: reached block_channel pnt 1.\n")
         self.block_dict[channel]=True
 
 

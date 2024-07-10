@@ -6,28 +6,27 @@
 from __future__ import division
 
 
-try:
-    import adc5g
-    from numpy import (
-        abs,
-        array,
-        ceil,
-        complex64,
-        concatenate,
-        float32,
-        floor,
-        int8,
-        ones,
-        pi,
-        uint32,
-        uint64,
-        uint8,
-        zeros,
-        )
-    from scipy.signal import firwin2, freqz
-    from corr.katcp_wrapper import FpgaClient
-except ImportError:
-    pass
+
+import adc5g
+from numpy import (
+    abs,
+    array,
+    ceil,
+    complex64,
+    concatenate,
+    float32,
+    floor,
+    int8,
+    ones,
+    pi,
+    uint32,
+    uint64,
+    uint8,
+    zeros,
+    )
+from scipy.signal import firwin2, freqz
+from corr.katcp_wrapper import FpgaClient
+
 from copy import deepcopy
 from datetime import datetime
 import logging
@@ -393,6 +392,7 @@ class ArtooDaq(object):
         do_adcif_cal : bool
             If True then do ADC interface calibration. Default is True.
         """
+        logger.debug("Beginning roach2 initialization.")
         # connect to roach and store local copy of FpgaClient
         r2 = FpgaClient(hostname)
         if not r2.wait_connected(self._TIMEOUT):
@@ -421,6 +421,7 @@ class ArtooDaq(object):
         for _cfg in ifcfg:
             self._tmp_add_iface_dict(**_cfg)
         ### --------
+        logger.debug("Middle of roach2 initialization.")
         # program bitcode
         if not boffile is None:
             self._start(boffile,do_ogp_cal=do_ogp_cal,
