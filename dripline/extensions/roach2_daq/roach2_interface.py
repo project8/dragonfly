@@ -19,19 +19,11 @@ from dripline import core
 
 logger = logging.getLogger(__name__)
 
-logger.info('HEEREE 01 HEEEEEEEREEEEEEEEEEEE')
 #phasmid import
 
-try:
-    logger.info('HEEEEEEEEEEEREEEEEEEEEEEEEEE')
-    from .r2daq import ArtooDaq
-    logger.info('Imported ArtooDaq')
+from .r2daq import ArtooDaq
+logger.info('Imported ArtooDaq')
 
-except ImportError:
-    logger.info('Failed to Import ArtooDaq')
-    class ArtooDaq(object):
-        def __init__(self, *args, **kwargs):
-            raise RuntimeError("Dependency <ArtooDaq> not found but is required for ROACH2 support.")
 
 
 __all__ = []
