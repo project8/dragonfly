@@ -1,0 +1,7 @@
+name: my_store
+module: Service
+endpoints:
+  - name: peaches
+    module: JitterEntity
+    calibration: '2*{}'
+    initial_value: 0.75

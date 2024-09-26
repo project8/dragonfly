@@ -1,6 +1,6 @@
-ARG img_user=driplineorg
+ARG img_user=ghcr.io/driplineorg
 ARG img_repo=dripline-python
-ARG img_tag=v4.7.1
+ARG img_tag=new-auth
 
 FROM ${img_user}/${img_repo}:${img_tag}
 
