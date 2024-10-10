@@ -1,5 +1,7 @@
 try:
     import pymodbus
+    from pymodbus.client import ModbusTcpClient
+    from pymodbus.payload import BinaryPayloadDecoder
 except ImportError:
     pass
 
@@ -41,25 +43,25 @@ class EthernetModbusService(Service):
         if isinstance(indexing, int):
             self.offset = indexing
         elif isinstance(indexing, str):
-            if lower(indexing) == 'plc':
+            if indexing.lower() == 'plc':
                 self.offset = -1
-            elif lower(indexing) == 'protocol':
+            elif indexing.lower() == 'protocol':
                 self.offset = 0
             else:
                 raise ValueError('Invalid indexing string argument <{}>, expect <PLC> or protocol'.format(indexing))
         else:
             raise TypeError('Invalid indexing type <{}>, expect string or int'.format(type(indexing)))
 
-        if lower(wordorder) == 'big':
+        if wordorder.lower() == 'big':
             self.word = pymodbus.constants.Endian.BIG
-        elif lower(wordorder) == 'little':
+        elif wordorder.lower() == 'little':
             self.word = pymodbus.constants.Endian.LITTLE
         else:
             raise ValueError('Invalid wordorder argument <{}>, expect big or little'.format(wordorder))
 
-        if lower(byteorder) == 'big':
+        if byteorder.lower() == 'big':
             self.byte = pymodbus.constants.Endian.BIG
-        elif lower(byteorder) == 'little':
+        elif byteorder.lower() == 'little':
             self.byte = pymodbus.constants.Endian.LITTLE
         else:
             raise ValueError('Invalid byteorder argument <{}>, expect big or little'.format(byteorder))
@@ -71,9 +73,9 @@ class EthernetModbusService(Service):
         Minimal connection method.
         TODO: Expand to call on failed read/write, and add sophistication.
         '''
-        self.client = pymodbus.client.ModbusTcpClient(self.ip)
+        self.client = ModbusTcpClient(self.ip)
 
-        if client.connect():
+        if self.client.connect():
             logger.debug('Connected to Alicat Device.')
         else:
             raise ThrowReply('resource_error_connection','Failed to Connect to Alicat Device')
@@ -85,16 +87,16 @@ class EthernetModbusService(Service):
         '''
         logger.debug('Reading {} registers starting with {}'.format(n_reg, register))
         if reg_type == 0x04:
-            result = self.client.read_input_registers(register+offset, n_reg)
+            result = self.client.read_input_registers(register + self.offset, n_reg)
         else:
             raise ThrowReply('message_error_invalid_method', 'Register type {} not supported'.format(reg_type))
         logger.info('Device returned {}'.format(result))
-        return pymodbus.payload.BinaryPayloadDecoder.fromRegisters(result.registers, wordorder=self.word, byteorder=self.byte)
+        return BinaryPayloadDecoder.fromRegisters(result.registers, wordorder=self.word, byteorder=self.byte)
 
     def write_register(self, register, value):
         if not isinstance(value, list):
             raise ThrowReply('message_error_invalid_method', 'Unsupported write type')
-        return self.client.write_register(register+offset, value)
+        return self.client.write_register(register + self.offset, value)
 
 
 __all__.append('ModbusEntity')
