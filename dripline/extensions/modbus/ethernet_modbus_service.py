@@ -90,7 +90,7 @@ class EthernetModbusService(Service):
             result = self.client.read_input_registers(register + self.offset, n_reg)
         else:
             raise ThrowReply('message_error_invalid_method', 'Register type {} not supported'.format(reg_type))
-        logger.info('Device returned {}'.format(result))
+        logger.info('Device returned {}'.format(result.registers))
         return BinaryPayloadDecoder.fromRegisters(result.registers, wordorder=self.word, byteorder=self.byte)
 
     def write_register(self, register, value):
@@ -122,7 +122,7 @@ class ModbusEntity(Entity):
         result = self.service.read_register(self.register, self.n_reg)
         if self.data_type == 'float32':
             result = result.decode_32bit_float()
-        logger.info('Decoded result is {}'.format(result))
+        logger.info('Decoded result for <{}> is {}'.format(self.name, result))
         return result
 
     def on_set(self, value):
