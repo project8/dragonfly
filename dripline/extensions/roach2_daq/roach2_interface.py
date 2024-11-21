@@ -8,11 +8,8 @@ from __future__ import absolute_import
 
 import logging
 import os
-try:
-    import adc5g
-    import numpy as np
-except ImportError:
-    pass
+import adc5g
+import numpy as np
 import json
 from dripline import core
 
@@ -143,12 +140,11 @@ class Roach2Interface(ArtooDaq, core.Endpoint):
 
     @property
     def blocked_channels(self):
-        bc = [i for i in self.block_dict.keys() if self.block_dict[i]==True]
-        return ''.join(i for i in bc)
+        return json.dumps(self.block_dict)
 
 
     def get_central_frequency(self, channel):
-        return self.freq_dict[channel]
+        return json.dumps(self.freq_dict[channel])
 
 
     def set_central_frequency(self, channel, cf):
@@ -168,12 +164,12 @@ class Roach2Interface(ArtooDaq, core.Endpoint):
 
     @property
     def all_central_frequencies(self):
-        return self.freq_dict
+        return json.dumps(self.freq_dict)
 
 
     @property
     def gain(self):
-        return self.gain_dict
+        return json.dumps(self.gain_dict)
 
 
     def set_gain(self, channel, gain):
@@ -239,7 +235,7 @@ class Roach2Interface(ArtooDaq, core.Endpoint):
             with open(filename, 'w') as outfile:
                 json.dump(p, outfile)
         else:
-            return p
+            return json.dumps(p)
 
     def get_T_packets(self, channel='a', NPackets=1, filename=None):
         if channel=='a':
@@ -368,4 +364,4 @@ class Roach2Interface(ArtooDaq, core.Endpoint):
         calibration_values['phase2'] = adc5g.get_spi_phase(self.roach2, 0, 2)
         calibration_values['phase3'] = adc5g.get_spi_phase(self.roach2, 0, 3)
         calibration_values['phase4'] = adc5g.get_spi_phase(self.roach2, 0, 4)
-        return calibration_values
+        return json.dumps(calibration_values)

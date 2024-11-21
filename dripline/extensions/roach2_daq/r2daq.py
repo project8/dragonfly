@@ -728,9 +728,9 @@ class ArtooDaq(object):
             g_8bit = 127
         if g_8bit < -128:
             g_8bit = -128
-        regname = 'gain_ctrl'
+        regname = b'gain_ctrl'
+        print("REGISTERS: ", self.registers)
         masked_val = self.registers[regname] & uint32(~(0xFF<<idx*8))
-        self._make_assignment({regname: masked_val | (g_8bit<<(idx*8))})
 
     def set_fft_shift(self,shift_vec='1101010101010',tag='ab'):
         """
@@ -749,7 +749,7 @@ class ArtooDaq(object):
         """
         self._check_valid_fft_engine(tag)
         idx = self.FFT_ENGINES.index(tag)
-        regname = 'fft_ctrl'
+        regname = b'fft_ctrl'
         s_13bit = int(shift_vec,2) & 0x1FFF
         masked_val = self.registers[regname] & uint32(~(0x1FFF<<idx*13))
         self._make_assignment({regname: masked_val | uint32(s_13bit<<(idx*13))})
@@ -1399,6 +1399,7 @@ class ArtooDaq(object):
 
         if boffile == "latest-build":
             boffile = "r2daq_2016_May_18_1148.bof"
+        logger.info(boffile)
 
         # program bitcode
         self.roach2.progdev(boffile)
