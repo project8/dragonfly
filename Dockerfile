@@ -4,9 +4,9 @@ ARG img_tag=new-auth
 
 FROM ${img_user}/${img_repo}:${img_tag}
 
-COPY . /usr/local/src/dragonfly
+COPY . /usr/local/src_dragonfly
 
-WORKDIR /usr/local/src/dragonfly
+WORKDIR /usr/local/src_dragonfly
 RUN pip install .
 
 WORKDIR /
