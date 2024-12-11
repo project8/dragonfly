@@ -20,11 +20,7 @@ class AddAuthSpec(dripline.implementations.BaseAddAuthSpec):
     def __init__(self, app):
         '''
         '''
-        dripline.implementations.BaseAddAuthSpec.__init__()
-        app.add_all(app)
-
-    def add_all(self, app):
-        self.add_postgres_auth_spec(app)
+        dripline.implementations.BaseAddAuthSpec.__init__(self, app)
         self.add_slack_auth_spec(app)
 
     def add_slack_auth_spec(self, app):
