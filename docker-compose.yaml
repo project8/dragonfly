@@ -1,0 +1,42 @@
+services:
+
+  # The broker for the mesh
+  rabbit-broker:
+    image: rabbitmq:3-management
+    ports:
+      - "15672:15672"
+    environment:
+      - RABBITMQ_DEFAULT_USER=dripline
+      - RABBITMQ_DEFAULT_PASS=dripline
+    healthcheck:
+      test: ["CMD-SHELL", "curl -u dripline:dripline http://rabbit-broker:15672/api/overview &> /dev/null || exit 1"]
+
+  # The classic key-value store, a configuration based on the base Service class
+  key-value-store:
+    image: ghcr.io/project8/dragonfly:${DGFLY_IMG_TAG:-latest-dev}
+    depends_on:
+      rabbit-broker:
+        condition: service_healthy
+    volumes:
+      - ./examples/key-value-store.yaml:/root/key-value-store.yaml
+      - ./dripline_mesh.yaml:/root/.dripline_mesh.yaml
+    environment:
+      - DRIPLINE_USER=dripline
+      - DRIPLINE_PASSWORD=dripline
+    command: >
+      bash -c "dl-serve -vv -c /root/key-value-store.yaml"
+
+  # The classic key-value-store service with a jitter endpoint
+  jitter:
+    image: ghcr.io/project8/dragonfly:${DGFLY_IMG_TAG:-latest-dev}
+    depends_on:
+      rabbit-broker:
+        condition: service_healthy
+    volumes:
+      - ./examples/jitter_example.yaml:/root/jitter_example.yaml
+      - ./dripline_mesh.yaml:/root/.dripline_mesh.yaml
+    environment:
+      - DRIPLINE_USER=dripline
+      - DRIPLINE_PASSWORD=dripline
+    command: >
+      bash -c "dl-serve -vv -c /root/jitter_example.yaml"
