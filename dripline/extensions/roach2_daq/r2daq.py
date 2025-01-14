@@ -730,8 +730,32 @@ class ArtooDaq(object):
             g_8bit = -128
         regname = b'gain_ctrl'
         print("REGISTERS: ", self.registers)
-        masked_val = self.registers[regname] & uint32(~(0xFF<<idx*8))
+        masked_val = self.registers[regname] & ~uint32(0xFF<<idx*8)
         self._make_assignment({regname: masked_val | (g_8bit<<(idx*8))})
+
+    def get_gain(self,tag='a'):
+        """
+        Get gain of 1st stage DDC. 
+
+        Parameters
+        ----------
+        tag : string
+            Tag associated with the digital channel, should be one of
+            {'a','b','c','d','e','f'}. Default is 'a'.
+
+        Notes
+        -----
+        No gain control register for channels {'e','f'} yet.
+        """
+        self._check_valid_digital_channel(tag)
+        idx = self.DIGITAL_CHANNELS.index(tag)
+        if idx > 3:
+            raise Warning("Gain control registers for channels 'e' and 'f' not implemented yet")
+            return
+        regname = b'gain_ctrl'
+        masked_val = self.registers[regname] & uint32(0xFF<<idx*8)
+        return (masked_val>>(idx*8))/16
+
 
     def set_fft_shift(self,shift_vec='1101010101010',tag='ab'):
         """
@@ -752,7 +776,7 @@ class ArtooDaq(object):
         idx = self.FFT_ENGINES.index(tag)
         regname = b'fft_ctrl'
         s_13bit = int(shift_vec,2) & 0x1FFF
-        masked_val = self.registers[regname] & uint32(~(0x1FFF<<idx*13))
+        masked_val = self.registers[regname] & ~uint32(0x1FFF<<idx*13)
         self._make_assignment({regname: masked_val | uint32(s_13bit<<(idx*13))})
         print(shift_vec)
 
