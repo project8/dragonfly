@@ -731,6 +731,7 @@ class ArtooDaq(object):
         regname = b'gain_ctrl'
         print("REGISTERS: ", self.registers)
         masked_val = self.registers[regname] & uint32(~(0xFF<<idx*8))
+        self._make_assignment({regname: masked_val | (g_8bit<<(idx*8))})
 
     def set_fft_shift(self,shift_vec='1101010101010',tag='ab'):
         """
