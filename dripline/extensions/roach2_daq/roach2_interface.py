@@ -262,7 +262,7 @@ class Roach2Interface(ArtooDaq, core.Endpoint):
             with open(filename, 'w') as outfile:
                 json.dump(p, outfile)
         else:
-            return p
+            return json.dumps(p)
 
 
 
@@ -292,7 +292,7 @@ class Roach2Interface(ArtooDaq, core.Endpoint):
             with open(filename, 'w') as outfile:
                 json.dump(p, outfile)
         else:
-            return p
+            return json.dumps(p)
 
 
     def get_raw_adc_data(self, NSnaps = 1, filename = None):
@@ -304,7 +304,7 @@ class Roach2Interface(ArtooDaq, core.Endpoint):
         if filename is not None:
             logger.info('Saving raw adc data to {}'.format(filename))
             with open(filename, 'w') as outfile:
-                json.dump(map(int,x_all), outfile)
+                json.dump(list(map(int,x_all)), outfile)
         else:
             return list(x_all)
 
