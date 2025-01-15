@@ -144,7 +144,10 @@ class Roach2Interface(ArtooDaq, core.Endpoint):
 
 
     def get_central_frequency(self, channel):
-        return json.dumps(ArtooDaq.read_ddc_1st_config(self, channel))
+        cfg = ArtooDaq.read_ddc_1st_config(self, channel)
+        cfg['analog']['B'] = list(cfg['analog']['B'])
+        cfg['digital']['B'] = list(cfg['digital']['B'])
+        return json.dumps(cfg)
 
 
     def set_central_frequency(self, channel, cf):
