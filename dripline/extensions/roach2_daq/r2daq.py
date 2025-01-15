@@ -756,7 +756,6 @@ class ArtooDaq(object):
         masked_val = self.registers[regname] & uint32(0xFF<<idx*8)
         return (masked_val>>(idx*8))/16
 
-
     def set_fft_shift(self,shift_vec='1101010101010',tag='ab'):
         """
         Set shift vector for FFT engine.
@@ -779,6 +778,22 @@ class ArtooDaq(object):
         masked_val = self.registers[regname] & ~uint32(0x1FFF<<idx*13)
         self._make_assignment({regname: masked_val | uint32(s_13bit<<(idx*13))})
         print(shift_vec)
+
+    def get_fft_shift(self,tag='ab'):
+        """
+        Get shift vector for FFT engine.
+
+        Parameters
+        ----------
+        tag : string
+            Tag selects the FFT engine from which to query shift
+            vector. Default is 'ab'.
+        """
+        self._check_valid_fft_engine(tag)
+        idx = self.FFT_ENGINES.index(tag)
+        regname = b'fft_ctrl'
+        masked_val = self.registers[regname] & uint32(0x1FFF<<idx*13)
+        return "{0:b}".format(masked_val>>idx*13)
 
     def calibrate_adc_ogp(self,zdok=0,
             oiter=10,otol=0.005,
