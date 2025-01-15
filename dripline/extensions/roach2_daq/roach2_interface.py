@@ -165,7 +165,7 @@ class Roach2Interface(ArtooDaq, core.Endpoint):
 
     @property
     def all_central_frequencies(self):
-        return json.dumps({ch:self.get_central_frequency[ch] for ch in self.freq_dict.keys()})
+        return json.dumps({ch:self.get_central_frequency(self,ch) for ch in self.freq_dict.keys()})
 
 
     @property
