@@ -169,7 +169,7 @@ class Roach2Interface(ArtooDaq, core.Endpoint):
 
     @property
     def gain(self):
-        return json.dumps({ch:ArtooDaq.get_gain(ch) for ch in self.gain_dict.keys()})
+        return json.dumps({ch:ArtooDaq.get_gain(self, ch) for ch in self.gain_dict.keys()})
 
 
     def set_gain(self, channel, gain):
