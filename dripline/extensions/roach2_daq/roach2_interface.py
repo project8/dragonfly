@@ -143,6 +143,11 @@ class Roach2Interface(ArtooDaq, core.Endpoint):
         return json.dumps(self.block_dict)
 
 
+    @property
+    def all_central_frequencies(self):
+        return json.dumps({ch:self.get_central_frequency(ch) for ch in self.freq_dict.keys()})
+
+
     def get_central_frequency(self, channel):
         cfg = ArtooDaq.read_ddc_1st_config(self, channel)
         return json.dumps(cfg['digital']['f_c'])
@@ -161,11 +166,6 @@ class Roach2Interface(ArtooDaq, core.Endpoint):
         else:
             logger.error('Channel {} is blocked'.format(channel))
             raise core.ThrowReply('DriplineGenericDAQError','Channel {} is blocked'.format(channel))
-
-
-    @property
-    def all_central_frequencies(self):
-        return json.dumps({ch:self.get_central_frequency(self,ch) for ch in self.freq_dict.keys()})
 
 
     @property
@@ -190,7 +190,7 @@ class Roach2Interface(ArtooDaq, core.Endpoint):
 
     @property
     def all_fft_shift_vectors(self): 
-        return json.dumps({blk:self.get_fft_shift_vector(self,blk) for blk in self.fft_shift_vector.keys()})
+        return json.dumps({blk:self.get_fft_shift_vector(blk) for blk in self.fft_shift_vector.keys()})
 
     def get_fft_shift_vector(self, tag):
         return ArtooDaq.get_fft_shift(self, tag)
