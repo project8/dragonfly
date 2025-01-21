@@ -34,4 +34,4 @@ class AddAuthSpec(dripline.implementations.BaseAddAuthSpec):
             },
         }
         app.add_default_auth_spec_group( 'slack', scarab.to_param(auth_spec).as_node() )
-        logging.debug('Added slack auth spec')
+        logger.debug('Added slack auth spec')
