@@ -29,6 +29,7 @@ class ThermoFisherGetEntity(Entity):
                  **kwargs):
         '''
         Args:
+            cmd_str: hexstring of the command, e.g. 20 
         '''
         if get_str is None:
             raise ValueError('<base_str is required to __init__ ThermoFisherGetEntity instance')
