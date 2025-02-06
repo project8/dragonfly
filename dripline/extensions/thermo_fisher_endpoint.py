@@ -39,9 +39,8 @@ class ThermoFisherGetEntity(Entity):
     @calibrate()
     def on_get(self):
         # setup cmd here
-        logger.debug(f'raw cmd string is {str(self.cmd_str)}')
-        to_send = [bytes.fromhex(str(self.cmd_str)) + b'\x00']
-        logger.debug(f'Send cmd in hex: {to_send[0].hex()}')
+        to_send = [str(self.cmd_str)]
+        logger.debug(f'Send cmd in hexstr: {to_send[0]}')
         result = self.service.send_to_device(to_send)
         logger.debug(f'raw result is: {result}')
 

@@ -12,6 +12,22 @@ __all__ = []
 
 
 __all__.append('EthernetThermoFisherService')
+
+def int_to_hexstr(value):
+    return hex(value)[2:].zfill(2)
+
+def hexstr_to_bytes(value):
+    return bytes.fromhex(value)
+
+def bytes_to_hexstr(value):
+    return value.hex()
+
+def hexstr_to_int(value):
+    return int(value, 16)
+
+def bytes_to_ints(value):
+    return [byte for byte in value]
+
 class EthernetThermoFisherService(Service):
     '''
     A fairly specific subclass of Service for connecting to ethernet-capable thermo fisher devices.
@@ -95,6 +111,19 @@ class EthernetThermoFisherService(Service):
         return self.calculate_checksum( cmd[1:-1] ) == cmd[-1]
 
 
+    def _assemble_cmd(self, cmd_in):
+        base_cmd = cmd_in[:2]
+        data = cmd_in[2:]
+        nDataBytes = len(hexstr_to_bytes(data))
+        command = hexstr_to_bytes(base_cmd) + hexstr_to_bytes(int_to_hexstr(nDataBytes)) + hexstr_to_bytes(data)
+        logger.debug(f"Assemblind cmd")
+        command = self.msb + self.lsb + command
+        logger.debug(f"Command is {command} or tpye {type(command)}")
+        cs = self.calculate_checksum(command).to_bytes(1, byteorder='big')
+        logger.debug(f"Checksum is {cs} of type {type(cs)}")
+        command = self.lead_char + command + cs
+        return command
+
     def _send_commands(self, commands):
         '''
         Take a list of commands, send to instrument and receive responses, do any necessary formatting.
@@ -105,13 +134,7 @@ class EthernetThermoFisherService(Service):
         all_data=[]
 
         for command in commands:
-            logger.debug(f"Assemblind cmd")
-            command = self.msb + self.lsb + command
-            logger.debug(f"Command is {command} or tpye {type(command)}")
-            cs = self.calculate_checksum(command).to_bytes(1, byteorder='big')
-            logger.debug(f"Checksum is {cs} of type {type(cs)}")
-            command = self.lead_char + command + cs
-            
+            cmd = self._assemble_cmd(command)
             issue = True
             try:
                 self.socket.close()
@@ -120,8 +143,8 @@ class EthernetThermoFisherService(Service):
                 self.socket.connect(self.socket_info)
                 logger.debug(f"Socket: {self.socket}")
 
-                logger.debug(f"sending: {command}")
-                self.socket.send(command)
+                logger.debug(f"sending: {cmd}")
+                self.socket.send(cmd)
                 logger.debug("Wait for responds")
                 time.sleep(0.6)
                 logger.debug("Read header")
