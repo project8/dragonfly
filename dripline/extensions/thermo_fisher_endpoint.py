@@ -39,10 +39,9 @@ class ThermoFisherGetEntity(Entity):
     @calibrate()
     def on_get(self):
         # setup cmd here
-        logger.debug(f'raw cmd string is {self.cmd_str}')
-        logger.debug(f'type cmd is {type(self.cmd_str.encode())}')
-        logger.debug(f"type of {b'\x00'} is {type(b'\x00')}")
-        to_send = [self.cmd_str.encode() + b'\x00']
+        logger.debug(f'raw cmd string is {str(self.cmd_str)}')
+        to_send = [bytes.fromhex(str(self.cmd_str)) + b'\x00']
+        logger.debug(f'Send cmd in hex: {to_send[0].hex()}')
         result = self.service.send_to_device(to_send)
         logger.debug(f'raw result is: {result}')
 
@@ -56,7 +55,8 @@ class ThermoFisherGetEntity(Entity):
 
         return result
 
-    def on_set(self, value):
+    def on_set(self, value):       
+        raise ThrowReply('message_error_invalid_method', f"endpoint '{self.name}' does not support set")
         to_send = [cmd]
         result = self.service.send_to_device(to_send)
         logger.debug(f'raw result is: {result}')
