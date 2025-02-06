@@ -4,11 +4,48 @@ import logging
 logger = logging.getLogger(__name__)
 
 __all__ = []
+__all__.append("ThermoFisherGetHexEntity")
 __all__.append("ThermoFisherGetEntity")
-class ThermoFisherGetEntity(Entity):
+
+
+class ThermoFisherGetHexEntity(Entity):
     '''
     A simple endpoint which stores a value but returns that value + a random offset
     '''
+
+    def __init__(self, 
+                 get_str=None,
+                 **kwargs):
+        '''
+        Args:
+            cmd_str: hexstring of the command, e.g. 20 
+        '''
+        if get_str is None:
+            raise ValueError('<base_str is required to __init__ ThermoFisherGetEntity instance')
+        else:
+            self.cmd_str = str(get_str).zfill(2)
+        Entity.__init__(self, **kwargs)
+
+    @calibrate()
+    def on_get(self):
+        # setup cmd here
+        to_send = [self.cmd_str]
+        logger.debug(f'Send cmd in hexstr: {to_send[0]}')
+        result = self.service.send_to_device(to_send)
+        logger.debug(f'raw result is: {result}')
+
+        return result
+
+    def on_set(self, value):       
+        raise ThrowReply('message_error_invalid_method', f"endpoint '{self.name}' does not support set")
+        to_send = [cmd]
+        result = self.service.send_to_device(to_send)
+        logger.debug(f'raw result is: {result}')
+        # do something here
+        return result
+
+
+class ThermoFisherGetEntity(ThermoFisherGetHexEntity):
 
     units = {0: "",
              1: "degC",
@@ -24,27 +61,17 @@ class ThermoFisherGetEntity(Entity):
              11: "kPa",
             }
 
-    def __init__(self, 
-                 get_str=None,
-                 **kwargs):
-        '''
-        Args:
-            cmd_str: hexstring of the command, e.g. 20 
-        '''
-        if get_str is None:
-            raise ValueError('<base_str is required to __init__ ThermoFisherGetEntity instance')
-        else:
-            self.cmd_str = get_str
-        Entity.__init__(self, **kwargs)
+    def __init__(self, **kwargs):
+        ThermoFisherGetHexEntity.__init__(self, **kwargs)
 
     @calibrate()
     def on_get(self):
         # setup cmd here
-        to_send = [str(self.cmd_str)]
+        to_send = [self.cmd_str]
         logger.debug(f'Send cmd in hexstr: {to_send[0]}')
         result = self.service.send_to_device(to_send)
         logger.debug(f'raw result is: {result}')
-
+ 
         # do something here
         decimal = 10.**(-int(result[0], 16))
         unit = self.units[int(result[1], 16)]
@@ -52,13 +79,4 @@ class ThermoFisherGetEntity(Entity):
 
         #result = "%f %s"%(value*decimal, unit)
         result = value*decimal
-
-        return result
-
-    def on_set(self, value):       
-        raise ThrowReply('message_error_invalid_method', f"endpoint '{self.name}' does not support set")
-        to_send = [cmd]
-        result = self.service.send_to_device(to_send)
-        logger.debug(f'raw result is: {result}')
-        # do something here
         return result
