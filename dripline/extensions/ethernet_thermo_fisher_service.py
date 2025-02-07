@@ -1,15 +1,12 @@
-import re
-import socket
-import threading
 import time
 
-from dripline.core import Service, ThrowReply
+from dripline.core import ThrowReply
+from dripline.implementations import EthernetSCPIService
 
 import logging
 logger = logging.getLogger(__name__)
 
 __all__ = []
-
 
 __all__.append('EthernetThermoFisherService')
 
@@ -28,7 +25,7 @@ def hexstr_to_int(value):
 def bytes_to_ints(value):
     return [byte for byte in value]
 
-class EthernetThermoFisherService(Service):
+class EthernetThermoFisherService(EthernetSCPIService):
     '''
     A fairly specific subclass of Service for connecting to ethernet-capable thermo fisher devices.
     In particular, devices must support a half-duplex serial communication with header information, variable length data-payload and a checksum.
@@ -47,53 +44,18 @@ class EthernetThermoFisherService(Service):
             socket_info (tuple or string): either socket.socket.connect argument tuple, or string that
                 parses into one.
         '''
-        Service.__init__(self, **kwargs)
-
-        if isinstance(socket_info, str):
-            logger.debug(f"Formatting socket_info: {socket_info}")
-            re_str = "\([\"'](\S+)[\"'], ?(\d+)\)"
-            (ip,port) = re.findall(re_str,socket_info)[0]
-            socket_info = (ip,int(port))
-
-        self.alock = threading.Lock()
-        self.socket = socket.socket()
-        self.socket_timeout = float(socket_timeout)
-        self.socket_info = socket_info
         self.lead_char = lead_char
         self.msb = msb
         self.lsb = lsb
-
-    def send_to_device(self, commands, **kwargs):
-        '''
-        Standard device access method to communicate with instrument.
-        NEVER RENAME THIS METHOD!
-
-        commands (list||None): list of command(s) to send to the instrument following (re)connection to the instrument, still must return a reply!
-                             : if impossible, set as None to skip
-        '''
-        if isinstance(commands, str):
-            commands = [commands]
-        self.alock.acquire()
-
-        try:
-            data = self._send_commands(commands)
-        except Exception as err:
-            logger.critical(str(err))
-            try:
-                data = self._send_commands(commands)
-                logger.critical("Query successful after ethernet connection recovered")
-            except socket.error as err: # simply trying to make it possible to catch the error below
-                logger.warning(f"socket.error <{err}> received, attempting reconnect")
-                logger.critical("Ethernet reconnect failed, dead socket")
-                raise ThrowReply('resource_error_connection', "Broken ethernet socket")
-            except Exception as err: ##TODO handle all exceptions, that seems questionable
-                logger.critical("Query failed after successful ethernet socket reconnect")
-                raise ThrowReply('resource_error_no_response', str(err))
-        finally:
-            self.alock.release()
-        to_return = ';'.join(data)
-        logger.debug(f"should return:\n{to_return}")
-        return to_return
+        EthernetSCPIService.__init__(self, 
+                                     socket_timeout=socket_timeout,
+                                     socket_info=socket_info,
+                                     cmd_at_reconnect=["00"],
+                                     reconnect_test="0001",
+                                     command_terminator='',
+                                     response_terminator='ignored',
+                                     reply_echo_cmd=False, 
+                                     **kwargs)
 
     def calculate_checksum(self, command_bytes):
         """
@@ -135,34 +97,19 @@ class EthernetThermoFisherService(Service):
 
         for command in commands:
             cmd = self._assemble_cmd(command)
-            issue = True
-            try:
-                self.socket.close()
-                self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM, )
-                self.socket.settimeout(self.socket_timeout)
-                self.socket.connect(self.socket_info)
-                logger.debug(f"Socket: {self.socket}")
 
-                logger.debug(f"sending: {cmd}")
-                self.socket.send(cmd)
-                logger.debug("Wait for responds")
-                time.sleep(0.6)
-                logger.debug("Read header")
-                header = self.socket.recv(5)
-                nBytes = int(header[-1])
-                logger.debug("Read data")
-                data = self.socket.recv(nBytes)
-                logger.debug("Read checksum")
-                check = self.socket.recv(1)
-                response = header + data + check
-                issue = False
-            except Exception as err:
-                logger.warning(f"While socket communication we recived an error: {err}")
-            finally:
-                self.socket.close()
-                logger.debug("Closed connection")
-            if issue:
-                raise ThrowReply("connection_error", "No connection to device")
+            logger.debug(f"sending: {cmd}")
+            self.socket.send(cmd)
+            logger.debug("Wait for responds")
+            time.sleep(0.6)
+            logger.debug("Read header")
+            header = self.socket.recv(5)
+            nBytes = int(header[-1])
+            logger.debug("Read data")
+            data = self.socket.recv(nBytes)
+            logger.debug("Read checksum")
+            check = self.socket.recv(1)
+            response = header + data + check
             logger.info(f"Recived: {response}")
             if not self.check_checksum(response):
                 raise ThrowReply("checksum_error", "Message has invalid checksum")
