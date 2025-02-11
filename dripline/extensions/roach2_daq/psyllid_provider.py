@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 
 __all__.append('PsyllidProvider')
-class PsyllidProvider(core.Service):
+class PsyllidProvider(core.Interface):
     '''
     Provider for direct communication with up to 3 Psyllid instances with a single stream each
     '''
@@ -28,7 +28,7 @@ class PsyllidProvider(core.Service):
                  temp_file = '/tmp/empty_egg_file.egg',
                  **kwargs):
 
-        core.Service.__init__(self, **kwargs)
+        core.Interface.__init__(self, **kwargs)
         self._set_condition_list = set_condition_list
         self.queue_dict = queue_dict
         self.channel_dict = channel_dict
