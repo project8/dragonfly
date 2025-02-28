@@ -28,7 +28,7 @@ __all__ = []
 
 
 __all__.append('Roach2Interface')
-class Roach2Interface(ArtooDaq, core.Endpoint):
+class Roach2Interface(ArtooDaq, core.Service):
     
     def __init__(self,
                  roach2_hostname = 'led',
@@ -45,7 +45,7 @@ class Roach2Interface(ArtooDaq, core.Endpoint):
 
 
         logger.debug("Roach2Interface __init__")
-        core.Endpoint.__init__(self, **kwargs)
+        core.Service.__init__(self, **kwargs)
 
         self.roach2_hostname = roach2_hostname
 

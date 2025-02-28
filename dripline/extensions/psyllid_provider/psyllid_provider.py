@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 
 __all__.append('PsyllidProvider')
-class PsyllidProvider(core.Interface):
+class PsyllidProvider(core.Service):
     '''
     Provider for direct communication with up to 3 Psyllid instances with a single stream each
     '''
@@ -28,7 +28,7 @@ class PsyllidProvider(core.Interface):
                  temp_file = '/tmp/empty_egg_file.egg',
                  **kwargs):
 
-        core.Interface.__init__(self, **kwargs)
+        core.Service.__init__(self, **kwargs)
         self._set_condition_list = set_condition_list
         self.queue_dict = queue_dict
         self.channel_dict = channel_dict
@@ -37,6 +37,7 @@ class PsyllidProvider(core.Interface):
         self.status_dict = {x: None for x in channel_dict.keys()}
         self.status_value_dict = {x: None for x in channel_dict.keys()}
         self.temp_file = temp_file
+
 
 
     def check_all_psyllid_instances(self):
@@ -97,18 +98,18 @@ class PsyllidProvider(core.Interface):
 
 
     def get_active_config(self, channel, key):
-        target = '{}.active-config.{}.{}'.format(self.queue_dict[channel],
-                                                 str(self.channel_dict[channel]),
-                                                 key)
-        return self.get(target)
+        target = 'active-config.{}.{}'.format(str(self.channel_dict[channel]),
+                                                key)
+        reply = self.get(endpoint=self.queue_dict[channel], specifier=target)
+        return reply
 
 
     def get_acquisition_mode(self, channel):
         '''
         Tests whether psyllid is in streaming or triggering mode
         '''
-        request = '{}.node-list.{}'.format(self.queue_dict[channel], self.channel_dict[channel])
-        node_list = self.get(request)['nodes']
+        request = 'node-list.{}'.format(self.channel_dict[channel])
+        node_list = self.get(endpoint=self.queue_dict[channel], specifier=request)['nodes']
 
         if 'trw' in node_list:
             self.mode_dict[channel] = 'triggering'
@@ -124,7 +125,7 @@ class PsyllidProvider(core.Interface):
         Asks the psyllid instance what state it is in and returns that state
         '''
         logger.info('Checking Psyllid status of channel {}'.format(channel))
-        result = self.get(self.queue_dict[channel]+'.daq-status', timeout=5)
+        result = self.get(endpoint=self.queue_dict[channel], specifier='daq-status', timeout_s=5)
         self.status_dict[channel] = result['server']['status']
         self.status_value_dict[channel] = result['server']['status-value']
         logger.info('Psyllid is running. Status is {}'.format(self.status_dict[channel]))
@@ -139,7 +140,7 @@ class PsyllidProvider(core.Interface):
         self.request_status(channel)
         if self.status_value_dict[channel] != 4:
             logger.info('Activating Psyllid instance for channel {}'.format(channel))
-            self.cmd(self.queue_dict[channel], 'activate-daq')
+            self.cmd(endpoint=self.queue_dict[channel], specifier='activate-daq')
             time.sleep(1)
             self.request_status(channel)
             if self.status_value_dict[channel]!=4:
@@ -157,7 +158,7 @@ class PsyllidProvider(core.Interface):
         self.request_status(channel)
         if self.status_value_dict[channel] != 0:
             logger.info('Deactivating Psyllid instance of channel {}'.format(channel))
-            self.cmd(self.queue_dict[channel],'deactivate-daq')
+            self.cmd(endpoint=self.queue_dict[channel], specifier='deactivate-daq')
             time.sleep(1)
             self.request_status(channel)
             if self.status_value_dict[channel]!=0:
@@ -175,7 +176,7 @@ class PsyllidProvider(core.Interface):
         self.request_status(channel)
         if self.status_value_dict[channel] == 4:
             logger.info('Reactivating Psyllid instance of channel {}'.format(channel))
-            self.cmd(self.queue_dict[channel], 'reactivate-daq')
+            self.cmd(endpoint=self.queue_dict[channel], specifier='reactivate-daq')
             time.sleep(2)
             self.request_status(channel)
             if self.status_value_dict[channel]!=4:
@@ -214,7 +215,7 @@ class PsyllidProvider(core.Interface):
         '''
         Tells psyllid to quit
         '''
-        self.cmd(self.queue_dict[channel], 'quit-psyllid')
+        self.cmd(endpoint=self.queue_dict[channel], specifier='quit')
         logger.info('psyllid quit!')
 
 
@@ -246,7 +247,7 @@ class PsyllidProvider(core.Interface):
                            'triggering':'trw'
                           }
         request = 'active-config.{}.{}'.format(self.channel_dict[channel], routing_key_map[self.mode_dict[channel]])
-        result = self.get(self.queue_dict[channel]+'.'+request)
+        result = self.get(endpoint=self.queue_dict[channel], specifier=request)
         logger.info('Psyllid says cf is {}'.format(result['center-freq']))
         self.freq_dict[channel]=result['center-freq']
         return self.freq_dict[channel]
@@ -263,8 +264,8 @@ class PsyllidProvider(core.Interface):
                            'streaming':'strw',
                            'triggering':'trw'
                           }
-        request = '.active-config.{}.{}.center-freq'.format(self.channel_dict[channel], routing_key_map[self.mode_dict[channel]])
-        self.set(self.queue_dict[channel]+request, cf)
+        request = 'active-config.{}.{}.center-freq'.format(self.channel_dict[channel], routing_key_map[self.mode_dict[channel]])
+        self.set(endpoint=self.queue_dict[channel], specifier=request, value=cf)
         logger.info('Set central frequency of {} writer for channel {} to {} Hz'.format(self.mode_dict[channel], channel, cf))
         self.get_central_frequency(channel)
 
@@ -274,7 +275,7 @@ class PsyllidProvider(core.Interface):
         Check psyllid is using monarch
         If it isn't psyllid cannot write files and runs will fail
         '''
-        result =  self.get(self.queue_dict[channel]+'.use-monarch')['values'][0]
+        result =  self.get(endpoint=self.queue_dict[channel], specifier='use-monarch')['values'][0]
         logger.info('Psyllid channel {} is using monarch: {}'.format(channel, result))
         return result
 
@@ -285,7 +286,7 @@ class PsyllidProvider(core.Interface):
         Payload is run duration and egg-filename
         '''
         payload = {'duration':duration, 'filename':filename}
-        self.cmd(self.queue_dict[channel], 'start-run', payload=payload)
+        self.cmd(endpoint=self.queue_dict[channel], specifier='start-run', keyed_args=payload)
 
 
     def stop_run(self, channel):
@@ -294,7 +295,7 @@ class PsyllidProvider(core.Interface):
         This method is for interrupting runs
         Runs stop automatically after the set duration and normally don't need to be stopped manually
         '''
-        self.cmd(self.queue_dict[channel], 'stop-run')
+        self.cmd(endpoint=self.queue_dict[channel], specifier='stop-run')
 
 
     ###################
@@ -361,8 +362,8 @@ class PsyllidProvider(core.Interface):
     ##############################################################
 
     def set_threshold_type(self, snr_or_sigma, channel='a'):
-        request = '.active-config.{}.fmt.threshold-type'.format(str(self.channel_dict[channel]))
-        threshold_type = self.set(self.queue_dict[channel]+request, snr_or_sigma)
+        request = 'active-config.{}.fmt.threshold-type'.format(str(self.channel_dict[channel]))
+        threshold_type = self.set(endpoint=self.queue_dict[channel], specifier=request, value=snr_or_sigma)
         return threshold_type
 
 
@@ -370,85 +371,85 @@ class PsyllidProvider(core.Interface):
         '''
         Returns string: 'snr' or 'sigma'
         '''
-        request = '.active-config.{}.fmt.threshold-type'.format(str(self.channel_dict[channel]))
-        return self.get(self.queue_dict[channel]+request)['threshold-type']
+        request = 'active-config.{}.fmt.threshold-type'.format(str(self.channel_dict[channel]))
+        return self.get(endpoint=self.queue_dict[channel], specifier=request)['threshold-type']
 
 
     def set_pretrigger_time(self, pretrigger_time, channel='a'):
         n_pretrigger_packets = int(round(pretrigger_time/4.096e-5))
         logger.info('Setting psyllid pretrigger to {} packets'.format(n_pretrigger_packets))
-        request = '.node-config.{}.eb.pretrigger'.format(str(self.channel_dict[channel]))
-        self.set(self.queue_dict[channel]+request, n_pretrigger_packets)
+        request = 'node-config.{}.eb.pretrigger'.format(str(self.channel_dict[channel]))
+        self.set(endpoint=self.queue_dict[channel], specifier=request, value=n_pretrigger_packets)
 
 
     def get_pretrigger_time(self, channel='a'):
-        request = '.active-config.{}.eb.pretrigger'.format(str(self.channel_dict[channel]))
-        n_pretrigger_packets = self.get(self.queue_dict[channel]+request)['pretrigger']
+        request = 'active-config.{}.eb.pretrigger'.format(str(self.channel_dict[channel]))
+        n_pretrigger_packets = self.get(endpoint=self.queue_dict[channel], specifier=request)['pretrigger']
         return float(n_pretrigger_packets) * 4.096e-5
 
 
     def set_skip_tolerance(self, skip_tolerance, channel='a'):
         n_skipped_packets = int(round(skip_tolerance/4.096e-5))
         logger.info('Setting psyllid skip tolerance to {} packets'.format(n_skipped_packets))
-        request = '.node-config.{}.eb.skip-tolerance'.format(str(self.channel_dict[channel]))
-        self.set(self.queue_dict[channel]+request, n_skipped_packets)
+        request = 'node-config.{}.eb.skip-tolerance'.format(str(self.channel_dict[channel]))
+        self.set(endpoint=self.queue_dict[channel], specifier=request, value=n_skipped_packets)
 
 
     def get_skip_tolerance(self, channel='a'):
-        request = '.active-config.{}.eb.skip-tolerance'.format(str(self.channel_dict[channel]))
-        n_skipped_packets = self.get(self.queue_dict[channel]+request)['skip-tolerance']
+        request = 'active-config.{}.eb.skip-tolerance'.format(str(self.channel_dict[channel]))
+        n_skipped_packets = self.get(endpoint=self.queue_dict[channel], specifier=request)['skip-tolerance']
         return float(n_skipped_packets) * 4.096e-5
 
 
     def set_fmt_snr_threshold(self, threshold, channel='a'):
-        request = '.active-config.{}.fmt.threshold-power-snr'.format(str(self.channel_dict[channel]))
-        self.set(self.queue_dict[channel]+request, threshold)
+        request = 'active-config.{}.fmt.threshold-power-snr'.format(str(self.channel_dict[channel]))
+        self.set(endpoint=self.queue_dict[channel], specifier=request, value=threshold)
         logger.info('Setting psyllid power snr threshold to {}'.format(threshold))
 
 
     def get_fmt_snr_threshold(self, channel='a'):
-        request = '.active-config.{}.fmt.threshold-power-snr'.format(str(self.channel_dict[channel]))
-        threshold = self.get(self.queue_dict[channel]+request)['threshold-power-snr']
+        request = 'active-config.{}.fmt.threshold-power-snr'.format(str(self.channel_dict[channel]))
+        threshold = self.get(endpoint=self.queue_dict[channel], specifier=request)['threshold-power-snr']
         return float(threshold)
 
 
     def set_fmt_snr_high_threshold(self, threshold, channel='a'):
-        request = '.active-config.{}.fmt.threshold-power-snr-high'.format(str(self.channel_dict[channel]))
-        self.set(self.queue_dict[channel]+request, threshold)
+        request = 'active-config.{}.fmt.threshold-power-snr-high'.format(str(self.channel_dict[channel]))
+        self.set(endpoint=self.queue_dict[channel], specifier=request, value=threshold)
         logger.info('Setting psyllid power snr threshold to {}'.format(threshold))
 
 
     def get_fmt_snr_high_threshold(self, channel='a'):
-        request = '.active-config.{}.fmt.threshold-power-snr-high'.format(str(self.channel_dict[channel]))
-        threshold = self.get(self.queue_dict[channel]+request)['threshold-power-snr-high']
+        request = 'active-config.{}.fmt.threshold-power-snr-high'.format(str(self.channel_dict[channel]))
+        threshold = self.get(endpoint=self.queue_dict[channel], specifier=request)['threshold-power-snr-high']
         return float(threshold)
 
     def set_fmt_sigma_threshold(self, threshold, channel='a'):
-        request = '.active-config.{}.fmt.threshold-power-sigma'.format(str(self.channel_dict[channel]))
-        self.set(self.queue_dict[channel]+request, threshold)
+        request = 'active-config.{}.fmt.threshold-power-sigma'.format(str(self.channel_dict[channel]))
+        self.set(endpoint=self.queue_dict[channel], specifier=request, value=threshold)
         logger.info('Setting psyllid power sigma threshold to {}'.format(threshold))
 
 
     def get_fmt_sigma_threshold(self, channel='a'):
-        request = '.active-config.{}.fmt.threshold-power-sigma'.format(str(self.channel_dict[channel]))
-        threshold = self.get(self.queue_dict[channel]+request)['threshold-power-sigma']
+        request = 'active-config.{}.fmt.threshold-power-sigma'.format(str(self.channel_dict[channel]))
+        threshold = self.get(endpoint=self.queue_dict[channel], specifier=request)['threshold-power-sigma']
         return float(threshold)
 
 
     def set_fmt_sigma_high_threshold(self, threshold, channel='a'):
-        request = '.active-config.{}.fmt.threshold-power-sigma-high'.format(str(self.channel_dict[channel]))
-        self.set(self.queue_dict[channel]+request, threshold)
+        request = 'active-config.{}.fmt.threshold-power-sigma-high'.format(str(self.channel_dict[channel]))
+        self.set(endpoint=self.queue_dict[channel], specifier=request, value=threshold)
         logger.info('Setting psyllid power sigma threshold to {}'.format(threshold))
 
 
     def get_fmt_sigma_high_threshold(self, channel='a'):
-        request = '.active-config.{}.fmt.threshold-power-sigma-high'.format(str(self.channel_dict[channel]))
-        threshold = self.get(self.queue_dict[channel]+request)['threshold-power-sigma-high']
+        request = 'active-config.{}.fmt.threshold-power-sigma-high'.format(str(self.channel_dict[channel]))
+        threshold = self.get(endpoint=self.queue_dict[channel], specifier=request)['threshold-power-sigma-high']
         return float(threshold)
 
     def _set_trigger_mode(self, mode_id, channel='a'):
-        request = '.active-config.{}.fmt.trigger-mode'.format(str(self.channel_dict[channel]))
-        self.set(self.queue_dict[channel]+request, mode_id)
+        request = 'active-config.{}.fmt.trigger-mode'.format(str(self.channel_dict[channel]))
+        self.set(endpoint=self.queue_dict[channel], specifier=request, value=mode_id)
         logger.info('Setting psyllid trigger mode to {}'.format(mode_id))
 
 
@@ -467,20 +468,20 @@ class PsyllidProvider(core.Interface):
 
 
     def get_trigger_mode(self, channel='a'):
-        request = '.active-config.{}.fmt.trigger-mode'.format(str(self.channel_dict[channel]))
-        trigger_mode = self.get(self.queue_dict[channel]+request)['trigger-mode']
+        request = 'active-config.{}.fmt.trigger-mode'.format(str(self.channel_dict[channel]))
+        trigger_mode = self.get(endpoint=self.queue_dict[channel], specifier=request)['trigger-mode']
         return trigger_mode
 
 
     def set_n_triggers(self, n_triggers, channel='a'):
-        request = '.active-config.{}.eb.n-triggers'.format(str(self.channel_dict[channel]))
-        self.set(self.queue_dict[channel]+request, n_triggers)
+        request = 'active-config.{}.eb.n-triggers'.format(str(self.channel_dict[channel]))
+        self.set(endpoint=self.queue_dict[channel], specifier=request, value=n_triggers)
         logger.info('Setting psyllid n-trigger/skip-tolerance to {}'.format(n_triggers))
 
 
     def get_n_triggers(self, channel='a'):
-        request = '.active-config.{}.eb.n-triggers'.format(str(self.channel_dict[channel]))
-        n_triggers = self.get(self.queue_dict[channel]+request)['n-triggers']
+        request = 'active-config.{}.eb.n-triggers'.format(str(self.channel_dict[channel]))
+        n_triggers = self.get(endpoint=self.queue_dict[channel], specifier=request)['n-triggers']
         return n_triggers
 
 
@@ -494,15 +495,15 @@ class PsyllidProvider(core.Interface):
 
         logger.info('Switch tf_roach_receiver to freq-only')
         request = 'run-daq-cmd.{}.tfrr.freq-only'.format(str(self.channel_dict[channel]))
-        self.cmd(self.queue_dict[channel],request)
+        self.cmd(endpoint=self.queue_dict[channel], specifier=request)
 
         logger.info('Switch frequency_mask_trigger to update-mask')
         request = 'run-daq-cmd.{}.fmt.update-mask'.format(str(self.channel_dict[channel]))
-        self.cmd(self.queue_dict[channel],request)
+        self.cmd(endpoint=self.queue_dict[channel], specifier=request)
         time.sleep(1)
 
         logger.info('Telling psyllid to not use monarch when starting next run')
-        self.set(self.queue_dict[channel]+'.use-monarch', False)
+        self.set(endpoint=self.queue_dict[channel], specifier='use-monarch', value=False)
 
         logger.info('Start short run to record mask')
         self.start_run(channel ,1000, self.temp_file)
@@ -511,15 +512,15 @@ class PsyllidProvider(core.Interface):
         # self._write_trigger_mask(channel, filename)
 
         logger.info('Telling psyllid to use monarch again for next run')
-        self.set(self.queue_dict[channel]+'.use-monarch', True)
+        self.set(endpoint=self.queue_dict[channel], specifier='use-monarch', value=True)
 
         logger.info('Switch tf_roach_receiver back to time and freq')
         request = 'run-daq-cmd.{}.tfrr.time-and-freq'.format(str(self.channel_dict[channel]))
-        self.cmd(self.queue_dict[channel],request)
+        self.cmd(endpoint=self.queue_dict[channel],specifier=request)
 
         logger.info('Switch frequency mask trigger to apply-trigger')
         request = 'run-daq-cmd.{}.fmt.apply-trigger'.format(str(self.channel_dict[channel]))
-        self.cmd(self.queue_dict[channel],request)
+        self.cmd(endpoint=self.queue_dict[channel],specifier=request)
 
 
     def _write_trigger_mask(self, channel, filename):
@@ -529,4 +530,4 @@ class PsyllidProvider(core.Interface):
         logger.info('Write mask to file')
         request = 'run-daq-cmd.{}.fmt.write-mask'.format(str(self.channel_dict[channel]))
         payload = {'filename': filename}
-        self.cmd(self.queue_dict[channel], request, payload=payload)
+        self.cmd(self.queue_dict[channel], request, keyed_args=payload)
