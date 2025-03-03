@@ -19,8 +19,10 @@ RUN pip install numpy==1.26.4 &&\
     git clone https://github.com/pkolbeck/corr.git &&\
     cd corr &&\
     git checkout p8/r2daq_only &&\
-    cp -r corr /usr/local/corr &&\
-    export PYTHONPATH=${PYTHONPATH}:/usr/local/corr
+    cp -r corr /usr/local/corr/ &&\
+    rm -rf /tmp/corr/
+
+ENV PYTHONPATH="/usr/:/usr/local/:/usr/local/corr/"
 
 FROM deps AS build
 
