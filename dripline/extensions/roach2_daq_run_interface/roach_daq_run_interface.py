@@ -76,9 +76,9 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         Asks roach2_interface whether roach is running and adc is calibrated
         '''
         logger.info('Checking ROACH2 status')
-        result = self.provider.get(self.daq_target+ '.is_running')['values'][0]
+        result = self.get(endpoint=self.daq_target+ '.is_running')['values'][0]
         if result==True:
-            result = self.provider.get(self.daq_target+'.calibration_status')['values'][0]
+            result = self.get(endpoint=self.daq_target+'.calibration_status')['values'][0]
             if result == True:
                 logger.info('ROACH2 is running and ADCs are calibrated')
                 return True
@@ -100,11 +100,11 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         '''
         logger.info('Checking Psyllid service & instance')
 
-        self.status_value = self.provider.cmd(self.psyllid_interface, 'request_status', payload = self.payload_channel)['values'][0]
+        self.status_value = self.cmd(endpoint=self.psyllid_interface, specifier='request_status', keyed_args = self.payload_channel)['values'][0]
 
         if self.status_value == 0:
-            self.provider.cmd(self.psyllid_interface, 'activate', payload = self.payload_channel)
-            self.status_value = self.provider.cmd(self.psyllid_interface, 'request_status', payload = self.payload_channel)['values'][0]
+            self.cmd(endpoint=self.psyllid_interface, specifier='activate', keyed_args = self.payload_channel)
+            self.status_value = self.cmd(endpoint=self.psyllid_interface, specifier='request_status', keyed_args = self.payload_channel)['values'][0]
 
 
     @property
@@ -113,7 +113,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         Requests status of psyllid
         Returns True if status is 5 (currently taking data)
         '''
-        result = self.provider.cmd(self.psyllid_interface, 'request_status', payload = self.payload_channel, timeout=10)
+        result = self.cmd(endpoint=self.psyllid_interface, specifier='request_status', keyed_args = self.payload_channel, timeout=10)
         self.status_value = result['values'][0]
         logger.info('psyllid status is {}'.format(self.status_value))
         if self.status_value==5:
@@ -138,7 +138,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
             raise core.exceptions.DriplineGenericDAQError('Psyllid DAQ is not activated')
 
         # check psyllid is ready to write a file
-        result = self.provider.cmd(self.psyllid_interface, 'is_psyllid_using_monarch', payload = self.payload_channel)['values'][0]
+        result = self.cmd(endpoint=self.psyllid_interface, specifier='is_psyllid_using_monarch', keyed_args = self.payload_channel)['values'][0]
         if result != True:
             raise core.exceptions.DriplineGenericDAQError('Psyllid is not using monarch and therefore not ready to write a file')
 
@@ -147,7 +147,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
             raise core.exceptions.DriplineGenericDAQError('ROACH2 is not ready. ADC not calibrated.')
 
         # check channel is unblocked
-        blocked_channels = self.provider.get(self.daq_target+ '.blocked_channels')
+        blocked_channels = self.get(endpoint=self.daq_target+ '.blocked_channels')
         if self.channel_id in blocked_channels:
             raise core.exceptions.DriplineGenericDAQError('Channel is blocked')
 
@@ -168,7 +168,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         '''
         logger.info('trying to determine roi')
 
-        rf_input = self.provider.get(self._hf_lo_freq['endpoint_name'])[self._hf_lo_freq['payload_field']]
+        rf_input = self.get(endpoint=self._hf_lo_freq['endpoint_name'])[self._hf_lo_freq['payload_field']]
         logger.debug('{} returned {}'.format(self._hf_lo_freq['endpoint_name'],rf_input))
         hf_lo_freq = float(self._hf_lo_freq['calibration'][rf_input])
         self._run_meta['RF_HF_MIXING'] = hf_lo_freq
@@ -195,7 +195,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         Unblocks roach channels if that fails
         '''
 
-        setup = { 'roach' : self.provider.get('{}.registers'.format(self.daq_target)) }
+        setup = { 'roach' : self.get(endpoint='{}.registers'.format(self.daq_target)) }
         psyllid_config_kwargs = {
                                   'target' : self.psyllid_interface,
                                   'method_name' : 'get_active_config',
@@ -203,18 +203,18 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
                                                 'key' : 'prf' }
                                 }
         setup.update( { 'psyllid' :
-                            { 'prf' : self.provider.cmd(**psyllid_config_kwargs) } } )
+                            { 'prf' : self.cmd(endpoint=**psyllid_config_kwargs) } } )
 
         if self.acquisition_mode == 'triggering':
             payload = {'channel':self.channel_id, 'filename':'{}/{}_mask.yaml'.format(directory,filename)}
-            self.provider.cmd(self.psyllid_interface, '_write_trigger_mask', payload=payload)
+            self.cmd(endpoint=self.psyllid_interface, specifier='_write_trigger_mask', payload=payload)
             for key in ('fmt', 'tfrr', 'eb'):
                 psyllid_config_kwargs['payload'].update( { 'key' : key } )
-                setup['psyllid'].update( { key : self.provider.cmd(**psyllid_config_kwargs) } )
+                setup['psyllid'].update( { key : self.cmd(endpoint=**psyllid_config_kwargs) } )
         self._send_metadata( type='setup', data=setup)
 
         logger.info('block roach channel')
-        self.provider.cmd(self.daq_target, 'block_channel', payload = self.payload_channel)
+        self.cmd(endpoint=self.daq_target, specifier='block_channel', keyed_args = self.payload_channel)
 
         # switching from seconds to milisecons
         duration = self._run_time*1000.0
@@ -225,12 +225,12 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         logger.info('Going to tell psyllid to start the run')
         payload = {'channel':self.channel_id, 'filename': os.path.join(directory, psyllid_filename), 'duration':duration}
         try:
-            self.provider.cmd(self.psyllid_interface, 'start_run', payload = payload)
+            self.cmd(endpoint=self.psyllid_interface, specifier='start_run', keyed_args = payload)
         except core.exceptions.DriplineError as e:
             logger.critical('Error from psyllid provider or psyllid. Starting psyllid run failed.')
             payload = {'channel': self.channel_id}
             try:
-                self.provider.cmd(self.daq_target, 'unblock_channel', payload = payload)
+                self.cmd(endpoint=self.daq_target, specifier='unblock_channel', keyed_args = payload)
                 logger.info('Unblocked channel')
             finally:
                 raise e
@@ -238,7 +238,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
             logger.critical('Something else went wrong.')
             payload = {'channel': self.channel_id}
             try:
-                self.provider.cmd(self.daq_target, 'unblock_channel', payload = payload)
+                self.cmd(endpoint=self.daq_target, specifier='unblock_channel', keyed_args = payload)
                 logger.info('Unblocked channel')
             finally:
                 raise e
@@ -253,34 +253,34 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         try:
             if self.is_running:
                 logger.info('Psyllid still running. Telling it to stop the run')
-                self.provider.cmd(self.psyllid_interface, 'stop_run', payload = self.payload_channel)
+                self.cmd(endpoint=self.psyllid_interface, specifier='stop_run', keyed_args = self.payload_channel)
         except core.exceptions.DriplineError as e:
             logger.critical('Getting Psyllid status or stopping run failed')
             logger.info('Unblock channel')
             payload = {'channel': self.channel_id}
             try:
-                self.provider.cmd(self.daq_target, 'unblock_channel', payload = payload)
+                self.cmd(endpoint=self.daq_target, specifier='unblock_channel', keyed_args = payload)
             finally:
                 raise e
         except Exception as e:
             logger.critical('Something else went wrong')
             payload = {'channel': self.channel_id}
             try:
-                self.provider.cmd(self.daq_target, 'unblock_channel', payload = payload)
+                self.cmd(endpoint=self.daq_target, specifier='unblock_channel', keyed_args = payload)
             finally:
                 raise e
         else:
             logger.info('Unblock channel')
             payload = {'channel': self.channel_id}
-            self.provider.cmd(self.daq_target, 'unblock_channel', payload = payload)
+            self.cmd(endpoint=self.daq_target, specifier='unblock_channel', keyed_args = payload)
 
 
     def stop_psyllid(self):
         '''
         Makes psyllid exit and unblocks roach channel
         '''
-        self.provider.cmd(self.psyllid_interface, 'quit_psyllid', payload = self.payload_channel)
-        self.provider.cmd(self.daq_target, 'unblock_channel', payload = self.payload_channel)
+        self.cmd(endpoint=self.psyllid_interface, specifier='quit_psyllid', keyed_args = self.payload_channel)
+        self.cmd(endpoint=self.daq_target, specifier='unblock_channel', keyed_args = self.payload_channel)
 
 
     ###########################
@@ -288,13 +288,13 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
     ###########################
 
     def _get_roach_central_freqs(self):
-        result = self.provider.get(self.daq_target + '.all_central_frequencies')
+        result = self.get(endpoint=self.daq_target + '.all_central_frequencies')
         logger.info('ROACH central freqs {}'.format(result))
         return result
 
 
     def _get_psyllid_central_freq(self):
-        result = self.provider.cmd(self.psyllid_interface, 'get_central_frequency', payload = self.payload_channel)
+        result = self.cmd(endpoint=self.psyllid_interface, specifier='get_central_frequency', keyed_args = self.payload_channel)
         logger.info('Psyllid central freqs {}'.format(result['values'][0]))
         return result['values'][0]
 
@@ -312,12 +312,12 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         Sets same frequency in psyllid instance
         '''
         payload = {'cf':float(cf), 'channel':self.channel_id}
-        result = self.provider.cmd(self.daq_target, 'set_central_frequency', payload = payload)
+        result = self.cmd(endpoint=self.daq_target, specifier='set_central_frequency', keyed_args = payload)
         logger.info('The roach central frequency is now {}Hz'.format(result['values'][0]))
 
         self.freq_dict[self.channel_id]=round(result['values'][0])
         payload = {'cf':self.freq_dict[self.channel_id], 'channel':self.channel_id}
-        self.provider.cmd(self.psyllid_interface, 'set_central_frequency', payload = payload)
+        self.cmd(endpoint=self.psyllid_interface, specifier='set_central_frequency', keyed_args = payload)
 
 
     ###################
@@ -329,7 +329,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         '''
         The Cmd returns a dictionary like {"mode": "someMode"}; we want just the mode value.
         '''
-        result = self.provider.cmd(self.psyllid_interface, 'get_acquisition_mode', payload = self.payload_channel)['mode']
+        result = self.cmd(endpoint=self.psyllid_interface, specifier='get_acquisition_mode', keyed_args = self.payload_channel)['mode']
         return result
 
     @acquisition_mode.setter
@@ -339,59 +339,59 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
 
     @property
     def threshold_type(self):
-        result = self.provider.cmd(self.psyllid_interface, 'get_threshold_type', payload = self.payload_channel)['values'][0]
+        result = self.cmd(endpoint=self.psyllid_interface, specifier='get_threshold_type', keyed_args = self.payload_channel)['values'][0]
         return result
 
     @threshold_type.setter
     def threshold_type(self, snr_or_sigma):
-        self.provider.cmd(self.psyllid_interface, 'set_threshold_type', payload = {'channel': self.channel_id, 'snr_or_sigma': snr_or_sigma})
+        self.cmd(endpoint=self.psyllid_interface, specifier='set_threshold_type', keyed_args = {'channel': self.channel_id, 'snr_or_sigma': snr_or_sigma})
 
 
     @property
     def threshold(self):
         if self.threshold_type == 'snr':
-            return self.provider.cmd(self.psyllid_interface, 'get_fmt_snr_threshold', payload = self.payload_channel)['values'][0]
+            return self.cmd(endpoint=self.psyllid_interface, specifier='get_fmt_snr_threshold', keyed_args = self.payload_channel)['values'][0]
         else:
-            return self.provider.cmd(self.psyllid_interface, 'get_fmt_sigma_threshold', payload = self.payload_channel)['values'][0]
+            return self.cmd(endpoint=self.psyllid_interface, specifier='get_fmt_sigma_threshold', keyed_args = self.payload_channel)['values'][0]
 
     @threshold.setter
     def threshold(self, threshold):
         if self.threshold_type == 'snr':
-            self.provider.cmd(self.psyllid_interface, 'set_fmt_snr_threshold', payload = {'channel': self.channel_id, 'threshold': threshold})
+            self.cmd(endpoint=self.psyllid_interface, specifier='set_fmt_snr_threshold', keyed_args = {'channel': self.channel_id, 'threshold': threshold})
         else:
-            self.provider.cmd(self.psyllid_interface, 'set_fmt_sigma_threshold', payload = {'channel': self.channel_id, 'threshold': threshold})
-        self.provider.cmd(self.psyllid_interface, 'set_trigger_mode', payload = self.payload_channel)
+            self.cmd(endpoint=self.psyllid_interface, specifier='set_fmt_sigma_threshold', keyed_args = {'channel': self.channel_id, 'threshold': threshold})
+        self.cmd(endpoint=self.psyllid_interface, specifier='set_trigger_mode', keyed_args = self.payload_channel)
 
 
     @property
     def high_threshold(self):
         if self.threshold_type == 'snr':
-            return self.provider.cmd(self.psyllid_interface, 'get_fmt_snr_high_threshold', payload = self.payload_channel)['values'][0]
+            return self.cmd(endpoint=self.psyllid_interface, specifier='get_fmt_snr_high_threshold', keyed_args = self.payload_channel)['values'][0]
         else:
-            return self.provider.cmd(self.psyllid_interface, 'get_fmt_sigma_high_threshold', payload = self.payload_channel)['values'][0]
+            return self.cmd(endpoint=self.psyllid_interface, specifier='get_fmt_sigma_high_threshold', keyed_args = self.payload_channel)['values'][0]
 
     @high_threshold.setter
     def high_threshold(self, threshold):
         if self.threshold_type == 'snr':
-            self.provider.cmd(self.psyllid_interface, 'set_fmt_snr_high_threshold', payload = {'channel': self.channel_id, 'threshold': threshold})
+            self.cmd(endpoint=self.psyllid_interface, specifier='set_fmt_snr_high_threshold', keyed_args = {'channel': self.channel_id, 'threshold': threshold})
         else:
-            self.provider.cmd(self.psyllid_interface, 'set_fmt_sigma_high_threshold', payload = {'channel': self.channel_id, 'threshold': threshold})
-        self.provider.cmd(self.psyllid_interface, 'set_trigger_mode', payload = self.payload_channel)
+            self.cmd(endpoint=self.psyllid_interface, specifier='set_fmt_sigma_high_threshold', keyed_args = {'channel': self.channel_id, 'threshold': threshold})
+        self.cmd(endpoint=self.psyllid_interface, specifier='set_trigger_mode', keyed_args = self.payload_channel)
 
 
     @property
     def n_triggers(self):
-        result = self.provider.cmd(self.psyllid_interface, 'get_n_triggers', payload = self.payload_channel)['values'][0]
+        result = self.cmd(endpoint=self.psyllid_interface, specifier='get_n_triggers', keyed_args = self.payload_channel)['values'][0]
         return result
 
     @n_triggers.setter
     def n_triggers(self, n_triggers):
-        self.provider.cmd(self.psyllid_interface, 'set_n_triggers', payload = {'channel': self.channel_id, 'n_triggers': n_triggers})
+        self.cmd(endpoint=self.psyllid_interface, specifier='set_n_triggers', keyed_args = {'channel': self.channel_id, 'n_triggers': n_triggers})
 
 
     @property
     def pretrigger_time(self):
-        result = self.provider.cmd(self.psyllid_interface, 'get_pretrigger_time', payload = self.payload_channel)['values'][0]
+        result = self.cmd(endpoint=self.psyllid_interface, specifier='get_pretrigger_time', keyed_args = self.payload_channel)['values'][0]
         return result
 
     @pretrigger_time.setter
@@ -399,13 +399,13 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         '''
         Psyllid only adopts change of pretrigger time after reactivation
         '''
-        self.provider.cmd(self.psyllid_interface, 'set_pretrigger_time', payload = {'channel': self.channel_id, 'pretrigger_time': pretrigger_time})
-        self.provider.cmd(self.psyllid_interface, 'save_reactivate', payload = self.payload_channel)
+        self.cmd(endpoint=self.psyllid_interface, specifier='set_pretrigger_time', keyed_args = {'channel': self.channel_id, 'pretrigger_time': pretrigger_time})
+        self.cmd(endpoint=self.psyllid_interface, specifier='save_reactivate', keyed_args = self.payload_channel)
 
 
     @property
     def skip_tolerance(self):
-        result = self.provider.cmd(self.psyllid_interface, 'get_skip_tolerance', payload = self.payload_channel)['values'][0]
+        result = self.cmd(endpoint=self.psyllid_interface, specifier='get_skip_tolerance', keyed_args = self.payload_channel)['values'][0]
         return result
 
     @skip_tolerance.setter
@@ -413,8 +413,8 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         '''
         Psyllid only adopts change of skip tolerance after reactivation
         '''
-        self.provider.cmd(self.psyllid_interface, 'set_skip_tolerance', payload = {'channel': self.channel_id, 'skip_tolerance': skip_tolerance})
-        self.provider.cmd(self.psyllid_interface, 'save_reactivate', payload = self.payload_channel)
+        self.cmd(endpoint=self.psyllid_interface, specifier='set_skip_tolerance', keyed_args = {'channel': self.channel_id, 'skip_tolerance': skip_tolerance})
+        self.cmd(endpoint=self.psyllid_interface, specifier='save_reactivate', keyed_args = self.payload_channel)
 
 
     @property
@@ -422,8 +422,8 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         '''
         Returns the kind of trigger that is currently set
         '''
-        n_triggers = self.provider.cmd(self.psyllid_interface, 'get_n_triggers', payload = self.payload_channel)['values'][0]
-        trigger_mode = self.provider.cmd(self.psyllid_interface, 'get_trigger_mode', payload = self.payload_channel)['values'][0]
+        n_triggers = self.cmd(endpoint=self.psyllid_interface, specifier='get_n_triggers', keyed_args = self.payload_channel)['values'][0]
+        trigger_mode = self.cmd(endpoint=self.psyllid_interface, specifier='get_trigger_mode', keyed_args = self.payload_channel)['values'][0]
 
         if n_triggers > 1:
             trigger_type = 'multi-trigger'
@@ -442,7 +442,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         '''
         Returns all trigger settings
         '''
-        result = self.provider.cmd(self.psyllid_interface, 'get_trigger_configuration', payload = self.payload_channel)
+        result = self.cmd(endpoint=self.psyllid_interface, specifier='get_trigger_configuration', keyed_args = self.payload_channel)
         return result
 
 
@@ -456,7 +456,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         Set all trigger parameters with one command
         '''
         payload = {'threshold' : threshold, 'threshold_high' : high_threshold, 'n_triggers' : n_triggers, 'channel' : self.channel_id}
-        self.provider.cmd(self.psyllid_interface, 'set_trigger_configuration', payload = payload)
+        self.cmd(endpoint=self.psyllid_interface, specifier='set_trigger_configuration', keyed_args = payload)
 
 
     @property
@@ -464,7 +464,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         '''
         Returns pretrigger time and skip tolerance
         '''
-        result = self.provider.cmd(self.psyllid_interface, 'get_time_window', payload = self.payload_channel)
+        result = self.cmd(endpoint=self.psyllid_interface, specifier='get_time_window', keyed_args = self.payload_channel)
         return result
 
 
@@ -478,7 +478,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         Set pretrigger time and skip tolerance with one command
         '''
         payload =  {'skip_tolerance': skip_tolerance, 'pretrigger_time': pretrigger_time, 'channel' : self.channel_id}
-        self.provider.cmd(self.psyllid_interface, 'set_time_window', payload = payload)
+        self.cmd(endpoint=self.psyllid_interface, specifier='set_time_window', keyed_args = payload)
 
 
     @property
@@ -520,4 +520,4 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         filename = '{}_frequency_mask_channel_{}_cf_{}.yaml'.format(timestr, self.channel_id, self.freq_dict[self.channel_id])
         path = os.path.join(self.mask_target_path, filename)
         payload = {'channel':self.channel_id, 'filename':path}
-        self.provider.cmd(self.psyllid_interface, 'make_trigger_mask', payload = payload)
+        self.cmd(endpoint=self.psyllid_interface, specifier='make_trigger_mask', keyed_args = payload)
