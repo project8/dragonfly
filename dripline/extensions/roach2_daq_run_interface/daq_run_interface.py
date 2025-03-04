@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 __all__.append('DAQProvider')
 
-@core.fancy_doc
+
 class DAQProvider(core.Service):
     '''
     Base class for providing a uniform interface to different DAQ systems
