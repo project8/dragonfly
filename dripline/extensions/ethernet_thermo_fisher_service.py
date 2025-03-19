@@ -30,32 +30,29 @@ class EthernetThermoFisherService(EthernetSCPIService):
     A fairly specific subclass of Service for connecting to ethernet-capable thermo fisher devices.
     In particular, devices must support a half-duplex serial communication with header information, variable length data-payload and a checksum.
     '''
-    def __init__(self,
-                 socket_timeout=10,
-                 socket_info=('localhost', 1234),
-                 lead_char = b'\xcc',
-                 msb = b'\x00',
-                 lsb = b'\x01',
-                 **kwargs
-                 ):
+    def __init__(self, **kwargs):
         '''
         Args:
             socket_timeout (int): number of seconds to wait for a reply from the device before timeout.
             socket_info (tuple or string): either socket.socket.connect argument tuple, or string that
                 parses into one.
         '''
-        self.lead_char = lead_char
-        self.msb = msb
-        self.lsb = lsb
-        EthernetSCPIService.__init__(self, 
-                                     socket_timeout=socket_timeout,
-                                     socket_info=socket_info,
-                                     cmd_at_reconnect=["00"],
-                                     reconnect_test="0001",
-                                     command_terminator='',
-                                     response_terminator='ignored',
-                                     reply_echo_cmd=False, 
-                                     **kwargs)
+        self.lead_char = kwargs.pop("lead_char", b'\xcc')
+        self.msb = kwargs.pop("msb", b'\x00')
+        self.lsb = kwargs.pop("lsb", b'\x01')
+ 
+        if 'cmd_at_reconnect' not in kwargs:
+            kwargs['cmd_at_reconnect'] = ['00']
+        if 'reconnect_test' not in kwargs:
+            kwargs['reconnect_test'] = '0001'
+        if 'command_terminator' not in kwargs:
+            kwargs['command_terminator'] = ''
+        if 'response_terminator' not in kwargs:
+            kwargs['response_terminator'] = 'ignored'
+        if 'reply_echo_cmd' not in kwargs:
+            kwargs['reply_echo_cmd'] = False
+
+        EthernetSCPIService.__init__(self, **kwargs)
 
     def calculate_checksum(self, command_bytes):
         """
