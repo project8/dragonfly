@@ -1,0 +1,65 @@
+name: muxer
+module: MuxerService
+socket_info: ('glenlivet.p8', 5024)
+cmd_at_reconnect:
+  -
+  - ""
+  - "SYST:ERR?"
+  - "TRIG:DEL:AUTO?"
+command_terminator: "\r\n"
+response_terminator: "\r\n34980A> "
+reply_echo_cmd: True
+scan_interval: 30
+endpoints:
+##################### Cable B ####################
+  # PT 100 1/12
+  - name: pt100_1_12
+    module: MuxerGetEntity
+    ch_number: 1011
+    conf_str: 'CONF:FRES AUTO,DEF,(@{})'
+    calibration: 'pt100_calibration({})'
+  # PT 100 2/12
+  - name: pt100_2_12
+    module: MuxerGetEntity
+    ch_number: 1012
+    conf_str: 'CONF:FRES AUTO,DEF,(@{})'
+    calibration: 'pt100_calibration({})'
+##################### Cable C ####################
+   # PT 100 3/12
+  - name: pt100_3_12
+    module: MuxerGetEntity
+    ch_number: 1004
+    conf_str: 'CONF:FRES AUTO,DEF,(@{})'
+    calibration: 'pt100_calibration({})'
+   # PT 100 4/12
+  - name: pt100_4_12
+    module: MuxerGetEntity
+    ch_number: 1005
+    conf_str: 'CONF:FRES AUTO,DEF,(@{})'
+    calibration: 'pt100_calibration({})'
+   # PT 100 5/12
+  - name: pt100_5_12
+    module: MuxerGetEntity
+    ch_number: 1006
+    conf_str: 'CONF:FRES AUTO,DEF,(@{})'
+    calibration: 'pt100_calibration({})'
+   # PT 100 6/12
+  - name: pt100_6_12
+    module: MuxerGetEntity
+    ch_number: 1007
+    conf_str: 'CONF:FRES AUTO,DEF,(@{})'
+    calibration: 'pt100_calibration({})'
+   # PT 100 7/12
+##  - name: pt_100_7_12
+  ##  modeule: MuxerGetEntity
+   ##  ch_number: 1013
+   ## conf_str: 'CONF:FRES AUTO,DEF,(@{})'
+   ##  calibration: 'pt100_calibration({})'
+
+  # this is not set up but wanted to keep the syntax available as an example 
+  - name: hall_probe_field
+    module: MuxerGetEntity
+    ch_number: 1029
+    conf_str: 'CONF:VOLT:DC 10,(@{})'
+    calibration: "(0.9991/0.847)*(1000*{}+0.007)"
+
