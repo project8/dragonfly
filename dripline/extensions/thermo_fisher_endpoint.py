@@ -82,3 +82,38 @@ class ThermoFisherNumericGetEntity(ThermoFisherHexGetEntity):
         #result = "%f %s"%(value*decimal, unit)
         result = value*decimal
         return result
+
+class ThermoFisherNumericEntity(ThermoFisherNumericGetEntity):
+    '''
+    A endpoint of a thermo fisher device that can set and get a numerical value
+    '''
+
+    def __init__(self, set_str=None, **kwargs):
+        '''
+        Args:
+            get_str: hexstring of the get command, e.g. 20
+            set_str: hexstring of the set command, e.g. B2
+        '''
+        if set_str is None:
+            raise ValueError('<set_str is required to __init__ ThermoFisherNumericEntity instance')
+        else:
+            self.set_str = str(set_str).zfill(2)
+        ThermoFisherNumericGetEntity.__init__(self, **kwargs)
+
+    def on_set(self, value):
+        # we need to get the decimal prefactor from a read command
+        result = self.service.send_to_device([self.cmd_str])
+        decimal = 10.**(-int(result[0], 16))
+        unit = self.units[int(result[1], 16)]
+
+        data = hex(round(value/decimal))[2:].zfill(4)
+        result = self.service.send_to_device([self.set_str + data_str])
+
+        # the device returns the read value after a set command
+        decimal = 10.**(-int(result[0], 16))
+        unit = self.units[int(result[1], 16)]
+        value = float(int(result[2:], 16))
+
+        #result = "%f %s"%(value*decimal, unit)
+        result = value*decimal
+        return result
