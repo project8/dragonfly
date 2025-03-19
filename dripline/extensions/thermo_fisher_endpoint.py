@@ -18,10 +18,10 @@ class ThermoFisherHexGetEntity(Entity):
                  **kwargs):
         '''
         Args:
-            get_str: hexstring of the command, e.g. 20 
+            get_str: hexstring of the command, e.g. 20
         '''
         if get_str is None:
-            raise ValueError('<base_str is required to __init__ ThermoFisherGetEntity instance')
+            raise ValueError('<get_str is required to __init__ ThermoFisherHexGetEntity instance')
         else:
             self.cmd_str = str(get_str).zfill(2)
         Entity.__init__(self, **kwargs)
@@ -41,6 +41,9 @@ class ThermoFisherHexGetEntity(Entity):
 
 
 class ThermoFisherNumericGetEntity(ThermoFisherHexGetEntity):
+    '''
+    A endpoint of a thermo fisher device that returns the request result as a numerica value
+    '''
 
     units = {0: "",
              1: "degC",
@@ -57,6 +60,10 @@ class ThermoFisherNumericGetEntity(ThermoFisherHexGetEntity):
             }
 
     def __init__(self, **kwargs):
+        '''
+        Args:
+            get_str: hexstring of the command, e.g. 20
+        '''
         ThermoFisherHexGetEntity.__init__(self, **kwargs)
 
     @calibrate()
