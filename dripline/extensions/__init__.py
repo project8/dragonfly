@@ -7,3 +7,4 @@ from . import jitter
 
 # Modules in this directory
 from .add_auth_spec import *
+from .watchdog_service import *
