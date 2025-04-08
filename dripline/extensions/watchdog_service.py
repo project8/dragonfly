@@ -81,6 +81,7 @@ class WatchDogService(HeartbeatMonitor):
         self.blacklist = kwargs.pop("blacklist_containers", [])
         HeartbeatMonitor.__init__(self, **kwargs)
         self.slack_message("Started alert script")
+        self.client = docker.from_env()
 
     def slack_message(self, text):
         if self.slack_hook is not None:
@@ -90,11 +91,24 @@ class WatchDogService(HeartbeatMonitor):
             if response.status_code != 200:
                 logger.error('Request to slack returned an error %s, the response is:\n%s' % (response.status_code, response.text) )
 
+    def check_docker(self):
+        for container in self.client.containers.list(all=True):
+            if any([v in container.name for v in self.blacklist]):
+                logger.info(f"Skip container {container.name} as it is in blacklist")
+                continue
+            if container.status != "running":
+                logger.info(f"Container {container.name} is not running.")
+                self.slack_message(f"Container {container.name} is not running.")
+            if container.attrs["State"]["ExitCode"] != 0:
+                self.slack_message(f"Container {container.name} has exit code {container.attrs['State']['ExitCode']}")
+            if container.attrs["State"]["Error"] != "":
+                self.slack_message(f"Container {container.name} has error {container.attrs['State']['Error']}")
 
     def run_checks(self):
         '''
         Checks all endpoints and collects endpoint names by heartbeat tracker status.
         '''
+        self.check_docker()
         report_data = {
             HeartbeatTracker.Status.OK: [], 
             HeartbeatTracker.Status.WARNING: [], 
