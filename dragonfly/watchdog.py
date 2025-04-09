@@ -16,6 +16,7 @@ class WatchDog(object):
         self.load_configuration()
         self.setup_docker_client()
         self.setup_dripline_connection()
+        self.send_slack_message("Started alarm system!")
 
     def load_configuration(self):
         with open(Path(args.config), "r") as open_file:
