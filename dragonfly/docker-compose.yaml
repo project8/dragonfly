@@ -1,0 +1,12 @@
+#version: '3'
+
+services:
+
+  AlarmSystem:
+    image: dragonfly_docker:latest
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./alert.yaml:/root/alert.yaml
+      - ./watchdog.py:/root/watchdog.py
+    command:
+      bash -c "python3 /root/watchdog.py --config /root/alert.yaml"
