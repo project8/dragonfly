@@ -12,6 +12,7 @@ check_interval_s: 30
 
 
 # To create a slack webhook see https://api.slack.com/messaging/webhooks steps 1. to 3.
+# Do not push your webhook to github. Slack does not like that and will disable the webhood due to security reasons.
 slack_hook: "https://hooks.slack.com/services/XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
 
 blacklist_containers: 
