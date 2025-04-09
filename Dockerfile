@@ -1,6 +1,7 @@
 ARG img_user=ghcr.io/driplineorg
 ARG img_repo=dripline-python
-ARG img_tag=develop-dev
+#ARG img_tag=develop-dev
+ARG img_tag=receiver-test
 
 FROM ${img_user}/${img_repo}:${img_tag}
 
