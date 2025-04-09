@@ -71,11 +71,6 @@ class WatchDog(object):
                 print(entry["endpoint"], value, flush=True)
                 if self.compare(value, entry["reference"], "not_equal"):
                     self.send_slack_message(entry["message"].format(**locals()))
-            # status = get_endpoint("chiller_status")
-            #status = " ".join([bin(int(status[i*2:(i+1)*2], 16))[2:].zfill(8)[::-1] for i in range(len(status)//2)])
-            #print("Chiller status:", status)
-            #if status != "10000000 00000000 00000000 00000000":
-            #    send_slack_message("Chiller issue! Error code %s"%status)
 
             for container in self.client.containers.list(all=True):
                 if any([container.name.startswith(black) for black in self.config["blacklist_containers"]]):
@@ -84,8 +79,6 @@ class WatchDog(object):
                     send_slack_message(f"Container {container.name} is not running!")
                 if int(container.attrs["State"]["ExitCode"]) != 0:
                     send_slack_message(f"Containeri {container.name} has exit code {container.attrs['State']['ExitCode']}!")
-                #if "seconds" in container["Status"]:
-                #    send_slack_message(f"Container {container.name} has been restarted!")
         
             print("Checks done", flush=True)
             time.sleep(int(self.config["check_interval_s"]))
