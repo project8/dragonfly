@@ -12,7 +12,7 @@ check_interval_s: 30
 
 
 # To create a slack webhook see https://api.slack.com/messaging/webhooks steps 1. to 3.
-slack_hook: "https://hooks.slack.com/services/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"
+slack_hook: "https://hooks.slack.com/services/XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
 
 blacklist_containers: 
   # containers listed here will not be checked if they are running or having error messages
