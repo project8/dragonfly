@@ -94,6 +94,9 @@ class MuxerRelay(Entity):
 		relay_type=None,
 		**kwargs):
 	'''
+	ch_number (int): channel number for endpoint
+        relay_type (None,'relay','polarity','switch'): automatically configure set_value_map and calibration dictionaries (overwriteable)
+        '''
 	# default get/set strings
 	if 'get_str' not in kwargs:
 	   if relay_type=='relay' or relay_type=='polarity':
