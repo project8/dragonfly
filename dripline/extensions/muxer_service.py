@@ -91,59 +91,59 @@ class MuxerRelay(Entity):
    Entity to communicate with relay cards in muxer,
    '''
    def __init__(self,
-		ch_number,
-		relay_type=None,
-		**kwargs):
-	'''
-	ch_number (int): channel number for endpoint
+        ch_number,
+        relay_type=None,
+        **kwargs):
+    '''
+    ch_number (int): channel number for endpoint
         relay_type (None,'relay','polarity','switch'): automatically configure set_value_map and calibration dictionaries (overwriteable)
-	'''
-	Entity.__init__(self, **kwargs)
-	# default get/set strings
-	if 'get_str' not in kwargs:
-	   if relay_type=='relay' or relay_type=='polarity':
-	       kwargs.update( {'get_str':':ROUTE:OPEN? (@{})'.format(ch_number)} )
-	   elif relay_type=='switch':
-	       kwargs.update( {'get_str':':ROUTE:CLOSE? (@{})'.format(ch_number)} )
-	if 'set_str' not in kwargs:
-	   kwargs.update( {'set_str':':ROUTE:{{}} (@{});{}'.format(ch_number,kwargs['get_str'])} )
-	# Default kwargs for get_on_set and set_value_lowercase
-	if 'get_on_set' not in kwargs:
-	   kwargs.update( {'get_on_set':True} )
-	if 'set_value_lowercase' not in kwargs:
-	   kwargs.update( {'set_value_lowercase':True} )
-	# Default set_value_map and calibration for known relay types (relay, polarity, switch)
-	if relay_type == 'relay':
-	   if 'set_value_map' not in kwargs:
-	       kwargs.update( { 'set_value_map' : {1: 'OPEN',
+    '''
+    Entity.__init__(self, **kwargs)
+    # default get/set strings
+    if 'get_str' not in kwargs:
+       if relay_type=='relay' or relay_type=='polarity':
+           kwargs.update( {'get_str':':ROUTE:OPEN? (@{})'.format(ch_number)} )
+       elif relay_type=='switch':
+           kwargs.update( {'get_str':':ROUTE:CLOSE? (@{})'.format(ch_number)} )
+    if 'set_str' not in kwargs:
+       kwargs.update( {'set_str':':ROUTE:{{}} (@{});{}'.format(ch_number,kwargs['get_str'])} )
+    # Default kwargs for get_on_set and set_value_lowercase
+    if 'get_on_set' not in kwargs:
+       kwargs.update( {'get_on_set':True} )
+    if 'set_value_lowercase' not in kwargs:
+       kwargs.update( {'set_value_lowercase':True} )
+    # Default set_value_map and calibration for known relay types (relay, polarity, switch)
+    if relay_type == 'relay':
+       if 'set_value_map' not in kwargs:
+           kwargs.update( { 'set_value_map' : {1: 'OPEN',
                                                    0: 'CLOSE',
                                                    'on': 'OPEN',
                                                    'off': 'CLOSE',
                                                    'enable': 'OPEN',
                                                    'disable': 'CLOSE'} } )
-	   if 'calibration' not in kwargs:
-	       kwargs.update( { 'calibration' : {'1': 'enabled',
+       if 'calibration' not in kwargs:
+           kwargs.update( { 'calibration' : {'1': 'enabled',
                                                  '0': 'disabled'} } )
-	elif relay_type == 'polarity':
-	   if 'set_value_map' not in kwargs:
-	       kwargs.update( { 'set_value_map' : {1: 'OPEN',
+    elif relay_type == 'polarity':
+       if 'set_value_map' not in kwargs:
+           kwargs.update( { 'set_value_map' : {1: 'OPEN',
                                                    0: 'CLOSE',
                                                    'positive': 'OPEN',
                                                    'negative': 'CLOSE'} } )
-	   if 'calibration' not in kwargs:
-	       kwargs.update( { 'calibration' : {'1': 'positive',
+       if 'calibration' not in kwargs:
+           kwargs.update( { 'calibration' : {'1': 'positive',
                                                  '0': 'negative'} } )
-	elif relay_type == 'switch':
-	   if 'set_value_map' not in kwargs:
-	       kwargs.update( { 'set_value_map' : {0: 'OPEN',
+    elif relay_type == 'switch':
+       if 'set_value_map' not in kwargs:
+           kwargs.update( { 'set_value_map' : {0: 'OPEN',
                                                    1: 'CLOSE',
                                                    'off': 'OPEN',
                                                    'on': 'CLOSE',
                                                    'disable': 'OPEN',
                                                    'enable': 'CLOSE'} } )
-	   if 'calibration' not in kwargs:
-	       kwargs.update( { 'calibration' : {'0': 'disabled',
+       if 'calibration' not in kwargs:
+           kwargs.update( { 'calibration' : {'0': 'disabled',
                                                  '1': 'enabled'} } )
-	elif relay_type is not None:
-	    raise ThrowReply("message_error_invalid_method",
+    elif relay_type is not None:
+        raise ThrowReply("message_error_invalid_method",
                             f"endpoint {self.name} expect 'relay'or 'polarity'")
