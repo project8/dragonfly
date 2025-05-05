@@ -85,6 +85,7 @@ class MuxerGetEntity(Entity):
     def on_set(self, value):
         raise ThrowReply('message_error_invalid_method',
                         f'endpoint {self.name} does not support set')
+__all__.append('MuxerRelay')
 class MuxerRelay(Entity):
    ''' 
    Entity to communicate with relay cards in muxer,
@@ -93,10 +94,10 @@ class MuxerRelay(Entity):
 		ch_number,
 		relay_type=None,
 		**kwargs):
-#	'''
-#	ch_number (int): channel number for endpoint
- #       relay_type (None,'relay','polarity','switch'): automatically configure set_value_map and calibration dictionaries (overwriteable)
-  #      '''
+       '''
+	ch_number (int): channel number for endpoint
+        relay_type (None,'relay','polarity','switch'): automatically configure set_value_map and calibration dictionaries (overwriteable)
+       '''
 	# default get/set strings
 	if 'get_str' not in kwargs:
 	   if relay_type=='relay' or relay_type=='polarity':
