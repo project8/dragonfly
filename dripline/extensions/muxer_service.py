@@ -98,7 +98,7 @@ class MuxerRelay(Entity):
     ch_number (int): channel number for endpoint
         relay_type (None,'relay','polarity','switch'): automatically configure set_value_map and calibration dictionaries (overwriteable)
     '''
-    Entity.__init__(self, **kwargs)
+  
     # default get/set strings
     if 'get_str' not in kwargs:
        if relay_type=='relay' or relay_type=='polarity':
@@ -146,4 +146,5 @@ class MuxerRelay(Entity):
                                                  '1': 'enabled'} } )
     elif relay_type is not None:
         raise ThrowReply("message_error_invalid_method",
-                            f"endpoint {self.name} expect 'relay'or 'polarity'")
+                         f"endpoint {self.name} expect 'relay'or 'polarity'")
+    Entity.__init__(self, **kwargs)
