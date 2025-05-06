@@ -110,39 +110,39 @@ class MuxerRelay(Entity):
     # Default kwargs for get_on_set and set_value_lowercase
     if 'get_on_set' not in kwargs:
        kwargs.update( {'get_on_set':True} )
-    if self.set_value_lowercase not in kwargs:
-       kwargs.update( {self.set_value_lowercase :True} )
+    if 'set_value_lowercase' not in kwargs:
+       kwargs.update( {'set_value_lowercase' :True} )
     # Default set_value_map and calibration for known relay types (relay, polarity, switch)
     if relay_type == 'relay':
-       if self.set_value_map not in kwargs:
-           kwargs.update( { self.set_value_map : {1: 'OPEN',
+       if 'set_value_map' not in kwargs:
+           kwargs.update( { 'set_value_map' : {1: 'OPEN',
                                                    0: 'CLOSE',
                                                    'on': 'OPEN',
                                                    'off': 'CLOSE',
                                                    'enable': 'OPEN',
                                                    'disable': 'CLOSE'} } )
-       if self.calibration not in kwargs:
-           kwargs.update( { self.calibration : {'1': 'enabled',
+       if 'calibration' not in kwargs:
+           kwargs.update( { 'calibration' : {'1': 'enabled',
                                                  '0': 'disabled'} } )
     elif relay_type == 'polarity':
-       if self.set_value_map not in kwargs:
-           kwargs.update( { self.set_value_map : {1: 'OPEN',
+       if 'set_value_map' not in kwargs:
+           kwargs.update( { 'set_value_map' : {1: 'OPEN',
                                                    0: 'CLOSE',
                                                    'positive': 'OPEN',
                                                    'negative': 'CLOSE'} } )
-       if self.calibration not in kwargs:
-           kwargs.update( { self.calibration : {'1': 'positive',
+       if 'calibration' not in kwargs:
+           kwargs.update( { 'calibration' : {'1': 'positive',
                                                  '0': 'negative'} } )
     elif relay_type == 'switch':
-       if self.set_value_map not in kwargs:
-           kwargs.update( { self.set_value_map : {0: 'OPEN',
+       if 'set_value_map' not in kwargs:
+           kwargs.update( { 'set_value_map' : {0: 'OPEN',
                                                    1: 'CLOSE',
                                                    'off': 'OPEN',
                                                    'on': 'CLOSE',
                                                    'disable': 'OPEN',
                                                    'enable': 'CLOSE'} } )
-       if self.calibration not in kwargs:
-           kwargs.update( { self.calibration : {'0': 'disabled',
+       if 'calibration' not in kwargs:
+           kwargs.update( { 'calibration' : {'0': 'disabled',
                                                  '1': 'enabled'} } )
     elif relay_type is not None:
         raise ThrowReply("message_error_invalid_method",
@@ -150,8 +150,12 @@ class MuxerRelay(Entity):
     # Remove invalid args before calling Entity
     get_str = kwargs.pop('get_str', None)
     set_str = kwargs.pop('set_str', None)
+    set_value_map = kwargs.pop('set_value_map', None)
+    set_value_lowercase = kwargs.pop('set_value_lowercase', None)
 
     Entity.__init__(self, **kwargs)
     
     self.get_str = get_str
     self.set_str = set_str #another addition to fix the get_str error
+    self.set_value_lowercase=set_value_lowercase
+    self.set_value_map= set_value_map
