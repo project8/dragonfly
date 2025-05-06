@@ -147,4 +147,11 @@ class MuxerRelay(Entity):
     elif relay_type is not None:
         raise ThrowReply("message_error_invalid_method",
                          f"endpoint {self.name} expect 'relay'or 'polarity'")
+    # Remove invalid args before calling Entity
+    get_str = kwargs.pop('get_str', None)
+    set_str = kwargs.pop('set_str', None)
+
     Entity.__init__(self, **kwargs)
+    
+    self.get_str = get_str
+    self.set_str = set_str #another addition to fix the get_str error
