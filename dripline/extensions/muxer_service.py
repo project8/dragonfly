@@ -3,7 +3,7 @@ A class to interface with the multiplexer aka muxer instrument
 '''
 
 from dripline.core import ThrowReply, Entity, calibrate
-from dripline.implementations import EthernetSCPIService
+from dripline.implementations import EthernetSCPIService, FormatEntity
 
 import logging
 logger = logging.getLogger(__name__)
