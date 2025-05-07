@@ -149,14 +149,14 @@ class MuxerRelay(FormatEntity):
                          f"endpoint {self.name} expect 'relay'or 'polarity'")
     # Remove invalid args before calling Entity
 # commenting all of this out to see if changing to FormatEntity will work 
-   # get_str = kwargs.pop('get_str', None)
+    get_str = kwargs.pop('get_str', None)
    # set_str = kwargs.pop('set_str', None)
    # set_value_map = kwargs.pop('set_value_map', None)
    # set_value_lowercase = kwargs.pop('set_value_lowercase', None)
 
     Entity.__init__(self, **kwargs)
     
-   # self.get_str = get_str
+    self.get_str = get_str
    # self.set_str = set_str #another addition to fix the get_str error
    # self.set_value_lowercase=set_value_lowercase
    # self.set_value_map= set_value_map
