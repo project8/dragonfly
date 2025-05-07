@@ -144,7 +144,7 @@ class MuxerRelay(FormatEntity):
                                                     'on': 'CLOSE',
                                                     'disable': 'OPEN',
                                                     'enable': 'CLOSE'} } )
-             if 'calibration' not in kwargs:
+            if 'calibration' not in kwargs:
                 kwargs.update( { 'calibration' : {'0': 'disabled',
                                                   '1': 'enabled'} } )
         elif relay_type is not None:
