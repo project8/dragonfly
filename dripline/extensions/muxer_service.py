@@ -86,7 +86,7 @@ class MuxerGetEntity(Entity):
         raise ThrowReply('message_error_invalid_method',
                         f'endpoint {self.name} does not support set')
 __all__.append('MuxerRelay')
-class MuxerRelay(Entity):
+class MuxerRelay(FormatEntity):
    ''' 
    Entity to communicate with relay cards in muxer,
    '''
@@ -148,14 +148,15 @@ class MuxerRelay(Entity):
         raise ThrowReply("message_error_invalid_method",
                          f"endpoint {self.name} expect 'relay'or 'polarity'")
     # Remove invalid args before calling Entity
-    get_str = kwargs.pop('get_str', None)
-    set_str = kwargs.pop('set_str', None)
-    set_value_map = kwargs.pop('set_value_map', None)
-    set_value_lowercase = kwargs.pop('set_value_lowercase', None)
+# commenting all of this out to see if changing to FormatEntity will work 
+   # get_str = kwargs.pop('get_str', None)
+   # set_str = kwargs.pop('set_str', None)
+   # set_value_map = kwargs.pop('set_value_map', None)
+   # set_value_lowercase = kwargs.pop('set_value_lowercase', None)
 
     Entity.__init__(self, **kwargs)
     
-    self.get_str = get_str
-    self.set_str = set_str #another addition to fix the get_str error
-    self.set_value_lowercase=set_value_lowercase
-    self.set_value_map= set_value_map
+   # self.get_str = get_str
+   # self.set_str = set_str #another addition to fix the get_str error
+   # self.set_value_lowercase=set_value_lowercase
+   # self.set_value_map= set_value_map
