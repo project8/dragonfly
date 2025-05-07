@@ -1,0 +1,31 @@
+version: "3"
+services:
+
+  # The broker for the mesh
+  rabbit-broker:
+    image: rabbitmq:3-management
+    ports:
+      - "15672:15672"
+    environment:
+      - RABBITMQ_DEFAULT_USER=dripline
+      - RABBITMQ_DEFAULT_PASS=dripline
+    healthcheck:
+      test: ["CMD-SHELL", "curl -u dripline:dripline http://rabbit-broker:15672/api/overview &> /dev/null || exit 1"]
+
+  muxer-service:
+    image: ghcr.io/project8/dragonfly:muxer_test
+    depends_on:
+      rabbit-broker:
+        condition: service_healthy
+    volumes:
+      - ./muxer.yaml:/root/muxer.yaml
+    environment:
+      - DRIPLINE_USER=dripline
+      - DRIPLINE_PASSWORD=dripline
+    command:
+      - dl-serve
+      - -c
+      - /root/muxer.yaml
+      - -vv
+      - -b
+      - rabbit-broker
