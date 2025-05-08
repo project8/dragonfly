@@ -76,9 +76,9 @@ class WatchDog(object):
                 if any([container.name.startswith(black) for black in self.config["blacklist_containers"]]):
                    continue
                 if container.status != "running":
-                    send_slack_message(f"Container {container.name} is not running!")
+                    self.send_slack_message(f"Container {container.name} is not running!")
                 if int(container.attrs["State"]["ExitCode"]) != 0:
-                    send_slack_message(f"Containeri {container.name} has exit code {container.attrs['State']['ExitCode']}!")
+                    self.send_slack_message(f"Containeri {container.name} has exit code {container.attrs['State']['ExitCode']}!")
         
             print("Checks done", flush=True)
             time.sleep(int(self.config["check_interval_s"]))
