@@ -98,7 +98,13 @@ class EthernetThermoFisherService(EthernetSCPIService):
             logger.debug(f"sending: {cmd}")
             self.socket.send(cmd)
             logger.debug("Wait for responds")
-            time.sleep(0.6)
+            # The device may need some time to reply to the send command.
+            # Currently we are using a sleep to make sure the device has enough time to reply.
+            # This may not be ideal. An example on how to do it with a for loop,
+            # that waits for a message of length N can be found here.
+            # https://docs.python.org/2/howto/sockets.html#socket-howto
+            # This is an enhancement for the future but currently can not be tested.
+            time.sleep(0.1)
             logger.debug("Read header")
             header = self.socket.recv(5)
             nBytes = int(header[-1])
