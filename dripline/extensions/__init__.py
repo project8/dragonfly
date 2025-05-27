@@ -7,3 +7,4 @@ from . import jitter
 
 # Modules in this directory
 from .add_auth_spec import *
+from .ethernet_modbus_service import *
