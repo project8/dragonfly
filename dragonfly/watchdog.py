@@ -52,6 +52,7 @@ class WatchDog(object):
         return val["value_raw" if not calibrated else "value_cal"]
 
     def compare(self, value, reference, method):
+        if type(value) == float: reference = float(reference)
         if method == "not_equal":
             return value != reference
         elif method == "equal":
@@ -70,10 +71,10 @@ class WatchDog(object):
                 try:
                     value = self.get_endpoint(entry["endpoint"])
                     print(entry["endpoint"], value, flush=True)
-                    if self.compare(value, entry["reference"], "not_equal"):
+                    if self.compare(value, entry["reference"], entry["method"]):
                         self.send_slack_message(entry["message"].format(**locals()))
                 except Exception as e:
-                    self.send_slack_message("Could not get endpoint %s. Got error %s."%(entry["endpoint"], e.message))
+                    self.send_slack_message("Could not get endpoint %s. Got error %s."%(entry["endpoint"], str(e) ))
 
 
             for container in self.client.containers.list(all=True):
