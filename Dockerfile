@@ -8,5 +8,6 @@ COPY . /usr/local/src_dragonfly
 
 WORKDIR /usr/local/src_dragonfly
 RUN pip install .
+RUN pip install simple-pid
 
 WORKDIR /

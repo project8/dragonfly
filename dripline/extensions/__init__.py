@@ -7,3 +7,5 @@ from . import jitter
 
 # Modules in this directory
 from .add_auth_spec import *
+from .pid_controller import *
+from .ProviderAttributeEntity import *
