@@ -140,17 +140,17 @@ class Roach2Interface(ArtooDaq, core.Service):
 
     @property
     def blocked_channels(self):
-        return json.dumps(self.block_dict)
+        return self.block_dict
 
 
     @property
     def all_central_frequencies(self):
-        return json.dumps({ch:self.get_central_frequency(ch) for ch in self.freq_dict.keys()})
+        return {ch:self.get_central_frequency(ch) for ch in self.freq_dict.keys()}
 
 
     def get_central_frequency(self, channel):
         cfg = ArtooDaq.read_ddc_1st_config(self, channel)
-        return json.dumps(cfg['digital']['f_c'])
+        return cfg['digital']['f_c']
 
 
     def set_central_frequency(self, channel, cf):
@@ -170,7 +170,7 @@ class Roach2Interface(ArtooDaq, core.Service):
 
     @property
     def gain(self):
-        return json.dumps({ch:ArtooDaq.get_gain(self, ch) for ch in self.gain_dict.keys()})
+        return {ch:ArtooDaq.get_gain(self, ch) for ch in self.gain_dict.keys()}
 
 
     def set_gain(self, channel, gain):
@@ -190,7 +190,7 @@ class Roach2Interface(ArtooDaq, core.Service):
 
     @property
     def all_fft_shift_vectors(self): 
-        return json.dumps({blk:self.get_fft_shift_vector(blk) for blk in self.fft_shift_vector.keys()})
+        return {blk:self.get_fft_shift_vector(blk) for blk in self.fft_shift_vector.keys()}
 
     def get_fft_shift_vector(self, tag):
         return ArtooDaq.get_fft_shift(self, tag)
@@ -240,7 +240,7 @@ class Roach2Interface(ArtooDaq, core.Service):
             with open(filename, 'w') as outfile:
                 json.dump(p, outfile)
         else:
-            return json.dumps(p)
+            return p
 
     def get_T_packets(self, channel='a', NPackets=1, filename=None):
         if channel=='a':
@@ -267,7 +267,7 @@ class Roach2Interface(ArtooDaq, core.Service):
             with open(filename, 'w') as outfile:
                 json.dump(p, outfile)
         else:
-            return json.dumps(p)
+            return p
 
 
 
@@ -297,7 +297,7 @@ class Roach2Interface(ArtooDaq, core.Service):
             with open(filename, 'w') as outfile:
                 json.dump(p, outfile)
         else:
-            return json.dumps(p)
+            return p
 
 
     def get_raw_adc_data(self, NSnaps = 1, filename = None):
@@ -369,4 +369,4 @@ class Roach2Interface(ArtooDaq, core.Service):
         calibration_values['phase2'] = adc5g.get_spi_phase(self.roach2, 0, 2)
         calibration_values['phase3'] = adc5g.get_spi_phase(self.roach2, 0, 3)
         calibration_values['phase4'] = adc5g.get_spi_phase(self.roach2, 0, 4)
-        return json.dumps(calibration_values)
+        return calibration_values

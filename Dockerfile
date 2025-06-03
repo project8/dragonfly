@@ -1,6 +1,6 @@
 ARG img_user=ghcr.io
 ARG img_repo=driplineorg/dripline-python
-ARG img_tag=propertydebug-test
+ARG img_tag=v5.1.0-test
 
 FROM ${img_user}/${img_repo}:${img_tag} AS base
 
