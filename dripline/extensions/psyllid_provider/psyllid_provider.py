@@ -51,7 +51,7 @@ class PsyllidProvider(core.Service):
                 if self.freq_dict[channel] == None:
                     self.freq_dict[channel] = 50.0e6
                 self.set_central_frequency(channel, self.freq_dict[channel])
-            except core.exceptions.DriplineError:
+            except core.ThrowReply:
                 self.status_dict[channel] = None
                 self.status_value_dict[channel] = None
                 self.mode_dict[channel] = None
@@ -76,7 +76,7 @@ class PsyllidProvider(core.Service):
 
     @all_acquisition_modes.setter
     def all_acquisition_modes(self, x):
-        # raise core.exceptions.DriplineGenericDAQError('acquisition_modes cannot be set')
+        raise core.ThrowReply('DriplineGenericDAQError', 'acquisition_modes cannot be set')
         return
 
 
@@ -93,7 +93,7 @@ class PsyllidProvider(core.Service):
 
     @active_channels.setter
     def active_channels(self, x):
-        # raise core.exceptions.DriplineGenericDAQError('active_channels cannot be set')
+        raise core.ThrowReply('DriplineGenericDAQError', 'active_channels cannot be set')
         return
 
 
@@ -145,7 +145,7 @@ class PsyllidProvider(core.Service):
             self.request_status(channel)
             if self.status_value_dict[channel]!=4:
                 logger.error('Activating failed')
-                # raise core.exceptions.DriplineGenericDAQError('Activating psyllid failed')
+                raise core.ThrowReply('DriplineGenericDAQError', 'Activating psyllid failed')
 
         else:
             logger.info('Psyllid instance of channel {} is already activated'.format(channel))
@@ -163,7 +163,7 @@ class PsyllidProvider(core.Service):
             self.request_status(channel)
             if self.status_value_dict[channel]!=0:
                 logger.error('Deactivating failed')
-                # raise core.exceptions.DriplineGenericDAQError('Deactivating psyllid failed')
+                raise core.ThrowReply('DriplineGenericDAQError', 'Deactivating psyllid failed')
 
         else:
             logger.info('Psyllid instance of channel {} is already deactivated'.format(channel))
@@ -181,14 +181,14 @@ class PsyllidProvider(core.Service):
             self.request_status(channel)
             if self.status_value_dict[channel]!=4:
                 logger.error('Reactivating failed')
-                # raise core.exceptions.DriplineGenericDAQError('Reactivating psyllid failed')
+                raise core.ThrowReply('DriplineGenericDAQError', 'Reactivating psyllid failed')
 
         elif self.status_value_dict[channel] == 0:
             logger.warning('Psyllid is deactivated. Trying to activate instead of re-activate')
             self.activate(channel)
         else:
             logger.error('Cannot reactivate Psyllid instance of channel {}'.format(channel))
-            # raise core.exceptions.DriplineGenericDAQError('Psyllid is not activated and can therefore not be reactivated')
+            raise core.ThrowReply('DriplineGenericDAQError', 'Psyllid is not activated and can therefore not be reactivated')
 
 
     def save_reactivate(self, channel):
@@ -231,7 +231,7 @@ class PsyllidProvider(core.Service):
 
     @all_central_frequencies.setter
     def all_central_frequencies(self, x):
-        # raise core.exceptions.DriplineGenericDAQError('all_central_frequencies cannot be set')
+        raise core.ThrowReply('DriplineGenericDAQError', 'all_central_frequencies cannot be set')
         return
 
 
@@ -241,7 +241,7 @@ class PsyllidProvider(core.Service):
         '''
         if self.mode_dict[channel] == None:
             logger.error('Acquisition mode is None. Cannot get central frequency from psyllid')
-            # raise core.exceptions.DriplineGenericDAQError('Acquisition mode is None. Update mode by using get_acquisition_mode command')
+            raise core.ThrowReply('DriplineGenericDAQError', 'Acquisition mode is None. Update mode by using get_acquisition_mode command')
         routing_key_map = {
                            'streaming':'strw',
                            'triggering':'trw'
@@ -259,7 +259,7 @@ class PsyllidProvider(core.Service):
         '''
         if self.mode_dict[channel] == None:
             logger.error('Acquisition mode is None. Cannot set central frequency from psyllid')
-            # raise core.exceptions.DriplineGenericDAQError('Acquisition mode is None. Update mode by using get_acquisition_mode command')
+            raise core.ThrowReply('DriplineGenericDAQError', 'Acquisition mode is None. Update mode by using get_acquisition_mode command')
         routing_key_map = {
                            'streaming':'strw',
                            'triggering':'trw'
@@ -491,7 +491,7 @@ class PsyllidProvider(core.Service):
         '''
         if self.mode_dict[channel] != 'triggering':
             logger.error('Psyllid instance is not in triggering mode')
-            # raise core.exceptions.DriplineGenericDAQError('Psyllid instance is not in triggering mode')
+            raise core.ThrowReply('DriplineGenericDAQError', 'Psyllid instance is not in triggering mode')
 
         logger.info('Switch tf_roach_receiver to freq-only')
         request = 'run-daq-cmd.{}.tfrr.freq-only'.format(str(self.channel_dict[channel]))
