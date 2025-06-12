@@ -45,7 +45,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         self.default_trigger_dict = default_trigger_dict
 
         if hf_lo_freq is None:
-            raise core.exceptions.DriplineValueError('The roach daq run interface interface requires a "hf_lo_freq" in its config file')
+            raise core.ThrowReply('DriplineValueError', 'The roach daq run interface interface requires a "hf_lo_freq" in its config file')
         self._hf_lo_freq = hf_lo_freq
 
         if mask_target_path is None:
@@ -89,7 +89,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
                 return True
         else:
             logger.error('ROACH2 is not ready')
-            raise core.exceptions.DriplineGenericDAQError('ROACH2 is not ready')
+            raise core.ThrowReply('DriplineGenericDAQError', 'ROACH2 is not ready')
 
 
     def _check_psyllid_instance(self):
@@ -126,37 +126,37 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         Checks everything that could prevent a successful run (in theory)
         '''
         if self._run_time ==0:
-            raise core.exceptions.DriplineValueError('run time is zero')
+            raise core.ThrowReply('DriplineValueError', 'run time is zero')
 
         #checking that no run is in progress
         if self.is_running == True:
-            raise core.exceptions.DriplineGenericDAQError('Psyllid is already running')
+            raise core.ThrowReply('DriplineGenericDAQError', 'Psyllid is already running')
 
         self._check_psyllid_instance()
 
         if self.status_value!=4:
-            raise core.exceptions.DriplineGenericDAQError('Psyllid DAQ is not activated')
+            raise core.ThrowReply('DriplineGenericDAQError', 'Psyllid DAQ is not activated')
 
         # check psyllid is ready to write a file
         result = self.cmd(endpoint=self.psyllid_interface, specifier='is_psyllid_using_monarch', keyed_args = self.payload_channel)
         if result != True:
-            raise core.exceptions.DriplineGenericDAQError('Psyllid is not using monarch and therefore not ready to write a file')
+            raise core.ThrowReply('DriplineGenericDAQError', 'Psyllid is not using monarch and therefore not ready to write a file')
 
         # checking roach is ready
         if self._check_roach2_is_ready() != True:
-            raise core.exceptions.DriplineGenericDAQError('ROACH2 is not ready. ADC not calibrated.')
+            raise core.ThrowReply('DriplineGenericDAQError', 'ROACH2 is not ready. ADC not calibrated.')
 
         # check channel is unblocked
         blocked_channels = self.get(endpoint=self.daq_target, specifier='blocked_channels')
         if self.channel_id in blocked_channels:
-            raise core.exceptions.DriplineGenericDAQError('Channel is blocked')
+            raise core.ThrowReply('DriplineGenericDAQError', 'Channel is blocked')
 
         # check frequency matches
         roach_freqs = self._get_roach_central_freqs()
         psyllid_freq = self._get_psyllid_central_freq()
         if abs(roach_freqs[self.channel_id]-psyllid_freq)>1:
             logger.error('Frequency mismatch: roach cf is {}Hz, psyllid cf is {}Hz'.format(roach_freqs[self.channel_id], psyllid_freq))
-            raise core.exceptions.DriplineGenericDAQError('Frequency mismatch')
+            raise core.ThrowReply('DriplineGenericDAQError', 'Frequency mismatch')
 
 
         return "checks successful"
@@ -226,7 +226,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         payload = {'channel':self.channel_id, 'filename': os.path.join(directory, psyllid_filename), 'duration':duration}
         try:
             self.cmd(endpoint=self.psyllid_interface, specifier='start_run', keyed_args = payload)
-        except core.exceptions.DriplineError as e:
+        except core.ThrowReply as e:
             logger.critical('Error from psyllid provider or psyllid. Starting psyllid run failed.')
             payload = {'channel': self.channel_id}
             try:
@@ -254,7 +254,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
             if self.is_running:
                 logger.info('Psyllid still running. Telling it to stop the run')
                 self.cmd(endpoint=self.psyllid_interface, specifier='stop_run', keyed_args = self.payload_channel)
-        except core.exceptions.DriplineError as e:
+        except core.ThrowReply as e:
             logger.critical('Getting Psyllid status or stopping run failed')
             logger.info('Unblock channel')
             payload = {'channel': self.channel_id}
@@ -334,7 +334,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
 
     @acquisition_mode.setter
     def acquisition_mode(self, x):
-        raise core.exceptions.DriplineGenericDAQError('acquisition mode cannot be set via dragonfly')
+        raise core.ThrowReply('DriplineGenericDAQError', 'acquisition mode cannot be set via dragonfly')
 
 
     @property
@@ -434,7 +434,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
 
     @trigger_type.setter
     def trigger_type(self, x):
-        raise core.exceptions.DriplineGenericDAQError('Trigger type is result of trigger settings and cannot be set directly')
+        raise core.ThrowReply('DriplineGenericDAQError', 'Trigger type is result of trigger settings and cannot be set directly')
 
 
     @property
@@ -448,7 +448,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
 
     @trigger_settings.setter
     def trigger_settings(self, x):
-        raise core.exceptions.DriplineGenericDAQError('Use configure_trigger command to set all trigger parameters at once')
+        raise core.ThrowReply('DriplineGenericDAQError', 'Use configure_trigger command to set all trigger parameters at once')
 
 
     def configure_trigger(self, threshold, high_threshold, n_triggers):
@@ -470,7 +470,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
 
     @time_window_settings.setter
     def time_window_settings(self, x):
-        raise core.exceptions.DriplineGenericDAQError('Use configure_time_window command to set skip_tolerance and pretrigger_time')
+        raise core.ThrowReply('DriplineGenericDAQError', 'Use configure_time_window command to set skip_tolerance and pretrigger_time')
 
 
     def configure_time_window(self, pretrigger_time, skip_tolerance):
@@ -487,13 +487,13 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         Returns dictionary containing default trigger settings
         '''
         if self.default_trigger_dict == None:
-            raise core.exceptions.DriplineGenericDAQError('No default trigger settings present')
+            raise core.ThrowReply('DriplineGenericDAQError', 'No default trigger settings present')
         else:
             return self.default_trigger_dict
 
     @default_trigger_settings.setter
     def default_trigger_settings(self, x):
-        raise core.exceptions.DriplineGenericDAQError('Default settings must be specified in config file. Use cmd set_default_trigger to apply default settings')
+        raise core.ThrowReply('DriplineGenericDAQError', 'Default settings must be specified in config file. Use cmd set_default_trigger to apply default settings')
 
 
     def set_default_trigger(self):
@@ -501,7 +501,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         Sets trigger parameters to values specified in config
         '''
         if self.default_trigger_dict == None:
-            raise core.exceptions.DriplineGenericDAQError('No default trigger settings present')
+            raise core.ThrowReply('DriplineGenericDAQError', 'No default trigger settings present')
         else:
             self.threshold_type = self.default_trigger_dict['threshold_type']
             self.configure_trigger(threshold=self.default_trigger_dict['threshold'], high_threshold=self.default_trigger_dict['high_threshold'], n_triggers=self.default_trigger_dict['n_triggers'])
@@ -514,7 +514,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         Raises exception if no mask_target_path was not set in config file
         '''
         if self.mask_target_path == None:
-            raise core.exceptions.DriplineGenericDAQError('No target path set for trigger mask')
+            raise core.ThrowReply('DriplineGenericDAQError', 'No target path set for trigger mask')
 
         timestr = time.strftime("%Y%m%d_%H%M%S")
         filename = '{}_frequency_mask_channel_{}_cf_{}.yaml'.format(timestr, self.channel_id, self.freq_dict[self.channel_id])
