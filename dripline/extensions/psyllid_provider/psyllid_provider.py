@@ -509,7 +509,7 @@ class PsyllidProvider(core.Service):
         self.start_run(channel ,1000, self.temp_file)
         time.sleep(1)
 
-        # self._write_trigger_mask(channel, filename)
+        self._write_trigger_mask(channel, filename)
 
         logger.info('Telling psyllid to use monarch again for next run')
         self.set(endpoint=self.queue_dict[channel], specifier='use-monarch', value=True)
