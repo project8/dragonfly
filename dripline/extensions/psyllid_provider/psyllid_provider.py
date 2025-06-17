@@ -433,7 +433,7 @@ class PsyllidProvider(core.Service):
     def get_fmt_sigma_threshold(self, channel='a'):
         request = 'active-config.{}.fmt.threshold-power-sigma'.format(str(self.channel_dict[channel]))
         threshold = self.get(endpoint=self.queue_dict[channel], specifier=request)['threshold-power-sigma']
-        logger.debug("psyllid reply: " + threshold)
+        logger.debug("psyllid reply: {}".format(threshold) )
         return float(threshold)
 
 
