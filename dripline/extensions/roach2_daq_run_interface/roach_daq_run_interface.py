@@ -76,7 +76,7 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
         Asks roach2_interface whether roach is running and adc is calibrated
         '''
         logger.info('Checking ROACH2 status')
-        result = self.get(endpoint=self.daq_target, specifer='is_running')
+        result = self.get(endpoint=self.daq_target, specifier='is_running')
         if result==True:
             result = self.get(endpoint=self.daq_target, specifier='calibration_status')
             if result == True:
