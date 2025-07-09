@@ -106,10 +106,10 @@ class ROACH1ChAcquisitionInterface(DAQProvider):
             logger.info('Psyllid is deactivated. Activating...')
             self.cmd(endpoint=self.psyllid_interface, specifier='activate', keyed_args = self.payload_channel)
             self.status_value = self.cmd(endpoint=self.psyllid_interface, specifier='request_status', keyed_args = self.payload_channel)
-            if self.status_value == 4:
-                logger.info('Psyllid is activated')
-            else:
-                logger.error(f'Psyllid is not activated. Status in numbers is <{self.status_value}> ')
+        if self.status_value == 4:
+            logger.info('Psyllid is activated')
+        else:
+            logger.error(f'Psyllid is not activated. Status in numbers is <{self.status_value}> ')
 
 
     @property
