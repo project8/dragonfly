@@ -1,6 +1,7 @@
 #!/user/bin/env python3
 import requests
 import json
+import signal
 import time
 import docker
 import dripline
@@ -11,11 +12,15 @@ import argparse
 from dripline.core import Interface
 
 class WatchDog(object):
+    kill_now = False
+
     def __init__(self, config_path):
         self.config_path = config_path
         self.load_configuration()
         self.setup_docker_client()
         self.setup_dripline_connection()
+        signal.signal(signal.SIGINT, self.exit_gracefully)
+        signal.signal(signal.SIGTERM, self.exit_gracefully)
         self.send_slack_message("Started alarm system!")
 
     def load_configuration(self):
@@ -35,6 +40,11 @@ class WatchDog(object):
         self.connection = Interface(username=self.config["dripline_username"], 
                                     password=self.config["dripline_password"], 
                                     dripline_mesh=self.config["dripline_mesh"])
+
+    def exit_gracefully(self, signum, frame):
+        self.kill_now = True
+        print("Got a signal %d"%signum, flush=True)
+        self.send_slack_message("Stopping, received signal: %d"%signum)
 
     def send_slack_message(self, message):
         if self.config["slack_hook"] is None:
@@ -66,18 +76,21 @@ class WatchDog(object):
 
     def run(self):
 
-        while True:
-            for entry in self.config["check_endpoints"]:
-                try:
-                    value = self.get_endpoint(entry["endpoint"])
-                    print(entry["endpoint"], value, flush=True)
-                    if self.compare(value, entry["reference"], entry["method"]):
-                        self.send_slack_message(entry["message"].format(**locals()))
-                except Exception as e:
-                    self.send_slack_message("Could not get endpoint %s. Got error %s."%(entry["endpoint"], str(e) ))
+        while not self.kill_now:
+            if self.config["check_endpoints"] is not None:
+                for entry in self.config["check_endpoints"]:
+                    if self.kill_now: break
+                    try:
+                        value = self.get_endpoint(entry["endpoint"])
+                        print(entry["endpoint"], value, flush=True)
+                        if self.compare(value, entry["reference"], entry["method"]):
+                            self.send_slack_message(entry["message"].format(**locals()))
+                    except Exception as e:
+                        self.send_slack_message("Could not get endpoint %s. Got error %s."%(entry["endpoint"], str(e) ))
 
 
             for container in self.client.containers.list(all=True):
+                if self.kill_now: break
                 if any([container.name.startswith(black) for black in self.config["blacklist_containers"]]):
                    continue
                 if container.status != "running":
@@ -86,7 +99,10 @@ class WatchDog(object):
                     self.send_slack_message(f"Containeri {container.name} has exit code {container.attrs['State']['ExitCode']}!")
         
             print("Checks done", flush=True)
-            time.sleep(int(self.config["check_interval_s"]))
+            for i in range(int(self.config["check_interval_s"])):
+                if self.kill_now: break
+                time.sleep(1)
+        self.send_slack_message(f"Stopping alarm system")
 
 
 if __name__ == "__main__":
