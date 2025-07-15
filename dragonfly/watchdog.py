@@ -37,9 +37,7 @@ class WatchDog(object):
         self.client = docker.from_env()
 
     def setup_dripline_connection(self):
-        self.connection = Interface(username=self.config["dripline_username"], 
-                                    password=self.config["dripline_password"], 
-                                    dripline_mesh=self.config["dripline_mesh"])
+        self.connection = Interface(dripline_mesh=self.config["dripline_mesh"])
 
     def exit_gracefully(self, signum, frame):
         self.kill_now = True
