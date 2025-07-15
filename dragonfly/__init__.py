@@ -11,7 +11,7 @@ def __get_version():
     version.parse(pkg_resources.get_distribution('dragonfly').version)
     version.package = 'project8/dragonfly'
     version.commit = 'na'
-    dragonfly.core.add_version('dragonfly', version)
+    #dragonfly.core.add_version('dragonfly', version)
     return version
 version = __get_version()
 __version__ = version.version
