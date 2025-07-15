@@ -12,7 +12,8 @@ COPY . /usr/local/src_dragonfly
 WORKDIR /usr/local/src_dragonfly
 RUN pip install .
 RUN pip install Flask
-RUN pip install ./py_elog
+RUN git clone https://github.com/paulscherrerinstitute/py_elog.git /usr/local/py_elog
+RUN pip install /usr/local/py_elog
 
 WORKDIR /
 
