@@ -11,34 +11,42 @@ def hello():
     linkExp = '<a href="Experimenting">Running an experiment? Click me!</a>'
 
     content = """
-   <h1> Hello there!</h1>
-   <h3> You are in a regular day (no Baking out, no experimenting) or else, click on the links at the end of the page </h3>
-   <ul><p> <form action="/handle_data" method="post">
+    <h1> Hello there!</h1>
+    <h3> You are in a regular day (no Baking out, no experimenting) or else, click on the links at the end of the page </h3>
+    <ul><p> 
+    <form action="/handle_data" method="post">
+        Go on this page:  <a href= "http://astro-wake.physik.uni-mainz.de:18881/slowplot.html?config=slowplot-CoolingLoopSensors.json">CoolingLoop Sensor</a>   <br>  
+        <input type="checkbox" id="check1" name="check1" value="CoolingLoopSensor">
+        <label for="check1"> Is the CoolingLoopSensor is running on Slowdash ? No flow = bad </label><br>
+        Go on this page:  <a href= "http://astro-wake.physik.uni-mainz.de:18881/slowplot.html?config=slowplot-ThermocoupleTemperatures.json">Brainbox Thermocouples</a>   
+        check all the temperatures <br> 
+        <input type="checkbox" id="check2" name="check2" value="Brainbox_Thermocouples">
+        <label for="check2"> Are the thermocouples temperature around 20C and below 25C? </label><br>
+        Go on this page:  <a href= "http://astro-wake.physik.uni-mainz.de:18881/slowplot.html?config=slowplot-ThermocoupleTemperatures.json">MainzAtomicTestStandPage</a> <br> 
+        <input type="checkbox" id="check3" name="check3" value="MainzAtomicTestStandPage">
+        <label for="check3"> Is there any red attention sign? If yes, dig into that </label><br>
 
-Go on this page:  <a href= "http://astro-wake.physik.uni-mainz.de:18881/slowplot.html?config=slowplot-CoolingLoopSensors.json">CoolingLoop Sensor</a>   <br>  
-       <input type="checkbox" id="check1" name="check1" value="CoolingLoopSensor">
-       <label for="check1"> Is the CoolingLoopSensor is running on Slowdash ? No flow = bad </label><br>
- Go on this page:  <a href= "http://astro-wake.physik.uni-mainz.de:18881/slowplot.html?config=slowplot-ThermocoupleTemperatures.json">BC Thermocouples</a>   check all the temperatures <br> 
-       <input type="checkbox" id="check2" name="check2" value="Thermocouples">
-       <label for="check2"> Are the thermocouples temperature around 20C and below 25C? </label><br>
- Go on this page:  <a href= "http://astro-wake.physik.uni-mainz.de:18881/slowplot.html?config=slowplot-ThermocoupleTemperatures.json">MainzAtomicTestStandPage</a> <br> 
-
-       <input type="checkbox" id="check3" name="check3" value="MainzAtomicTestStandPage">
-       <label for="check3"> Is there any red attention sign? If yes, dig into that </label><br>
-       <input type="checkbox" id="check4" name="check4" value="Pressures">
-       <label for="check4"> Go on this page: """ '<a href="test"> Click me!</a>'  """  check all the pressures  </label><br>
-       <input type="checkbox" id="check5" name="check5" value="BC thermocouples">
-       <label for="check5"> Go on this page:  <a href= "http://astro-wake.physik.uni-mainz.de:18881/slowplot.html?config=slowplot-ThermocoupleTemperatures.json">Slowdash</a>   check all the temperatures  </label>
-
-       <input type="submit" value="Submit">
-   </p> </form></ul>
+        Go on this page:  <a href= "http://astro-wake.physik.uni-mainz.de:18881/slowplot.html?config=slowplot-Pressures.json">Pressures</a> <br> 
+        <input type="checkbox" id="check4" name="check4" value="Pressures">
+        <label for="check4">   Check all the pressures  </label><br>
+        <input type="checkbox" id="check5" name="check5" value="BC_Thermocouples">
+        <label for="check5"> Go on this page:  <a href= "http://astro-wake.physik.uni-mainz.de:18881/slowplot.html?config=slowplot-Bakeout.json">Slowdash</a>   
+        check all the temperatures  </label> <br>
+        <input type="submit" value="Submit">
+    </form>
+    </p></ul>
     """
     return content + linkBakeout +linkExp 
 
 
 @app.route('/handle_data', methods=['POST'])
 def handle_data():
+    # This function is called with the result of the check list.
+    # Use the request.form content to generate a nice ELOG message
+    # That elog message will be posted to the elog
     print(request.form, flush=True)
+
+    # Tell the user that checklist is done.
     return "<h1> Thanks for filling out the check list. You are done for today. </h1>"
 
 
