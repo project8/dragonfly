@@ -197,3 +197,27 @@ class PidController(AlertConsumer):
 
         logger.info("current set is: {}".format(new_current))
         self._old_current = new_current
+
+__all__.append('ServiceAttributeEntity')
+#changed things like self.provider to self.service, idk if this is the move tho
+class ServiceAttributeEntity(Entity):
+    '''
+    Entity allowing communication with spime property.
+    '''
+
+    def __init__(self,
+                 attribute_name,
+                 disable_set=False,
+                 **kwargs):
+       Entity.__init__(self, **kwargs)
+       self._attribute_name = attribute_name
+       self._disable_set = disable_set
+
+    @calibrate()
+    def on_get(self):
+        return getattr(self.service, self._attribute_name)
+
+    def on_set(self, value):
+        if self._disable_set:
+            raise ThrowReply('DriplineMethodNotSupportedError','setting not available for {}'.format(self.name))
+        setattr(self.service, self._attribute_name, value)
