@@ -6,6 +6,9 @@ __path__ = __import__('pkgutil').extend_path(__path__, __name__)
 from . import jitter
 
 # Modules in this directory
+
 from .add_auth_spec import *
 from .pid_controller import *
 from .ProviderAttributeEntity import *
+from .thermo_fisher_endpoint import *
+from .ethernet_thermo_fisher_service import *
