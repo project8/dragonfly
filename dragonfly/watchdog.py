@@ -1,0 +1,114 @@
+#!/user/bin/env python3
+import requests
+import json
+import signal
+import time
+import docker
+import dripline
+import yaml
+from pathlib import Path
+import argparse
+
+from dripline.core import Interface
+
+class WatchDog(object):
+    kill_now = False
+
+    def __init__(self, config_path):
+        self.config_path = config_path
+        self.load_configuration()
+        self.setup_docker_client()
+        self.setup_dripline_connection()
+        signal.signal(signal.SIGINT, self.exit_gracefully)
+        signal.signal(signal.SIGTERM, self.exit_gracefully)
+        self.send_slack_message("Started alarm system!")
+
+    def load_configuration(self):
+        with open(Path(args.config), "r") as open_file:
+            self.config = yaml.safe_load( open_file.read() )
+        
+        if not "slack_hook" in self.config.keys():
+            self.config["slack_hook"] = None
+        
+        print("Configuration is:", flush=True)
+        print(self.config, flush=True)
+
+    def setup_docker_client(self):
+        self.client = docker.from_env()
+
+    def setup_dripline_connection(self):
+        self.connection = Interface(dripline_mesh=self.config["dripline_mesh"])
+
+    def exit_gracefully(self, signum, frame):
+        self.kill_now = True
+        print("Got a signal %d"%signum, flush=True)
+        self.send_slack_message("Stopping, received signal: %d"%signum)
+
+    def send_slack_message(self, message):
+        if self.config["slack_hook"] is None:
+            print("Slack hook not configured. No message will be send!")
+            return
+        post = {"text": "{0}".format(message)}
+        response = requests.post(self.config["slack_hook"], headers={'Content-Type': 'application/json'}, data=json.dumps(post))
+                          
+        if response.status_code != 200:
+            print(f'Request to slack returned an error {response.status_code}, the response is:\n{response.text}')
+            
+
+    def get_endpoint(self, endpoint, calibrated=False):
+        val = self.connection.get(endpoint)
+        return val["value_raw" if not calibrated else "value_cal"]
+
+    def compare(self, value, reference, method):
+        if type(value) == float: reference = float(reference)
+        if method == "not_equal":
+            return value != reference
+        elif method == "equal":
+            return value == reference
+        elif method == "lower":
+            return value < reference
+        elif method == "greater":
+            return value > reference
+        else:
+            raise ValueError(f"Comparison method {method} is not defined. You can use one of ['not_equal', 'equal', 'lower', 'greater'].")
+
+    def run(self):
+
+        while not self.kill_now:
+            if self.config["check_endpoints"] is not None:
+                for entry in self.config["check_endpoints"]:
+                    if self.kill_now: break
+                    try:
+                        value = self.get_endpoint(entry["endpoint"])
+                        print(entry["endpoint"], value, flush=True)
+                        if self.compare(value, entry["reference"], entry["method"]):
+                            self.send_slack_message(entry["message"].format(**locals()))
+                    except Exception as e:
+                        self.send_slack_message("Could not get endpoint %s. Got error %s."%(entry["endpoint"], str(e) ))
+
+
+            for container in self.client.containers.list(all=True):
+                if self.kill_now: break
+                if any([container.name.startswith(black) for black in self.config["blacklist_containers"]]):
+                   continue
+                if container.status != "running":
+                    self.send_slack_message(f"Container {container.name} is not running!")
+                if int(container.attrs["State"]["ExitCode"]) != 0:
+                    self.send_slack_message(f"Containeri {container.name} has exit code {container.attrs['State']['ExitCode']}!")
+        
+            print("Checks done", flush=True)
+            for i in range(int(self.config["check_interval_s"])):
+                if self.kill_now: break
+                time.sleep(1)
+        self.send_slack_message(f"Stopping alarm system")
+
+
+if __name__ == "__main__":
+    print("Welcome to Watchdog", flush=True)
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--config", type=str, required=True, help="Path of the yaml config file.")
+    args = parser.parse_args()
+
+    dog = WatchDog(args.config)
+    dog.run()
