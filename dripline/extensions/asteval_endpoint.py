@@ -31,30 +31,17 @@ class FormatEntityAsteval(FormatEntity):
                 **WARNING**: never set to False if using a set_value_map dict
             set_value_map (str||dict): inverse of calibration to map raw set value to value sent; either a dictionary or an asteval-interpretable string
             extract_raw_regex (str): regular expression search pattern applied to get return. Must be constructed with an extraction group keyed with the name "value_raw" (ie r'(?P<value_raw>)' ) 
+            asteval_get_string (str): function definition to format response. Default: "def f(response): return response"
         '''
-        super().__init__(**kwargs)
+        FormatEntity.__init__(self, **kwargs)
         self.asteval_get_string = asteval_get_string # has to contain a definition "def f(response): ... return value"
         logger.debug(f'asteval_get_string: {repr(self.asteval_get_string)}')
         self.evaluator(asteval_get_string)
 
     @calibrate()
     def on_get(self):
-        if self._get_str is None:
-            raise ThrowReply('message_error_invalid_method', f"endpoint '{self.name}' does not support get")
-        result = self.service.send_to_device([self._get_str])
-        logger.debug(f'result is: {result}')
-        if self._extract_raw_regex is not None:
-            first_result = result
-            matches = re.search(self._extract_raw_regex, first_result)
-            if matches is None:
-                logger.error('matching returned none')
-                # exceptions.DriplineValueError
-                raise ThrowReply('resource_error', 'device returned unparsable result, [{}] has no match to input regex [{}]'.format(first_result, self._extract_raw_regex))
-            logger.debug(f"matches are: {matches.groupdict()}")
-            result = matches.groupdict()['value_raw']
-        
-        result = result.replace('\x00', '')
-
+        result =FormatEntiry.on_get(self)
+        #result = result.replace('\x00', '')
         processed_result = self.evaluator(f"f('{result}')")
         logger.debug(f"processed_result: {repr(processed_result)}")
         return processed_result
@@ -63,7 +50,16 @@ class FormatEntityAsteval(FormatEntity):
 
 __all__.append('CmdEntity')
 class CmdEntity(Entity):
+    '''
+    SCPI Entity to execute a command, instead of a get or set.
+    The command is given via "cmd_str" and takes no additional arguments. 
+    This can e.g. be used to auto-calibrate, set to zero or similar device commands.
+    '''
     def __init__(self, cmd_str=None, **kwargs):
+        '''
+        Args:
+            cmd_str (str): sent verbatim in the event of cmd().
+        '''
         Entity.__init__(self, **kwargs)
         logger.debug(f"I get cmd_str: {cmd_str}, which is of type {type(cmd_str)}.")
         self.cmd_str = cmd_str
