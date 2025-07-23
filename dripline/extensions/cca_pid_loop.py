@@ -7,7 +7,7 @@ __all__ = []
 
 import time
 import datetime
-import simple_PID
+#import simple_PID
 import PID
 from dripline.core import AlertConsumer
 from dripline.core import Interface
