@@ -8,7 +8,7 @@ __all__ = []
 import time
 import datetime
 
-from dripline.core import AlertConsumer, constants, exceptions, fancy_doc, ThrowReply
+from dripline.core import AlertConsumer, exceptions, fancy_doc, ThrowReply
 
 import logging
 logger = logging.getLogger(__name__)
@@ -118,8 +118,9 @@ class PidController(AlertConsumer):
         if this_value is None:
             logger.info('value is None')
             return
-
-        this_time = datetime.datetime.strptime(message['timestamp'], constants.TIME_FORMAT)
+            
+        this_time = datetime.datetime.strptime(message.timestamp, '%Y-%m-%dT%H:%M:%S.%fZ')
+        #this_time = datetime.datetime.strptime(message['timestamp'], constants.TIME_FORMAT)
         if (this_time - self._last_data['time']).total_seconds() < self.minimum_elapsed_time:
             # handle self._force_reprocess from @target_value.setter
             if not self._force_reprocess:
