@@ -89,7 +89,7 @@ class PidController(AlertConsumer):
         self.enable_offset_term = enable_offset_term
         self.minimum_elapsed_time = minimum_elapsed_time
 
-        self.__validate_status()
+        #self.__validate_status()
         self._old_current = self.__get_current()
         logger.info('starting current is: {}'.format(self._old_current))
 
@@ -211,7 +211,7 @@ class PidController(AlertConsumer):
         if abs(current_get-new_current) < self.tolerance:
             logger.debug("current set is equal to current get")
         else:
-            self.__validate_status()
+            #self.__validate_status()
             raise ThrowReply('DriplineValueError',"set value ({}) is not equal to checked value ({})".format(new_current,current_get))
 
         logger.info("current set is: {}".format(new_current))
