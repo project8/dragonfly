@@ -95,7 +95,7 @@ class PidController(AlertConsumer):
 
     def __get_current(self):
         #value = self.provider.get(self._check_channel)[self.payload_field]
-        alue = self.service.get(self._check_channel)[self.payload_field]
+        value = self.service.get(self._check_channel)[self.payload_field]
         logger.info('current get is {}'.format(value))
 
         try:
