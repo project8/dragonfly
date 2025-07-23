@@ -8,7 +8,7 @@ __all__ = []
 import time
 import datetime
 
-from dripline.core import AlertConsumer, exceptions, fancy_doc, ThrowReply
+from dripline.core import AlertConsumer,fancy_doc, ThrowReply
 
 import logging
 logger = logging.getLogger(__name__)
