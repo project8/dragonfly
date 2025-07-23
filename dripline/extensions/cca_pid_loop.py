@@ -8,7 +8,7 @@ __all__ = []
 import time
 import datetime
 
-from dripline.core import ThrowReply, Entity, calibrate, AlertConsumer
+from dripline.core import ThrowReply, Entity, calibrate, AlertConsumer, Interface
 from dripline.implementations import EthernetSCPIService, FormatEntity
 
 import logging
