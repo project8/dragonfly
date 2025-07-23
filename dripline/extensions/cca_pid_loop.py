@@ -104,7 +104,7 @@ class PidController(AlertConsumer):
             raise ThrowReply('DriplineValueError','value get ({}) is not floatable'.format(value))
         return value
 
-    def __validate_status(self):
+    #def __validate_status(self):
         
         # connection={
         #     "broker": "rabbit-broker",
@@ -115,12 +115,12 @@ class PidController(AlertConsumer):
 
         #value = con.get(self._status_channel).payload["value_raw"].as_string()
         # value = self.provider.get(self._status_channel)[self.payload_field]
-        value = self.service.get(self._status_channel)[self.payload_field]
-        if value == 'enabled':
-            logger.debug("{} returns {}".format(self._status_channel,value))
-        else:
-            logger.critical("Invalid status of {} for PID control by {}".format(self._status_channel,self.name))
-            raise ThrowReply('DriplineHardwareError',"{} returns {}".format(self._status_channel,value))
+        #value = self.service.get(self._status_channel)[self.payload_field]
+        #if value == 'enabled':
+            #logger.debug("{} returns {}".format(self._status_channel,value))
+        #else:
+            #logger.critical("Invalid status of {} for PID control by {}".format(self._status_channel,self.name))
+            #raise ThrowReply('DriplineHardwareError',"{} returns {}".format(self._status_channel,value))
         
 
         # logger.info("{} returns {}".format(self._status_channel,value))
