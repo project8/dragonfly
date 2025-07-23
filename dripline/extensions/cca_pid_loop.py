@@ -8,13 +8,13 @@ __all__ = []
 import time
 import datetime
 
-from dripline.core import AlertConsumer,fancy_doc, ThrowReply
+from dripline.core import AlertConsumer, ThrowReply
 
 import logging
 logger = logging.getLogger(__name__)
 
 __all__.append('PidController')
-@fancy_doc
+
 class PidController(AlertConsumer):
     '''
     Implementation of a PID control loop with constant offset. That is, the PID equation
