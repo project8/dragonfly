@@ -105,16 +105,17 @@ class PidController(AlertConsumer):
         return value
 
     def __validate_status(self):
-        connection={
-            "broker": "rabbit-broker",
-            "auth-file": "/root/authentications.json"
-        }
+        
+        # connection={
+        #     "broker": "rabbit-broker",
+        #     "auth-file": "/root/authentications.json"
+        # }
 
-        con = Interface(connection)
+        # con = Interface(connection)
 
-        value = con.get(self._status_channel).payload["value_raw"].as_string()
+        #value = con.get(self._status_channel).payload["value_raw"].as_string()
         # value = self.provider.get(self._status_channel)[self.payload_field]
-        # value = self.service.get(self._status_channel)[self.payload_field]
+        value = self.service.get(self._status_channel)[self.payload_field]
         if value == 'enabled':
             logger.debug("{} returns {}".format(self._status_channel,value))
         else:
