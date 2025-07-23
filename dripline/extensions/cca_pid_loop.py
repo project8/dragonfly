@@ -106,12 +106,27 @@ class PidController(AlertConsumer):
 
     def __validate_status(self):
         # value = self.provider.get(self._status_channel)[self.payload_field]
-        value = self.service.get(self._status_channel)[self.payload_field]
-        if value == 'enabled':
+        # value = self.service.get(self._status_channel)[self.payload_field]
+        # if value == 'enabled':
+        #     logger.debug("{} returns {}".format(self._status_channel,value))
+        # else:
+        #     logger.critical("Invalid status of {} for PID control by {}".format(self._status_channel,self.name))
+        #     raise ThrowReply('DriplineHardwareError',"{} returns {}".format(self._status_channel,value))
+        connection={
+            "broker": "rabbit-broker",
+            "auth-file": "/root/authentications.json"
+        }
+
+        con = Interface(connection)
+
+        value = con.get(self._status_channel).payload["value_raw"].as_string()
+
+        logger.info("{} returns {}".format(self._status_channel,value))
+        if value == "ON":
             logger.debug("{} returns {}".format(self._status_channel,value))
         else:
             logger.critical("Invalid status of {} for PID control by {}".format(self._status_channel,self.name))
-            raise ThrowReply('DriplineHardwareError',"{} returns {}".format(self._status_channel,value))
+            raise ThrowReply("{} returns {}".format(self._status_channel,value))
 
     def this_consume(self, message, method):
         logger.info('consuming message')
