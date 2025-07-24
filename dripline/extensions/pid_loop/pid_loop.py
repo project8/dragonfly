@@ -8,14 +8,13 @@ __all__ = []
 import time
 import datetime
 
-from dripline.core import Gogol, constants, exceptions, fancy_doc
+from dripline.core import Service, constants, ThrowReply
 
 import logging
 logger = logging.getLogger(__name__)
 
 __all__.append('PidController')
-@fancy_doc
-class PidController(Gogol):
+class PidController(Service):
     '''
     Implementation of a PID control loop with constant offset. That is, the PID equation
     is used to compute the **change** to the value of some channel and not the value
@@ -64,7 +63,7 @@ class PidController(Gogol):
         minimum_elapsed_time (float): minimum time interval to perform PID calculation over
         '''
         kwargs.update({'keys':['sensor_value.'+input_channel]})
-        Gogol.__init__(self, **kwargs)
+        Service.__init__(self, **kwargs)
 
         self._set_channel = output_channel
         self._check_channel = check_channel
@@ -72,7 +71,7 @@ class PidController(Gogol):
         self.payload_field = payload_field
         self.tolerance = tolerance
 
-        self._last_data = {'value':None, 'time':datetime.datetime.utcnow()}
+        self._last_data = {'value':None, 'time':datetime.datetime.now(datetime.UTC)}
         self.target_value = target_value
 
         self.Kproportional = proportional
@@ -88,27 +87,29 @@ class PidController(Gogol):
         self.enable_offset_term = enable_offset_term
         self.minimum_elapsed_time = minimum_elapsed_time
 
+        self._force_reprocess = False
+
         self.__validate_status()
         self._old_current = self.__get_current()
         logger.info('starting current is: {}'.format(self._old_current))
 
     def __get_current(self):
-        value = self.provider.get(self._check_channel)[self.payload_field]
+        value = self.get(self._check_channel)[self.payload_field]
         logger.info('current get is {}'.format(value))
 
         try:
             value = float(value)
         except (TypeError, ValueError):
-            raise exceptions.DriplineValueError('value get ({}) is not floatable'.format(value))
+            ThrowReply('service_error_invalid_value', f'value get ({value}) is not floatable')
         return value
 
     def __validate_status(self):
-        value = self.provider.get(self._status_channel)[self.payload_field]
+        value = self.get(self._status_channel)[self.payload_field]
         if value == 'enabled':
-            logger.debug("{} returns {}".format(self._status_channel,value))
+            logger.debug(f"{self._status_channel} returns {value}")
         else:
-            logger.critical("Invalid status of {} for PID control by {}".format(self._status_channel,self.name))
-            raise exceptions.DriplineHardwareError("{} returns {}".format(self._status_channel,value))
+            logger.critical(f"Invalid status of {self._status_channel} for PID control by {self.name}")
+            ThrowReply('resource_error', "{self._status_channel} returns {value}")
 
     def this_consume(self, message, method):
         logger.info('consuming message')
@@ -121,11 +122,11 @@ class PidController(Gogol):
         if (this_time - self._last_data['time']).total_seconds() < self.minimum_elapsed_time:
             # handle self._force_reprocess from @target_value.setter
             if not self._force_reprocess:
-                logger.info("not enough time has elasped: {}[{}]".format((this_time - self._last_data['time']).total_seconds(),self.minimum_elapsed_time))
+                logger.info(f"not enough time has elasped: {(this_time - self._last_data['time']).total_seconds()}[{self.minimum_elapsed_time}]")
                 return
             logger.info("Forcing process due to changed target_value")
             self._force_reprocess = False
-
+    
         self.process_new_value(timestamp=this_time, value=float(this_value))
 
     @property
@@ -139,7 +140,7 @@ class PidController(Gogol):
 
     def set_current(self, value):
         logger.info('going to set new current to: {}'.format(value))
-        reply = self.provider.set(self._set_channel, value)
+        reply = self.set(self._set_channel, value)
         logger.info('set response was: {}'.format(reply))
 
     def process_new_value(self, value, timestamp):
@@ -158,8 +159,9 @@ class PidController(Gogol):
             derivative = 0.
         self._last_data = {'value': value, 'time': timestamp}
 
-        logger.info("proportional <{}>; integral <{}>; differential <{}>".format\
-            (self.Kproportional*delta, self.Kintegral*self._integral, self.Kdifferential*derivative))
+        logger.info(f"""proportional <{self.Kproportional * delta}>; \
+                    integral <{self.Kintegral * self._integral}>; \
+                    differential <{self.Kdifferential * derivative}>""")
         change_to_current = (self.Kproportional * delta +
                              self.Kintegral * self._integral +
                              self.Kdifferential * derivative
@@ -190,7 +192,7 @@ class PidController(Gogol):
             logger.debug("current set is equal to current get")
         else:
             self.__validate_status()
-            raise exceptions.DriplineValueError("set value ({}) is not equal to checked value ({})".format(new_current,current_get))
+            ThrowReply('service_error_invalid_value', "set value ({}) is not equal to checked value ({})".format(new_current,current_get))
 
         logger.info("current set is: {}".format(new_current))
         self._old_current = new_current
