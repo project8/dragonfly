@@ -8,7 +8,7 @@ __all__ = []
 import time
 import datetime
 
-from dripline.core import Service, constants, ThrowReply
+from dripline.core import Service, ThrowReply
 
 import logging
 logger = logging.getLogger(__name__)
@@ -91,11 +91,11 @@ class PidController(Service):
 
         self.__validate_status()
         self._old_current = self.__get_current()
-        logger.info('starting current is: {}'.format(self._old_current))
+        logger.info(f'starting current is: {self._old_current}')
 
     def __get_current(self):
         value = self.get(self._check_channel)[self.payload_field]
-        logger.info('current get is {}'.format(value))
+        logger.info(f'current get is {value}')
 
         try:
             value = float(value)
@@ -118,7 +118,7 @@ class PidController(Service):
             logger.info('value is None')
             return
 
-        this_time = datetime.datetime.strptime(message['timestamp'], constants.TIME_FORMAT)
+        this_time = datetime.datetime.strptime(message['timestamp'], '%d/%m/%y %H:%M:%S.%f')
         if (this_time - self._last_data['time']).total_seconds() < self.minimum_elapsed_time:
             # handle self._force_reprocess from @target_value.setter
             if not self._force_reprocess:
@@ -139,14 +139,14 @@ class PidController(Service):
         self._force_reprocess = True
 
     def set_current(self, value):
-        logger.info('going to set new current to: {}'.format(value))
+        logger.info(f'going to set new current to: {value}')
         reply = self.set(self._set_channel, value)
-        logger.info('set response was: {}'.format(reply))
+        logger.info(f'set response was: {reply}')
 
     def process_new_value(self, value, timestamp):
 
         delta = self.target_value - value
-        logger.info('value is <{}>; delta is <{}>'.format(value, delta))
+        logger.info(f'value is <{value}>; delta is <{delta}>')
 
         self._integral += delta * (timestamp - self._last_data['time']).total_seconds()
         if (timestamp - self._last_data['time']).total_seconds() < 2*self.minimum_elapsed_time:
@@ -170,9 +170,9 @@ class PidController(Service):
 
         if abs(change_to_current) < self.min_current_change:
             logger.info("current change less than min delta")
-            logger.info("old[new] are: {}[{}]".format(self._old_current,new_current))
+            logger.info(f"old[new] are: {self._old_current}[{new_current}]")
             return
-        logger.info('computed new current to be: {}'.format(new_current))
+        logger.info(f'computed new current to be: {new_current}')
         if new_current > self.max_current:
             logger.info("new current above max")
             new_current = self.max_current
@@ -192,7 +192,7 @@ class PidController(Service):
             logger.debug("current set is equal to current get")
         else:
             self.__validate_status()
-            ThrowReply('service_error_invalid_value', "set value ({}) is not equal to checked value ({})".format(new_current,current_get))
+            ThrowReply(f'service_error_invalid_value', "set value ({new_current}) is not equal to checked value ({current_get})")
 
-        logger.info("current set is: {}".format(new_current))
+        logger.info(f"current set is: {new_current}")
         self._old_current = new_current
