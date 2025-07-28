@@ -41,8 +41,8 @@ class FormatEntityAsteval(FormatEntity):
     @calibrate()
     def on_get(self):
         result =FormatEntity.on_get(self)
-        #result = result.replace('\x00', '')
-        processed_result = self.evaluator(f"f('{result}')")
+        raw = result["value_raw"]
+        processed_result = self.evaluator(f"f('{raw}')")
         logger.debug(f"processed_result: {repr(processed_result)}")
         return processed_result
 
