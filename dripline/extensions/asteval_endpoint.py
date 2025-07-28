@@ -40,7 +40,7 @@ class FormatEntityAsteval(FormatEntity):
 
     @calibrate()
     def on_get(self):
-        result =FormatEntiry.on_get(self)
+        result =FormatEntity.on_get(self)
         #result = result.replace('\x00', '')
         processed_result = self.evaluator(f"f('{result}')")
         logger.debug(f"processed_result: {repr(processed_result)}")
