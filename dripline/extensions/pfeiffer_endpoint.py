@@ -8,6 +8,9 @@ __all__ = []
 __all__.append('PfeifferEntity')
 class PfeifferEntity(Entity):
     '''
+    Pfeiffer Entity implements the Telegram protocol by Pfeiffer. 
+    The message contains commands in form of parameter numbers and different length data that depend on the given datatype.
+    Conversion of datatypes and checksum checking are implemented.
     '''
 
     _datatype = {"bool_old": 6, "uint": 6, "ureal": 6, "string": 6, "bool": 1, "ushort": 3, "uexpo": 6, "str16": 16, "str8": 8, "query": 2}
