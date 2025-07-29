@@ -27,6 +27,7 @@ class PidLoopTester(Service):
                  time=0.0,
                  v0=0.0,
                  a0=0.0,
+                 read_field='value_cal',
                  throttle_endpoint=None,
                  sensor_endpoint=None,
                  **kwargs
@@ -41,6 +42,7 @@ class PidLoopTester(Service):
         self._sensor_endpoint = sensor_endpoint
         self._time_step = time_step
         self._time = time
+        self._read_field = read_field
 
         self.set_sensor_value(v0)
         self.set_throttle_value(a0)
@@ -56,7 +58,7 @@ class PidLoopTester(Service):
         '''
         if self._sensor_endpoint is None:
             raise ThrowReply("No sensor endpoint configured")
-        return self.get(self._sensor_endpoint)
+        return self.get(self._sensor_endpoint)[self._read_field]
     
     def set_sensor_value(self, value):
         '''
@@ -72,7 +74,7 @@ class PidLoopTester(Service):
         '''
         if self._throttle_endpoint is None:
             raise ThrowReply("No throttle endpoint configured")
-        return self.get(self._throttle_endpoint)
+        return self.get(self._throttle_endpoint)[self._read_field]
     
     def set_throttle_value(self, value):
         '''
