@@ -3,12 +3,16 @@ Implementation of a PID loop tester for the Dripline framework.
 This module provides a service that can be used to test PID control loops by simulating
 the behavior of a system of heaters and sensors.
 '''
+from __future__ import print_function
+__all__ = []
 
 from dripline.core import Service, ThrowReply
-import logging
-from time import sleep
 
-logger = logging.getLogger(__name__)   
+import logging
+logger = logging.getLogger(__name__)
+
+from time import sleep
+ 
 __all__.append('PidLoopTester')
 
 class PidLoopTester(Service):
