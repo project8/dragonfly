@@ -86,7 +86,10 @@ class PidLoopTester(Service):
             t (float): Time at which the disturbance occurs.
         '''
         # Example disturbance logic, can be customized
-        disturbance = 0
+        if t > 20.0:
+            disturbance = .5
+        else:
+            disturbance = 0.0
         return disturbance
 
     def time_step(self):
