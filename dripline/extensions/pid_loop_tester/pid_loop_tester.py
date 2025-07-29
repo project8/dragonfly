@@ -56,7 +56,7 @@ class PidLoopTester(Service):
         '''
         if self._sensor_endpoint is None:
             raise ThrowReply("No sensor endpoint configured")
-        return self._sensor_endpoint.get()
+        return self.get(self._sensor_endpoint)
     
     def set_sensor_value(self, value):
         '''
@@ -64,7 +64,7 @@ class PidLoopTester(Service):
         '''
         if self._sensor_endpoint is None:
             raise ThrowReply("No sensor endpoint configured")
-        self._sensor_endpoint.set(value)
+        self.set(self._sensor_endpoint, value)
 
     def get_throttle_value(self):
         '''
@@ -72,7 +72,7 @@ class PidLoopTester(Service):
         '''
         if self._throttle_endpoint is None:
             raise ThrowReply("No throttle endpoint configured")
-        return self._throttle_endpoint.get()
+        return self.get(self._throttle_endpoint)
     
     def set_throttle_value(self, value):
         '''
@@ -80,7 +80,7 @@ class PidLoopTester(Service):
         '''
         if self._throttle_endpoint is None:
             raise ThrowReply("No throttle endpoint configured")
-        self._throttle_endpoint.set(value)
+        self.set(self._throttle_endpoint, value)
 
     def external_disturbance(self, t):
         '''
