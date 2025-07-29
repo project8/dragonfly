@@ -25,8 +25,6 @@ class PidLoopTester(Service):
                  drag=0.1,
                  time_step=0.1,
                  time=0.0,
-                 v0=0.0,
-                 a0=0.0,
                  throttle_endpoint=None,
                  sensor_endpoint=None,
                  **kwargs
@@ -41,9 +39,6 @@ class PidLoopTester(Service):
         self._sensor_endpoint = sensor_endpoint
         self._time_step = time_step
         self._time = time
-
-        self.set_sensor_value(v0)
-        self.set_throttle_value(a0)
 
         while True:
             self.time_step()
