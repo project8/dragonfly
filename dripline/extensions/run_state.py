@@ -10,7 +10,16 @@ __all__ = []
 
 __all__.append('StateGetEntity')
 class StateGetEntity(Entity):
+    """
+    Simple Entity to get the state information of the RunStateService.
+    While the information are stored in RunStateService itself, this entity can excess the information from the information dict by `key`.
+    """
+
     def __init__(self, key, **kwargs):
+        """
+        Args:
+        * key (str): key of the information from the state dictionary
+        """
         self.key = key
         Entity.__init__(self, **kwargs)
     
@@ -24,7 +33,8 @@ class StateGetEntity(Entity):
 __all__.append('RunStateService')
 class RunStateService(Service):
     '''
-    A service providing information about the current run status.
+    A service providing information about the current run status. Information are stored in a state dict.
+    Two functions `start_run` and `stop_run` are available. start_run takes a run comment (str) as argument which should describe the current run.
     '''
     def __init__(self,
                  state_file=None,
@@ -63,11 +73,17 @@ class RunStateService(Service):
         return state
 
     def save_state(self, state):
+        '''
+        Save the state of the run to a file.
+        '''
         with open(self.state_file, "w") as open_file:
             json.dump(state, open_file)
         return
 
     def stop_run(self):
+        '''
+        Sets the state of the run to "inactive" and returns the run number of the stopped run.
+        '''
         state = self.get_state()
         if not state["run_active"]:
             logger.info("There is no run to stop")
@@ -78,6 +94,10 @@ class RunStateService(Service):
         return state["run_number"]
 
     def start_run(self, comment):
+        ''' 
+        Starts a new run by increasing the run number by 1, setting a new run comment and changing the state to "active".
+        If a run is still ongoing, it will be stopped first.
+        '''
         logger.info(f"Starting run with comment {comment}")
         state = self.get_state()
         if state["run_active"]:
