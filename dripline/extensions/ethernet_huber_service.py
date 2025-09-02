@@ -66,9 +66,16 @@ class EthernetHuberService(EthernetSCPIService):
         cmd = cmd + cs + self.command_terminator
         return cmd
 
-    def _extract_reply(self, data):
-        return data
-
+    def _extract_reply(self, response, cmd):
+        if not self.calculate_checksum(response[:-2]) == response[-2:]:
+            logger.warning("Checksum not matching")
+        if not response[:4] == "[S01":
+            logger.warning("Header not matching")
+        if not response[4] == cmd:
+            logger.warning("cmd is not matching")
+        if not int(response[5:7], 16) == len(response)-2:
+            logger.warning("length not matching")
+        return response[7:-2]
 
     def _send_commands(self, commands):
         '''
@@ -79,8 +86,8 @@ class EthernetHuberService(EthernetSCPIService):
         '''
         all_data=[]
 
-        for command in commands:
-            command = self._assemble_cmd(command)
+        for cmd in commands:
+            command = self._assemble_cmd(cmd)
             logger.debug(f"sending: {command.encode()}")
             self.socket.send(command.encode())
             if command == self.command_terminator:
@@ -96,7 +103,7 @@ class EthernetHuberService(EthernetSCPIService):
                 elif not blank_command:
                     raise ThrowReply('device_error_connection', f'Bad ethernet query return: {data}')
             logger.info(f"sync: {repr(command)} -> {repr(data)}")
-            data = self._extract_reply(data)
+            data = self._extract_reply(data, cmd.split(" ")[0])
             all_data.append(data)
         return all_data
 
@@ -109,6 +116,9 @@ class HuberEntity(Entity):
 
     def __init__(self,
                  get_str=None,
+                 offset=0,
+                 nbytes=-1,
+                 numeric=False,
                  **kwargs):
         '''
         Args:
@@ -117,7 +127,10 @@ class HuberEntity(Entity):
         if get_str is None:
             raise ValueError('<get_str is required to __init__ ThermoFisherHexGetEntity instance')
         else:
-            self.cmd_str = str(get_str).zfill(2)
+            self.cmd_str = get_str
+        self.offset = offset
+        self.nbytes = nbytes
+        self.numeric = numeric
         Entity.__init__(self, **kwargs)
 
     @calibrate()
@@ -127,7 +140,12 @@ class HuberEntity(Entity):
         logger.debug(f'Send cmd in hexstr: {to_send[0]}')
         result = self.service.send_to_device(to_send)
         logger.debug(f'raw result is: {result}')
-
+        result = result[self.offset: self.offset+self.nbytes]
+        if self.numeric:
+            val = int(result, 16)
+            if val > int("7FFF", 16):
+                val = val - int("FFFF", 16) - 1
+            result = val / 100.
         return result
 
     def on_set(self, value):
