@@ -131,6 +131,7 @@ jobs:
 
       - name: Release with a changelog
         uses: rasmus-saks/release-a-changelog-action@v1.2.0
+        if: ${{ github.event_name == 'push' && contains(github.ref, 'refs/tags/') }}
         with:
           github-token: '${{ secrets.GITHUB_TOKEN }}'
           path: 'changelog.md'
