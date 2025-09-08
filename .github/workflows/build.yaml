@@ -129,6 +129,10 @@ jobs:
           tags: ${{ steps.docker_meta.outputs.tags }}
           platforms: linux/amd64,linux/arm64,linux/arm/v7
 
-      - name: Release
-        uses: softprops/action-gh-release@v2
-        if: ${{ github.event_name == 'push' && contains(github.ref, 'refs/tags/') }}
+      - name: Release with a changelog
+        uses: rasmus-saks/release-a-changelog-action@v1.2.0
+        with:
+          github-token: '${{ secrets.GITHUB_TOKEN }}'
+          path: 'changelog.md'
+          title-template: 'Dragonfly v{version} -- Release Notes'
+          tag-template: 'v{version}'
