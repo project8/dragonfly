@@ -4,7 +4,7 @@ ARG img_tag=develop
 
 FROM ${img_user}/${img_repo}:${img_tag}
 
-RUN pip install pymodbus slack_sdk
+RUN pip install pymodbus 
 COPY . /usr/local/src/dragonfly
 
 WORKDIR /usr/local/src/dragonfly
