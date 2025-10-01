@@ -14,6 +14,7 @@ Types of changes: Added, Changed, Deprecated, Removed, Fixed, Security
 ### Added
 
 - Thermo Fisher Chiller service and endpoint added
+- Watchdog added
 - Added prototypical Docker Compose file
 - Added this changelog and GHA step to use it in making releases
 
