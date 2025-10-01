@@ -9,9 +9,12 @@ Types of changes: Added, Changed, Deprecated, Removed, Fixed, Security
 
 ## [Unreleased]
 
+## [2.1.0] -- 2025-10-01
+
 ### Added
 
 - Thermo Fisher Chiller service and endpoint added
+- Watchdog added
 - Added prototypical Docker Compose file
 - Added this changelog and GHA step to use it in making releases
 
