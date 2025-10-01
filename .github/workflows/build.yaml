@@ -10,7 +10,7 @@ on:
 env:
   BASE_IMAGE_USER: driplineorg
   BASE_IMAGE_REPO: dripline-python
-  BASE_IMAGE_VER: 'v4.7.1'
+  BASE_IMAGE_VER: 'v5.1.0'
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
 
@@ -19,7 +19,7 @@ jobs:
   test_docker:
     name: Build and Test in Docker
 
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
 
     steps:
 
@@ -57,7 +57,7 @@ jobs:
 
   build_and_push:
 
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
 
     permissions:
       contents: read
@@ -127,5 +127,13 @@ jobs:
             img_repo=${{ env.BASE_IMAGE_REPO }}
             img_tag=${{ env.BASE_IMAGE_TAG }}
           tags: ${{ steps.docker_meta.outputs.tags }}
-          platforms: linux/amd64
-#          platforms: linux/amd64,linux/arm/v7,linux/arm64
+          platforms: linux/amd64,linux/arm64,linux/arm/v7
+
+      - name: Release with a changelog
+        uses: rasmus-saks/release-a-changelog-action@v1.2.0
+        if: ${{ github.event_name == 'push' && contains(github.ref, 'refs/tags/') }}
+        with:
+          github-token: '${{ secrets.GITHUB_TOKEN }}'
+          path: 'changelog.md'
+          title-template: 'Dragonfly v{version} -- Release Notes'
+          tag-template: 'v{version}'

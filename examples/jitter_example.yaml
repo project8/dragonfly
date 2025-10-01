@@ -1,0 +1,7 @@
+name: jitter-store
+module: Service
+endpoints:
+  - name: jitter-peaches
+    module: JitterEntity
+    calibration: '2*{}'
+    initial_value: 0.75
