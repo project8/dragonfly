@@ -133,6 +133,12 @@ class HuberEntity(Entity):
         self.numeric = numeric
         Entity.__init__(self, **kwargs)
 
+    def convert_to_float(self, hex_str):
+        val = int(hex_str, 16)
+        if val > int("7FFF", 16):
+            val = val - int("FFFF", 16) - 1
+        return val/100.
+
     @calibrate()
     def on_get(self):
         # setup cmd here
@@ -142,10 +148,9 @@ class HuberEntity(Entity):
         logger.debug(f'raw result is: {result}')
         result = result[self.offset: self.offset+self.nbytes]
         if self.numeric:
-            val = int(result, 16)
-            if val > int("7FFF", 16):
-                val = val - int("FFFF", 16) - 1
-            result = val / 100.
+            logger.debug("is numeric")
+            result = self.convert_to_float(result)
+        logger.debug(f'extracted result is: {result}')
         return result
 
     def on_set(self, value):
