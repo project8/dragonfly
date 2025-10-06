@@ -1,6 +1,6 @@
 ARG img_user=ghcr.io/driplineorg
 ARG img_repo=dripline-python
-ARG img_tag=develop-dev
+ARG img_tag=v5.1.0
 
 ARG UID=5001
 ARG GID=5001
