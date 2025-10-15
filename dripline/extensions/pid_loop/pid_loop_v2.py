@@ -51,8 +51,8 @@ def pt100_resistance_to_kelvin(resistance: float) -> float:
     """
     Convert PT100 resistance (ohms) to temperature (Kelvin).
     
-    Uses the Callendar-Van Dusen equation for PT100 sensors.
-    Valid for temperatures from approximately -200°C to +850°C.
+    Uses a custom calibration curve specific to the RTD01 sensor,
+    fitted from actual sensor data in the cryogenic operating range.
     
     Parameters
     ----------
@@ -66,41 +66,27 @@ def pt100_resistance_to_kelvin(resistance: float) -> float:
         
     Notes
     -----
-    PT100 standard (IEC 60751):
-    - R0 = 100 Ω at 0°C
-    - α = 0.00385 Ω/Ω/°C (most common, European standard)
+    Calibration curve fitted from RTD01.Front.Cavity.Thermal sensor data:
+    T(K) = a*R² + b*R + c
     
-    For temperatures above 0°C:
-    R(T) = R0 * (1 + A*T + B*T²)
-    where A = 3.9083e-3, B = -5.775e-7
+    Calibrated range: ~14.4-15.2 Ω (62.5-64.0 K)
+    Based on synchronized Ohm and K channel measurements.
     
-    For temperatures below 0°C, additional terms are needed,
-    but for cryogenic work above -200°C this approximation is sufficient.
+    For resistance values outside the calibrated range, the polynomial
+    is extrapolated (may be less accurate).
     """
-    import math
+    # Custom calibration coefficients for RTD01 sensor
+    # Fitted from actual sensor data: T(K) = a*R² + b*R + c
+    a = 0.059524
+    b = 0.178571
+    c = 47.628423
     
-    # PT100 coefficients (IEC 60751)
-    R0 = 100.0  # Resistance at 0°C (ohms)
-    A = 3.9083e-3  # Temperature coefficient (1/°C)
-    B = -5.775e-7  # Temperature coefficient (1/°C²)
+    # Apply polynomial calibration
+    temp_kelvin = a * resistance**2 + b * resistance + c
     
-    # Solve quadratic equation: R = R0*(1 + A*T + B*T²)
-    # Rearranged: B*T² + A*T + (1 - R/R0) = 0
-    
-    a = B
-    b = A
-    c = 1.0 - (resistance / R0)
-    
-    discriminant = b*b - 4*a*c
-    
-    if discriminant < 0:
-        raise ValueError(f"Invalid resistance value {resistance}Ω for PT100 sensor")
-    
-    # Use the positive root (physical solution)
-    temp_celsius = (-b + math.sqrt(discriminant)) / (2*a)
-    
-    # Convert to Kelvin
-    temp_kelvin = temp_celsius + 273.15
+    # Sanity check: warn if outside typical calibrated range
+    if resistance < 10.0 or resistance > 40.0:
+        logger.warning(f"Resistance {resistance:.2f}Ω is outside typical PT100 range")
     
     return temp_kelvin
 
@@ -127,6 +113,7 @@ class PidController(Service):
                  output_channel: str,
                  check_channel: str,
                  status_channel: str,
+                 voltage_channel: str,
                  payload_field: str = 'value_cal',
                  tolerance: float = 0.01,
                  target_value: float = 85.0,
@@ -164,6 +151,7 @@ class PidController(Service):
         self._set_channel = output_channel
         self._check_channel = check_channel
         self._status_channel = status_channel
+        self._voltage_channel = voltage_channel
         self.payload_field = payload_field
         self.tolerance = float(tolerance)
         self._convert_pt100 = bool(convert_pt100)
@@ -206,6 +194,16 @@ class PidController(Service):
         except Exception as ex:
             logger.error(f"Failed to set {self._status_channel} to 1: {ex}")
             raise
+
+        # Set voltage channel to 30V if provided
+        if self._voltage_channel is not None:
+            logger.info(f"Setting {self._voltage_channel} to 30V")
+            try:
+                self.set(self._voltage_channel, 30.0)
+                logger.info(f"Successfully set {self._voltage_channel} to 30V")
+            except Exception as ex:
+                logger.error(f"Failed to set {self._voltage_channel} to 30V: {ex}")
+                raise
 
         # Verify device state and seed last output
         self.__validate_status()
