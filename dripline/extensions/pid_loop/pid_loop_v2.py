@@ -47,6 +47,64 @@ def clamp(x: float, lo: float, hi: float) -> float:
     return lo if x < lo else hi if x > hi else x
 
 
+def pt100_resistance_to_kelvin(resistance: float) -> float:
+    """
+    Convert PT100 resistance (ohms) to temperature (Kelvin).
+    
+    Uses the Callendar-Van Dusen equation for PT100 sensors.
+    Valid for temperatures from approximately -200°C to +850°C.
+    
+    Parameters
+    ----------
+    resistance : float
+        Resistance in ohms
+        
+    Returns
+    -------
+    float
+        Temperature in Kelvin
+        
+    Notes
+    -----
+    PT100 standard (IEC 60751):
+    - R0 = 100 Ω at 0°C
+    - α = 0.00385 Ω/Ω/°C (most common, European standard)
+    
+    For temperatures above 0°C:
+    R(T) = R0 * (1 + A*T + B*T²)
+    where A = 3.9083e-3, B = -5.775e-7
+    
+    For temperatures below 0°C, additional terms are needed,
+    but for cryogenic work above -200°C this approximation is sufficient.
+    """
+    import math
+    
+    # PT100 coefficients (IEC 60751)
+    R0 = 100.0  # Resistance at 0°C (ohms)
+    A = 3.9083e-3  # Temperature coefficient (1/°C)
+    B = -5.775e-7  # Temperature coefficient (1/°C²)
+    
+    # Solve quadratic equation: R = R0*(1 + A*T + B*T²)
+    # Rearranged: B*T² + A*T + (1 - R/R0) = 0
+    
+    a = B
+    b = A
+    c = 1.0 - (resistance / R0)
+    
+    discriminant = b*b - 4*a*c
+    
+    if discriminant < 0:
+        raise ValueError(f"Invalid resistance value {resistance}Ω for PT100 sensor")
+    
+    # Use the positive root (physical solution)
+    temp_celsius = (-b + math.sqrt(discriminant)) / (2*a)
+    
+    # Convert to Kelvin
+    temp_kelvin = temp_celsius + 273.15
+    
+    return temp_kelvin
+
+
 class PidController(Service):
     """
     PID control loop Service (positional PID form with optional baseline offset).
@@ -86,6 +144,7 @@ class PidController(Service):
                  derivative_smoothing: float = 0.0,       # EMA factor in [0,1]; 0 = off
                  max_settle_wait_s: float = 3.0,          # bounded verify-after-set
                  u_offset_baseline: float = 0.0,          # explicit baseline if offset term desired
+                 convert_pt100: bool = False,             # Convert PT100 resistance to Kelvin
                  **kwargs):
         """
         Initialize the PID controller and runtime state.
@@ -107,6 +166,7 @@ class PidController(Service):
         self._status_channel = status_channel
         self.payload_field = payload_field
         self.tolerance = float(tolerance)
+        self._convert_pt100 = bool(convert_pt100)
 
         # Controller gains and setpoint
         self._target_value = float(target_value)
@@ -188,11 +248,22 @@ class PidController(Service):
                     continue
                 # Extract PV
                 this_value = resp.get(self.payload_field)
-                logger.info(f"Message payload value: {this_value}")
+                logger.info(f"Message payload value (raw): {this_value}")
                 if this_value is None:
                     logger.info('value is None')
                     time.sleep(self._poll_period_s)
                     continue
+                
+                # Convert from PT100 resistance to temperature if enabled
+                if self._convert_pt100:
+                    try:
+                        resistance_ohms = float(this_value)
+                        this_value = pt100_resistance_to_kelvin(resistance_ohms)
+                        logger.info(f"PT100 conversion: {resistance_ohms:.2f}Ω -> {this_value:.2f}K ({this_value-273.15:.2f}°C)")
+                    except (ValueError, TypeError) as ex:
+                        logger.error(f"PT100 conversion failed for {this_value}: {ex}")
+                        time.sleep(self._poll_period_s)
+                        continue
 
                 # 2) Parse timestamp robustly (keep your original format first)
                 ts_raw = None
