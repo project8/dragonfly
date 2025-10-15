@@ -138,6 +138,15 @@ class PidController(Service):
         # Forcing reprocess on SP change (as in the original)
         self._force_reprocess = False
 
+        # Set status channel to 1 to enable heater output before anything else
+        logger.info(f"Setting {self._status_channel} to 1 to enable heater output")
+        try:
+            self.set(self._status_channel, 1)
+            logger.info(f"Successfully set {self._status_channel} to 1")
+        except Exception as ex:
+            logger.error(f"Failed to set {self._status_channel} to 1: {ex}")
+            raise
+
         # Verify device state and seed last output
         self.__validate_status()
         self._old_current = self.__get_current()
