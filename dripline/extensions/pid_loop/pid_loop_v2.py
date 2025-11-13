@@ -125,7 +125,7 @@ class PidController(Service):
                  delta_out_min: float = 0.001,          # Minimum current change
                  enable_offset_term: bool = False,       # Use old current as baseline
                  minimum_elapsed_time: float = 0.0,
-                 poll_period_s: float = 0.1,              # NEW: polling period for input_channel
+                 poll_period_s: float = 1.0,              # NEW: polling period for input_channel
                  # --- New, optional, backward-compatible knobs below ---
                  integral_limit: Optional[float] = None,  # |integral(e) dt| cap for anti-windup
                  derivative_smoothing: float = 0.0,       # EMA factor in [0,1]; 0 = off
@@ -583,6 +583,7 @@ class PidController(Service):
             return
 
         self.set_current(new_current)
+        logger.info(f"sent command to set current to {new_current}!!")
         # self._verify_after_set(new_current)
 
         # NEW: append log row
