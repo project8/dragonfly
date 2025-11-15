@@ -493,7 +493,7 @@ class PidController(Service):
             return
 
         self.set_current(new_current)
-        logger.info(f"set current to {new_current!")
+        logger.info(f"set current to {new_current!}")
         # self._verify_after_set(new_current)
 
         # NEW: append log row
