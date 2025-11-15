@@ -47,6 +47,50 @@ def clamp(x: float, lo: float, hi: float) -> float:
     return lo if x < lo else hi if x > hi else x
 
 
+def pt100_resistance_to_kelvin(resistance: float) -> float:
+    """
+    Convert PT100 resistance (ohms) to temperature (Kelvin).
+    
+    Uses a custom calibration curve specific to the RTD01 sensor,
+    fitted from actual sensor data in the cryogenic operating range.
+    
+    Parameters
+    ----------
+    resistance : float
+        Resistance in ohms
+        
+    Returns
+    -------
+    float
+        Temperature in Kelvin
+        
+    Notes
+    -----
+    Calibration curve fitted from RTD01.Front.Cavity.Thermal sensor data:
+    T(K) = a*R² + b*R + c
+    
+    Calibrated range: ~14.4-15.2 Ω (62.5-64.0 K)
+    Based on synchronized Ohm and K channel measurements.
+    
+    For resistance values outside the calibrated range, the polynomial
+    is extrapolated (may be less accurate).
+    """
+    # Custom calibration coefficients for RTD01 sensor
+    # Fitted from actual sensor data: T(K) = a*R² + b*R + c
+    a = 0.059524
+    b = 0.178571
+    c = 47.628423
+    
+    # Apply polynomial calibration
+    temp_kelvin = a * resistance**2 + b * resistance + c
+    
+    # Sanity check: warn if outside typical calibrated range
+    if resistance < 10.0 or resistance > 40.0:
+        logger.warning(f"Resistance {resistance:.2f}Ω is outside typical PT100 range")
+    
+    return temp_kelvin
+
+
 class PidController(Service):
     """
     PID control loop Service (positional PID form with optional baseline offset).
@@ -69,6 +113,7 @@ class PidController(Service):
                  output_channel: str,
                  check_channel: str,
                  status_channel: str,
+                 voltage_channel: str,
                  payload_field: str = 'value_cal',
                  tolerance: float = 0.01,
                  target_value: float = 85.0,
@@ -80,12 +125,13 @@ class PidController(Service):
                  delta_out_min: float = 0.001,          # Minimum current change
                  enable_offset_term: bool = False,       # Use old current as baseline
                  minimum_elapsed_time: float = 0.0,
-                 poll_period_s: float = 0.1,              # NEW: polling period for input_channel
+                 poll_period_s: float = 1.0,              # NEW: polling period for input_channel
                  # --- New, optional, backward-compatible knobs below ---
                  integral_limit: Optional[float] = None,  # |integral(e) dt| cap for anti-windup
                  derivative_smoothing: float = 0.0,       # EMA factor in [0,1]; 0 = off
                  max_settle_wait_s: float = 3.0,          # bounded verify-after-set
                  u_offset_baseline: float = 0.0,          # explicit baseline if offset term desired
+                 convert_pt100: bool = False,             # Convert PT100 resistance to Kelvin
                  **kwargs):
         """
         Initialize the PID controller and runtime state.
@@ -105,8 +151,10 @@ class PidController(Service):
         self._set_channel = output_channel
         self._check_channel = check_channel
         self._status_channel = status_channel
+        self._voltage_channel = voltage_channel
         self.payload_field = payload_field
         self.tolerance = float(tolerance)
+        self._convert_pt100 = bool(convert_pt100)
 
         # Controller gains and setpoint
         self._target_value = float(target_value)
@@ -137,6 +185,25 @@ class PidController(Service):
 
         # Forcing reprocess on SP change (as in the original)
         self._force_reprocess = False
+
+        # Set status channel to 1 to enable heater output before anything else
+        logger.info(f"Setting {self._status_channel} to 1 to enable heater output")
+        try:
+            self.set(self._status_channel, 1)
+            logger.info(f"Successfully set {self._status_channel} to 1")
+        except Exception as ex:
+            logger.error(f"Failed to set {self._status_channel} to 1: {ex}")
+            raise
+
+        # Set voltage channel to 30V if provided
+        if self._voltage_channel is not None:
+            logger.info(f"Setting {self._voltage_channel} to 30V")
+            try:
+                self.set(self._voltage_channel, 30.0)
+                logger.info(f"Successfully set {self._voltage_channel} to 30V")
+            except Exception as ex:
+                logger.error(f"Failed to set {self._voltage_channel} to 30V: {ex}")
+                raise
 
         # Verify device state and seed last output
         self.__validate_status()
@@ -179,11 +246,22 @@ class PidController(Service):
                     continue
                 # Extract PV
                 this_value = resp.get(self.payload_field)
-                logger.info(f"Message payload value: {this_value}")
+                logger.info(f"Message payload value (raw): {this_value}")
                 if this_value is None:
                     logger.info('value is None')
                     time.sleep(self._poll_period_s)
                     continue
+                
+                # Convert from PT100 resistance to temperature if enabled
+                if self._convert_pt100:
+                    try:
+                        resistance_ohms = float(this_value)
+                        this_value = pt100_resistance_to_kelvin(resistance_ohms)
+                        logger.info(f"PT100 conversion: {resistance_ohms:.2f}Ω -> {this_value:.2f}K ({this_value-273.15:.2f}°C)")
+                    except (ValueError, TypeError) as ex:
+                        logger.error(f"PT100 conversion failed for {this_value}: {ex}")
+                        time.sleep(self._poll_period_s)
+                        continue
 
                 # 2) Parse timestamp robustly (keep your original format first)
                 ts_raw = None
@@ -240,6 +318,7 @@ class PidController(Service):
         if need_flush:
             pass # TODO: remove this later
             # self._flush_log_to_csv()
+
 
     def _flush_log_to_csv(self) -> None:
         """
@@ -493,7 +572,7 @@ class PidController(Service):
             return
 
         self.set_current(new_current)
-        logger.info(f"set current to {new_current}!")
+        logger.info(f"sent command to set current to {new_current}!!")
         # self._verify_after_set(new_current)
 
         # NEW: append log row
