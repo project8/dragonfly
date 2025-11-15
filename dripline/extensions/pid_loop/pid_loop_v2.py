@@ -50,45 +50,58 @@ def clamp(x: float, lo: float, hi: float) -> float:
 def pt100_resistance_to_kelvin(resistance: float) -> float:
     """
     Convert PT100 resistance (ohms) to temperature (Kelvin).
-    
-    Uses a custom calibration curve specific to the RTD01 sensor,
-    fitted from actual sensor data in the cryogenic operating range.
-    
-    Parameters
-    ----------
-    resistance : float
-        Resistance in ohms
-        
-    Returns
-    -------
-    float
-        Temperature in Kelvin
-        
-    Notes
-    -----
-    Calibration curve fitted from RTD01.Front.Cavity.Thermal sensor data:
-    T(K) = a*R² + b*R + c
-    
-    Calibrated range: ~14.4-15.2 Ω (62.5-64.0 K)
-    Based on synchronized Ohm and K channel measurements.
-    
-    For resistance values outside the calibrated range, the polynomial
-    is extrapolated (may be less accurate).
+
+    - For the RTD01 cryogenic region (R ≈ 14–15 Ω), use custom polynomial T(K).
+    - Otherwise, use standard IEC 60751 (Callendar–Van Dusen) high-T form
+      and pick the physically reasonable root.
     """
-    # Custom calibration coefficients for RTD01 sensor
-    # Fitted from actual sensor data: T(K) = a*R² + b*R + c
-    a = 0.059524
-    b = 0.178571
-    c = 47.628423
-    
-    # Apply polynomial calibration
-    temp_kelvin = a * resistance**2 + b * resistance + c
-    
-    # Sanity check: warn if outside typical calibrated range
-    if resistance < 10.0 or resistance > 40.0:
-        logger.warning(f"Resistance {resistance:.2f}Ω is outside typical PT100 range")
-    
-    return temp_kelvin
+    # --- 1. RTD01 custom cryogenic calibration (narrow range) ---
+    # Valid-ish window around your fit: adjust if you have better bounds
+    if 13.0 <= resistance <= 17.0:
+        a = 0.059524
+        b = 0.178571
+        c = 47.628423
+        temp_K = a * resistance**2 + b * resistance + c
+        return temp_K
+
+    # --- 2. Standard PT100 IEC 60751 (0–850 °C branch) ---
+    # R(T) = R0 * (1 + A*T + B*T^2)
+    R0 = 100.0  # Ω at 0 °C
+    A = 3.9083e-3
+    B = -5.775e-7
+
+    Cq = 1.0 - (resistance / R0)
+    disc = A * A - 4.0 * B * Cq
+    if disc < 0:
+        logger.error(
+            f"PT100 conversion: negative discriminant for R={resistance:.2f}Ω"
+        )
+        return float("nan")
+
+    sqrt_disc = disc ** 0.5
+
+    # Two quadratic roots
+    T1 = (-A + sqrt_disc) / (2.0 * B)
+    T2 = (-A - sqrt_disc) / (2.0 * B)
+
+    # Pick the physically reasonable root (within PT100 spec range)
+    candidates = [T for T in (T1, T2) if -200.0 <= T <= 850.0]
+    if not candidates:
+        logger.error(
+            f"PT100 conversion: no physical solution for R={resistance:.2f}Ω"
+        )
+        return float("nan")
+
+    T_celsius = candidates[0]
+    temp_K = T_celsius + 273.15
+
+    # Optional sanity log, but don't claim 108Ω is "outside PT100 range"
+    if resistance < 10.0 or resistance > 400.0:
+        logger.warning(
+            f"PT100 conversion: R={resistance:.2f}Ω is outside typical operating range"
+        )
+
+    return temp_K
 
 
 class PidController(Service):
