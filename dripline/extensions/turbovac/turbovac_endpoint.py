@@ -80,7 +80,7 @@ class TurboVACTelegramGetEntity(TurboVACTelegramEntity):
         raise ThrowReply('message_error_invalid_method', f"endpoint '{self.name}' does not support set")
 
 __all__.append('TurboVACTelegramSetEntity')
-class TurboVACTelegramGetEntity(TurboVACTelegramEntity):
+class TurboVACTelegramSetEntity(TurboVACTelegramEntity):
     def __init__(self, **kwargs):
         TurboVACTelegramGetEntity.__init__(self, **kwargs)
 
