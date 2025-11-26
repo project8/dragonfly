@@ -70,3 +70,19 @@ class TurboVACTelegramEntity(Entity):
         response = TelegramReader(reply, 'reply')
 
         return response.parameter_value
+
+__all__.append('TurboVACTelegramGetEntity')
+class TurboVACTelegramGetEntity(TurboVACTelegramEntity):
+    def __init__(self, **kwargs):
+        TurboVACTelegramGetEntity.__init__(self, **kwargs)
+
+    def on_set(self, value):
+        raise ThrowReply('message_error_invalid_method', f"endpoint '{self.name}' does not support set")
+
+__all__.append('TurboVACTelegramSetEntity')
+class TurboVACTelegramGetEntity(TurboVACTelegramEntity):
+    def __init__(self, **kwargs):
+        TurboVACTelegramGetEntity.__init__(self, **kwargs)
+
+    def on_get(self, value):
+        raise ThrowReply('message_error_invalid_method', f"endpoint '{self.name}' does not support get")
