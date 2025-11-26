@@ -12,12 +12,12 @@ telegrams which are used to communicate with the pump.
 
 from dataclasses import dataclass
 
-from turboctl.telegram.codes import (
+from .codes import (
     ControlBits, StatusBits, get_parameter_code, get_parameter_mode,
     ParameterResponse, ParameterError
 )
-from turboctl.telegram.datatypes import (Data, Uint, Sint, Bin)
-from turboctl.telegram.parser import PARAMETERS
+from .datatypes import (Data, Uint, Sint, Bin)
+from .parser import PARAMETERS
 
 
 @dataclass

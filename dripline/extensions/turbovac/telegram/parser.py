@@ -24,7 +24,7 @@ from dataclasses import dataclass
 from collections import OrderedDict
 from typing import Union, List
 
-from turboctl.telegram.datatypes import Data, Uint, Sint, Float
+from .datatypes import Data, Uint, Sint, Float
 
 
 @dataclass

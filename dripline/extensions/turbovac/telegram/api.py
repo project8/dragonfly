@@ -19,8 +19,8 @@ The functions return both the query sent to the pump and the reply received
 back as :class:`~turboctl.telegram.telegram.TelegramReader` instances.
 """
 
-from turboctl.telegram.codes import ControlBits
-from turboctl.telegram.telegram import (Telegram, TelegramBuilder, 
+from .codes import ControlBits
+from .telegram import (Telegram, TelegramBuilder, 
                                         TelegramReader)
 
 
