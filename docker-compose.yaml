@@ -55,3 +55,21 @@ services:
       - /usr/local/src_dragonfly/dragonfly/watchdog.py
       - --config
       - /root/AlarmSystem.yaml
+
+  Turbo1:
+    image: dragonfly_turbovac:latest
+    depends_on:
+      - rabbit-broker
+    volumes:
+      - ./examples/turbo_1.yaml:/root/devices/turbo_1.yaml
+    environment:
+      - DRIPLINE_USER=dripline
+      - DRIPLINE_PASSWORD=dripline
+    command:
+      - dl-serve
+      - -c
+      - /root/devices/turbo_1.yaml
+      - -b
+      - rabbit-broker
+      - -vvv
+
