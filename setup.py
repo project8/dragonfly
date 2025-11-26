@@ -7,4 +7,5 @@ setup(
     name="dragonfly",
     version='v2.1.0',  # TODO: should get version from git
     packages=packages,
+    include_package_data=True,
 )
