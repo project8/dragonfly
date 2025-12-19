@@ -174,3 +174,26 @@ class ModbusEntity(Entity):
         if self.data_type in self.dtype_map:
             value = ModbusTcpClient.convert_to_registers(value, self.dtype_map[self.data_type], word_order=self.wordorder)
         return self.service.write_register(self.register, value)
+
+__all__.append('ModbusGetEntity')
+class ModbusGetEntity(ModbusEntity): 
+    '''
+    Identical to ModbusEntity, but with an explicit exception if on_set is attempted
+    '''
+    def __init__(self, **kwargs):
+        ModbusEntity.__init__(self, **kwargs)
+
+    def on_set(self, valuei):
+        raise ThrowReply('message_error_invalid_method', f"endpoint '{self.name}' does not support set")
+
+__all__.append('ModbusSetEntity')
+class ModbusSetEntity(ModbusEntity): 
+    '''
+    Identical to ModbusEntity, but with an explicit exception if on_get is attempted
+    '''
+    def __init__(self, **kwargs):
+        ModbusEntity.__init__(self, **kwargs)
+
+    @calibrate()
+    def on_get(self, valuei):
+        raise ThrowReply('message_error_invalid_method', f"endpoint '{self.name}' does not support set")
