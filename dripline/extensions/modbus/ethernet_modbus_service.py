@@ -125,8 +125,21 @@ __all__.append('ModbusEntity')
 class ModbusEntity(Entity):
     '''
     Generic entity for Modbus read and write.
-    TODO: Add additional read-only or write-only versions
     '''
+
+    dtype_map = {"int16": ModbusTcpClient.DATATYPE.INT16,
+                 "uint16": ModbusTcpClient.DATATYPE.UINT16,
+                 "int32": ModbusTcpClient.DATATYPE.INT32,
+                 "uint32": ModbusTcpClient.DATATYPE.UINT32,
+                 "int64": ModbusTcpClient.DATATYPE.INT64,
+                 "uint64": ModbusTcpClient.DATATYPE.UINT64,
+                 "float32": ModbusTcpClient.DATATYPE.FLOAT32,
+                 "float64": ModbusTcpClient.DATATYPE.FLOAT64,
+                 "string": ModbusTcpClient.DATATYPE.STRING,
+                 "bits": ModbusTcpClient.DATATYPE.BITS,
+                 }
+
+
     def __init__(self,
                  register,
                  n_reg = 1,
@@ -150,10 +163,12 @@ class ModbusEntity(Entity):
     @calibrate()
     def on_get(self):
         result = self.service.read_register(self.register, self.n_reg, self.reg_type)
-        if self.data_type == 'float32':
-            result = ModbusTcpClient.convert_from_registers(result, ModbusTcpClient.DATATYPE.FLOAT32, word_order=self.wordorder)
+        if self.data_type in self.dtype_map:
+            result = ModbusTcpClient.convert_from_registers(result, self.dtype_map[self.data_type], word_order=self.wordorder)
         logger.info('Decoded result for <{}> is {}'.format(self.name, result))
         return result
 
     def on_set(self, value):
+        if self.data_type in self.dtype_map:
+            value = ModbusTcpClient.convert_to_registers(value, self.dtype_map[self.data_type], word_order=self.wordorder)
         return self.service.write_register(self.register, value)
