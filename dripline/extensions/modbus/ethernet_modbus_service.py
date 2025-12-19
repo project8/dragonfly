@@ -82,6 +82,17 @@ class EthernetModbusService(Service):
         except Exception as e: 
             logger.debug(f'read registers failed: {e}. Attempting reconnect.')
             self._reconnect()
+            try:
+                if reg_type == 0x03:
+                    result = self.client.read_holding_registers(register + self.offset, count=n_reg)
+                elif reg_type == 0x04:
+                    result = self.client.read_input_registers(register + self.offset, count=n_reg)
+    
+                logger.info('Device returned {}'.format(result.registers))
+    
+            except Exception as e: 
+                raise ThrowReply('resource_error_query', 'Query data failed')
+
 
         if n_reg == 1:
             return result.registers[0]
