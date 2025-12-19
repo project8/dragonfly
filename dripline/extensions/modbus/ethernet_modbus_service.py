@@ -1,7 +1,6 @@
 try:
     import pymodbus
     from pymodbus.client import ModbusTcpClient
-    from pymodbus.payload import BinaryPayloadDecoder
 except ImportError:
     pass
 
@@ -23,16 +22,12 @@ class EthernetModbusService(Service):
     def __init__(self,
                  ip_address,
                  indexing='protocol',
-                 wordorder='big',
-                 byteorder='big',
                  **kwargs
                  ):
         '''
         Args:
             ip_address (str): properly formatted ip address of Modbus device
             indexing (int, str): address indexing used by device
-            wordorder (str): endianness of reply words
-            byteorder (str): endianness of reply bytes
         '''
         if not 'pymodbus' in globals():
             raise ImportError('pymodbus not found, required for EthernetModbusService class')
@@ -52,35 +47,20 @@ class EthernetModbusService(Service):
         else:
             raise TypeError('Invalid indexing type <{}>, expect string or int'.format(type(indexing)))
 
-        if wordorder.lower() == 'big':
-            self.word = pymodbus.constants.Endian.BIG
-        elif wordorder.lower() == 'little':
-            self.word = pymodbus.constants.Endian.LITTLE
-        else:
-            raise ValueError('Invalid wordorder argument <{}>, expect big or little'.format(wordorder))
-
-        if byteorder.lower() == 'big':
-            self.byte = pymodbus.constants.Endian.BIG
-        elif byteorder.lower() == 'little':
-            self.byte = pymodbus.constants.Endian.LITTLE
-        else:
-            raise ValueError('Invalid byteorder argument <{}>, expect big or little'.format(byteorder))
-
         self.client = ModbusTcpClient(self.ip)
         self._reconnect()
 
     def _reconnect(self):
         '''
         Minimal connection method.
-        TODO: Expand to call on failed read/write, and add sophistication.
         '''
         if self.client.connected:
             self.client.close()
 
         if self.client.connect():
-            logger.debug('Connected to Alicat Device.')
+            logger.debug('Connected to Device.')
         else:
-            raise ThrowReply('resource_error_connection','Failed to Connect to Alicat Device')
+            raise ThrowReply('resource_error_connection','Failed to Connect to Device')
 
     def read_register(self, register, n_reg, reg_type=0x04):
         '''
@@ -93,9 +73,9 @@ class EthernetModbusService(Service):
 
         try:
             if reg_type == 0x03:
-                result = self.client.read_holding_registers(register + self.offset, n_reg)
+                result = self.client.read_holding_registers(register + self.offset, count=n_reg)
             elif reg_type == 0x04:
-                result = self.client.read_input_registers(register + self.offset, n_reg)
+                result = self.client.read_input_registers(register + self.offset, count=n_reg)
 
             logger.info('Device returned {}'.format(result.registers))
 
@@ -104,27 +84,31 @@ class EthernetModbusService(Service):
             self._reconnect()
 
         if n_reg == 1:
-            return result[0]
+            return result.registers[0]
         else:
-            return BinaryPayloadDecoder.fromRegisters(result.registers, wordorder=self.word, byteorder=self.byte)
+            return result.registers
 
     def write_register(self, register, value):
         '''
-        This register only works with reg_type = 0x10
+        This register uses reg_type = 0x10 if value is a list and reg_type = 0x06 otherwise.
         '''
         logger.debug('writing {} to register {}'.format(value, register))   
 
-        if not isinstance(value, list):
-                raise ThrowReply('message_error_invalid_method', 'Unsupported write type')
-        
         try:
-            return self.client.write_registers(register + self.offset, value)
-        
+            if isinstance(value, list):
+                return self.client.write_registers(register + self.offset, value)
+            else:
+                return self.client.write_register(register + self.offset, value)
         except Exception as e:
             logger.debug(f'write_registers failed: {e}. Attempting reconnect.')
             self._reconnect()
-            return self.client.write_registers(register + self.offset, value)
-
+            try:
+                if isinstance(value, list):
+                    return self.client.write_registers(register + self.offset, value)
+                else:
+                    return self.client.write_register(register + self.offset, value)
+            except:
+                raise ThrowReply('resource_error_write','Failed to write register')
 
 __all__.append('ModbusEntity')
 class ModbusEntity(Entity):
@@ -135,7 +119,9 @@ class ModbusEntity(Entity):
     def __init__(self,
                  register,
                  n_reg = 1,
+                 wordorder = "big",
                  data_type = None,
+                 reg_type = 0x04,
                  **kwargs):
         '''
         Args:
@@ -145,14 +131,16 @@ class ModbusEntity(Entity):
         '''
         self.register = register
         self.n_reg = n_reg
+        self.reg_type = reg_type
+        self.wordorder = wordorder
         self.data_type = data_type
         Entity.__init__(self, **kwargs)
 
     @calibrate()
     def on_get(self):
-        result = self.service.read_register(self.register, self.n_reg)
+        result = self.service.read_register(self.register, self.n_reg, self.reg_type)
         if self.data_type == 'float32':
-            result = result.decode_32bit_float()
+            result = ModbusTcpClient.convert_from_registers(result, ModbusTcpClient.DATATYPE.FLOAT32, word_order=self.wordorder)
         logger.info('Decoded result for <{}> is {}'.format(self.name, result))
         return result
 
