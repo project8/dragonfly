@@ -96,17 +96,17 @@ class EthernetModbusService(Service):
 
         try:
             if isinstance(value, list):
-                return self.client.write_registers(register + self.offset, value)
+                return self.client.write_registers(register + self.offset, value).registers
             else:
-                return self.client.write_register(register + self.offset, value)
+                return self.client.write_register(register + self.offset, value).registers[0]
         except Exception as e:
             logger.debug(f'write_registers failed: {e}. Attempting reconnect.')
             self._reconnect()
             try:
                 if isinstance(value, list):
-                    return self.client.write_registers(register + self.offset, value)
+                    return self.client.write_registers(register + self.offset, value).registers
                 else:
-                    return self.client.write_register(register + self.offset, value)
+                    return self.client.write_register(register + self.offset, value).registers[0]
             except:
                 raise ThrowReply('resource_error_write','Failed to write register')
 
