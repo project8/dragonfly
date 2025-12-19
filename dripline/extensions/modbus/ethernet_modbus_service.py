@@ -151,7 +151,9 @@ class ModbusEntity(Entity):
         Args:
             register (int): address to read from
             n_reg (int): number of registers needed to read
+            wordorder (["big", "littel"])
             data_type (str): the data type being read from the registers
+            reg_type (hex): either 0x04 for input registers or 0x03 for holding registers
         '''
         self.register = register
         self.n_reg = n_reg
