@@ -38,6 +38,7 @@ class EthernetUSSService(Service):
         self.socket_timeout = float(socket_timeout)
         self.socket_info = socket_info
         self.STX = b'\x02'
+        self.control_bits = []
         self._reconnect()
 
     def _reconnect(self):
