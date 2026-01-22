@@ -1,7 +1,4 @@
-import asteval # used for FormatEntity
-import re # used for FormatEntity
-
-from dripline.core import calibrate, ThrowReply
+from dripline.core import calibrate
 from dripline.implementations import FormatEntity
 
 import logging

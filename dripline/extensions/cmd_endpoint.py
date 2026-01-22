@@ -1,6 +1,3 @@
-import re # used for FormatEntity
-
-from dripline.core import calibrate, ThrowReply
 from dripline.core import Entity
 
 import logging
