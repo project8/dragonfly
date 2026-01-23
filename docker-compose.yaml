@@ -40,3 +40,18 @@ services:
       - DRIPLINE_PASSWORD=dripline
     command: >
       bash -c "dl-serve -vv -c /root/jitter_example.yaml"
+
+  AlarmSystem:
+    # this image is build from this branch
+    image: dragonfly_docker:latest
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./AlarmSystem.yaml:/root/AlarmSystem.yaml
+    environment:
+      - DRIPLINE_USER=dripline
+      - DRIPLINE_PASSWORD=dripline
+    command:
+      - python3
+      - /usr/local/src_dragonfly/dragonfly/watchdog.py
+      - --config
+      - /root/AlarmSystem.yaml

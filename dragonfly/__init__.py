@@ -15,3 +15,5 @@ def __get_version():
     return version
 version = __get_version()
 __version__ = version.version
+
+from .watchdog import *

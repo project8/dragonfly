@@ -1,0 +1,45 @@
+dripline_mesh:
+  broker: rabbit-broker
+  broker_port: 5672
+
+check_interval_s: 30
+
+
+# To create a slack webhook see https://api.slack.com/messaging/webhooks steps 1. to 3.
+# Do not push your webhook to github. Slack does not like that and will disable the webhood due to security reasons.
+slack_hook: "https://hooks.slack.com/services/XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+
+blacklist_containers: 
+  # containers listed here will not be checked if they are running or having error messages
+  - mainzdripline3-dls10ZTranslator
+  - mainzdripline3-pneumaticValve_dl3
+  - mainzdripline3-Pressure_gauge_70
+  - mainzdripline3-habs_tc
+  - mainzdripline3-Checklist
+  - mainzdripline3-slowdash
+  - mainzdripline3-dripline-bash
+  - mainzdripline3-SignalTest
+check_endpoints:
+  # read this as: if 'endpoint' 'method' 'reference' send 'message'
+  # e.g.          if 'habs_error_status' 'not_equal' '00' send 'HABS power supply issue! Error status: {value}'
+  # methods can be one of ["not_equal", "equal", "lower", "greater"] 
+  #- endpoint: habs_error_status
+  #  method: not_equal
+  #  reference: "00"
+  #  message: "HABS power supply issue! Error status: {value}"
+  #- endpoint: pg8_pressure_mbar
+  #  method: greater
+  #  reference: 2e-5
+  #  message: "PG8 above 2e-5 mbar (too high)"
+  #- endpoint: pg60_pressure_mbar
+  #  method: greater
+  #  reference: 1e-4
+  #  message: "PG60 above 1e-4 mbar (too high)"
+      #- endpoint: read_C_Temperature_CoolingLoopSensor1_MATS
+      #method: lower
+      #reference: 0
+      #message: "Cooling loop water is below freeze point (sensor 1)"
+      #- endpoint: read_C_Temperature_CoolingLoopSensor2_MATS
+      # method: lower
+      #reference: 0
+      #message: "Cooling loop water is below freeze point (sensor 2)"
