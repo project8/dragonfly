@@ -20,12 +20,14 @@ class EthernetModbusService(Service):
     def __init__(self,
                  ip_address,
                  indexing='protocol',
+                 wordorder = "big",
                  **kwargs
                  ):
         '''
         Args:
             ip_address (str): properly formatted ip address of Modbus device
             indexing (int, str): address indexing used by device
+            wordorder (["big", "littel"])
         '''
         if not 'pymodbus' in globals():
             raise ImportError('pymodbus not found, required for EthernetModbusService class')
@@ -45,6 +47,7 @@ class EthernetModbusService(Service):
         else:
             raise TypeError('Invalid indexing type <{}>, expect string or int'.format(type(indexing)))
 
+        self.wordorder = wordorder
         self.client = ModbusTcpClient(self.ip)
         self._reconnect()
 
@@ -143,7 +146,6 @@ class ModbusEntity(Entity):
     def __init__(self,
                  register,
                  n_reg = 1,
-                 wordorder = "big",
                  data_type = None,
                  reg_type = 0x04,
                  **kwargs):
@@ -151,14 +153,12 @@ class ModbusEntity(Entity):
         Args:
             register (int): address to read from
             n_reg (int): number of registers needed to read
-            wordorder (["big", "littel"])
             data_type (str): the data type being read from the registers
             reg_type (hex): either 0x04 for input registers or 0x03 for holding registers
         '''
         self.register = register
         self.n_reg = n_reg
         self.reg_type = reg_type
-        self.wordorder = wordorder
         self.data_type = data_type
         Entity.__init__(self, **kwargs)
 
@@ -166,13 +166,13 @@ class ModbusEntity(Entity):
     def on_get(self):
         result = self.service.read_register(self.register, self.n_reg, self.reg_type)
         if self.data_type in self.dtype_map:
-            result = ModbusTcpClient.convert_from_registers(result, self.dtype_map[self.data_type], word_order=self.wordorder)
+            result = ModbusTcpClient.convert_from_registers(result, self.dtype_map[self.data_type], word_order=self.service.wordorder)
         logger.info('Decoded result for <{}> is {}'.format(self.name, result))
         return result
 
     def on_set(self, value):
         if self.data_type in self.dtype_map:
-            value = ModbusTcpClient.convert_to_registers(value, self.dtype_map[self.data_type], word_order=self.wordorder)
+            value = ModbusTcpClient.convert_to_registers(value, self.dtype_map[self.data_type], word_order=self.service.wordorder)
         return self.service.write_register(self.register, value)
 
 __all__.append('ModbusGetEntity')
