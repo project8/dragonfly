@@ -10,11 +10,13 @@ Slowdash_Pressures_URL = ('http://astro-wake.physik.uni-mainz.de:18881/slowplot.
 
 
 
-
 listOfChecks = ["check1", "check2","check3","check4","check5"]#number of checks
-Description = [' Go on this page:  <a href= "http://astro-wake.physik.uni-mainz.de:18881/slowplot.html?config=slowplot-CoolingLoopSensors.json">CoolingLoop Sensor</a>   <br> ','  Go on this page:  <a href= "http://astro-wake.physik.uni-mainz.de:18881/slowplot.html?config=slowplot-ThermocoupleTemperatures.json">Brainbox Thermocouples</a> check all the temperatures <br>','Go on this page:  <a href= "http://astro-wake.physik.uni-mainz.de:18881/slowplot.html?config=slowplot-ThermocoupleTemperatures.json">MainzAtomicTestStandPage</a> <br>','Go on this page:  <a href= "http://astro-wake.physik.uni-mainz.de:18881/slowplot.html?config=slowplot-Pressures.json">Pressures</a> <br>','' ] #what is displayed in the checklist's web page before each checkbox, such as a link for example
-Labels = ['Is the Cooling Loop Sensor Ok? ie is there any flow',' Are the thermocouples temperature between 18C and 25C?',' Check if there is no red attention sign.','Check all the pressures','Go in the lab. Check if there is no weird sound '] # what is displayed in front of the checkbox
-ResponseInElog = ["Cooling Loop Sensor","Brainbox thermocouples temperatures", "Red attention signs in Mainz Atomic Test Stand Page","Pressure", "Lab sounds"] #what will be written in the created eLog 
+Description = [' Go on this page:  <a href= "http://astro-wake.physik.uni-mainz.de:18881/slowplot.html?config=slowplot-CoolingLoopSensors.json">CoolingLoop Sensor</a>   <br> ','  Go on this page:  <a href= "http://astro-wake.physik.uni-mainz.de:18881/slowplot.html?config=slowplot-ThermocoupleTemperatures.json">Brainbox Thermocouples</a> check all the temperatures <br>','Go on this page:  <a href= "http://astro-wake.physik.uni-mainz.de:18881/slowplot.html?config=slowplot-ThermocoupleTemperatures.json">MainzAtomicTestStandPage</a> <br>','' ,'Go on this page:  <a href= "http://astro-wake.physik.uni-mainz.de:18881/slowplot.html?config=slowplot-Pressures.json">Slowdash Pressures</a> <br>'] #what is displayed in the checklist's web page before each checkbox, such as a link for example
+Labels = ['Is the Cooling Loop Sensor Ok? ie is there any flow',' Are the thermocouples temperature between 18C and 25C?',' Check if there is no red attention sign.','Go in the lab. Check if there is no weird sound ','Check all the pressures'] # what is displayed in front of the checkbox
+ResponseInElog = ["Cooling Loop Sensor","Brainbox thermocouples temperatures", "Red attention signs in Mainz Atomic Test Stand Page", "Lab sounds","Pressures"] #what will be written in the created eLog 
+
+PressureGauges = ["PG80", "PG90"]#name of the Pressure Gauge
+ValueOfPG = ["Should be between 1e-10 hPa and 2e-9 hPa", "Should be between 1e-10hPa and 2e-9 hPa"]# range of the value the corresponding PG should have
 
 @app.route('/')
 def hello():
@@ -31,8 +33,8 @@ def hello():
 
     <ul><p> 
     <form id="Checklist" action="/handle_data" method="post">
-    <input type="text" id="UserName" name="UserName"><br> 
-    <label for="UserName"> Who is filling the Checklist :</label> 
+    Who is filling the Checklist : 
+    <input type="text" id="UserName" name="UserName"> <br><br>
     """
 
     for check,text, label in zip(listOfChecks, Description, Labels):
@@ -40,16 +42,22 @@ def hello():
         content += f"""
         <input type="hidden" name="{check}_hidden" id="hiddenTerms_{check}">
         <input type="checkbox" id="{check}">
-        <label for="{check}"> {label} </label> <br>
+        <label for="{check}"> {label} </label> <br><br>
         """ 
 
+    for PG,labelOfPG in zip(PressureGauges,ValueOfPG,) : 
+        content += PG + """ :"""
+        content += f"""
+        <input type="text" id="{PG}" name="{PG}"> 
+        <label for="{PG}"> {labelOfPG} </label><br> 
+
+        """
 
     content += """
     <button type="submit" id="submit_button">Submit</button>
     </form>
     </p></ul>
-    
-    #in order to give the checkox a value if it was not checked
+
     <script> 
         const form = document.getElementById('Checklist');
         const button = document.getElementById('submit_button');
@@ -89,6 +97,9 @@ def handle_data():
             else: 
                 print("Checked",response, "[ ]", flush=True)
 
+        for namePG in PressureGauges:
+            print(f"The value of {namePG} is :",request.form[f"{namePG}"], flush= True)
+    
     except Exception as e:
         print(e)
    # print(dir(request.form),flush=True)
@@ -101,9 +112,6 @@ def handle_data():
 def foobar():
     return '<h1>Baking out? No problem!</h1>'
 
-@app.route('/test')
-def test2():
-    return {'url': 'http://astro-wake.physik.uni-mainz.de:18881/slowplot.html?config=slowplot-Pressures.json'}
 
 @app.route('/Experimenting')
 def foobar2():
