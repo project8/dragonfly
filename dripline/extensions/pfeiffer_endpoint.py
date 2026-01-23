@@ -13,7 +13,17 @@ class PfeifferEntity(Entity):
     Conversion of datatypes and checksum checking are implemented.
     '''
 
-    _datatype = {"bool_old": 6, "uint": 6, "ureal": 6, "string": 6, "bool": 1, "ushort": 3, "uexpo": 6, "str16": 16, "str8": 8, "query": 2}
+    _datatype = {"bool_old": 6, 
+                 "uint":     6, 
+                 "ureal":    6, 
+                 "string":   6, 
+                 "bool":     1, 
+                 "ushort":   3, 
+                 "uexpo":    6, 
+                 "str16":   16, 
+                 "str8":     8, 
+                 "query":    2
+                 }
     
     def __init__(self,
                  parameter = 303,
@@ -57,6 +67,7 @@ class PfeifferEntity(Entity):
             val = int(val/10**expon*1000)
             expon_mod = expon - 20
             return f"{val:04d}{expon_mod:02d}"
+        return value
 
     def unformat_value(self, value):
         if value in ["NO_DEF", "_RANGE", "_LOGIC"]:
@@ -76,13 +87,15 @@ class PfeifferEntity(Entity):
             return int(value)/100.
         if self.datatype == "uexpo":
             return int(value[:4])/1000. * 10**(int(value[4:]) - 20)
+        return value
 
     def disensemble_result(self, reply):
         if self.get_checksum(reply[:-3]) != int(reply[-3:]):
-            logger.debug("checksum not matching")
-        address = int(reply[:3])
-        action = reply[3:5]
-        parameter = int(reply[5:8])
+            logger.warning("checksum not matching")
+        # split message into its constituents, we do not need all of them
+        # address = int(reply[:3])
+        # action = reply[3:5]
+        # parameter = int(reply[5:8])
         length = int(reply[8:10])
         data = reply[10:10+length]
         return data
