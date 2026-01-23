@@ -4,8 +4,6 @@ try:
 except ImportError:
     pass
 
-import scarab
-
 from dripline.core import calibrate, Entity, Service, ThrowReply
 
 import logging
@@ -62,6 +60,18 @@ class EthernetModbusService(Service):
         else:
             raise ThrowReply('resource_error_connection','Failed to Connect to Device')
 
+    def _read_register_attempt(self, register, n_reg, reg_type=0x04):
+        result = None
+        
+        if reg_type == 0x03:
+            result = self.client.read_holding_registers(register + self.offset, count=n_reg)
+        elif reg_type == 0x04:
+            result = self.client.read_input_registers(register + self.offset, count=n_reg)
+
+        logger.info('Device returned {}'.format(result.registers))
+        return result
+
+
     def read_register(self, register, n_reg, reg_type=0x04):
         '''
         n_reg determines the num of registers needed to express values. More n_reg are needed for higher accuracy values.
@@ -72,24 +82,12 @@ class EthernetModbusService(Service):
         logger.debug('Reading {} registers starting with {}'.format(n_reg, register))
 
         try:
-            if reg_type == 0x03:
-                result = self.client.read_holding_registers(register + self.offset, count=n_reg)
-            elif reg_type == 0x04:
-                result = self.client.read_input_registers(register + self.offset, count=n_reg)
-
-            logger.info('Device returned {}'.format(result.registers))
-
+            result = self._read_register_attempt(register, n_reg, reg_type)
         except Exception as e: 
             logger.debug(f'read registers failed: {e}. Attempting reconnect.')
             self._reconnect()
             try:
-                if reg_type == 0x03:
-                    result = self.client.read_holding_registers(register + self.offset, count=n_reg)
-                elif reg_type == 0x04:
-                    result = self.client.read_input_registers(register + self.offset, count=n_reg)
-    
-                logger.info('Device returned {}'.format(result.registers))
-    
+                result = self._read_register_attempt(register, n_reg, reg_type)
             except Exception as e: 
                 raise ThrowReply('resource_error_query', 'Query data failed')
 
@@ -99,6 +97,14 @@ class EthernetModbusService(Service):
         else:
             return result.registers
 
+    def _write_register_attempt(self, register, value):
+        response = None
+        if isinstance(value, list):
+            response = self.client.write_registers(register + self.offset, value).registers
+        else:
+            response = self.client.write_register(register + self.offset, value).registers[0]
+        return response
+
     def write_register(self, register, value):
         '''
         This register uses reg_type = 0x10 if value is a list and reg_type = 0x06 otherwise.
@@ -106,18 +112,12 @@ class EthernetModbusService(Service):
         logger.debug('writing {} to register {}'.format(value, register))   
 
         try:
-            if isinstance(value, list):
-                return self.client.write_registers(register + self.offset, value).registers
-            else:
-                return self.client.write_register(register + self.offset, value).registers[0]
+            self._write_register_attempt(register, value)
         except Exception as e:
             logger.debug(f'write_registers failed: {e}. Attempting reconnect.')
             self._reconnect()
             try:
-                if isinstance(value, list):
-                    return self.client.write_registers(register + self.offset, value).registers
-                else:
-                    return self.client.write_register(register + self.offset, value).registers[0]
+                self._write_register_attempt(register, value)
             except:
                 raise ThrowReply('resource_error_write','Failed to write register')
 
