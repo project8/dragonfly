@@ -1,0 +1,16 @@
+name: run_state
+module: RunStateService
+state_file: ./state.json
+dripline_mesh:
+  broker: rabbit-broker
+  broker_port: 5672
+endpoints:
+  - name: run_number
+    module: StateGetEntity
+    key: run_number
+  - name: run_comment
+    module: StateGetEntity
+    key: run_comment
+  - name: run_is_active
+    module: StateGetEntity
+    key: run_active
