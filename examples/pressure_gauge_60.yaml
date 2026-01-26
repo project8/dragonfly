@@ -1,0 +1,28 @@
+runtime-config:
+  name: pressure_gauge_60
+  module: EthernetSCPIService
+  #module: EthernetPfeifferService
+  socket_timeout: 5
+  socket_info: ("10.93.130.113", 10001) # astro-pirate
+  cmd_at_reconnect:
+      - "0010034902=?111" # Check for model name
+  reconnect_test: "0011034906HPT200118"
+  command_terminator: "\r"      # is what goes after the command sent
+  response_terminator: "\r"      # is what goes after the command sent
+  endpoints:
+    - name: pg60_error_status
+      module: PfeifferGetEntity
+      parameter: 303
+      datatype: string
+      log_interval: 10
+
+    - name: pg60_pressure_mbar
+      module: PfeifferEntity
+      parameter: 740
+      datatype: uexpo
+      log_interval: 10
+
+    - name : pg60_goal_degas     
+      module:  PfeifferEntity
+      parameter: 40
+      datatype: bool
