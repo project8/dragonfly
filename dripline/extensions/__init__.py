@@ -13,3 +13,4 @@ from .asteval_endpoint import *
 from .thermo_fisher_endpoint import *
 from .ethernet_thermo_fisher_service import *
 from .ethernet_modbus_service import *
+from .pfeiffer_endpoint import *
