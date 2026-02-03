@@ -2,6 +2,15 @@
 
 from flask import Flask, redirect, request, render_template
 from datetime import datetime
+from dragonfly.utility import send_to_elog
+
+import yaml
+
+with open("/root/checklist.yaml", "r") as open_file:
+    config = yaml.safe_load( open_file.read() )
+
+
+
 app = Flask(__name__)
 
 Slowdash_Pressures_URL = ('http://astro-wake.physik.uni-mainz.de:18881/slowplot.html?config=slowplot-Pressures.json') 
@@ -86,23 +95,23 @@ def handle_data():
     now = datetime.now() # current date and time
     date_time = now.strftime("%d/%m/%Y, %H:%M:%S")
 
-    print("Date and time is :"+ date_time, flush=True)
-    print(request.form, flush=True)
-    print("The one writing is : ",request.form["UserName"],flush=True)
-
-    try :
-        for check,response in zip(listOfChecks,ResponseInElog):
-            if request.form.get(check+"_hidden")== 'True' :
-                print("Checked", response ,"[x]",flush=True)
-            else: 
-                print("Checked",response, "[ ]", flush=True)
+    report = ""
+    report += f"Date and time is: {date_time}\n"
+    report += f"The one writing is: {request.form['UserName']}\n"
+    try:
+        for check, response in zip(listOfChecks, ResponseInElog):
+            if request.form.get(f"{check}_hidden") == 'True':
+                report += f"Checked {response} [x]\n"
+            else:
+                report += f"Checked {response} [ ]\n"
 
         for namePG in PressureGauges:
-            print(f"The value of {namePG} is :",request.form[f"{namePG}"], flush= True)
-    
+            report += f"The value of %s is: %s\n"%(namePG, request.form[f"{namePG}"])
+
     except Exception as e:
         print(e)
-   # print(dir(request.form),flush=True)
+
+    send_to_elog(report, subject="Checklist", author=config["username"], category="Slow controls", msg_id=None, password=config["password"])
 
     # Tell the user that checklist is done.
     return "<h1> Thanks for filling out the check list. You are done for today. </h1>"
