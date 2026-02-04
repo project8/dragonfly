@@ -60,7 +60,7 @@ class Project8SensorLogger(AlertConsumer, PostgreSQLInterface):
             insert_data = {'timestamp': a_message_timestamp}
             insert_data.update(a_routing_key_data)
             insert_data.update(a_payload.to_python())
-            logger.info(f"Inserting {a_routing_key_data} in table {table_type}; data are:\n{insert_data}")
+            logger.info(f"Inserting {a_routing_key_data} in table {table_name}; data are:\n{insert_data}")
 
             # do the insert
             ### dry run for testing
