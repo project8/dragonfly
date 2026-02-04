@@ -53,7 +53,10 @@ class Project8SensorLogger(AlertConsumer, PostgreSQLInterface):
             # add safty check, and see if the key is contained in the table
             #if len(this_type) != 1:
             #    raise Exception("not registered endpoint")
-            table_name = self._data_tables[this_type[1][0][0]]
+            try:
+                table_name = self._data_tables[this_type[1][0][0]]
+            except:
+                raise Exception(f"{a_routing_key_data} is not in database, see {this_type}")
             this_data_table = self.sync_children[table_name]
 
             # combine data sources
