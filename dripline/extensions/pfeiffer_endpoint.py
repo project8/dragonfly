@@ -34,7 +34,7 @@ class PfeifferEntity(Entity):
         Args:
             parameter (int): number of the parameter as documented in the manual"
             datatype (str): one of ["bool_old", "uint", "ureal", "string", "bool", "ushort", "uexpo", "str16", "str8"
-            unit_address (int): number of the unit address, allwoed range: 1-16
+            unit_address (int): number of the unit address, allowed range: 1-16
         '''
         Entity.__init__(self, **kwargs)
         self.parameter = parameter
