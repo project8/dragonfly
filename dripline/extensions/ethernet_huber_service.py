@@ -27,7 +27,7 @@ def bytes_to_ints(value):
 
 class EthernetHuberService(EthernetSCPIService):
     '''
-    A fairly specific subclass of Service for connecting to ethernet-capable thermo fisher devices.
+    A fairly specific subclass of Service for connecting to ethernet-capable huber devices.
     In particular, devices must support a half-duplex serial communication with header information, variable length data-payload and a checksum.
     '''
     def __init__(self, **kwargs):
@@ -125,9 +125,9 @@ class HuberEntity(Entity):
             get_str: hexstring of the command, e.g. 20
         '''
         if get_str is None:
-            raise ValueError('<get_str is required to __init__ ThermoFisherHexGetEntity instance')
+            raise ValueError('<get_str is required to __init__ HuberEntity instance')
         else:
-            self.cmd_str = get_str
+            self.get_str = get_str
         self.offset = offset
         self.nbytes = nbytes
         self.numeric = numeric
@@ -142,7 +142,7 @@ class HuberEntity(Entity):
     @calibrate()
     def on_get(self):
         # setup cmd here
-        to_send = [self.cmd_str]
+        to_send = [self.get_str]
         logger.debug(f'Send cmd in hexstr: {to_send[0]}')
         result = self.service.send_to_device(to_send)
         logger.debug(f'raw result is: {result}')
