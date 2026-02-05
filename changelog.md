@@ -9,6 +9,13 @@ Types of changes: Added, Changed, Deprecated, Removed, Fixed, Security
 
 ## [Unreleased]
 
+## [2.1.1] -- 2026-02-05
+
+### Changed
+
+- Updated dripline-python to v5.1.5
+
+
 ## [2.1.0] -- 2025-10-01
 
 ### Added
