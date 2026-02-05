@@ -1,0 +1,9 @@
+name: Turbo1
+module: EthernetUSSService
+socket_timeout: 10
+socket_info: ("10.93.130.53", 10001) # astro-nautilus1
+endpoints: 
+  - name: turbo1_converter_type
+    module: TurboVACTelegramEntity
+    number: 1
+    index: 0
