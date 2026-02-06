@@ -50,9 +50,7 @@ class Project8SensorLogger(AlertConsumer, PostgreSQLInterface):
             this_type = None
             this_type = self.sync_children[self._sensor_type_map_table].do_select(return_cols=["type"], 
                                                                                   where_eq_dict=a_routing_key_data)
-            # add safty check, and see if the key is contained in the table
-            #if len(this_type) != 1:
-            #    raise Exception("not registered endpoint")
+            # add safty check, and see if the key is contained in the table otherwise generate meaningful error message
             try:
                 table_name = self._data_tables[this_type[1][0][0]]
             except:
@@ -66,9 +64,8 @@ class Project8SensorLogger(AlertConsumer, PostgreSQLInterface):
             logger.info(f"Inserting {a_routing_key_data} in table {table_name}; data are:\n{insert_data}")
 
             # do the insert
-            ### dry run for testing
-            #insert_return = this_data_table.do_insert(**insert_data)
-            #logger.debug(f"Return from insertion: {insert_return}")
+            insert_return = this_data_table.do_insert(**insert_data)
+            logger.debug(f"Return from insertion: {insert_return}")
             logger.info("finished processing data")
         except sqlalchemy.exc.SQLAlchemyError as err:
             logger.critical(f'Received SQL error while doing insert: {err}')
