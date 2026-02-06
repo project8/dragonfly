@@ -15,3 +15,4 @@ from .ethernet_thermo_fisher_service import *
 from .ethernet_huber_service import *
 from .ethernet_modbus_service import *
 from .pfeiffer_endpoint import *
+from .project8_sensor_logger import *
