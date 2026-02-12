@@ -8,6 +8,8 @@ from . import jitter
 # Modules in this directory
 
 from .add_auth_spec import *
+from .arduino_endpoint import *
+from .arduino_service import *
 from .cmd_endpoint import *
 from .asteval_endpoint import *
 from .thermo_fisher_endpoint import *
