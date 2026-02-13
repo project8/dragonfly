@@ -25,7 +25,7 @@ from numpy import (
     zeros,
     )
 from scipy.signal import firwin2, freqz
-from corr.katcp_wrapper import FpgaClient
+from katcp_wrapper import FpgaClient
 
 from copy import deepcopy
 from datetime import datetime
