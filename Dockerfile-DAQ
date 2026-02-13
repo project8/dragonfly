@@ -7,6 +7,10 @@ FROM ${img_user}/${img_repo}:${img_tag}
 
 COPY . /usr/local/src_dragonfly
 
+# DAQ specific dependencies
+RUN git clone https://github.com/your-repo/katcp_wrapper.git && \
+    pip install -e katcp_wrapper
+
 WORKDIR /usr/local/src_dragonfly
 RUN pip install docker pymodbus
 RUN pip install .
