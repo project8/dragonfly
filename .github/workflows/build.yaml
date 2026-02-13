@@ -127,10 +127,6 @@ jobs:
             img_repo=${{ env.BASE_IMAGE_REPO }}
             img_tag=${{ env.BASE_IMAGE_TAG }}
           tags: ${{ steps.docker_meta.outputs.tags }}
-<<<<<<< HEAD
-          platforms: linux/amd64
-#          platforms: linux/amd64,linux/arm/v7,linux/arm64
-=======
           platforms: linux/amd64,linux/arm64,linux/arm/v7
 
       - name: Release with a changelog
@@ -141,4 +137,3 @@ jobs:
           path: 'changelog.md'
           title-template: 'Dragonfly v{version} -- Release Notes'
           tag-template: 'v{version}'
->>>>>>> develop
