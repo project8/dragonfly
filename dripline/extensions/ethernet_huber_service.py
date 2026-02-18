@@ -108,8 +108,8 @@ class EthernetHuberService(EthernetSCPIService):
         return all_data
 
 
-__all__.append("HuberEntity")
-class HuberEntity(Entity):
+__all__.append("HuberGetEntity")
+class HuberGetEntity(Entity):
     '''
     A endpoint of a Huber device that returns the request result
     '''
@@ -125,7 +125,7 @@ class HuberEntity(Entity):
             get_str: hexstring of the command, e.g. 20
         '''
         if get_str is None:
-            raise ValueError('<get_str is required to __init__ HuberEntity instance')
+            raise ValueError('<get_str is required to __init__ HuberGetEntity instance')
         else:
             self.get_str = get_str
         self.offset = offset
