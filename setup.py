@@ -5,7 +5,7 @@ print('packages are: {}'.format(packages))
 
 setup(
     name="dragonfly",
-    version='v2.1.0',  # TODO: should get version from git
+    version='v2.1.1',  # TODO: should get version from git
     packages=packages,
     include_package_data=True,
 )
