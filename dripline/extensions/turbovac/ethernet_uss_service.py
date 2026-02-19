@@ -17,6 +17,7 @@ class EthernetUSSService(Service):
     def __init__(self,
                  socket_timeout=1.0,
                  socket_info=('localhost', 1234),
+                 STX = b'\x02',
                  **kwargs
                  ):
         '''
@@ -24,11 +25,12 @@ class EthernetUSSService(Service):
             socket_timeout (int): number of seconds to wait for a reply from the device before timeout.
             socket_info (tuple or string): either socket.socket.connect argument tuple, or string that
                 parses into one.
+            STX (binary): the STX byte of the USS Protocol. Defaults to b'\x02'
         '''
         Service.__init__(self, **kwargs)
 
         if isinstance(socket_info, str):
-            print(f"Formatting socket_info: {socket_info}")
+            logger.debug(f"Formatting socket_info: {socket_info}")
             re_str = "\([\"'](\S+)[\"'], ?(\d+)\)"
             (ip,port) = re.findall(re_str,socket_info)[0]
             socket_info = (ip,int(port))
@@ -37,7 +39,7 @@ class EthernetUSSService(Service):
         self.socket = socket.socket()
         self.socket_timeout = float(socket_timeout)
         self.socket_info = socket_info
-        self.STX = b'\x02'
+        self.STX = STX
         self.control_bits = []
         self._reconnect()
 
@@ -55,9 +57,9 @@ class EthernetUSSService(Service):
         try:
             self.socket = socket.create_connection(self.socket_info, self.socket_timeout)
         except (socket.error, socket.timeout) as err:
-            print(f"connection {self.socket_info} refused: {err}")
-            raise Exception('resource_error_connection', f"Unable to establish ethernet socket {self.socket_info}")
-        print(f"Ethernet socket {self.socket_info} established")
+            logger.warning(f"connection {self.socket_info} refused: {err}")
+            raise ThrowReply('resource_error_connection', f"Unable to establish ethernet socket {self.socket_info}")
+        logger.info(f"Ethernet socket {self.socket_info} established")
 
     def send_to_device(self, commands, **kwargs):
         '''
@@ -75,27 +77,27 @@ class EthernetUSSService(Service):
         try:
             data = self._send_commands(commands)
         except socket.error as err:
-            print(f"socket.error <{err}> received, attempting reconnect")
+            logger.warning(f"socket.error <{err}> received, attempting reconnect")
             self._reconnect()
             data = self._send_commands(commands)
-            print("Ethernet connection reestablished")
+            logger.warning("Ethernet connection reestablished")
         # exceptions.DriplineHardwareResponselessError
         except Exception as err:
-            print(str(err))
+            logger.warning(str(err))
             try:
                 self._reconnect()
                 data = self._send_commands(commands)
-                print("Query successful after ethernet connection recovered")
+                logger.info("Query successful after ethernet connection recovered")
             except socket.error: # simply trying to make it possible to catch the error below
-                print("Ethernet reconnect failed, dead socket")
-                raise Exception('resource_error_connection', "Broken ethernet socket")
+                logger.critical("Ethernet reconnect failed, dead socket")
+                raise ThrowReply('resource_error_connection', "Broken ethernet socket")
             except Exception as err: ##TODO handle all exceptions, that seems questionable
-                print("Query failed after successful ethernet socket reconnect")
-                raise Exception('resource_error_no_response', str(err))
+                logger.critical("Query failed after successful ethernet socket reconnect")
+                raise ThrowReply('resource_error_no_response', str(err))
         finally:
             self.alock.release()
         to_return = b''.join(data)
-        print(f"should return:\n{to_return}")
+        logger.info(f"should return:\n{to_return}")
         return to_return
         
     def _send_commands(self, commands):
@@ -109,11 +111,11 @@ class EthernetUSSService(Service):
 
         for command in commands:
             if not isinstance(command, bytes):
-                raise ValueError("Command is not of type bytes: {command}, {type(command)}")
-            print(f"sending: {command}")
+                raise ThrowReply('invalid_argument_type', "Command is not of type bytes: {command}, {type(command)}")
+            logger.debug(f"sending: {command}")
             self.socket.send(command)
             data = self._listen()
-            print(f"sync: {repr(command)} -> {repr(data)}")
+            logger.debug(f"sync: {repr(command)} -> {repr(data)}")
             all_data.append(data)
         return all_data
 
@@ -135,10 +137,10 @@ class EthernetUSSService(Service):
                     if len(data) >= length:  # if we are >= LENGTH we have all we need
                         break
                 if tmp == '':
-                    raise Exception('resource_error_no_response', "Empty socket.recv packet")
+                    raise ThrowReply('resource_error_no_response', "Empty socket.recv packet")
         except socket.timeout:
-            print(f"socket.timeout condition met; received:\n{repr(data)}")
-            raise Exception('resource_error_no_response', "Timeout while waiting for a response from the instrument")
-        print(repr(data))
+            logger.warning(f"socket.timeout condition met; received:\n{repr(data)}")
+            raise ThrowReply('resource_error_no_response', "Timeout while waiting for a response from the instrument")
+        logger.info(repr(data))
         data = data[0:length]
         return data
