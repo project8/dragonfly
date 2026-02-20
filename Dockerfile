@@ -16,8 +16,13 @@ RUN if [ "$ENABLE_DAQ" = "true" ]; then \
     numpy==1.26.4 \
     scipy==1.14.1 \
     backports.ssl_match_hostname==3.7.0.1 \
-    katcp==0.9.3 \
-    ; fi
+    katcp==0.9.3; \
+    git clone https://github.com/project8/adc_tests.git; \
+    cd adc_tests; \
+    git checkout master; \
+    pip install .; \ 
+    cd ..; \ 
+    fi
 RUN pip install docker pymodbus
 RUN pip install .
 
