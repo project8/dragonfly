@@ -1,6 +1,6 @@
 from setuptools import setup, find_namespace_packages
 
-packages = find_namespace_packages('.', include=['dripline.extensions','dripline.extensions.*'])
+packages = find_namespace_packages('.', include=['dripline.extensions','dripline.extensions.*','dragonfly','dragonfly.*'])
 print('packages are: {}'.format(packages))
 
 setup(
