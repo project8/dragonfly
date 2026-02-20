@@ -10,7 +10,6 @@ from .psyllid_provider import *
 from .r2daq import *
 from .roach_daq_run_interface import *
 from .roach2_interface import *
-from .add_auth_spec import *
 from .cmd_endpoint import *
 from .asteval_endpoint import *
 from .thermo_fisher_endpoint import *
