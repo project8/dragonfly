@@ -5,7 +5,7 @@ from getpass import getpass
 def send_to_elog(message, subject="Checklist", author="Rene Reimann", category="Slow Controls", msg_id=None, password=None):
     if password is None:
         password = getpass()
-    logbook = elog.open("https://maxwell.npl.washington.edu/elog/project8/P8+Mainz+lab", user="rreimann", password=password)
+    logbook = elog.open("https://maxwell.npl.washington.edu/elog/project8/P8+Mainz+lab", user=author, password=password)
     if msg_id is None:
        return logbook.post(message, subject=subject, Author=author, category=category, suppress_email_notification=True)
     else:
