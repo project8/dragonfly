@@ -22,6 +22,8 @@ RUN if [ "$ENABLE_DAQ" = "true" ]; then \
     git checkout master; \
     pip install .; \ 
     cd ..; \ 
+    apt update; \
+    apt install -y iputils-ping; \
     fi
 RUN pip install docker pymodbus
 RUN pip install .
