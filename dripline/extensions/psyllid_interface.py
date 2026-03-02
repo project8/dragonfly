@@ -16,8 +16,8 @@ __all__ = []
 logger = logging.getLogger(__name__)
 
 
-__all__.append('PsyllidProvider')
-class PsyllidProvider(core.Service):
+__all__.append('PsyllidInterface')
+class PsyllidInterface(core.Service):
     '''
     Provider for direct communication with up to 3 Psyllid instances with a single stream each
     '''
@@ -48,9 +48,7 @@ class PsyllidProvider(core.Service):
             try:
                 self.request_status(channel)
                 self.get_acquisition_mode(channel)
-                if self.freq_dict[channel] == None:
-                    self.freq_dict[channel] = 50.0e6
-                self.set_central_frequency(channel, self.freq_dict[channel])
+                self.get_central_frequency(channel)
             except core.ThrowReply:
                 self.status_dict[channel] = None
                 self.status_value_dict[channel] = None
@@ -59,7 +57,7 @@ class PsyllidProvider(core.Service):
 
         # Summary
         logger.info('Status of channels: {}'.format(self.status_value_dict))
-        logger.info('Set central frequencies: {}'.format(self.freq_dict))
+        logger.info('Current central frequencies: {}'.format(self.freq_dict))
         logger.info('Streaming or triggering mode: {}'.format(self.mode_dict))
 
 
@@ -109,7 +107,8 @@ class PsyllidProvider(core.Service):
         Tests whether psyllid is in streaming or triggering mode
         '''
         request = 'node-list.{}'.format(self.channel_dict[channel])
-        node_list = self.get(endpoint=self.queue_dict[channel], specifier=request)['nodes']
+        reply = self.get(endpoint=self.queue_dict[channel], specifier=request)
+        node_list = reply['nodes']
 
         if 'trw' in node_list:
             self.mode_dict[channel] = 'triggering'
@@ -125,9 +124,9 @@ class PsyllidProvider(core.Service):
         Asks the psyllid instance what state it is in and returns that state
         '''
         logger.info('Checking Psyllid status of channel {}'.format(channel))
-        result = self.get(endpoint=self.queue_dict[channel], specifier='daq-status', timeout_s=5)
-        self.status_dict[channel] = result['server']['status']
-        self.status_value_dict[channel] = result['server']['status-value']
+        reply = self.get(endpoint=self.queue_dict[channel], specifier='daq-status', timeout_s=5)
+        self.status_dict[channel] = reply['server']['status']
+        self.status_value_dict[channel] = reply['server']['status-value']
         logger.info('Psyllid is running. Status is {}'.format(self.status_dict[channel]))
         logger.info('Status in numbers: {}'.format(self.status_value_dict[channel]))
         return self.status_value_dict[channel]
@@ -242,11 +241,17 @@ class PsyllidProvider(core.Service):
         if self.mode_dict[channel] == None:
             logger.error('Acquisition mode is None. Cannot get central frequency from psyllid')
             raise core.ThrowReply('DriplineGenericDAQError', 'Acquisition mode is None. Update mode by using get_acquisition_mode command')
+        if self.request_status(channel) != 4:
+            logger.info('Psyllid instance is not activated. Getting inactive node configuration.')
+            status_query = 'node'
+        else:
+            logger.info('Psyllid instance is activated. Getting active node configuration.')
+            status_query = 'active'
         routing_key_map = {
                            'streaming':'strw',
                            'triggering':'trw'
                           }
-        request = 'active-config.{}.{}'.format(self.channel_dict[channel], routing_key_map[self.mode_dict[channel]])
+        request = '{}-config.{}.{}'.format(status_query, self.channel_dict[channel], routing_key_map[self.mode_dict[channel]])
         result = self.get(endpoint=self.queue_dict[channel], specifier=request)
         logger.info('Psyllid says cf is {}'.format(result['center-freq']))
         self.freq_dict[channel]=result['center-freq']
@@ -260,6 +265,9 @@ class PsyllidProvider(core.Service):
         if self.mode_dict[channel] == None:
             logger.error('Acquisition mode is None. Cannot set central frequency from psyllid')
             raise core.ThrowReply('DriplineGenericDAQError', 'Acquisition mode is None. Update mode by using get_acquisition_mode command')
+        if self.request_status(channel) != 4:
+            logger.error('Psyllid instance is not activated. Cannot set central frequency')
+            raise core.ThrowReply('DriplineGenericDAQError', 'Psyllid instance is not activated. Activate psyllid before setting central frequency')
         routing_key_map = {
                            'streaming':'strw',
                            'triggering':'trw'

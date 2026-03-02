@@ -6,7 +6,7 @@ __path__ = __import__('pkgutil').extend_path(__path__, __name__)
 
 # Modules in this directory
 from .daq_run_interface import *
-from .psyllid_provider import *
+from .psyllid_interface import *
 from .r2daq import *
 from .roach_daq_run_interface import *
 from .roach2_interface import *
