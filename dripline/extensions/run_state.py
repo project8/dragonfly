@@ -91,6 +91,8 @@ class RunStateService(Service):
             state["run_active"] = False
             self.save_state(state)
             logger.info(f'Stopped run {state["run_number"]}')
+        the_alert = MsgAlert.create(payload=scarab.to_param({"value_raw": int(state["run_active"])}), routing_key=f'sensor_value.run_active')
+        alert_sent = self.send(the_alert)
         return state["run_number"]
 
     def start_run(self, comment):
@@ -107,11 +109,11 @@ class RunStateService(Service):
         state["run_comment"] = comment
         state["run_active"] = True
         self.save_state(state)
-        the_alert = MsgAlert.create(payload=scarab.to_param(state["run_number"]), routing_key=f'sensor_value.run_number')
+        the_alert = MsgAlert.create(payload=scarab.to_param({"value_raw": state["run_number"]}), routing_key=f'sensor_value.run_number')
         alert_sent = self.send(the_alert)
-        the_alert = MsgAlert.create(payload=scarab.to_param(state["run_comment"]), routing_key=f'sensor_value.run_comment')
+        the_alert = MsgAlert.create(payload=scarab.to_param({"value_raw": state["run_comment"]}), routing_key=f'sensor_value.run_comment')
         alert_sent = self.send(the_alert)
-        the_alert = MsgAlert.create(payload=scarab.to_param(state["run_active"]), routing_key=f'sensor_value.run_active')
+        the_alert = MsgAlert.create(payload=scarab.to_param({"value_raw": int(state["run_active"])}), routing_key=f'sensor_value.run_active')
         alert_sent = self.send(the_alert)
         logger.info(f'Started run {state["run_number"]} with comment: {state["run_comment"]}')
         return state["run_number"]
