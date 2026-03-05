@@ -24,5 +24,5 @@ class CmdEntity(Entity):
         self.cmd_str = cmd_str
 
     def cmd(self):
-        logger.debug("Command function was successfully called")
+        logger.debug("in cmd function")
         return self.service.send_to_device([self.cmd_str])
