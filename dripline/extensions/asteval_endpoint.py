@@ -21,7 +21,6 @@ class AstevalFormatEntity(FormatEntity):
         '''
         Args:
             asteval_format_response_string (str): function definition to format response. Default: "def f(response): return response"
-            *kwargs -> FormatEntity
         '''
         FormatEntity.__init__(self, **kwargs)
         self.asteval_format_response_string = asteval_format_response_string # has to contain a definition "def f(response): ... return value"
@@ -30,7 +29,7 @@ class AstevalFormatEntity(FormatEntity):
 
     @calibrate()
     def on_get(self):
-        result =FormatEntity.on_get(self)
+        result = FormatEntity.on_get(self)
         raw = result["value_raw"]
         processed_result = self.evaluator(f"f('{raw}')")
         logger.debug(f"processed_result: {repr(processed_result)}")
