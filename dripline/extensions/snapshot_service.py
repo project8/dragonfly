@@ -196,18 +196,16 @@ class SQLSnapshotEndpoint(SQLTable):
         return {'value_raw': True, 'value_cal': "Files written to ~/sqldump.txt"}
 
 
-    def get_latest(self, timestamp, endpoint_list):
+    def get_latest(self, timestamp, endpoint):
         '''
         Method to retrieve last database value for all endpoints in list.  Used as part of standard DAQ operation
         timestamp (str): timestamp upper bound for selection. Format must follow TIME_FORMAT, i.e. YYYY-MM-DDThh:mm:ssZ
         endpoint_list (list): list of endpoint names (str) of interest. Usage for dragonfly CLI e.g. endpoint_list='["endpoint_name1","endpoint_name_2",...]'
         '''
         timestamp = str(timestamp)
-        if isinstance(endpoint_list, list):
-            endpoint_list = [str(item) for item in endpoint_list]
-        else:
-            logger.error(f'Received type "{type(endpoint_list).__name__}" for argument endpoint_list instead of Python list')
-            raise ThrowReply("ServiceError", f'expecting a list but received type {type(endpoint_list).__name__}')
+        if not isinstance(endpoint, str):
+            logger.error(f'Received type "{type(endpoint).__name__}" for argument endpoint instead of Python str')
+            raise ThrowReply("ServiceError", f'expecting a str but received type {type(endpoint).__name__}')
 
         # Parsing timestamp
         self._try_parsing_date(timestamp)
@@ -220,24 +218,21 @@ class SQLSnapshotEndpoint(SQLTable):
         val_cal_list = []
         val_raw_dict = {}
 
-        for name in endpoint_list:
+        ept_id = self._get_endpoint_id(endpoint)
 
-            ept_id = self._get_endpoint_id(name)
-
-            s = sqlalchemy.select([t]).where(sqlalchemy.and_(t.c.endpoint_id == ept_id,t.c.timestamp < timestamp))
-            s = s.order_by(t.c.timestamp.desc()).limit(1)
-            try:
-                query_return = self.service.engine.execute(s).fetchall()
-            except ThrowReply as dripline_error:
-                logger.error(f'{dripline_error.message}; in executing SQLAlchemy select statement for endpoint "{name}"')
-                return
-            if not query_return:
-                logger.critical(f'no records found before "{timestamp}" for endpoint "{name}" in database hence not recording its snapshot')
-                continue
-            else:
-                val_raw_dict[name] = [{'timestamp' : query_return[0]['timestamp'].strftime(TIME_FORMAT),
-                                       self.payload_field : query_return[0][self.payload_field]}]
-                val_cal_list.append(f'{name} -> {val_raw_dict[name][0][self.payload_field]} {{{val_raw_dict[name][0]["timestamp"]}}}')
+        s = sqlalchemy.select([t]).where(sqlalchemy.and_(t.c.endpoint_id == ept_id,t.c.timestamp < timestamp))
+        s = s.order_by(t.c.timestamp.desc()).limit(1)
+        try:
+            query_return = self.service.engine.execute(s).fetchall()
+        except ThrowReply as dripline_error:
+            logger.error(f'{dripline_error.message}; in executing SQLAlchemy select statement for endpoint "{endpoint}"')
+            return
+        if not query_return:
+            logger.critical(f'no records found before "{timestamp}" for endpoint "{endpoint}" in database hence not recording its snapshot')
+        else:
+            val_raw_dict[endpoint] = [{'timestamp' : query_return[0]['timestamp'].strftime(TIME_FORMAT),
+                                    self.payload_field : query_return[0][self.payload_field]}]
+            val_cal_list.append(f'{endpoint} -> {val_raw_dict[endpoint][0][self.payload_field]} {{{val_raw_dict[endpoint][0]["timestamp"]}}}')
 
         return {'value_raw': val_raw_dict, 'value_cal': '\n'.join(val_cal_list)}
 
