@@ -1,5 +1,20 @@
-from dripline.core import ThrowReply, Service
+from dripline.core import ThrowReply, Service, constants
 from dripline.implementations import PostgreSQLInterface, SQLTable
+
+# std libraries
+import json
+import os
+import types
+import traceback
+
+# 3rd part libraries
+try:
+    import sqlalchemy
+except ImportError:
+    pass
+from datetime import datetime
+from itertools import groupby
+import collections
 
 import logging
 logger = logging.getLogger(__name__)
@@ -31,12 +46,202 @@ class SQLSnapshotEndpoint(SQLTable):
     '''
     Endpoint to get a snapshot of the current state of the device, as stored in a SQL table.
     '''
-    def __init__(self, table_name, **kwargs):
+    def __init__(self, target_items, payload_field='value_cal', *args, **kwargs):
         '''
-        Args:
-            table_name (str): name of the SQL table to query for snapshots.
+        target_items (list): items (str) to take snapshot of
+        payload_field (str): field to take from database instead of value_cal
         '''
-        SQLTable.__init__(self, table_name=table_name, **kwargs)
+        if not 'sqlalchemy' in globals():
+            raise ImportError('SQLAlchemy not found, required for SQLSnapshot class')
+        SQLTable.__init__(self, *args, **kwargs)
+        self.target_items = target_items
+        self.payload_field = payload_field
+
+    def get_logs(self, start_timestamp, end_timestamp):
+        '''
+        Method to retrieve all database values for all endpoints between two timestamps.  Used as part of standard DAQ operation
+        Both input timestamps must be follow the format of constants.TIME_FORMAT, i.e. YYYY-MM-DDThh:mm:ssZ
+        start_timestamp (str): oldest timestamp for query into database
+        ending_timesamp (str): most recent timestamp for query into database
+        '''
+        start_timestamp = str(start_timestamp)
+        end_timestamp = str(end_timestamp)
+
+        # Parsing timestamps
+        self._try_parsing_date(start_timestamp)
+        self._try_parsing_date(end_timestamp)
+        if not end_timestamp > start_timestamp:
+            raise ThrowReply("ServiceError", f'end_timestamp ("{end_timestamp}") must be > start_timestamp ("{start_timestamp}")!')
+
+        # Connect to id map table + assign alises
+        self._connect_id_table()
+        t = self.table.alias()
+        id_t = self.it.alias()
+
+        # Select query + result
+        s = sqlalchemy.select([id_t.c.endpoint_name,t.c.timestamp,t.c.value_raw,t.c.value_cal]).select_from(t.join(id_t,t.c.endpoint_id == id_t.c.endpoint_id))
+        logger.debug(f'querying database for entries between "{start_timestamp}" and "{end_timestamp}"')
+        s = s.where(sqlalchemy.and_(t.c.timestamp>=start_timestamp,t.c.timestamp<=end_timestamp)).order_by(id_t.c.endpoint_name.asc())
+        try:
+            query_return = self.service.engine.execute(s).fetchall()
+        except ThrowReply as dripline_error:
+            logger.error(f'{dripline_error.message}; in executing SQLAlchemy select statement')
+            return
+        if not query_return:
+            logger.info('returning empty record')
+            return {'value_raw': {}}
+
+        # Counting how many times each endpoint is present
+        endpoint_name_raw = []
+        endpoint_dict = {}
+        for row in query_return:
+            endpoint_name_raw.append(str(row['endpoint_name']))
+        for key,group in groupby(endpoint_name_raw):
+            endpoint_dict[key] = len(list(group))
+        # Ordering according to SQL query return
+        endpoint_dict = collections.OrderedDict(sorted(endpoint_dict.items(),key=lambda pair:pair[0].lower()))
+
+        # Parsing result
+        val_dict = {'timestamp':None,self.payload_field:None}
+        val_raw_dict = {}
+        val_cal_list = []
+        index = 0
+        logger.debug(f'Database log query return for endpoints {list(endpoint_dict.keys())}')
+        for endpoint,times in endpoint_dict.items():
+            val_raw_dict[endpoint] = []
+            ept_timestamp_list = []
+            for i in range(times):
+                val_raw_dict[endpoint].append(val_dict.copy())
+                query_row = query_return[index]
+                val_raw_dict[endpoint][i]['timestamp'] = query_row['timestamp'].strftime(constants.TIME_FORMAT)
+                val_raw_dict[endpoint][i][self.payload_field] = query_row[self.payload_field]
+                ept_timestamp_list.append('{} {{{}}}'.format(val_raw_dict[endpoint][i][self.payload_field],val_raw_dict[endpoint][i]['timestamp']))
+                index += 1
+            ept_timestamp_results = ', '.join(ept_timestamp_list)
+            val_cal_list.append('{} -> {}'.format(endpoint,ept_timestamp_results))
+
+        return {'value_raw': val_raw_dict, 'value_cal': '\n'.join(val_cal_list)}
+
+
+    def get_single_log(self, start_timestamp, end_timestamp, *args):
+        '''
+        Method to retrieve all database values for subset of endpoints between two timestamps.
+        Both input timestamps must be follow the format of constants.TIME_FORMAT, i.e. YYYY-MM-DDThh:mm:ssZ
+        start_timestamp (str): oldest timestamp for query into database
+        ending_timesamp (str): most recent timestamp for query into database
+        *args: list of endpoints of interest
+        '''
+        start_timestamp = str(start_timestamp)
+        end_timestamp = str(end_timestamp)
+        if len(args) == 0:
+            raise ThrowReply("ServiceError", 'requires at least one endpoint arg provided')
+
+        # Parsing timestamps
+        self._try_parsing_date(start_timestamp)
+        self._try_parsing_date(end_timestamp)
+        if not end_timestamp > start_timestamp:
+            raise ThrowReply("ServiceError", f'end_timestamp ("{end_timestamp}") must be > start_timestamp ("{start_timestamp}")!')
+
+        # Connect to id map table + assign alises
+        self._connect_id_table()
+        t = self.table.alias()
+
+        outdict = {}
+        for endpoint in args:
+            ept_id = self._get_endpoint_id(endpoint)
+            # Select query + result
+            logger.debug(f'querying database for endpoint "{endpoint}" entries between "{start_timestamp}" and "{end_timestamp}"')
+            s = sqlalchemy.select([t]).where(sqlalchemy.and_(t.c.endpoint_id==ept_id,t.c.timestamp>start_timestamp,t.c.timestamp<end_timestamp)).order_by(t.c.timestamp.asc())
+            query_return = self.service.engine.execute(s).fetchall()
+            if not query_return:
+                logger.warning(f'no entries found between "{start_timestamp}" and "{end_timestamp}"')
+
+            outdict[endpoint] = [[entry['timestamp'].strftime(constants.TIME_FORMAT),entry['value_cal'],entry['value_raw']]for entry in query_return]
+
+        fp = open(os.path.expanduser('~')+'/sqldump.txt','w')
+        json.dump(obj=outdict,fp=fp)
+        fp.close()
+
+        return {'value_raw': True, 'value_cal': "Files written to ~/sqldump.txt"}
+
+
+    def get_latest(self, timestamp, endpoint_list):
+        '''
+        Method to retrieve last database value for all endpoints in list.  Used as part of standard DAQ operation
+        timestamp (str): timestamp upper bound for selection. Format must follow constants.TIME_FORMAT, i.e. YYYY-MM-DDThh:mm:ssZ
+        endpoint_list (list): list of endpoint names (str) of interest. Usage for dragonfly CLI e.g. endpoint_list='["endpoint_name1","endpoint_name_2",...]'
+        '''
+        timestamp = str(timestamp)
+        if isinstance(endpoint_list,types.ListType):
+            endpoint_list = [str(item) for item in endpoint_list]
+        else:
+            logger.error(f'Received type "{type(endpoint_list).__name__}" for argument endpoint_list instead of Python list')
+            raise ThrowReply("ServiceError", f'expecting a list but received type {type(endpoint_list).__name__}')
+
+        # Parsing timestamp
+        self._try_parsing_date(timestamp)
+
+        # Connect to id map table + assign alises
+        self._connect_id_table()
+        t = self.table.alias()
+
+        # Select query + result
+        val_cal_list = []
+        val_raw_dict = {}
+
+        for name in endpoint_list:
+
+            ept_id = self._get_endpoint_id(name)
+
+            s = sqlalchemy.select([t]).where(sqlalchemy.and_(t.c.endpoint_id == ept_id,t.c.timestamp < timestamp))
+            s = s.order_by(t.c.timestamp.desc()).limit(1)
+            try:
+                query_return = self.service.engine.execute(s).fetchall()
+            except ThrowReply as dripline_error:
+                logger.error(f'{dripline_error.message}; in executing SQLAlchemy select statement for endpoint "{name}"')
+                return
+            if not query_return:
+                logger.critical(f'no records found before "{timestamp}" for endpoint "{name}" in database hence not recording its snapshot')
+                continue
+            else:
+                val_raw_dict[name] = [{'timestamp' : query_return[0]['timestamp'].strftime(constants.TIME_FORMAT),
+                                       self.payload_field : query_return[0][self.payload_field]}]
+                val_cal_list.append('{} -> {} {{{}}}'.format(name,val_raw_dict[name][0][self.payload_field],val_raw_dict[name][0]['timestamp']))
+
+        return {'value_raw': val_raw_dict, 'value_cal': '\n'.join(val_cal_list)}
+
+
+    def _try_parsing_date(self, timestamp):
+        '''
+        Checks if timestamp (str) is in correct format for database query
+        '''
+        try:
+            return datetime.strptime(timestamp, constants.TIME_FORMAT)
+        except ValueError:
+            raise ThrowReply("ServiceError", f'"${timestamp}" is not a valid timestamp format, use "YYYY-MM-DDThh:mm:ssZ"')
+
+
+    def _connect_id_table(self):
+        '''
+        Connects to the 'endpoint_id_map' table in database
+        '''
+        try:
+            self.it = sqlalchemy.Table('endpoint_id_map',self.service.meta, autoload=True, schema=self.schema)
+        except ThrowReply as dripline_error:
+            logger.error(f'{dripline_error.message}; when establishing connection to the "endpoint_id_map" table')
+
+    def _get_endpoint_id(self, endpoint):
+        '''
+        Queries database to match endpoint to endpoint id
+        '''
+        id_table = self.it.alias()
+        s = sqlalchemy.select([id_table.c.endpoint_id]).where(id_table.c.endpoint_name == endpoint)
+        query_return = self.service.engine.execute(s).fetchall()
+        if not query_return:
+            raise ThrowReply("ServiceError", f"Endpoint with name '{endpoint}' not found in database")
+        ept_id = query_return[0]['endpoint_id']
+        logger.debug(f"Endpoint id '{ept_id}' matched to endpoint '{endpoint}'")
+        return ept_id
 
 
 
