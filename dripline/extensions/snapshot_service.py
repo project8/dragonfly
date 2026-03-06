@@ -200,9 +200,9 @@ class SQLSnapshotEndpoint(SQLTable):
         '''
         Method to retrieve last database value for all endpoints in list.  Used as part of standard DAQ operation
         timestamp (str): timestamp upper bound for selection. Format must follow TIME_FORMAT, i.e. YYYY-MM-DDThh:mm:ssZ
-        endpoint_list (list): list of endpoint names (str) of interest. Usage for dragonfly CLI e.g. endpoint_list='["endpoint_name1","endpoint_name_2",...]'
+        endpoint (str): name of endpoint of interest. Usage for dragonfly CLI e.g. endpoint='endpoint_name1'
         '''
-        timestamp = str(timestamp)
+        timestamp = timestamp["timestamp"]
         if not isinstance(endpoint, str):
             logger.error(f'Received type "{type(endpoint).__name__}" for argument endpoint instead of Python str')
             raise ThrowReply("ServiceError", f'expecting a str but received type {type(endpoint).__name__}')
