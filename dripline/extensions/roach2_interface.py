@@ -352,6 +352,7 @@ class Roach2Interface(ArtooDaq, core.Service):
             adc5g.set_spi_phase(self.roach2, 0, 3, phase3)
         if phase4 is not None:
             adc5g.set_spi_phase(self.roach2, 0, 4, phase4)
+        self.calibrated = True
 
 
     @property

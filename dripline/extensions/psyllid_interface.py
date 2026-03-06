@@ -494,13 +494,21 @@ class PsyllidInterface(core.Service):
         return n_triggers
 
 
-    def make_trigger_mask(self, channel='a', filename='~/fmt_mask.json'):
+    def make_trigger_mask(self, channel='a', filename='/fmt_mask.json'):
         '''
         Tells psyllid to record a frequency mask, write it to a json file and prepare for triggering run
         '''
+        logger.info('Checking if psyllid is in triggering mode')
+        self.get_acquisition_mode(channel)
         if self.mode_dict[channel] != 'triggering':
             logger.error('Psyllid instance is not in triggering mode')
             raise core.ThrowReply('DriplineGenericDAQError', 'Psyllid instance is not in triggering mode')
+        
+        logger.info('Checking if psyllid is activated')
+        self.request_status(channel)
+        if self.status_value_dict[channel] != 4:
+            logger.error('Psyllid instance is not activated')
+            raise core.ThrowReply('DriplineGenericDAQError', 'Psyllid instance is not activated')
 
         logger.info('Switch tf_roach_receiver to freq-only')
         request = 'run-daq-cmd.{}.tfrr.freq-only'.format(str(self.channel_dict[channel]))
@@ -514,9 +522,11 @@ class PsyllidInterface(core.Service):
         logger.info('Telling psyllid to not use monarch when starting next run')
         self.set(endpoint=self.queue_dict[channel], specifier='use-monarch', value=False)
 
+        mask_duration = 1000 # ms
         logger.info('Start short run to record mask')
-        self.start_run(channel ,1000, self.temp_file)
-        time.sleep(1)
+        self.start_run(channel, mask_duration, self.temp_file)
+        # make sure run is done
+        time.sleep(mask_duration/1000 + 1)
 
         self._write_trigger_mask(channel, filename)
 
