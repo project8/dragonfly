@@ -1,11 +1,12 @@
-from dripline.core import ThrowReply, Service, constants
+from dripline.core import ThrowReply, Service
 from dripline.implementations import PostgreSQLInterface, SQLTable
+
+
 
 # std libraries
 import json
 import os
 import types
-import traceback
 
 # 3rd part libraries
 try:
@@ -18,6 +19,8 @@ import collections
 
 import logging
 logger = logging.getLogger(__name__)
+
+TIME_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
 
 __all__ = []
 
@@ -39,9 +42,37 @@ class SQLSnapshotService(Service, PostgreSQLInterface):
         self.connect_to_db(self.auth)
         self.add_endpoints_from_config()
 
-    def get_snapshot(self):
-        return {"test": "snapshot", "second": "entry"}
+
+    def take_snapshot(self, start_time, end_time, metadata_target, filename):
+        run_snapshot = {}
+        logger.info('doing logs-snapshot gets')
+        for child in self.endpoints:
+            logger.info(f'performing logs snapshot for {child}')
+            snapshot_result = self.endpoints[child].get_logs(start_time,end_time)
+            run_snapshot.update(snapshot_result['value_raw'])
+        if run_snapshot == {}:
+            logger.critical(f'No entries found in database between "{start_time}" and "{end_time}" hence producing empty snapshot')
+        logger.info('doing latest-snapshot gets')
+        latest_snap = {}
+        for child in self.endpoints:
+            snapshot_result = self.endpoints[child].get_latest(start_time, self.endpoints[child].target_items)
+            these_snaps = snapshot_result['value_raw']
+            latest_snap.update(these_snaps)
+        for latest_endpoint in latest_snap.keys():
+            run_snapshot.setdefault(latest_endpoint,[]).append(latest_snap[latest_endpoint][0])
+        for endpoint_name in sorted(run_snapshot.keys()):
+            if not set([endpoint_name])<=self._endpoint_name_set:
+                run_snapshot.pop(endpoint_name)
+        logger.info('snapshot of the slow control database should broadcast')
+        logger.debug(f'should request snapshot file: {filename}')
+        this_payload = {'contents': run_snapshot,
+                        'filename': filename}
+        self.cmd(metadata_target, 'write_json', payload=this_payload)
+        logger.debug('snapshot sent')
+        return
     
+__all__.append('SQLSnapshotEndpoint')
+
 class SQLSnapshotEndpoint(SQLTable):
     '''
     Endpoint to get a snapshot of the current state of the device, as stored in a SQL table.
@@ -60,7 +91,7 @@ class SQLSnapshotEndpoint(SQLTable):
     def get_logs(self, start_timestamp, end_timestamp):
         '''
         Method to retrieve all database values for all endpoints between two timestamps.  Used as part of standard DAQ operation
-        Both input timestamps must be follow the format of constants.TIME_FORMAT, i.e. YYYY-MM-DDThh:mm:ssZ
+        Both input timestamps must be follow the format of TIME_FORMAT, i.e. YYYY-MM-DDThh:mm:ssZ
         start_timestamp (str): oldest timestamp for query into database
         ending_timesamp (str): most recent timestamp for query into database
         '''
@@ -113,12 +144,12 @@ class SQLSnapshotEndpoint(SQLTable):
             for i in range(times):
                 val_raw_dict[endpoint].append(val_dict.copy())
                 query_row = query_return[index]
-                val_raw_dict[endpoint][i]['timestamp'] = query_row['timestamp'].strftime(constants.TIME_FORMAT)
+                val_raw_dict[endpoint][i]['timestamp'] = query_row['timestamp'].strftime(TIME_FORMAT)
                 val_raw_dict[endpoint][i][self.payload_field] = query_row[self.payload_field]
-                ept_timestamp_list.append('{} {{{}}}'.format(val_raw_dict[endpoint][i][self.payload_field],val_raw_dict[endpoint][i]['timestamp']))
+                ept_timestamp_list.append(f'{val_raw_dict[endpoint][i][self.payload_field]} {{{val_raw_dict[endpoint][i]["timestamp"]}}}')
                 index += 1
             ept_timestamp_results = ', '.join(ept_timestamp_list)
-            val_cal_list.append('{} -> {}'.format(endpoint,ept_timestamp_results))
+            val_cal_list.append(f'{endpoint} -> {ept_timestamp_results}')
 
         return {'value_raw': val_raw_dict, 'value_cal': '\n'.join(val_cal_list)}
 
@@ -126,7 +157,7 @@ class SQLSnapshotEndpoint(SQLTable):
     def get_single_log(self, start_timestamp, end_timestamp, *args):
         '''
         Method to retrieve all database values for subset of endpoints between two timestamps.
-        Both input timestamps must be follow the format of constants.TIME_FORMAT, i.e. YYYY-MM-DDThh:mm:ssZ
+        Both input timestamps must be follow the format of TIME_FORMAT, i.e. YYYY-MM-DDThh:mm:ssZ
         start_timestamp (str): oldest timestamp for query into database
         ending_timesamp (str): most recent timestamp for query into database
         *args: list of endpoints of interest
@@ -156,7 +187,7 @@ class SQLSnapshotEndpoint(SQLTable):
             if not query_return:
                 logger.warning(f'no entries found between "{start_timestamp}" and "{end_timestamp}"')
 
-            outdict[endpoint] = [[entry['timestamp'].strftime(constants.TIME_FORMAT),entry['value_cal'],entry['value_raw']]for entry in query_return]
+            outdict[endpoint] = [[entry['timestamp'].strftime(TIME_FORMAT),entry['value_cal'],entry['value_raw']]for entry in query_return]
 
         fp = open(os.path.expanduser('~')+'/sqldump.txt','w')
         json.dump(obj=outdict,fp=fp)
@@ -168,7 +199,7 @@ class SQLSnapshotEndpoint(SQLTable):
     def get_latest(self, timestamp, endpoint_list):
         '''
         Method to retrieve last database value for all endpoints in list.  Used as part of standard DAQ operation
-        timestamp (str): timestamp upper bound for selection. Format must follow constants.TIME_FORMAT, i.e. YYYY-MM-DDThh:mm:ssZ
+        timestamp (str): timestamp upper bound for selection. Format must follow TIME_FORMAT, i.e. YYYY-MM-DDThh:mm:ssZ
         endpoint_list (list): list of endpoint names (str) of interest. Usage for dragonfly CLI e.g. endpoint_list='["endpoint_name1","endpoint_name_2",...]'
         '''
         timestamp = str(timestamp)
@@ -204,9 +235,9 @@ class SQLSnapshotEndpoint(SQLTable):
                 logger.critical(f'no records found before "{timestamp}" for endpoint "{name}" in database hence not recording its snapshot')
                 continue
             else:
-                val_raw_dict[name] = [{'timestamp' : query_return[0]['timestamp'].strftime(constants.TIME_FORMAT),
+                val_raw_dict[name] = [{'timestamp' : query_return[0]['timestamp'].strftime(TIME_FORMAT),
                                        self.payload_field : query_return[0][self.payload_field]}]
-                val_cal_list.append('{} -> {} {{{}}}'.format(name,val_raw_dict[name][0][self.payload_field],val_raw_dict[name][0]['timestamp']))
+                val_cal_list.append(f'{name} -> {val_raw_dict[name][0][self.payload_field]} {{{val_raw_dict[name][0]["timestamp"]}}}')
 
         return {'value_raw': val_raw_dict, 'value_cal': '\n'.join(val_cal_list)}
 
@@ -216,7 +247,7 @@ class SQLSnapshotEndpoint(SQLTable):
         Checks if timestamp (str) is in correct format for database query
         '''
         try:
-            return datetime.strptime(timestamp, constants.TIME_FORMAT)
+            return datetime.strptime(timestamp, TIME_FORMAT)
         except ValueError:
             raise ThrowReply("ServiceError", f'"${timestamp}" is not a valid timestamp format, use "YYYY-MM-DDThh:mm:ssZ"')
 
