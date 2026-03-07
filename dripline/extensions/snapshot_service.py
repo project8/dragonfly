@@ -218,6 +218,7 @@ class SQLSnapshotEndpoint(SQLTable):
         # Connect to id map table + assign alises
         self._connect_id_table()
         t = self.table.alias()
+        logger.debug(f"table obj is {str(t)}")
 
         # Select query + result
         val_cal_list = []
@@ -225,6 +226,7 @@ class SQLSnapshotEndpoint(SQLTable):
 
         ept_id = self._get_endpoint_id(endpoint)
 
+        logger
         s = sqlalchemy.select(t).where(sqlalchemy.and_(t.c.endpoint_id == ept_id,t.c.timestamp < timestamp))
         s = s.order_by(t.c.timestamp.desc()).limit(1)
         try:
