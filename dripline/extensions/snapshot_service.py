@@ -131,7 +131,7 @@ class SQLSnapshotEndpoint(SQLTable):
         endpoint_name_raw = []
         endpoint_dict = {}
         for row in query_return:
-            endpoint_name_raw.append(str(row['endpoint_name']))
+            endpoint_name_raw.append(str(row._asdict()['endpoint_name']))
         for key,group in groupby(endpoint_name_raw):
             endpoint_dict[key] = len(list(group))
         # Ordering according to SQL query return
@@ -149,8 +149,8 @@ class SQLSnapshotEndpoint(SQLTable):
             for i in range(times):
                 val_raw_dict[endpoint].append(val_dict.copy())
                 query_row = query_return[index]
-                val_raw_dict[endpoint][i]['timestamp'] = query_row['timestamp'].strftime(TIME_FORMAT)
-                val_raw_dict[endpoint][i][self.payload_field] = query_row[self.payload_field]
+                val_raw_dict[endpoint][i]['timestamp'] = query_row._asdict()['timestamp'].strftime(TIME_FORMAT)
+                val_raw_dict[endpoint][i][self.payload_field] = query_row._asdict()[self.payload_field]
                 ept_timestamp_list.append(f'{val_raw_dict[endpoint][i][self.payload_field]} {{{val_raw_dict[endpoint][i]["timestamp"]}}}')
                 index += 1
             ept_timestamp_results = ', '.join(ept_timestamp_list)
