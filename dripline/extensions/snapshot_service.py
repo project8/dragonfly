@@ -71,6 +71,7 @@ class SQLSnapshotService(Service, PostgreSQLInterface):
         logger.debug('snapshot sent')
         return
     
+    # Overrides Service.add_child. Needs to call both, one adds endpoint to service childrem, other adds table to endpoint. 
     def add_child(self, endpoint):
         Service.add_child(self, endpoint)
         PostgreSQLInterface.add_child_table(self, endpoint)
@@ -269,7 +270,7 @@ class SQLSnapshotEndpoint(SQLTable):
         '''
         logger.debug(f'Attempting to match endpoint "{endpoint}" to endpoint id in database')
         id_table = self.it.alias()
-        s = sqlalchemy.select([id_table.c.endpoint_id]).where(id_table.c.endpoint_name == endpoint)
+        s = sqlalchemy.select(id_table.c.endpoint_id).where(id_table.c.endpoint_name == endpoint)
         query_return = self.service.engine.execute(s).fetchall()
         if not query_return:
             raise ThrowReply("ServiceError", f"Endpoint with name '{endpoint}' not found in database")
