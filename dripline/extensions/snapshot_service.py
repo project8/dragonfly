@@ -72,10 +72,8 @@ class SQLSnapshotService(Service, PostgreSQLInterface):
         return
     
     def add_child(self, endpoint):
-        if isinstance(endpoint, SQLTable):
-            PostgreSQLInterface.add_child_table(self, endpoint)
-        else:
-            Service.add_child(self, endpoint)
+        Service.add_child(self, endpoint)
+        PostgreSQLInterface.add_child_table(self, endpoint)
     
 __all__.append('SQLSnapshotEndpoint')
 
