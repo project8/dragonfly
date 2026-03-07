@@ -218,7 +218,7 @@ class SQLSnapshotEndpoint(SQLTable):
         # Connect to id map table + assign alises
         self._connect_id_table()
         t = self.table.alias()
-        logger.debug(f"table obj is {str(t)}")
+        logger.debug(f"table cols are {t.c.keys()}")
 
         # Select query + result
         val_cal_list = []
