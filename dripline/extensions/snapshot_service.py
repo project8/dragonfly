@@ -271,7 +271,8 @@ class SQLSnapshotEndpoint(SQLTable):
         logger.debug(f'Attempting to match endpoint "{endpoint}" to endpoint id in database')
         id_table = self.it.alias()
         s = sqlalchemy.select(id_table.c.endpoint_id).where(id_table.c.endpoint_name == endpoint)
-        query_return = self.service.engine.execute(s).fetchall()
+        with self.service.engine.connect() as conn:
+            query_return = conn.execute(s).fetchall()
         if not query_return:
             raise ThrowReply("ServiceError", f"Endpoint with name '{endpoint}' not found in database")
         ept_id = query_return[0]['endpoint_id']
