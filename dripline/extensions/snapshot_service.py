@@ -255,8 +255,8 @@ class SQLSnapshotEndpoint(SQLTable):
         logger.debug('Attempting to establish connection to database id table "endpoint_id_map"')
         try:
             self.it = sqlalchemy.Table('endpoint_id_map',self.service.meta, autoload=True, schema=self.schema)
-        except Exception as dripline_error:
-            logger.error(f'{dripline_error.message}; when establishing connection to the "endpoint_id_map" table')
+        except Exception as error:
+            logger.error(f'{error}; when establishing connection to the "endpoint_id_map" table')
 
     def _get_endpoint_id(self, endpoint):
         '''
