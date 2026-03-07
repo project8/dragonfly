@@ -228,7 +228,8 @@ class SQLSnapshotEndpoint(SQLTable):
         s = sqlalchemy.select([t]).where(sqlalchemy.and_(t.c.endpoint_id == ept_id,t.c.timestamp < timestamp))
         s = s.order_by(t.c.timestamp.desc()).limit(1)
         try:
-            query_return = self.service.engine.execute(s).fetchall()
+            with self.service.engine.connect() as conn:
+                query_return = conn.execute(s).fetchall()
         except ThrowReply as dripline_error:
             logger.error(f'{dripline_error.message}; in executing SQLAlchemy select statement for endpoint "{endpoint}"')
             return
@@ -273,6 +274,7 @@ class SQLSnapshotEndpoint(SQLTable):
         s = sqlalchemy.select(id_table.c.endpoint_id).where(id_table.c.endpoint_name == endpoint)
         with self.service.engine.connect() as conn:
             query_return = conn.execute(s).fetchall()
+        logger.debug(f'query return for endpoint "{endpoint}" is {query_return}')
         if not query_return:
             raise ThrowReply("ServiceError", f"Endpoint with name '{endpoint}' not found in database")
         ept_id = query_return[0]['endpoint_id']
