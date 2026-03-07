@@ -56,8 +56,7 @@ class SQLSnapshotService(Service, PostgreSQLInterface):
         latest_snap = {}
         for child in self.endpoints:
             snapshot_result = self.endpoints[child].get_latest(start_time, self.endpoints[child].target_items)
-            these_snaps = snapshot_result['value_raw']
-            latest_snap.update(these_snaps)
+            latest_snap.update(snapshot_result)
         for latest_endpoint in latest_snap.keys():
             run_snapshot.setdefault(latest_endpoint,[]).append(latest_snap[latest_endpoint][0])
         for endpoint_name in sorted(run_snapshot.keys()):
@@ -115,17 +114,19 @@ class SQLSnapshotEndpoint(SQLTable):
         id_t = self.it.alias()
 
         # Select query + result
-        s = sqlalchemy.select([id_t.c.endpoint_name,t.c.timestamp,t.c.value_raw,t.c.value_cal]).select_from(t.join(id_t,t.c.endpoint_id == id_t.c.endpoint_id))
+        s = sqlalchemy.select(id_t.c.endpoint_name,t.c.timestamp,t.c.value_raw,t.c.value_cal).select_from(t.join(id_t,t.c.endpoint_id == id_t.c.endpoint_id))
         logger.debug(f'querying database for entries between "{start_timestamp}" and "{end_timestamp}"')
         s = s.where(sqlalchemy.and_(t.c.timestamp>=start_timestamp,t.c.timestamp<=end_timestamp)).order_by(id_t.c.endpoint_name.asc())
         try:
-            query_return = self.service.engine.execute(s).fetchall()
-        except ThrowReply as dripline_error:
-            logger.error(f'{dripline_error.message}; in executing SQLAlchemy select statement')
-            return
+            with self.service.engine.connect() as conn:
+                query_return = conn.execute(s).fetchall()
+        except Exception as error:
+            logger.error(f'{error}; in executing SQLAlchemy select statement')
+            raise ThrowReply("ServiceError", 'Unable to execute database query for logs snapshot')
         if not query_return:
             logger.info('returning empty record')
             return {'value_raw': {}}
+        logger.debug(f'query return for logs snapshot is {query_return[0]} ... {query_return[-1]}')
 
         # Counting how many times each endpoint is present
         endpoint_name_raw = []
@@ -187,7 +188,7 @@ class SQLSnapshotEndpoint(SQLTable):
             ept_id = self._get_endpoint_id(endpoint)
             # Select query + result
             logger.debug(f'querying database for endpoint "{endpoint}" entries between "{start_timestamp}" and "{end_timestamp}"')
-            s = sqlalchemy.select([t]).where(sqlalchemy.and_(t.c.endpoint_id==ept_id,t.c.timestamp>start_timestamp,t.c.timestamp<end_timestamp)).order_by(t.c.timestamp.asc())
+            s = sqlalchemy.select(t).where(sqlalchemy.and_(t.c.endpoint_id==ept_id,t.c.timestamp>start_timestamp,t.c.timestamp<end_timestamp)).order_by(t.c.timestamp.asc())
             query_return = self.service.engine.execute(s).fetchall()
             if not query_return:
                 logger.warning(f'no entries found between "{start_timestamp}" and "{end_timestamp}"')
