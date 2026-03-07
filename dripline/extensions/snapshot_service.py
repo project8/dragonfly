@@ -115,7 +115,7 @@ class SQLSnapshotEndpoint(SQLTable):
         # Select query + result
         s = sqlalchemy.select(t.c.endpoint_name,t.c.timestamp,t.c.value_raw,t.c.value_cal)
         logger.debug(f'querying database for entries between "{start_timestamp}" and "{end_timestamp}"')
-        s = s.where(sqlalchemy.and_(t.c.timestamp>=start_timestamp,t.c.timestamp<=end_timestamp)).order_by(id_t.c.endpoint_name.asc())
+        s = s.where(sqlalchemy.and_(t.c.timestamp>=start_timestamp,t.c.timestamp<=end_timestamp)).order_by(t.c.endpoint_name.asc())
         try:
             with self.service.engine.connect() as conn:
                 query_return = conn.execute(s).fetchall()
