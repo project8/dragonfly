@@ -111,10 +111,9 @@ class SQLSnapshotEndpoint(SQLTable):
         # Connect to id map table + assign alises
         self._connect_id_table()
         t = self.table.alias()
-        id_t = self.it.alias()
 
         # Select query + result
-        s = sqlalchemy.select(id_t.c.endpoint_name,t.c.timestamp,t.c.value_raw,t.c.value_cal).select_from(t.join(id_t,t.c.endpoint_id == id_t.c.endpoint_id))
+        s = sqlalchemy.select(t.c.endpoint_name,t.c.timestamp,t.c.value_raw,t.c.value_cal)
         logger.debug(f'querying database for entries between "{start_timestamp}" and "{end_timestamp}"')
         s = s.where(sqlalchemy.and_(t.c.timestamp>=start_timestamp,t.c.timestamp<=end_timestamp)).order_by(id_t.c.endpoint_name.asc())
         try:
