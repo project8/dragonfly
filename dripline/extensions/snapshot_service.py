@@ -230,9 +230,10 @@ class SQLSnapshotEndpoint(SQLTable):
         try:
             with self.service.engine.connect() as conn:
                 query_return = conn.execute(s).fetchall()
-        except ThrowReply as dripline_error:
-            logger.error(f'{dripline_error.message}; in executing SQLAlchemy select statement for endpoint "{endpoint}"')
-            return
+        except Exception as dripline_error:
+            logger.error(f'{Exception}; in executing SQLAlchemy select statement for endpoint "{endpoint}"')
+            raise ThrowReply("ServiceError", f'Unable to execute database query for endpoint "{endpoint}"')
+        logger.debug(f'query return for endpoint "{endpoint}" is {query_return}')
         if not query_return:
             logger.critical(f'no records found before "{timestamp}" for endpoint "{endpoint}" in database hence not recording its snapshot')
         else:
@@ -277,7 +278,7 @@ class SQLSnapshotEndpoint(SQLTable):
         logger.debug(f'query return for endpoint "{endpoint}" is {query_return}')
         if not query_return:
             raise ThrowReply("ServiceError", f"Endpoint with name '{endpoint}' not found in database")
-        ept_id = query_return[0]['endpoint_id']
+        ept_id = query_return[0][0]
         logger.debug(f"Endpoint id '{ept_id}' matched to endpoint '{endpoint}'")
         return ept_id
 
