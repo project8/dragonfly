@@ -221,8 +221,6 @@ class SQLSnapshotEndpoint(SQLTable):
         logger.debug(f"table cols are {t.c.keys()}")
 
         # Select query + result
-        val_cal_list = []
-        val_raw_dict = {}
 
         ept_id = self._get_endpoint_id(endpoint)
 
@@ -238,11 +236,9 @@ class SQLSnapshotEndpoint(SQLTable):
         if not query_return:
             logger.critical(f'no records found before "{timestamp}" for endpoint "{endpoint}" in database hence not recording its snapshot')
         else:
-            val_raw_dict[endpoint] = [{'timestamp' : query_return[0]['timestamp'].strftime(TIME_FORMAT),
-                                    self.payload_field : query_return[0][self.payload_field]}]
-            val_cal_list.append(f'{endpoint} -> {val_raw_dict[endpoint][0][self.payload_field]} {{{val_raw_dict[endpoint][0]["timestamp"]}}}')
-
-        return {'value_raw': val_raw_dict, 'value_cal': '\n'.join(val_cal_list)}
+            val_dict = {'timestamp' : query_return[0]._asdict()['timestamp'].strftime(TIME_FORMAT),
+                                    self.payload_field : query_return[0]._asdict()[self.payload_field]}
+        return val_dict
 
 
     def _try_parsing_date(self, timestamp):
@@ -279,7 +275,7 @@ class SQLSnapshotEndpoint(SQLTable):
         logger.debug(f'query return for endpoint "{endpoint}" is {query_return}')
         if not query_return:
             raise ThrowReply("ServiceError", f"Endpoint with name '{endpoint}' not found in database")
-        ept_id = query_return[0][0]
+        ept_id = query_return[0]._asdict()['endpoint_id']
         logger.debug(f"Endpoint id '{ept_id}' matched to endpoint '{endpoint}'")
         return ept_id
 
