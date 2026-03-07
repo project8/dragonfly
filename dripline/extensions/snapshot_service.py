@@ -71,6 +71,12 @@ class SQLSnapshotService(Service, PostgreSQLInterface):
         logger.debug('snapshot sent')
         return
     
+    def add_child(self, endpoint):
+        if isinstance(endpoint, SQLTable):
+            PostgreSQLInterface.add_child_table(self, endpoint)
+        else:
+            Service.add_child(self, endpoint)
+    
 __all__.append('SQLSnapshotEndpoint')
 
 class SQLSnapshotEndpoint(SQLTable):
