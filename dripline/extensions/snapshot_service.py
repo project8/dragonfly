@@ -202,7 +202,7 @@ class SQLSnapshotEndpoint(SQLTable):
         timestamp (str): timestamp upper bound for selection. Format must follow TIME_FORMAT, i.e. YYYY-MM-DDThh:mm:ssZ
         endpoint (str): name of endpoint of interest. Usage for dragonfly CLI e.g. endpoint='endpoint_name1'
         '''
-        timestamp = timestamp["timestamp"]
+        timestamp = str(timestamp)
         if not isinstance(endpoint, str):
             logger.error(f'Received type "{type(endpoint).__name__}" for argument endpoint instead of Python str')
             raise ThrowReply("ServiceError", f'expecting a str but received type {type(endpoint).__name__}')
@@ -241,6 +241,7 @@ class SQLSnapshotEndpoint(SQLTable):
         '''
         Checks if timestamp (str) is in correct format for database query
         '''
+        logger.debug(f'checking if timestamp "{timestamp}" is in correct format for database query')
         try:
             return datetime.strptime(timestamp, TIME_FORMAT)
         except ValueError:
@@ -251,15 +252,17 @@ class SQLSnapshotEndpoint(SQLTable):
         '''
         Connects to the 'endpoint_id_map' table in database
         '''
+        logger.debug('Attempting to establish connection to database id table "endpoint_id_map"')
         try:
             self.it = sqlalchemy.Table('endpoint_id_map',self.service.meta, autoload=True, schema=self.schema)
-        except ThrowReply as dripline_error:
+        except Exception as dripline_error:
             logger.error(f'{dripline_error.message}; when establishing connection to the "endpoint_id_map" table')
 
     def _get_endpoint_id(self, endpoint):
         '''
         Queries database to match endpoint to endpoint id
         '''
+        logger.debug(f'Attempting to match endpoint "{endpoint}" to endpoint id in database')
         id_table = self.it.alias()
         s = sqlalchemy.select([id_table.c.endpoint_id]).where(id_table.c.endpoint_name == endpoint)
         query_return = self.service.engine.execute(s).fetchall()
