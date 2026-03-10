@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>YAML Monitor Table</title>
+    <style>
+        table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+        th, td {
+            border: 1px solid #ccc;
+            padding: 8px;
+        }
+        th {
+            background: #eee;
+        }
+    </style>
+</head>
+<body>
+
+<h2>Alarm System Configuration Table</h2>
+
+<form method="POST" action="/update">
+<table>
+    <tr>
+        <th>Enable</th>
+        <th>Endpoint</th>
+        <th>Comparison</th>
+        <th>Reference</th>
+        <th>Message</th>
+        <th>Delete</th>
+    </tr>
+
+    {% for row in data %}
+    <tr>
+        <td>
+            <input type="checkbox" name="enable_{{ loop.index0 }}" {% if row['enable'] %}checked{% endif %}>
+        </td>
+        <td>
+            <input name="endpoint_{{ loop.index0 }}" value="{{ row.endpoint }}">
+        </td>
+        <td>
+            <input name="comparison_{{ loop.index0 }}" value="{{ row.method }}">
+        </td>
+        <td>
+            <input name="reference_{{ loop.index0 }}" value="{{ row.reference }}">
+        </td>
+        <td>
+            <input name="message_{{ loop.index0 }}" value="{{ row.message }}">
+        </td>
+        <td>
+            <form method="POST" action="/delete/{{ loop.index0 }}">
+                <button type="submit">Delete</button>
+            </form>
+        </td>
+    </tr>
+    {% endfor %}
+</table>
+
+<br>
+<button type="submit">Save Changes</button>
+</form>
+
+<hr>
+
+<h3>Add New Row</h3>
+
+<form method="POST" action="/add">
+    <label>Enable</label>
+    <input type="checkbox" name="enable"><br><br>
+
+    <label>Endpoint</label>
+    <input name="endpoint"><br><br>
+
+    <label>Comparison</label>
+    <input name="comparison"><br><br>
+
+    <label>Reference</label>
+    <input name="reference"><br><br>
+
+    <label>Message</label>
+    <input name="message"><br><br>
+
+    <button type="submit">Add</button>
+</form>
+
+</body>
+</html>
