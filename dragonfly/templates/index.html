@@ -66,22 +66,24 @@
 <h3>Add New Row</h3>
 
 <form method="POST" action="/add">
-    <label>Enable</label>
-    <input type="checkbox" name="enable"><br><br>
-
-    <label>Endpoint</label>
-    <input name="endpoint"><br><br>
-
-    <label>Comparison</label>
-    <input name="comparison"><br><br>
-
-    <label>Reference</label>
-    <input name="reference"><br><br>
-
-    <label>Message</label>
-    <input name="message"><br><br>
-
-    <button type="submit">Add</button>
+<table>
+    <tr>
+        <th>Enable</th>
+        <th>Endpoint</th>
+        <th>Comparison</th>
+        <th>Reference</th>
+        <th>Message</th>
+        <th>Delete</th>
+    </tr>
+    <tr>
+      <td><input type="checkbox" name="enable"></td>
+      <td><input name="endpoint"></td>
+      <td><input name="comparison"></td>
+      <td><input name="reference"></td>
+      <td><input name="message"></td>
+      <td><button type="submit">Add</button></td>
+    </tr>
+</table>
 </form>
 
 </body>
