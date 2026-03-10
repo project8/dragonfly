@@ -31,6 +31,7 @@ def index():
 def add_row():
     data = load_data()
 
+    
     new_row = { 
         "enable": request.form.get("enable") == "on",
         "endpoint": request.form.get("endpoint"),
@@ -38,6 +39,10 @@ def add_row():
         "reference": request.form.get("reference"),
         "message": request.form.get("message"),
     }
+    try:
+        new_row["reference"] = float(new_row["reference"])
+    except:
+        pass
 
     data.append(new_row)
 
@@ -65,6 +70,10 @@ def update():
         row["endpoint"] = request.form.get(f"endpoint_{i}")
         row["comparison"] = request.form.get(f"comparison_{i}")
         row["reference"] = request.form.get(f"reference_{i}")
+        try:
+            row["reference"] = float(row["reference"])
+        except:
+            pass
         row["message"] = request.form.get(f"message_{i}")
 
     save_data(data)
