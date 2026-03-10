@@ -17,6 +17,7 @@ class WatchDog(object):
     def __init__(self, config_path):
         self.config_path = config_path
         self.load_configuration()
+        self.load_slack_hook()
         self.setup_docker_client()
         self.setup_dripline_connection()
         signal.signal(signal.SIGINT, self.exit_gracefully)
@@ -27,11 +28,21 @@ class WatchDog(object):
         with open(Path(args.config), "r") as open_file:
             self.config = yaml.safe_load( open_file.read() )
         
-        if not "slack_hook" in self.config.keys():
-            self.config["slack_hook"] = None
+        if not "slack_hook_file" in self.config.keys():
+            self.config["slack_hook_file"] = None
         
         print("Configuration is:", flush=True)
         print(self.config, flush=True)
+    
+    def load_slack_hook(self):
+        if self.config["slack_hook_file"] is not None:
+            with open(Path(self.config["slack_hook_file"]), "r") as open_file:
+                self.hook_config = yaml.safe_load( open_file.read() )
+
+            if not "slack_hook" in self.hook_config.keys():
+                self.hook_config["slack_hook"] = None
+        else:
+            self.hook_config = {"slack_hook": None}
 
     def setup_docker_client(self):
         self.client = docker.from_env()
@@ -45,11 +56,11 @@ class WatchDog(object):
         self.send_slack_message("Stopping, received signal: %d"%signum)
 
     def send_slack_message(self, message):
-        if self.config["slack_hook"] is None:
+        if self.hook_config["slack_hook"] is None:
             print("Slack hook not configured. No message will be send!")
             return
         post = {"text": "{0}".format(message)}
-        response = requests.post(self.config["slack_hook"], headers={'Content-Type': 'application/json'}, data=json.dumps(post))
+        response = requests.post(self.hook_config["slack_hook"], headers={'Content-Type': 'application/json'}, data=json.dumps(post))
                           
         if response.status_code != 200:
             print(f'Request to slack returned an error {response.status_code}, the response is:\n{response.text}')
@@ -73,11 +84,13 @@ class WatchDog(object):
             raise ValueError(f"Comparison method {method} is not defined. You can use one of ['not_equal', 'equal', 'lower', 'greater'].")
 
     def run(self):
-
         while not self.kill_now:
+            self.load_configuration()
+
             if self.config["check_endpoints"] is not None:
                 for entry in self.config["check_endpoints"]:
                     if self.kill_now: break
+                    if "enable" in entry.keys() and entry["enable"]==False: continue
                     try:
                         value = self.get_endpoint(entry["endpoint"])
                         print(entry["endpoint"], value, flush=True)
@@ -85,7 +98,6 @@ class WatchDog(object):
                             self.send_slack_message(entry["message"].format(**locals()))
                     except Exception as e:
                         self.send_slack_message("Could not get endpoint %s. Got error %s."%(entry["endpoint"], str(e) ))
-
 
             for container in self.client.containers.list(all=True):
                 if self.kill_now: break
