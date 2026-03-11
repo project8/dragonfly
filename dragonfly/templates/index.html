@@ -28,7 +28,7 @@
         <th>Comparison</th>
         <th>Reference</th>
         <th>Message</th>
-        <th>Delete</th>
+        <th>Action</th>
     </tr>
 
     {% for row in data %}
@@ -73,7 +73,7 @@
         <th>Comparison</th>
         <th>Reference</th>
         <th>Message</th>
-        <th>Delete</th>
+        <th>Action</th>
     </tr>
     <tr>
       <td><input type="checkbox" name="enable"></td>
@@ -85,6 +85,13 @@
     </tr>
 </table>
 </form>
-
+<h3>Notes:</h3>
+<ul>
+  <li>Enable: If checkbox is not checked, the check of the endpoint is skipped.</li>
+  <li>Endpoint: has to be a valid dripline endpoint name.</li>
+  <li>Comparison: Has to be one of ["equal", "not_equal", "lower", "greater"]</li>
+  <li>Reference: Will be interpreted as float if possible, otherwise as string. Has to match endpoint type.</li>
+  <li>Message: The message that is send to slack, it the condition is fullfilled. </li>
+</ul>
 </body>
 </html>
