@@ -92,7 +92,10 @@ class WatchDog(object):
                     if self.kill_now: break
                     if "enable" in entry.keys() and entry["enable"]==False: continue
                     try:
-                        value = self.get_endpoint(entry["endpoint"])
+                        if ":value_cal" in entry["endpoint"]:
+                            value = self.get_endpoint(entry["endpoint"].replace(":value_cal", ""), calibrated=True)
+                        else:
+                            value = self.get_endpoint(entry["endpoint"])
                         print(entry["endpoint"], value, flush=True)
                         if self.compare(value, entry["reference"], entry["method"]):
                             self.send_slack_message(entry["message"].format(**locals()))
