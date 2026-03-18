@@ -184,19 +184,17 @@ class SQLSnapshotEndpoint(SQLTable):
 
         outdict = {}
         for endpoint in args:
-            ept_id = self._get_endpoint_id(endpoint)
             # Select query + result
             logger.debug(f'querying database for endpoint "{endpoint}" entries between "{start_timestamp}" and "{end_timestamp}"')
-            s = sqlalchemy.select(t).where(sqlalchemy.and_(t.c.endpoint_id==ept_id,t.c.timestamp>start_timestamp,t.c.timestamp<end_timestamp)).order_by(t.c.timestamp.asc())
+            s = sqlalchemy.select(t).where(sqlalchemy.and_(t.c.endpoint_name == endpoint,t.c.timestamp>start_timestamp,t.c.timestamp<end_timestamp)).order_by(t.c.timestamp.asc())
             query_return = self.service.engine.execute(s).fetchall()
             if not query_return:
                 logger.warning(f'no entries found between "{start_timestamp}" and "{end_timestamp}"')
 
             outdict[endpoint] = [[entry['timestamp'].strftime(TIME_FORMAT),entry['value_cal'],entry['value_raw']]for entry in query_return]
 
-        fp = open(os.path.expanduser('~')+'/sqldump.txt','w')
-        json.dump(obj=outdict,fp=fp)
-        fp.close()
+        with open(os.path.expanduser('~')+'/sqldump.txt','w') as fp:
+            json.dump(obj=outdict,fp=fp)
 
         return {'value_raw': True, 'value_cal': "Files written to ~/sqldump.txt"}
 
