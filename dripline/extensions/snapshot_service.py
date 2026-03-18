@@ -187,7 +187,12 @@ class SQLSnapshotEndpoint(SQLTable):
             # Select query + result
             logger.debug(f'querying database for endpoint "{endpoint}" entries between "{start_timestamp}" and "{end_timestamp}"')
             s = sqlalchemy.select(t).where(sqlalchemy.and_(t.c.endpoint_name == endpoint,t.c.timestamp>start_timestamp,t.c.timestamp<end_timestamp)).order_by(t.c.timestamp.asc())
-            query_return = self.service.engine.execute(s).fetchall()
+            try:
+                with self.service.engine.connect() as conn:
+                    query_return = conn.execute(s).fetchall()
+            except Exception as error:
+                logger.error(f'{error}; in executing SQLAlchemy select statement')
+                raise ThrowReply("ServiceError", 'Unable to execute database query for logs snapshot')
             if not query_return:
                 logger.warning(f'no entries found between "{start_timestamp}" and "{end_timestamp}"')
 
