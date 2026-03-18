@@ -196,7 +196,7 @@ class SQLSnapshotEndpoint(SQLTable):
             if not query_return:
                 logger.warning(f'no entries found between "{start_timestamp}" and "{end_timestamp}"')
 
-            outdict[endpoint] = [[entry['timestamp'].strftime(TIME_FORMAT),entry['value_cal'],entry['value_raw']]for entry in query_return]
+            outdict[endpoint] = [[entry._asdict()['timestamp'].strftime(TIME_FORMAT),entry._asdict()['value_cal'],entry._asdict()['value_raw']]for entry in query_return]
 
         with open(os.path.expanduser('~')+'/sqldump.txt','w') as fp:
             json.dump(obj=outdict,fp=fp)
