@@ -57,17 +57,17 @@ class SQLSnapshotService(Service, PostgreSQLInterface):
         '''
         run_snapshot = {}
         logger.info('doing logs-snapshot gets')
-        logger.debug(dir(self))
-        for child in self.endpoints:
+        logger.debug(f'endpoints for snapshot are {self.endpoint_configs}')
+        for child in self.endpoint_configs:
             logger.info(f'performing logs snapshot for {child}')
-            snapshot_result = self.endpoints[child].get_logs(start_time,end_time)
+            snapshot_result = self.endpoint_configs[child].get_logs(start_time,end_time)
             run_snapshot.update(snapshot_result['value_raw'])
         if run_snapshot == {}:
             logger.critical(f'No entries found in database between "{start_time}" and "{end_time}" hence producing empty snapshot')
         logger.info('doing latest-snapshot gets')
         latest_snap = {}
-        for child in self.endpoints:
-            snapshot_result = self.endpoints[child].get_latest(start_time, self.endpoints[child].target_items)
+        for child in self.endpoint_configs:
+            snapshot_result = self.endpoint_configs[child].get_latest(start_time, self.endpoint_configs[child].target_items)
             latest_snap.update(snapshot_result)
         for latest_endpoint in latest_snap.keys():
             run_snapshot.setdefault(latest_endpoint,[]).append(latest_snap[latest_endpoint][0])
