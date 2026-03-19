@@ -43,9 +43,21 @@ class SQLSnapshotService(Service, PostgreSQLInterface):
         self.add_endpoints_from_config()
 
 
-    def take_snapshot(self, start_time, end_time, metadata_target, filename):
+    def write_snapshot(self, start_time, end_time, filename):
+        '''
+        Method to write snapshot of database entries between two timestamps to a file.  
+        '''
+        logger.info(f'writing snapshot of database entries between "{start_time}" and "{end_time}" to file "{filename}"')
+        with open(os.path.expanduser(filename), 'w') as fp:
+            json.dump(obj=self.take_snapshot(start_time, end_time), fp=fp)
+
+    def take_snapshot(self, start_time, end_time):
+        '''
+        Method to take snapshot of database entries between two timestamps. 
+        '''
         run_snapshot = {}
         logger.info('doing logs-snapshot gets')
+        logger.debug(dir(self))
         for child in self.endpoints:
             logger.info(f'performing logs snapshot for {child}')
             snapshot_result = self.endpoints[child].get_logs(start_time,end_time)
@@ -62,13 +74,7 @@ class SQLSnapshotService(Service, PostgreSQLInterface):
         for endpoint_name in sorted(run_snapshot.keys()):
             if not set([endpoint_name])<=self._endpoint_name_set:
                 run_snapshot.pop(endpoint_name)
-        logger.info('snapshot of the slow control database should broadcast')
-        logger.debug(f'should request snapshot file: {filename}')
-        this_payload = {'contents': run_snapshot,
-                        'filename': filename}
-        self.cmd(metadata_target, 'write_json', payload=this_payload)
-        logger.debug('snapshot sent')
-        return
+        return run_snapshot
     
     # Overrides Service.add_child. Needs to call both, one adds endpoint to service childrem, other adds table to endpoint. 
     def add_child(self, endpoint):
