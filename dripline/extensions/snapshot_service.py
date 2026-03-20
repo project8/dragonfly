@@ -64,7 +64,7 @@ class SQLSnapshotService(Service, PostgreSQLInterface):
         for child in self.endpoint_configs:
             logger.info(f'performing logs snapshot for {child["name"]}')
             snapshot_result = self.sync_children[child["name"]].get_logs(start_time,end_time)
-            run_snapshot.update(snapshot_result['value_raw'])
+            run_snapshot.update(snapshot_result)
         if run_snapshot == {}:
             logger.critical(f'No entries found in database between "{start_time}" and "{end_time}" hence producing empty snapshot')
         logger.info('doing latest-snapshot gets')
@@ -134,7 +134,7 @@ class SQLSnapshotEndpoint(SQLTable):
             raise ThrowReply("ServiceError", 'Unable to execute database query for logs snapshot')
         if not query_return:
             logger.info('returning empty record')
-            return {'value_raw': {}}
+            return {}
         logger.debug(f'query return for logs snapshot is {query_return[0]} ... {query_return[-1]}')
 
         # Counting how many times each endpoint is present
@@ -165,9 +165,16 @@ class SQLSnapshotEndpoint(SQLTable):
                 index += 1
             ept_timestamp_results = ', '.join(ept_timestamp_list)
             val_cal_list.append(f'{endpoint} -> {ept_timestamp_results}')
+        logger.info(f'logs snapshot query return is \n{val_cal_list}')
+        return val_raw_dict
 
-        return {'value_raw': val_raw_dict, 'value_cal': '\n'.join(val_cal_list)}
-
+    def write_single_log(self, start_timestamp, end_timestamp, filename=os.path.expanduser('~')+'/sqldump.txt', *args):
+        '''
+        Method to write snapshot of database entries between two timestamps to a file.  
+        '''
+        logger.info(f'writing snapshot of database entries between "{start_timestamp}" and "{end_timestamp}" to file "{filename}"')
+        with open(filename, 'w') as fp:
+            json.dump(obj=self.get_single_log(start_timestamp, end_timestamp, *args), fp=fp)
 
     def get_single_log(self, start_timestamp, end_timestamp, *args):
         '''
@@ -206,12 +213,9 @@ class SQLSnapshotEndpoint(SQLTable):
             if not query_return:
                 logger.warning(f'no entries found between "{start_timestamp}" and "{end_timestamp}"')
 
-            outdict[endpoint] = [[entry._asdict()['timestamp'].strftime(TIME_FORMAT),entry._asdict()['value_cal'],entry._asdict()['value_raw']]for entry in query_return]
+            outdict[endpoint] = [[entry._asdict()['timestamp'].strftime(TIME_FORMAT), entry._asdict()['value_cal'], entry._asdict()['value_raw']] for entry in query_return]
 
-        with open(os.path.expanduser('~')+'/sqldump.txt','w') as fp:
-            json.dump(obj=outdict,fp=fp)
-
-        return {'value_raw': True, 'value_cal': "Files written to ~/sqldump.txt"}
+        return outdict
 
 
     def get_latest(self, timestamp, *args):
