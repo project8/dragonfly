@@ -102,6 +102,14 @@ class SQLSnapshotEndpoint(SQLTable):
         self.target_items = target_items
         self.payload_field = payload_field
 
+    def write_logs(self, start_timestamp, end_timestamp, filename=os.path.expanduser('~')+'/logsdump.json', *args):
+        '''
+        Method to write snapshot of database entries between two timestamps to a file.  
+        '''
+        logger.info(f'writing snapshot of database entries between "{start_timestamp}" and "{end_timestamp}" to file "{filename}"')
+        with open(filename, 'w') as fp:
+            json.dump(obj=self.get_logs(start_timestamp, end_timestamp), fp=fp)
+
     def get_logs(self, start_timestamp, end_timestamp):
         '''
         Method to retrieve all database values for all endpoints between two timestamps.  Used as part of standard DAQ operation
@@ -168,7 +176,7 @@ class SQLSnapshotEndpoint(SQLTable):
         logger.info(f'logs snapshot query return is \n{val_cal_list}')
         return val_raw_dict
 
-    def write_single_log(self, start_timestamp, end_timestamp, filename=os.path.expanduser('~')+'/sqldump.txt', *args):
+    def write_single_log(self, start_timestamp, end_timestamp, filename=os.path.expanduser('~')+'/singlelogdump.json', *args):
         '''
         Method to write snapshot of database entries between two timestamps to a file.  
         '''
