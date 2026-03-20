@@ -41,7 +41,10 @@ class SQLSnapshotService(Service, PostgreSQLInterface):
         PostgreSQLInterface.__init__(self, **kwargs)
         self.connect_to_db(self.auth)
         self.add_endpoints_from_config()
-
+        self._endpoint_name_set = set()
+        for child in self.endpoint_configs:
+            if isinstance(self.sync_children[child["name"]], SQLSnapshotEndpoint):
+                self._endpoint_name_set.update(child["target_items"])
 
     def write_snapshot(self, start_time, end_time, filename):
         '''
@@ -57,20 +60,21 @@ class SQLSnapshotService(Service, PostgreSQLInterface):
         '''
         run_snapshot = {}
         logger.info('doing logs-snapshot gets')
-        logger.debug(f'endpoints for snapshot are {self.endpoint_configs}')
+        logger.debug(f'endpoints for snapshot are {[child["name"] for child in self.endpoint_configs]}')
         for child in self.endpoint_configs:
-            logger.info(f'performing logs snapshot for {child}')
-            snapshot_result = self.endpoint_configs[child].get_logs(start_time,end_time)
+            logger.info(f'performing logs snapshot for {child["name"]}')
+            snapshot_result = self.sync_children[child["name"]].get_logs(start_time,end_time)
             run_snapshot.update(snapshot_result['value_raw'])
         if run_snapshot == {}:
             logger.critical(f'No entries found in database between "{start_time}" and "{end_time}" hence producing empty snapshot')
         logger.info('doing latest-snapshot gets')
         latest_snap = {}
         for child in self.endpoint_configs:
-            snapshot_result = self.endpoint_configs[child].get_latest(start_time, self.endpoint_configs[child].target_items)
+            snapshot_result = self.sync_children[child["name"]].get_latest(start_time, *child["target_items"])
             latest_snap.update(snapshot_result)
         for latest_endpoint in latest_snap.keys():
-            run_snapshot.setdefault(latest_endpoint,[]).append(latest_snap[latest_endpoint][0])
+            run_snapshot.setdefault(latest_endpoint,[]).append(latest_snap[latest_endpoint])
+        # remove endpoints that are not in the config file ()
         for endpoint_name in sorted(run_snapshot.keys()):
             if not set([endpoint_name])<=self._endpoint_name_set:
                 run_snapshot.pop(endpoint_name)
@@ -210,16 +214,15 @@ class SQLSnapshotEndpoint(SQLTable):
         return {'value_raw': True, 'value_cal': "Files written to ~/sqldump.txt"}
 
 
-    def get_latest(self, timestamp, endpoint):
+    def get_latest(self, timestamp, *args):
         '''
         Method to retrieve last database value for all endpoints in list.  Used as part of standard DAQ operation
         timestamp (str): timestamp upper bound for selection. Format must follow TIME_FORMAT, i.e. YYYY-MM-DDThh:mm:ssZ
-        endpoint (str): name of endpoint of interest. Usage for dragonfly CLI e.g. endpoint='endpoint_name1'
+        *args: list of endpoints of interest
         '''
         timestamp = str(timestamp)
-        if not isinstance(endpoint, str):
-            logger.error(f'Received type "{type(endpoint).__name__}" for argument endpoint instead of Python str')
-            raise ThrowReply("ServiceError", f'expecting a str but received type {type(endpoint).__name__}')
+        if not args:
+            raise ThrowReply("ServiceError", 'requires at least one endpoint arg provided')
 
         # Parsing timestamp
         self._try_parsing_date(timestamp)
@@ -229,25 +232,26 @@ class SQLSnapshotEndpoint(SQLTable):
         t = self.table.alias()
         logger.debug(f"table cols are {t.c.keys()}")
 
+        outdict = {}
         # Select query + result
-
-        ept_id = self._get_endpoint_id(endpoint)
-
-        s = sqlalchemy.select(t).where(sqlalchemy.and_(t.c.endpoint_name == endpoint,t.c.timestamp < timestamp))
-        s = s.order_by(t.c.timestamp.desc()).limit(1)
-        try:
-            with self.service.engine.connect() as conn:
-                query_return = conn.execute(s).fetchall()
-        except Exception as dripline_error:
-            logger.error(f'{Exception}; in executing SQLAlchemy select statement for endpoint "{endpoint}"')
-            raise ThrowReply("ServiceError", f'Unable to execute database query for endpoint "{endpoint}"')
-        logger.debug(f'query return for endpoint "{endpoint}" is {query_return}')
-        if not query_return:
-            logger.critical(f'no records found before "{timestamp}" for endpoint "{endpoint}" in database hence not recording its snapshot')
-        else:
-            val_dict = {'timestamp' : query_return[0]._asdict()['timestamp'].strftime(TIME_FORMAT),
-                                    self.payload_field : query_return[0]._asdict()[self.payload_field]}
-        return val_dict
+        for endpoint in args:
+            logger.debug(f'querying database for latest entry for endpoint "{endpoint}" before "{timestamp}"')
+            s = sqlalchemy.select(t).where(sqlalchemy.and_(t.c.endpoint_name == endpoint,t.c.timestamp < timestamp))
+            s = s.order_by(t.c.timestamp.desc()).limit(1)
+            try:
+                with self.service.engine.connect() as conn:
+                    query_return = conn.execute(s).fetchall()
+            except Exception as dripline_error:
+                logger.error(f'{Exception}; in executing SQLAlchemy select statement for endpoint "{endpoint}"')
+                raise ThrowReply("ServiceError", f'Unable to execute database query for endpoint "{endpoint}"')
+            logger.debug(f'query return for endpoint "{endpoint}" is {query_return}')
+            if not query_return:
+                logger.critical(f'no records found before "{timestamp}" for endpoint "{endpoint}" in database hence not recording its snapshot')
+            else:
+                val_dict = {'timestamp' : query_return[0]._asdict()['timestamp'].strftime(TIME_FORMAT),
+                                        self.payload_field : query_return[0]._asdict()[self.payload_field]}
+            outdict[endpoint] = val_dict
+        return outdict
 
 
     def _try_parsing_date(self, timestamp):
