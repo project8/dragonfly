@@ -9,6 +9,16 @@ Types of changes: Added, Changed, Deprecated, Removed, Fixed, Security
 
 ## [Unreleased]
 
+## [2.2.0] -- ...
+
+### Added
+
+- EthernetHuberService
+- EthernetModbusService
+- CmdEntity
+- AstevalFormatEntity
+- PfeifferEntity
+
 ## [2.1.1] -- 2026-02-05
 
 ### Changed
