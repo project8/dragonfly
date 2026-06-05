@@ -13,11 +13,17 @@ Types of changes: Added, Changed, Deprecated, Removed, Fixed, Security
 
 ### Added
 
-- EthernetHuberService
-- EthernetModbusService
-- CmdEntity
-- AstevalFormatEntity
-- PfeifferEntity
+- AstevalFormatEntity    FormatEntity which supports asteval evaluation at formating
+- CmdEntity              Class providing a CMD entity, this was implemented in dripline-cpp but not in dripline-python, can be used to e.g. call a calibrate CMD
+- EthernetHuberService	 Service implementing the communication protocol used by Huber company
+- HuberGetEntity	 A get entity to implement communication protocol used by Huber company
+- EthernetModbusService  Service to implement modbus communication 
+- ModbusEntity           Entiy for modbus communication 
+- ModbusGetEntity        GetEntity for modbus communication
+- ModbusSetEntity        SetEntity for modbus communication
+- PfeifferEntity         Entity supporting formatting used by devices from Pfeiffer company
+- PfeifferGetEntity      GetEntity supporting formatting used by devices from Pfeiffer company
+- PfeifferSetEntity      SetEnitty supporting formatting used by devices from Pfeiffer company
 
 ## [2.1.1] -- 2026-02-05
 
