@@ -8,5 +8,10 @@ from . import jitter
 # Modules in this directory
 
 from .add_auth_spec import *
+from .cmd_endpoint import *
+from .asteval_endpoint import *
 from .thermo_fisher_endpoint import *
 from .ethernet_thermo_fisher_service import *
+from .ethernet_huber_service import *
+from .ethernet_modbus_service import *
+from .pfeiffer_endpoint import *
