@@ -11,19 +11,21 @@ ENV ENABLE_DAQ=${enable_daq}
 COPY . /usr/local/src_dragonfly
 
 WORKDIR /usr/local/src_dragonfly
-RUN if [ "$ENABLE_DAQ" = "true" ]; then \
-    pip install \
-    numpy==1.26.4 \
-    scipy==1.14.1 \
-    backports.ssl_match_hostname==3.7.0.1 \
-    katcp==0.9.3; \
-    git clone https://github.com/project8/adc_tests.git; \
-    cd adc_tests; \
-    git checkout master; \
-    pip install .; \ 
-    cd ..; \ 
-    apt update; \
-    apt install -y iputils-ping; \
+RUN echo "ENABLE_DAQ=$ENABLE_DAQ" && \
+    if [ "$ENABLE_DAQ" = "true" ]; then \
+        echo "Installing DAQ dependencies"; \
+        pip install \
+            numpy==1.26.4 \
+            scipy \
+            backports.ssl_match_hostname==3.7.0.1 \
+            katcp==0.9.3; \
+        git clone https://github.com/project8/adc_tests.git; \
+        cd adc_tests; \
+        git checkout master; \
+        pip install .; \
+        cd ..; \
+        apt update; \
+        apt install -y iputils-ping; \
     fi
 RUN pip install docker pymodbus
 RUN pip install .
